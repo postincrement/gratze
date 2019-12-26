@@ -1,0 +1,7 @@
+SDL2-2.0.10/
+Z80.o
+main.o
+emulator.o
+trs80.o
+sdl_video.o
+gratze
