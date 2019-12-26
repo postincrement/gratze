@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+#include <SDL2/SDL_keyboard.h> 
+
 extern "C" {
 #define LSB_FIRST
 #include "mfz80/Z80.h"
@@ -23,6 +25,9 @@ class Emulator
     virtual bool Run();
 
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
+
+    virtual void OnKeyDown(SDL_Keysym & keysym);
+    virtual void OnKeyUp(SDL_Keysym & keysym);
 
     static Emulator * g_z80Instance;
 

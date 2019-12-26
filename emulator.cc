@@ -43,7 +43,6 @@ Emulator::Emulator()
 {
   g_z80Instance = this;
 
-
   // initialize emulator
   memset(&m_cpu, 0, sizeof(m_cpu)); 
 
@@ -66,10 +65,9 @@ bool Emulator::Start(uint16_t addr)
 
 bool Emulator::Run()
 {
-  cout << "running emulator" << endl;
-  //uint8_t opcode = ExecZ80(&m_cpu);
+  /* uint8_t opcode = */ ExecZ80(&m_cpu);
   //cout << "opcode = " << hex << (int)opcode << endl;
-  RunZ80(&m_cpu);
+  //RunZ80(&m_cpu);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -92,10 +90,16 @@ void Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-void Emulator::WrZ80(register uint16_t Addr,register uint8_t Value)
-{
+void Emulator::OnKeyDown(SDL_Keysym & keysym)
+{}
 
-}
+void Emulator::OnKeyUp(SDL_Keysym & keysym)
+{}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+void Emulator::WrZ80(register uint16_t Addr,register uint8_t Value)
+{ }
 
 uint8_t Emulator::RdZ80(register uint16_t Addr)
 {
@@ -103,8 +107,7 @@ uint8_t Emulator::RdZ80(register uint16_t Addr)
 }
 
 void Emulator::OutZ80(register uint16_t Port, register uint8_t Value)
-{
-}
+{ }
 
 uint8_t Emulator::InZ80(register uint16_t Port)
 {
@@ -117,9 +120,7 @@ uint8_t Emulator::ReadNull(uint16_t)
 }
 
 void Emulator::WriteNull(uint16_t, uint8_t)
-{
-}
-
+{ }
 
 /////////////////////////////////////////////////////////////////////////////////////
 
