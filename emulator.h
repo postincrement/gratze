@@ -16,8 +16,9 @@ class Emulator
   public:
     Emulator();
 
-    virtual bool Open();
-    virtual bool Start() = 0;
+    virtual bool Open(int argc, char *argv[]);
+
+    virtual bool Start(uint16_t addr = 0);
 
     virtual bool Run();
 
@@ -25,13 +26,18 @@ class Emulator
 
     static Emulator * g_z80Instance;
 
+    virtual uint8_t RdZ80(register uint16_t Addr);
     virtual void WrZ80(register uint16_t Addr,register uint8_t Value);
 
-    virtual uint8_t RdZ80(register uint16_t Addr);
-
+    virtual uint8_t InZ80(register uint16_t Port);
     virtual void OutZ80(register uint16_t Port, register uint8_t Value);
 
-    virtual uint8_t InZ80(register uint16_t Port);
+    virtual uint8_t ReadNull(uint16_t);
+    virtual void WriteNull(uint16_t, uint8_t);
+
+    //bool ReadROM(const std::string & filename, int addr, int len = -1);
+
+    bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);
 
   protected:
     bool OpenVideo(int rows, int cols, MemoryMappedVideo::Font * font);

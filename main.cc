@@ -28,14 +28,27 @@ int main(int argc, char *argv[])
   }
 
   std::unique_ptr<Emulator> emulator(new TRS80Emulator());
+
+  if (!emulator->Open(argc, argv)) {
+    cerr << "error: cannot open emulator" << endl;
+    return -1;
+  }
   
+  if (!emulator->Start()) {
+    cerr << "error: cannot start emulator" << endl;
+    return -1;
+  }
+
   // capture signal handler
   //m_sigInt = false;
   //signal(SIGINT, &Zed80::SigHandler);
 
-
   for (int i = 0; i < 64*16; ++i)
     emulator->WriteVideoChar(i, i & 0xff);
 
-  sleep(10);
+  for (;;) {
+    emulator->Run();
+  }
+
+  cout << "finished" << endl;
 }

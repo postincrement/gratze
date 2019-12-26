@@ -27,16 +27,8 @@ SDL_Surface * MemoryMappedVideo::Font::GetSurface()
     exit(1);
   }
 
-  cout << "ch = " << m_width << "x" << m_height << endl;
-  cout << "w = " << surface->w << ", h = " << surface->h << ", pitch = " << (int)surface->pitch << endl;
-
   // lock the surface
   SDL_LockSurface(surface);
-
-  //SDL_PixelFormat * format = surface->format;
-  //format->palette->colors[0] = { 0,   0, 0 };
-  //format->palette->colors[1] = { 0, 255, 0 };
-
 
   // copy pixel data to the surface
   for (int i = 0; i < CHAR_COUNT; ++i) {
@@ -120,6 +112,9 @@ bool MemoryMappedVideo::Open()
   if (m_fontSurface == NULL)
     return false;
 
+  // convert the surface to match the screen
+  SDL_ConvertSurface(m_fontSurface, m_winSurface->format, 0);  
+
   // clear the window
   Clear();
 
@@ -165,6 +160,7 @@ void MemoryMappedVideo::WriteChar(unsigned offset, uint8_t ch)
   }
 
   // Update the window display
-	SDL_UpdateWindowSurface(m_window);
+	//SDL_UpdateWindowSurface(m_window);
+  SDL_UpdateWindowSurfaceRects(m_window, &dstRect, 1);
 }
 

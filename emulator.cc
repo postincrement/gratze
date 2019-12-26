@@ -3,8 +3,12 @@
 // must include before any STL files due to use of "pair"
 #include "zed80.h"
 
+#include <fstream>
+#include <iostream>
+
 #include "emulator.h"
 
+using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +41,9 @@ byte InZ80(register word Port)
 
 Emulator::Emulator()
 {
+  g_z80Instance = this;
+
+
   // initialize emulator
   memset(&m_cpu, 0, sizeof(m_cpu)); 
 
@@ -44,10 +51,28 @@ Emulator::Emulator()
   m_cpu.User = (void *)this;
 }
 
-bool Emulator::Open()
+bool Emulator::Open(int argc, char * argv[])
 {
   return true;
 }
+
+bool Emulator::Start(uint16_t addr)
+{
+  cout << "resetting Z80 to " << hex << addr << endl;
+  ResetZ80(&m_cpu);
+  m_cpu.PC.W = addr;
+  return true;
+}
+
+bool Emulator::Run()
+{
+  cout << "running emulator" << endl;
+  //uint8_t opcode = ExecZ80(&m_cpu);
+  //cout << "opcode = " << hex << (int)opcode << endl;
+  RunZ80(&m_cpu);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
 
 bool Emulator::OpenVideo(int rows, int cols, MemoryMappedVideo::Font * font)
 {
@@ -65,11 +90,7 @@ void Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
     m_video->WriteChar(offset, ch);
 }
 
-
-bool Emulator::Run()
-{
-  return true;
-}
+/////////////////////////////////////////////////////////////////////////////////////
 
 void Emulator::WrZ80(register uint16_t Addr,register uint8_t Value)
 {
@@ -87,5 +108,41 @@ void Emulator::OutZ80(register uint16_t Port, register uint8_t Value)
 
 uint8_t Emulator::InZ80(register uint16_t Port)
 {
-  return 0;
+  return 0xff;
+}
+
+uint8_t Emulator::ReadNull(uint16_t)
+{
+  return 0x00;
+}
+
+void Emulator::WriteNull(uint16_t, uint8_t)
+{
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+//bool Emulator::ReadROM(const std::string & filename, int addr, int len = -1)
+//{
+//  return ReadROM(filename, (unsigned char *)&m_memory[addr], len);
+//}
+
+bool Emulator::ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len)
+{
+  ifstream file(filename.c_str(), ifstream::in | ifstream::binary);
+  if (!file.is_open()) {
+    cerr << "error: cannot read ROM file '" << filename << "'" << endl;
+    return false;
+  }
+
+  if (len <= 0) {
+    file.seekg (0, ios::end);
+    len = file.tellg();
+    file.seekg (0, ios::beg);
+  }
+
+  file.read((char *)ptr, len);
+
+  return !file.fail();
 }
