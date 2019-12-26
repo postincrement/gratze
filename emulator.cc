@@ -1,12 +1,11 @@
 #include "memory.h"
 
-// must include before any STL files due to use of "pair"
-#include "zed80.h"
-
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 
 #include "emulator.h"
+#include "fdc.h"
 
 using namespace std;
 
@@ -21,7 +20,6 @@ extern "C" {
 
 void PatchZ80(register Z80 *R) { }
 word LoopZ80(register Z80 *R)  { return INT_NONE; }
-byte DebugZ80(register Z80 *R) { return 0; }
 
 void WrZ80(register word Addr,register byte Value)
 { Emulator::g_z80Instance->WrZ80(Addr, Value); }
@@ -34,6 +32,8 @@ void OutZ80(register word Port,register byte Value)
 
 byte InZ80(register word Port)
 { return Emulator::g_z80Instance->InZ80(Port); }
+
+extern byte DebugZ80(Z80 *R);
 
 };
 
@@ -60,15 +60,23 @@ bool Emulator::Start(uint16_t addr)
   cout << "resetting Z80 to " << hex << addr << endl;
   ResetZ80(&m_cpu);
   m_cpu.PC.W = addr;
+  m_cpu.TrapBadOps = 1;
   return true;
 }
 
 bool Emulator::Run()
 {
-  /* uint8_t opcode = */ ExecZ80(&m_cpu);
-  //cout << "opcode = " << hex << (int)opcode << endl;
-  //RunZ80(&m_cpu);
+  if(m_cpu.Trace)
+    DebugZ80(&m_cpu);
+
+  ExecZ80(&m_cpu);
 }
+
+void Emulator::SetTrace(bool v)
+{ 
+  m_cpu.Trace = v ? 1 : 0; 
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -96,6 +104,27 @@ void Emulator::OnKeyDown(SDL_Keysym & keysym)
 void Emulator::OnKeyUp(SDL_Keysym & keysym)
 {}
 
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+bool Emulator::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
+{
+  return m_fdc.MountDrive(driveNum, drive, readOnly);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+void Emulator::NMI()
+{
+  IntZ80(&m_cpu, INT_NMI);
+
+}
+
+void Emulator::Interrupt(uint16_t vector)
+{
+  IntZ80(&m_cpu, vector);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 void Emulator::WrZ80(register uint16_t Addr,register uint8_t Value)
@@ -121,6 +150,17 @@ uint8_t Emulator::ReadNull(uint16_t)
 
 void Emulator::WriteNull(uint16_t, uint8_t)
 { }
+
+uint8_t Emulator::ReadLog(uint16_t addr)
+{
+  cerr << "READ 0x" << std::setw(4) << std::setfill('0') << hex << addr << endl;
+  return 0x00;
+}
+
+void Emulator::WriteLog(uint16_t addr, uint8_t val)
+{ 
+  cerr << "WRITE 0x" << std::setw(4) << std::setfill('0') << hex << addr << " 0x" << std::setw(2) << hex <<  (int) val << endl;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////
 

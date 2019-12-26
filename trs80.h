@@ -2,8 +2,7 @@
 #define TRS80_H_
 
 #include "emulator.h"
-
-#include <set>
+#include "fdc.h"
 
 class TRS80Emulator : public Emulator
 {
@@ -37,6 +36,23 @@ class TRS80Emulator : public Emulator
 
     uint8_t ReadKeyboard(uint16_t addr);
 
+    uint8_t ReadMemIO(uint16_t addr);
+    void WriteMemIO(uint16_t addr, uint8_t val);
+
+    void WritePrinterFDC(uint16_t addr, uint8_t val);
+    uint8_t ReadPrinterFDC(uint16_t addr);
+
+    uint8_t ReadPrinter(uint16_t addr);
+    void WritePrinter(uint16_t addr, uint8_t val);
+
+    void WriteDrvSel(uint16_t, uint8_t val);
+    uint8_t ReadDrvSel(uint16_t);
+
+    void InitFDC();
+    uint8_t ReadFDC(uint16_t addr);
+    void WriteFDC(uint16_t addr, uint8_t val);
+    void FDCInterrupt();
+
   protected:  
     std::unique_ptr<MemoryMappedVideo::Font> m_font;
 
@@ -45,7 +61,7 @@ class TRS80Emulator : public Emulator
     uint8_t m_videoRAM[1*1024];
     uint8_t m_kbData[8];
     uint8_t m_shiftDown;
-    std::set<uint8_t> m_ignoreUps;
+;
 };
 
 #endif // TRS80_H_

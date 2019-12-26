@@ -20,7 +20,51 @@ void Zed80::SigHandler(int sig)
 #endif
 
 int main(int argc, char *argv[]) 
-{   
+{
+  std::string romFn;
+
+  // parse command line arguments
+  int optIndex = 1;
+  while (optIndex < argc) {
+    std::string arg(argv[optIndex]);
+    size_t len = arg.length();
+
+    // non-option argument terminates options
+    if (arg[0] != '-')
+      break;
+
+    // solitary "-"" terminates options
+    if (len == 1) {
+      ++optIndex;
+      break;
+    }
+
+    std::string opt(arg.substr(1, 1));
+    if (arg[0] == '-') {
+      // solitary "--" terminates options
+      if (len == 2) {
+        optIndex++;
+        break;
+      }
+      opt = arg.substr(2);
+    }
+
+    // select ROM
+    //if ((opt == "rom") || (opt == "r")) {
+    //  if (++optIndex >= argc) {
+    //    cerr << "error: --rom option requires filename argument" << endl;
+    //    return -1;
+    //  }
+    //  romFn = argv[optIndex];
+    //  ++optIndex;
+    //}
+
+    //else {
+    //  cerr << "error: unknown option '" << arg << "'" << endl;
+    //  return -1;
+    //}
+  }
+
   // returns zero on success else non-zero 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
     printf("error initializing SDL: %s\n", SDL_GetError()); 

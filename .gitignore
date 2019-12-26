@@ -5,3 +5,7 @@ emulator.o
 trs80.o
 sdl_video.o
 gratze
+mfz80/dasm.c
+fdc.o
+debug.o
+.vscode/settings.json

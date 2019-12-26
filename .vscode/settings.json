@@ -1,9 +1,0 @@
-{
-  "files.associations": {
-    "ostream": "cpp",
-    "system_error": "cpp",
-    "xfunctional": "cpp",
-    "xtr1common": "cpp",
-    "cstddef": "cpp"
-  }
-}

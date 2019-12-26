@@ -11,6 +11,8 @@ extern "C" {
 };
 
 #include "sdl_video.h"
+#include "fdc.h"
+
 #include <string>
 
 class Emulator
@@ -23,6 +25,8 @@ class Emulator
     virtual bool Start(uint16_t addr = 0);
 
     virtual bool Run();
+
+    virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
 
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
 
@@ -37,18 +41,30 @@ class Emulator
     virtual uint8_t InZ80(register uint16_t Port);
     virtual void OutZ80(register uint16_t Port, register uint8_t Value);
 
+    void NMI();
+    void Interrupt(uint16_t vector = 0);
+
     virtual uint8_t ReadNull(uint16_t);
     virtual void WriteNull(uint16_t, uint8_t);
+
+    virtual uint8_t ReadLog(uint16_t);
+    virtual void WriteLog(uint16_t, uint8_t);
 
     //bool ReadROM(const std::string & filename, int addr, int len = -1);
 
     bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);
+
+    void SetTrace(bool v);
 
   protected:
     bool OpenVideo(int rows, int cols, MemoryMappedVideo::Font * font);
     std::unique_ptr<MemoryMappedVideo> m_video;
 
     Z80 m_cpu;
+
+    WD_FDC m_fdc;
+    uint8_t m_drvSel;
+
 };
 
 
