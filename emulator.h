@@ -12,6 +12,7 @@ extern "C" {
 
 #include "sdl_video.h"
 #include "fdc.h"
+#include "options.h"
 
 #include <string>
 
@@ -20,11 +21,13 @@ class Emulator
   public:
     Emulator();
 
-    virtual bool Open(int argc, char *argv[]);
+    virtual bool Open(const Options & options);
 
     virtual bool Start(uint16_t addr = 0);
 
     virtual bool Run();
+
+    virtual void Poll();
 
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
 
@@ -56,11 +59,11 @@ class Emulator
 
     void SetTrace(bool v);
 
+    Z80 m_cpu;
+
   protected:
     bool OpenVideo(int rows, int cols, MemoryMappedVideo::Font * font);
     std::unique_ptr<MemoryMappedVideo> m_video;
-
-    Z80 m_cpu;
 
     WD_FDC m_fdc;
     uint8_t m_drvSel;

@@ -21,7 +21,7 @@ void Zed80::SigHandler(int sig)
 
 int main(int argc, char *argv[]) 
 {
-  std::string romFn;
+  Options options;
 
   // parse command line arguments
   int optIndex = 1;
@@ -50,19 +50,40 @@ int main(int argc, char *argv[])
     }
 
     // select ROM
-    //if ((opt == "rom") || (opt == "r")) {
-    //  if (++optIndex >= argc) {
-    //    cerr << "error: --rom option requires filename argument" << endl;
-    //    return -1;
-    //  }
-    //  romFn = argv[optIndex];
-    //  ++optIndex;
-    //}
+    if ((opt == "rom") || (opt == "r")) {
+      if (++optIndex >= argc) {
+        cerr << "error: --rom option requires filename argument" << endl;
+        return -1;
+      }
+      options.m_romFn = argv[optIndex++];
+    }
 
-    //else {
-    //  cerr << "error: unknown option '" << arg << "'" << endl;
-    //  return -1;
-    //}
+    // select drives
+    else if ((opt.substr(0, 5) == "drive")) {
+      std::string driveNumStr(opt.substr(5));
+      int driveNum = atoi(driveNumStr.c_str());
+      if (++optIndex >= argc) {
+        cerr << "error: --drivex option requires filename argument" << endl;
+        return -1;
+      }
+      options.m_driveFns[driveNum] = std::string(argv[optIndex++]);
+    }
+
+    // breakpoint
+    else if ((opt == "b") || (opt == "breakpoint")) {
+      if (++optIndex >= argc) {
+        cerr << "error: --breakpoint option requires address argument" << endl;
+        return -1;
+      }
+      std::string arg(argv[optIndex]);
+      int addr = strtoul(arg.c_str(), NULL, 16);
+      options.m_breakpoint = addr;
+    }
+
+    else {
+      cerr << "error: unknown option '" << arg << "'" << endl;
+      return -1;
+    }
   }
 
   // returns zero on success else non-zero 
@@ -73,7 +94,7 @@ int main(int argc, char *argv[])
 
   // instantiate and open and start the emulator
   std::unique_ptr<Emulator> emulator(new TRS80Emulator());
-  if (!emulator->Open(argc, argv)) {
+  if (!emulator->Open(options)) {
     cerr << "error: cannot open emulator" << endl;
     return -1;
   }
@@ -93,11 +114,15 @@ int main(int argc, char *argv[])
   // run emulator
   int count = 0;
   for (;;) {
+    if (emulator->m_cpu.PC.W == options.m_breakpoint)
+      emulator->SetTrace(true);
+
     // give CPU some time
     emulator->Run();
 
     // look for events
     if (count++ > 20) {
+      emulator->Poll();
       count = 0;
       SDL_Event event;
       if (SDL_PollEvent(&event)) {

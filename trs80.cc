@@ -11,11 +11,14 @@ extern "C"
 
 using namespace std;
 
-#define KB_MEM_ADDR 0x3800
-#define VIDEO_MEM_ADDR 0x3c00
-#define RAM_MEM_ADDR 0x4000
+#define KB_MEM_ADDR     0x3800
+#define VIDEO_MEM_ADDR  0x3c00
+#define RAM_MEM_ADDR    0x4000
 
-#define RESET_SYM SDLK_F1
+#define RTC_INTERVAL_MS 40
+
+#define RESET_SYM     SDLK_F1
+#define TRACE_SYM     SDLK_F2
 
 #define EXTENDED_SYM_START 0x4000004f
 
@@ -25,66 +28,24 @@ TRS80Emulator::TRS80Emulator()
 {
 }
 
-bool TRS80Emulator::Open(int argc, char *argv[])
+bool TRS80Emulator::Open(const Options & options)
 {
   m_fdc.SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
 
-  std::string romFn("roms/trs80_level2.rom");
-
-  // parse command line arguments
-  int optIndex = 1;
-  while (optIndex < argc) {
-    std::string arg(argv[optIndex]);
-    size_t len = arg.length();
-
-    // non-option argument terminates options
-    if (arg[0] != '-')
-      break;
-
-    // solitary "-"" terminates options
-    if (len == 1) {
-      ++optIndex;
-      break;
-    }
-
-    std::string opt(arg.substr(1, 1));
-    if (arg[0] == '-') {
-      // solitary "--" terminates options
-      if (len == 2) {
-        optIndex++;
-        break;
-      }
-      opt = arg.substr(2);
-    }
-
-    // select ROM
-    if ((opt == "rom") || (opt == "r")) {
-      if (++optIndex >= argc) {
-        cerr << "error: --rom option requires filename argument" << endl;
-        return -1;
-      }
-      romFn = argv[optIndex];
-      ++optIndex;
-    }
-
-    //else {
-    //  cerr << "error: unknown option '" << arg << "'" << endl;
-    //  return -1;
-    //}
-  }
-
   // load ROM
-  if (!ReadROMFromFile(romFn, m_rom))
+  if (!ReadROMFromFile(options.m_romFn, m_rom))
     return false;
 
-  return Emulator::Open(argc, argv);
+  m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
+  m_rtcPending = false;
+
+  return Emulator::Open(options);
 }
 
 bool TRS80Emulator::Start(uint16_t addr)
 {
   m_font.reset(new MemoryMappedVideo::Font(6, 12, &trs_char_data[0][0][0]));
-  if (!OpenVideo(16, 64, m_font.get()))
-  {
+  if (!OpenVideo(16, 64, m_font.get())) {
     return -1;
   }
 
@@ -95,6 +56,18 @@ bool TRS80Emulator::Start(uint16_t addr)
 
   return Emulator::Start(addr);
 }
+
+void TRS80Emulator::Poll()
+{
+  auto now = std::chrono::system_clock::now();
+  if (now > m_rtcTimer) {
+    //cerr << "RTC INTERRUPT" << endl;
+    m_rtcPending = true;  
+    Interrupt();
+    m_rtcTimer = now + std::chrono::milliseconds(RTC_INTERVAL_MS);
+  } 
+}
+
 
 /////////////////////////////////////////////////////////////
 
@@ -261,6 +234,12 @@ void TRS80Emulator::OnKeyDown(SDL_Keysym &keysym)
 {
   if (keysym.sym == RESET_SYM)
     NMI();
+
+  else if (keysym.sym == TRACE_SYM)
+    SetTrace(1);
+
+  else if (keysym.sym == TRACE_SYM+1)
+    SetTrace(0);
 
   else if (keysym.sym == SDLK_LSHIFT)
   {
@@ -430,12 +409,13 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
 void TRS80Emulator::FDCInterrupt()
 {
   cerr << "FDC INTERRUPT" << endl;
+  m_rtcPending = false;
   Interrupt();
 }
 
 void TRS80Emulator::InitFDC()
 {
-  WriteDrvSel(0, 0);
+  m_drvSel = -1;
 }
 
 void TRS80Emulator::WriteFDC(uint16_t addr, uint8_t val)
@@ -474,6 +454,15 @@ uint8_t TRS80Emulator::ReadDrvSel(uint16_t)
   return m_drvSel;
 }
 
+uint8_t TRS80Emulator::ReadInterrupt(uint16_t)
+{
+  // 0x80 = RTC interrupt
+  cerr << "INTERRUPT CLEAR" << endl;
+  if (m_rtcPending)
+    return 0x80;
+
+  return 0;
+}
 
 /////////////////////////////////////////////////////////////
 
@@ -493,11 +482,11 @@ static WriteMemoryFn g_trs80WritePrinterFDC[16] = {
     &TRS80Emulator::WriteFDC,     // 0x37ec
     &TRS80Emulator::WriteFDC,     // 0x37ed
     &TRS80Emulator::WriteFDC,     // 0x37ee
-    &TRS80Emulator::WriteFDC,     // 0x37ef
+    &TRS80Emulator::WriteFDC      // 0x37ef
 };
 
 static ReadMemoryFn g_trs80readPrinterFDC[16] = {
-    &TRS80Emulator::ReadLog,     // 0x37e0
+    &TRS80Emulator::ReadInterrupt, // 0x37e0
     &TRS80Emulator::ReadDrvSel,  // 0x37e1
     &TRS80Emulator::ReadLog,     // 0x37e2
     &TRS80Emulator::ReadLog,     // 0x37e3

@@ -50,8 +50,18 @@ Emulator::Emulator()
   m_cpu.User = (void *)this;
 }
 
-bool Emulator::Open(int argc, char * argv[])
+bool Emulator::Open(const Options & options)
 {
+  for (auto & r : options.m_driveFns) {
+    std::string fn(r.second);
+    VirtualDriveFile * drive = new VirtualDriveFile();
+    if (!drive->Open(fn, true))
+      return false;
+    if (!MountDrive(r.first, drive, true))
+      return false;
+    cerr << "info: mounted '" << fn << " as drive " << r.first << endl;  
+  }
+
   return true;
 }
 
@@ -70,6 +80,10 @@ bool Emulator::Run()
     DebugZ80(&m_cpu);
 
   ExecZ80(&m_cpu);
+}
+
+void Emulator::Poll()
+{
 }
 
 void Emulator::SetTrace(bool v)

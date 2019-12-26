@@ -3,6 +3,7 @@
 
 #include "emulator.h"
 #include "fdc.h"
+#include "options.h"
 
 class TRS80Emulator : public Emulator
 {
@@ -10,7 +11,7 @@ class TRS80Emulator : public Emulator
     TRS80Emulator();
 
     // overrides from Emulator
-    virtual bool Open(int argc, char *argv[]) override;
+    virtual bool Open(const Options & options) override;
     virtual bool Start(uint16_t addr) override;
 
     virtual uint8_t RdZ80(register uint16_t addr) override;
@@ -21,6 +22,8 @@ class TRS80Emulator : public Emulator
 
     virtual void OnKeyDown(SDL_Keysym & keysym) override;
     virtual void OnKeyUp(SDL_Keysym & keysym) override;
+
+    virtual void Poll() override;
 
     // new functions
     uint8_t ReadRAM(uint16_t);
@@ -53,6 +56,8 @@ class TRS80Emulator : public Emulator
     void WriteFDC(uint16_t addr, uint8_t val);
     void FDCInterrupt();
 
+    uint8_t ReadInterrupt(uint16_t);
+
   protected:  
     std::unique_ptr<MemoryMappedVideo::Font> m_font;
 
@@ -61,7 +66,10 @@ class TRS80Emulator : public Emulator
     uint8_t m_videoRAM[1*1024];
     uint8_t m_kbData[8];
     uint8_t m_shiftDown;
-;
+    std::vector<uint8_t> m_data;
+
+    bool m_rtcPending;
+    std::chrono::system_clock::time_point m_rtcTimer;
 };
 
 #endif // TRS80_H_

@@ -7,6 +7,9 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <map>
+
+#define MAX_SECTOR_SIZE  1024
 
 class VirtualDrive
 {
@@ -14,29 +17,62 @@ class VirtualDrive
     VirtualDrive();
     ~VirtualDrive();
 
-    virtual bool Open(const std::string & name, int sectorSize) = 0;
+    virtual bool Open(const std::string & name, bool readOnly) = 0;
     virtual bool Mount(bool readOnly) = 0;
 
-    virtual std::string GetName();
+    virtual bool IsReadOnly() const;
+    virtual std::string GetName() const;
 
-    virtual bool ReadSector(int track, int sector, uint8_t * data, int len) = 0;
-    virtual bool WriteSector(int track, int sector, uint8_t * data, int len) = 0;
+    virtual int ReadSector(int track, int sector, uint8_t * data, int len) = 0;
+    virtual int WriteSector(int track, int sector, uint8_t * data, int len) = 0;
 
   protected:  
+    bool m_readOnly;
     std::string m_name;
 };
 
 class VirtualDriveFile : public VirtualDrive
 {
   public:
+    // update g_formatNames in fdc.cc if this is changed
+    enum class Format {
+      eUnknown,
+      eJV1,
+      eJV3,
+      eDMK,
+      eCount
+    };
+
     VirtualDriveFile();
     ~VirtualDriveFile();
 
-    virtual bool Open(const std::string & name, int sectorSize) override;
+    void ReadJV1(off_t len, std::stringstream & formatError);
+    void ReadJV3(off_t len, std::stringstream & formatError);
+    void ReadDMK(off_t len, std::stringstream & formatError);
+
+    virtual bool Open(const std::string & name, bool readOnly) override;
     virtual bool Mount(bool readOnly) override;
 
-    virtual bool ReadSector(int track, int sector, uint8_t * data, int len) override;
-    virtual bool WriteSector(int track, int sector, uint8_t * data, int len) override;
+    virtual int ReadSector(int track, int sector, uint8_t * data, int len) override;
+    virtual int WriteSector(int track, int sector, uint8_t * data, int len) override;
+
+    struct SectorInfo 
+    {
+      SectorInfo(const SectorInfo & obj) = default;
+      SectorInfo(off_t offset, int size)
+        : m_offset(offset)
+        , m_size(size)
+      {}
+
+      off_t m_offset;
+      int m_size;
+    };
+
+  protected:
+    int m_fd;
+    Format m_format;
+    int m_trackCount;
+    std::map<uint32_t, SectorInfo> m_sectorMap;
 };
 
 class WD_FDC
@@ -51,7 +87,11 @@ class WD_FDC
 
     bool SelectDrive(int drive);
 
+    void Reset();
+
     uint8_t ReadStatus();
+    uint8_t ReadData();
+
     void WriteCommand(int8_t command);
 
     void SetInterruptHandler(std::function<void ()> handler);
@@ -67,10 +107,16 @@ class WD_FDC
     int m_drive;
     std::chrono::system_clock::time_point m_timer;
     bool m_noPrint;
+    bool m_setInterrupt;
+
+    bool m_intOnNotReadyToReady;
 
     std::function<void ()> m_interruptHandler;
-
     std::vector<std::unique_ptr<VirtualDrive>> m_drives;
+
+    uint8_t m_buffer[MAX_SECTOR_SIZE];
+    int m_bufferLen;
+    int m_bufferPtr;
 };
 
 #endif // FDC_H_
