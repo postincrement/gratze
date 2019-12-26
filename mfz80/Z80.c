@@ -7,7 +7,7 @@
 /** LoopZ80(), and PatchZ80() functions to accomodate the   **/
 /** emulated machine's architecture.                        **/
 /**                                                         **/
-/** Copyright (C) Marat Fayzullin 1994-2002                 **/
+/** Copyright (C) Marat Fayzullin 1994-2007                 **/
 /**     You are not allowed to distribute this software     **/
 /**     commercially. Please, notify me, if you make any    **/   
 /**     changes to this file.                               **/
@@ -18,12 +18,13 @@
 #include <stdio.h>
 
 /** INLINE ***************************************************/
-/** Different compilers inline C functions differently.     **/
+/** C99 standard has "inline", but older compilers used     **/
+/** __inline for the same purpose.                          **/
 /*************************************************************/
-#ifdef __GNUC__
-#define INLINE inline
+#ifdef __C99__
+#define INLINE static inline
 #else
-#define INLINE static
+#define INLINE static __inline
 #endif
 
 /** System-Dependent Stuff ***********************************/
@@ -31,20 +32,37 @@
 /** up. It has to stay inlined to be fast.                  **/
 /*************************************************************/
 #ifdef COLEM
-extern byte *RAM;
-INLINE byte RdZ80(word A) { return(RAM[A]); }
+#define RdZ80 RDZ80
+extern byte *ROMPage[];
+INLINE byte RdZ80(word A) { return(ROMPage[A>>13][A&0x1FFF]); }
 #endif
+
+#ifdef SPECCY
+#define RdZ80 RDZ80
+#define WrZ80 WRZ80
+extern byte *Page[],*ROM;
+INLINE byte RdZ80(word A)        { return(Page[A>>13][A&0x1FFF]); }
+INLINE void WrZ80(word A,byte V) { if(Page[A>>13]<ROM) Page[A>>13][A&0x1FFF]=V; }
+#endif
+
 #ifdef MG
+#define RdZ80 RDZ80
 extern byte *Page[];
 INLINE byte RdZ80(word A) { return(Page[A>>13][A&0x1FFF]); }
 #endif
+
 #ifdef FMSX
-extern byte *RAM[],PSL[],SSLReg;
-INLINE byte RdZ80(word A)
-{
-  if(A!=0xFFFF) return(RAM[A>>13][A&0x1FFF]);
-  else return((PSL[3]==3)? ~SSLReg:RAM[7][0x1FFF]);
-}
+#define FAST_RDOP
+extern byte *RAM[];
+INLINE byte OpZ80(word A) { return(RAM[A>>13][A&0x1FFF]); }
+#endif
+
+/** FAST_RDOP ************************************************/
+/** With this #define not present, RdZ80() should perform   **/
+/** the functions of OpZ80().                               **/
+/*************************************************************/
+#ifndef FAST_RDOP
+#define OpZ80(A) RdZ80(A)
 #endif
 
 #define S(Fl)        R->AF.B.l|=Fl
@@ -95,28 +113,29 @@ INLINE byte RdZ80(word A)
 #define M_RES(Bit,Rg) Rg&=~(1<<Bit)
 
 #define M_POP(Rg)      \
-  R->Rg.B.l=RdZ80(R->SP.W++);R->Rg.B.h=RdZ80(R->SP.W++)
+  R->Rg.B.l=OpZ80(R->SP.W++);R->Rg.B.h=OpZ80(R->SP.W++)
 #define M_PUSH(Rg)     \
   WrZ80(--R->SP.W,R->Rg.B.h);WrZ80(--R->SP.W,R->Rg.B.l)
 
 #define M_CALL         \
-  J.B.l=RdZ80(R->PC.W++);J.B.h=RdZ80(R->PC.W++);         \
+  J.B.l=OpZ80(R->PC.W++);J.B.h=OpZ80(R->PC.W++);         \
   WrZ80(--R->SP.W,R->PC.B.h);WrZ80(--R->SP.W,R->PC.B.l); \
-  R->PC.W=J.W
+  R->PC.W=J.W; \
+  JumpZ80(J.W)
 
-#define M_JP  J.B.l=RdZ80(R->PC.W++);J.B.h=RdZ80(R->PC.W);R->PC.W=J.W
-#define M_JR  R->PC.W+=(offset)RdZ80(R->PC.W)+1
-#define M_RET R->PC.B.l=RdZ80(R->SP.W++);R->PC.B.h=RdZ80(R->SP.W++)
+#define M_JP  J.B.l=OpZ80(R->PC.W++);J.B.h=OpZ80(R->PC.W);R->PC.W=J.W;JumpZ80(J.W)
+#define M_JR  R->PC.W+=(offset)OpZ80(R->PC.W)+1;JumpZ80(R->PC.W)
+#define M_RET R->PC.B.l=OpZ80(R->SP.W++);R->PC.B.h=OpZ80(R->SP.W++);JumpZ80(R->PC.W)
 
 #define M_RST(Ad)      \
-  WrZ80(--R->SP.W,R->PC.B.h);WrZ80(--R->SP.W,R->PC.B.l);R->PC.W=Ad
+  WrZ80(--R->SP.W,R->PC.B.h);WrZ80(--R->SP.W,R->PC.B.l);R->PC.W=Ad;JumpZ80(Ad)
 
 #define M_LDWORD(Rg)   \
-  R->Rg.B.l=RdZ80(R->PC.W++);R->Rg.B.h=RdZ80(R->PC.W++)
+  R->Rg.B.l=OpZ80(R->PC.W++);R->Rg.B.h=OpZ80(R->PC.W++)
 
 #define M_ADD(Rg)      \
-  J.W=R->AF.B.h+Rg;     \
-  R->AF.B.l=            \
+  J.W=R->AF.B.h+Rg;    \
+  R->AF.B.l=           \
     (~(R->AF.B.h^Rg)&(Rg^J.B.l)&0x80? V_FLAG:0)| \
     J.B.h|ZSTable[J.B.l]|                        \
     ((R->AF.B.h^Rg^J.B.l)&H_FLAG);               \
@@ -158,7 +177,7 @@ INLINE byte RdZ80(word A)
 #define M_XOR(Rg) R->AF.B.h^=Rg;R->AF.B.l=PZSTable[R->AF.B.h]
 
 #define M_IN(Rg)        \
-  Rg=InZ80(R->BC.B.l);  \
+  Rg=InZ80(R->BC.W);  \
   R->AF.B.l=PZSTable[Rg]|(R->AF.B.l&C_FLAG)
 
 #define M_INC(Rg)       \
@@ -312,7 +331,7 @@ static void CodesCB(register Z80 *R)
 {
   register byte I;
 
-  I=RdZ80(R->PC.W++);
+  I=OpZ80(R->PC.W++);
   R->ICount-=CyclesCB[I];
   switch(I)
   {
@@ -322,7 +341,7 @@ static void CodesCB(register Z80 *R)
         printf
         (   
           "[Z80 %lX] Unrecognized instruction: CB %02X at PC=%04X\n",
-          (long)(R->User),RdZ80(R->PC.W-1),R->PC.W-2
+          (long)(R->User),OpZ80(R->PC.W-1),R->PC.W-2
         );
   }
 }
@@ -333,8 +352,8 @@ static void CodesDDCB(register Z80 *R)
   register byte I;
 
 #define XX IX    
-  J.W=R->XX.W+(offset)RdZ80(R->PC.W++);
-  I=RdZ80(R->PC.W++);
+  J.W=R->XX.W+(offset)OpZ80(R->PC.W++);
+  I=OpZ80(R->PC.W++);
   R->ICount-=CyclesXXCB[I];
   switch(I)
   {
@@ -344,7 +363,7 @@ static void CodesDDCB(register Z80 *R)
         printf
         (
           "[Z80 %lX] Unrecognized instruction: DD CB %02X %02X at PC=%04X\n",
-          (long)(R->User),RdZ80(R->PC.W-2),RdZ80(R->PC.W-1),R->PC.W-4
+          (long)(R->User),OpZ80(R->PC.W-2),OpZ80(R->PC.W-1),R->PC.W-4
         );
   }
 #undef XX
@@ -356,8 +375,8 @@ static void CodesFDCB(register Z80 *R)
   register byte I;
 
 #define XX IY
-  J.W=R->XX.W+(offset)RdZ80(R->PC.W++);
-  I=RdZ80(R->PC.W++);
+  J.W=R->XX.W+(offset)OpZ80(R->PC.W++);
+  I=OpZ80(R->PC.W++);
   R->ICount-=CyclesXXCB[I];
   switch(I)
   {
@@ -367,7 +386,7 @@ static void CodesFDCB(register Z80 *R)
         printf
         (
           "[Z80 %lX] Unrecognized instruction: FD CB %02X %02X at PC=%04X\n",
-          (long)R->User,RdZ80(R->PC.W-2),RdZ80(R->PC.W-1),R->PC.W-4
+          (long)R->User,OpZ80(R->PC.W-2),OpZ80(R->PC.W-1),R->PC.W-4
         );
   }
 #undef XX
@@ -378,7 +397,7 @@ static void CodesED(register Z80 *R)
   register byte I;
   register pair J;
 
-  I=RdZ80(R->PC.W++);
+  I=OpZ80(R->PC.W++);
   R->ICount-=CyclesED[I];
   switch(I)
   {
@@ -390,7 +409,7 @@ static void CodesED(register Z80 *R)
         printf
         (
           "[Z80 %lX] Unrecognized instruction: ED %02X at PC=%04X\n",
-          (long)R->User,RdZ80(R->PC.W-1),R->PC.W-2
+          (long)R->User,OpZ80(R->PC.W-1),R->PC.W-2
         );
   }
 }
@@ -401,7 +420,7 @@ static void CodesDD(register Z80 *R)
   register pair J;
 
 #define XX IX
-  I=RdZ80(R->PC.W++);
+  I=OpZ80(R->PC.W++);
   R->ICount-=CyclesXX[I];
   switch(I)
   {
@@ -416,7 +435,7 @@ static void CodesDD(register Z80 *R)
         printf
         (
           "[Z80 %lX] Unrecognized instruction: DD %02X at PC=%04X\n",
-          (long)R->User,RdZ80(R->PC.W-1),R->PC.W-2
+          (long)R->User,OpZ80(R->PC.W-1),R->PC.W-2
         );
   }
 #undef XX
@@ -428,7 +447,7 @@ static void CodesFD(register Z80 *R)
   register pair J;
 
 #define XX IY
-  I=RdZ80(R->PC.W++);
+  I=OpZ80(R->PC.W++);
   R->ICount-=CyclesXX[I];
   switch(I)
   {
@@ -442,7 +461,7 @@ static void CodesFD(register Z80 *R)
         printf
         (
           "Unrecognized instruction: FD %02X at PC=%04X\n",
-          RdZ80(R->PC.W-1),R->PC.W-2
+          OpZ80(R->PC.W-1),R->PC.W-2
         );
   }
 #undef XX
@@ -468,45 +487,79 @@ void ResetZ80(Z80 *R)
   R->IX.W     = 0x0000;
   R->IY.W     = 0x0000;
   R->I        = 0x00;
+  R->R        = 0x00;
   R->IFF      = 0x00;
   R->ICount   = R->IPeriod;
   R->IRequest = INT_NONE;
+  R->IBackup  = 0;
+
+  JumpZ80(R->PC.W);
 }
 
 /** ExecZ80() ************************************************/
-/** This function will execute a single Z80 opcode. It will **/
-/** then return next PC, and current register values in R.  **/
+/** This function will execute given number of Z80 cycles.  **/
+/** It will then return the number of cycles left, possibly **/
+/** negative, and current register values in R.             **/
 /*************************************************************/
-word ExecZ80(Z80 *R)
+#ifdef EXECZ80
+int ExecZ80(register Z80 *R,register int RunCycles)
 {
   register byte I;
   register pair J;
 
-  I=RdZ80(R->PC.W++);
-  R->ICount-=Cycles[I];
-  switch(I)
+  for(R->ICount=RunCycles;;)
   {
-#include "Codes.h"
-    case PFX_CB: CodesCB(R);break;
-    case PFX_ED: CodesED(R);break;
-    case PFX_FD: CodesFD(R);break;
-    case PFX_DD: CodesDD(R);break;
-  }
+    while(R->ICount>0)
+    {
+#ifdef DEBUG
+      /* Turn tracing on when reached trap address */
+      if(R->PC.W==R->Trap) R->Trace=1;
+      /* Call single-step debugger, exit if requested */
+      if(R->Trace)
+        if(!DebugZ80(R)) return(R->ICount);
+#endif
 
-  /* We are done */
-  return(R->PC.W);
+      /* Read opcode and count cycles */
+      I=OpZ80(R->PC.W++);
+      /* Count cycles */
+      R->ICount-=Cycles[I];
+
+      /* Interpret opcode */
+      switch(I)
+      {
+#include "Codes.h"
+        case PFX_CB: CodesCB(R);break;
+        case PFX_ED: CodesED(R);break;
+        case PFX_FD: CodesFD(R);break;
+        case PFX_DD: CodesDD(R);break;
+      }
+    }
+
+    /* Unless we have come here after EI, exit */
+    if(!(R->IFF&IFF_EI)) return(R->ICount);
+    else
+    {
+      /* Done with AfterEI state */
+      R->IFF=(R->IFF&~IFF_EI)|IFF_1;
+      /* Restore the ICount */
+      R->ICount+=R->IBackup-1;
+      /* Interrupt CPU if needed */
+      if((R->IRequest!=INT_NONE)&&(R->IRequest!=INT_QUIT)) IntZ80(R,R->IRequest);
+    }
+  }
 }
+#endif /* EXECZ80 */
 
 /** IntZ80() *************************************************/
 /** This function will generate interrupt of given vector.  **/
 /*************************************************************/
 void IntZ80(Z80 *R,word Vector)
 {
+  /* If HALTed, take CPU off HALT instruction */
+  if(R->IFF&IFF_HALT) { R->PC.W++;R->IFF&=~IFF_HALT; }
+
   if((R->IFF&IFF_1)||(Vector==INT_NMI))
   {
-    /* If HALTed, take CPU off HALT instruction */
-    if(R->IFF&IFF_HALT) { R->PC.W++;R->IFF&=~IFF_HALT; }
-
     /* Save PC on stack */
     M_PUSH(PC);
 
@@ -516,12 +569,11 @@ void IntZ80(Z80 *R,word Vector)
     /* If it is NMI... */
     if(Vector==INT_NMI)
     {
-      /* Copy IFF1 to IFF2 */
-      if(R->IFF&IFF_1) R->IFF|=IFF_2; else R->IFF&=~IFF_2;
       /* Clear IFF1 */
       R->IFF&=~(IFF_1|IFF_EI);
       /* Jump to hardwired NMI vector */
       R->PC.W=0x0066;
+      JumpZ80(0x0066);
       /* Done */
       return;
     }
@@ -537,26 +589,27 @@ void IntZ80(Z80 *R,word Vector)
       /* Read the vector */
       R->PC.B.l=RdZ80(Vector++);
       R->PC.B.h=RdZ80(Vector);
+      JumpZ80(R->PC.W);
       /* Done */
       return;
     }
 
     /* If in IM1 mode, just jump to hardwired IRQ vector */
-    if(R->IFF&IFF_IM1) { R->PC.W=0x0038;return; }
+    if(R->IFF&IFF_IM1) { R->PC.W=0x0038;JumpZ80(0x0038);return; }
 
     /* If in IM0 mode... */
 
     /* Jump to a vector */
     switch(Vector)
     {
-      case INT_RST00: R->PC.W=0x0000;break;
-      case INT_RST08: R->PC.W=0x0008;break;
-      case INT_RST10: R->PC.W=0x0010;break;
-      case INT_RST18: R->PC.W=0x0018;break;
-      case INT_RST20: R->PC.W=0x0020;break;
-      case INT_RST28: R->PC.W=0x0028;break;
-      case INT_RST30: R->PC.W=0x0030;break;
-      case INT_RST38: R->PC.W=0x0038;break;
+      case INT_RST00: R->PC.W=0x0000;JumpZ80(0x0000);break;
+      case INT_RST08: R->PC.W=0x0008;JumpZ80(0x0008);break;
+      case INT_RST10: R->PC.W=0x0010;JumpZ80(0x0010);break;
+      case INT_RST18: R->PC.W=0x0018;JumpZ80(0x0018);break;
+      case INT_RST20: R->PC.W=0x0020;JumpZ80(0x0020);break;
+      case INT_RST28: R->PC.W=0x0028;JumpZ80(0x0028);break;
+      case INT_RST30: R->PC.W=0x0030;JumpZ80(0x0030);break;
+      case INT_RST38: R->PC.W=0x0038;JumpZ80(0x0038);break;
     }
   }
 }
@@ -566,6 +619,7 @@ void IntZ80(Z80 *R,word Vector)
 /** returns INT_QUIT. It will return the PC at which        **/
 /** emulation stopped, and current register values in R.    **/
 /*************************************************************/
+#ifndef EXECZ80
 word RunZ80(Z80 *R)
 {
   register byte I;
@@ -581,8 +635,9 @@ word RunZ80(Z80 *R)
       if(!DebugZ80(R)) return(R->PC.W);
 #endif
 
-    I=RdZ80(R->PC.W++);
+    I=OpZ80(R->PC.W++);
     R->ICount-=Cycles[I];
+
     switch(I)
     {
 #include "Codes.h"
@@ -626,3 +681,4 @@ word RunZ80(Z80 *R)
   /* Execution stopped */
   return(R->PC.W);
 }
+#endif /* !EXECZ80 */

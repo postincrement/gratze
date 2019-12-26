@@ -5,13 +5,17 @@
 /** This file contains declarations relevant to emulation   **/
 /** of Z80 CPU.                                             **/
 /**                                                         **/
-/** Copyright (C) Marat Fayzullin 1994-2002                 **/
+/** Copyright (C) Marat Fayzullin 1994-2007                 **/
 /**     You are not allowed to distribute this software     **/
 /**     commercially. Please, notify me, if you make any    **/   
 /**     changes to this file.                               **/
 /*************************************************************/
 #ifndef Z80_H
 #define Z80_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
                                /* Compilation options:       */
 /* #define DEBUG */            /* Compile debugging version  */
@@ -102,10 +106,13 @@ typedef struct
 void ResetZ80(register Z80 *R);
 
 /** ExecZ80() ************************************************/
-/** This function will execute a single Z80 opcode. It will **/
-/** then return next PC, and current register values in R.  **/
+/** This function will execute given number of Z80 cycles.  **/
+/** It will then return the number of cycles left, possibly **/
+/** negative, and current register values in R.             **/
 /*************************************************************/
-word ExecZ80(register Z80 *R);
+#ifdef EXECZ80
+int ExecZ80(register Z80 *R,register int RunCycles);
+#endif
 
 /** IntZ80() *************************************************/
 /** This function will generate interrupt of given vector.  **/
@@ -117,7 +124,9 @@ void IntZ80(register Z80 *R,register word Vector);
 /** returns INT_QUIT. It will return the PC at which        **/
 /** emulation stopped, and current register values in R.    **/
 /*************************************************************/
+#ifndef EXECZ80
 word RunZ80(register Z80 *R);
+#endif
 
 /** RdZ80()/WrZ80() ******************************************/
 /** These functions are called when access to RAM occurs.   **/
@@ -129,7 +138,7 @@ byte RdZ80(register word Addr);
 /** InZ80()/OutZ80() *****************************************/
 /** Z80 emulation calls these functions to read/write from  **/
 /** I/O ports. There can be 65536 I/O ports, but only first **/
-/** 256 are usually used                                    **/
+/** 256 are usually used.                                   **/
 /************************************ TO BE WRITTEN BY USER **/
 void OutZ80(register word Port,register byte Value);
 byte InZ80(register word Port);
@@ -162,4 +171,18 @@ byte DebugZ80(register Z80 *R);
 /************************************ TO BE WRITTEN BY USER **/
 word LoopZ80(register Z80 *R);
 
+/** JumpZ80() ************************************************/
+/** Z80 emulation calls this function when it executes a    **/
+/** JP, JR, CALL, RST, or RET. You can use JumpZ80() to     **/
+/** trap these opcodes and switch memory layout.            **/
+/************************************ TO BE WRITTEN BY USER **/
+#ifndef JUMPZ80
+#define JumpZ80(PC)
+#else
+void JumpZ80(word PC);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
 #endif /* Z80_H */

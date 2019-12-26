@@ -68,6 +68,7 @@ class TRS80Emulator : public Emulator
     uint8_t m_shiftDown;
     std::vector<uint8_t> m_data;
 
+    bool m_fdcPending;
     bool m_rtcPending;
     std::chrono::system_clock::time_point m_rtcTimer;
 };

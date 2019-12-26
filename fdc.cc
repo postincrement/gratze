@@ -123,7 +123,21 @@ uint8_t WD_FDC::ReadData()
   } 
   else {
     Reset();
-    m_status &= 0x60;          // for now, set to 0xfb
+    m_status &= 0x60;
+    switch (m_dam) {
+      case 0xf8:
+        m_status |= 0x60;
+        break; 
+      case 0xf9:
+        m_status |= 0x40;
+        break; 
+      case 0xfa:
+        m_status |= 0x20;
+        break; 
+      case 0xfb:
+        m_status |= 0x00;
+        break; 
+    }
     if (m_intOnNotReadyToReady)
       m_setInterrupt = true;
   }
@@ -197,7 +211,7 @@ void WD_FDC::WriteCommand(int8_t command)
             m_setInterrupt = true;
           }
           else {
-            m_bufferLen = m_drives[m_drive]->ReadSector(m_track, m_sector, m_buffer, MAX_SECTOR_SIZE);
+            m_bufferLen = m_drives[m_drive]->ReadSector(m_track, m_sector, m_dam, m_buffer, MAX_SECTOR_SIZE);
             if (m_bufferLen <= 0) {
               m_status = STATUS_LOST_DATA;
               m_setInterrupt = true;
@@ -452,7 +466,7 @@ void VirtualDriveFile::ReadJV1(off_t len, std::stringstream & formatError)
   off_t offs = 0;
   for (int track = 0; track < m_trackCount; ++track) {
     for (int sector = 1; sector <= SD_SECTOR_COUNT; ++sector) {
-      m_sectorMap.emplace(sector + (track << 16), SectorInfo(offs, SD_SECTOR_SIZE));
+      m_sectorMap.emplace(sector + (track << 16), SectorInfo(offs, SD_SECTOR_SIZE, (track == 17) ? 0xfa : 0xfb));
       offs += SD_SECTOR_SIZE;
     }
   }
@@ -495,6 +509,9 @@ void VirtualDriveFile::ReadJV3(off_t len, std::stringstream & formatError)
       }
     }
     else {
+      int density = (flags & 0x80) ? 1 : 0;
+      uint8_t dam = 0x00;
+      int side    = (flags & 0x10) ? 1 : 0;
       switch (flags & 0x3) {
         case 0:
           sectorSize = 256;
@@ -509,8 +526,31 @@ void VirtualDriveFile::ReadJV3(off_t len, std::stringstream & formatError)
           sectorSize = 512;
           break;
       }
-      m_trackCount = std::max(m_trackCount, (int)track);
-      m_sectorMap.emplace(sector + (track << 16), SectorInfo(offs, sectorSize));
+      switch ((flags & 0x60) + density) {
+        case 0x00:  // single
+        case 0x01:  // double
+          dam = 0xfb;
+          break;
+        case 0x20:  // single
+          dam = 0xfa;
+          break;
+        case 0x21:  // double
+          dam = 0xf8;
+          break;
+        case 0x40:  // single
+          dam = 0xf9;
+          break;
+        case 0x60:  // double
+          dam = 0xf8;
+          break;
+      }
+      if (dam == 0x00) {
+        cerr << "error: unknown DAM code 0x" << setw(2) << setfill('0') << dam << endl;
+      }
+      else {
+        m_trackCount = std::max(m_trackCount, (int)track);
+        m_sectorMap.emplace(sector + (side << 8) + (track << 16), SectorInfo(offs, sectorSize, dam));
+      }
     }
 
     offs += sectorSize;
@@ -528,17 +568,18 @@ bool VirtualDriveFile::Mount(bool readonly)
   return true;
 }
 
-int VirtualDriveFile::ReadSector(int track, int sector, uint8_t * data, int len)
+int VirtualDriveFile::ReadSector(int track, int sector, uint8_t & dam, uint8_t * data, int len)
 {
-  auto r = m_sectorMap.find((sector + 1) + (track << 16));
+  int side = 0;
+  auto r = m_sectorMap.find((sector + 1) + (side << 8) + (track << 16));
   if (r == m_sectorMap.end()) {
-    cerr << "error: request for unknown sector " << sector << " and track " << track << endl;
+    cerr << "error: request for unknown sector " << dec << sector << " and track " << track << endl;
     return -1;
   }
 
   SectorInfo & info = r->second;  
   if (lseek(m_fd, info.m_offset, SEEK_SET) < 0) {
-    cerr << "error: cannot seek for sector " << sector << " and track " << track << endl;
+    cerr << "error: cannot seek for sector " << dec << sector << " and track " << track << endl;
     return -1;
   }
 
@@ -546,7 +587,9 @@ int VirtualDriveFile::ReadSector(int track, int sector, uint8_t * data, int len)
     len = info.m_size;
   }
 
-  cerr << "info: reading sector " << sector << " and track " << track << endl;
+  dam = info.m_dam;
+
+  cerr << "info: reading sector " << dec << sector << " and track " << track << " of length " << len << " with DAM " << hex << (int)dam << endl;
 
   return ::read(m_fd, data, len);
 }

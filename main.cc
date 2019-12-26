@@ -114,8 +114,8 @@ int main(int argc, char *argv[])
   // run emulator
   int count = 0;
   for (;;) {
-    if (emulator->m_cpu.PC.W == options.m_breakpoint)
-      emulator->SetTrace(true);
+    //if (emulator->m_cpu.PC.W == options.m_breakpoint)
+    //  emulator->SetTrace(true);
 
     // give CPU some time
     emulator->Run();

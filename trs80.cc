@@ -11,14 +11,14 @@ extern "C"
 
 using namespace std;
 
-#define KB_MEM_ADDR     0x3800
-#define VIDEO_MEM_ADDR  0x3c00
-#define RAM_MEM_ADDR    0x4000
+#define KB_MEM_ADDR 0x3800
+#define VIDEO_MEM_ADDR 0x3c00
+#define RAM_MEM_ADDR 0x4000
 
 #define RTC_INTERVAL_MS 40
 
-#define RESET_SYM     SDLK_F1
-#define TRACE_SYM     SDLK_F2
+#define RESET_SYM SDLK_F1
+#define TRACE_SYM SDLK_F2
 
 #define EXTENDED_SYM_START 0x4000004f
 
@@ -28,7 +28,7 @@ TRS80Emulator::TRS80Emulator()
 {
 }
 
-bool TRS80Emulator::Open(const Options & options)
+bool TRS80Emulator::Open(const Options &options)
 {
   m_fdc.SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
 
@@ -38,6 +38,7 @@ bool TRS80Emulator::Open(const Options & options)
 
   m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
+  m_fdcPending = false;
 
   return Emulator::Open(options);
 }
@@ -61,13 +62,14 @@ void TRS80Emulator::Poll()
 {
   auto now = std::chrono::system_clock::now();
   if (now > m_rtcTimer) {
-    //cerr << "RTC INTERRUPT" << endl;
-    m_rtcPending = true;  
-    Interrupt();
-    m_rtcTimer = now + std::chrono::milliseconds(RTC_INTERVAL_MS);
-  } 
+    if (!m_rtcPending) {
+      //cerr << "RTC INTERRUPT" << endl;
+      m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
+      m_rtcPending = true;
+      Interrupt();
+    }
+  }
 }
-
 
 /////////////////////////////////////////////////////////////
 
@@ -236,10 +238,10 @@ void TRS80Emulator::OnKeyDown(SDL_Keysym &keysym)
     NMI();
 
   else if (keysym.sym == TRACE_SYM)
-    SetTrace(1);
+    SetTrace(true);
 
-  else if (keysym.sym == TRACE_SYM+1)
-    SetTrace(0);
+  else if (keysym.sym == TRACE_SYM + 1)
+    SetTrace(false);
 
   else if (keysym.sym == SDLK_LSHIFT)
   {
@@ -408,8 +410,8 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
 
 void TRS80Emulator::FDCInterrupt()
 {
-  cerr << "FDC INTERRUPT" << endl;
-  m_rtcPending = false;
+  //cerr << "FDC INTERRUPT" << endl;
+  m_fdcPending = true;
   Interrupt();
 }
 
@@ -425,6 +427,8 @@ void TRS80Emulator::WriteFDC(uint16_t addr, uint8_t val)
 
 uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
 {
+  if (addr == 0x37ec)
+    m_fdcPending = false;
   return m_fdc.Read(addr);
 }
 
@@ -432,19 +436,20 @@ void TRS80Emulator::WriteDrvSel(uint16_t, uint8_t val)
 {
   m_drvSel = val;
   int sel = -1;
-  switch (val) {
-    case 1:
-      sel = 0;
-      break;
-    case 2:
-      sel = 1;
-      break;
-    case 4:
-      sel = 2;
-      break;
-    case 8:
-      sel = 3;
-      break;
+  switch (val)
+  {
+  case 1:
+    sel = 0;
+    break;
+  case 2:
+    sel = 1;
+    break;
+  case 4:
+    sel = 2;
+    break;
+  case 8:
+    sel = 3;
+    break;
   }
   m_fdc.SelectDrive(sel);
 }
@@ -457,11 +462,21 @@ uint8_t TRS80Emulator::ReadDrvSel(uint16_t)
 uint8_t TRS80Emulator::ReadInterrupt(uint16_t)
 {
   // 0x80 = RTC interrupt
-  cerr << "INTERRUPT CLEAR" << endl;
-  if (m_rtcPending)
-    return 0x80;
+  // 0x80 = FDC interrupt
 
-  return 0;
+  uint8_t value = 0x00;
+  //cerr << "INTERRUPT CLEAR" << endl;
+
+  if (m_fdcPending) {
+    value |= 0x40;
+  }
+
+  if (m_rtcPending) {
+    value |= 0x80;
+    m_rtcPending = false;
+  }
+
+  return value;
 }
 
 /////////////////////////////////////////////////////////////
@@ -485,23 +500,23 @@ static WriteMemoryFn g_trs80WritePrinterFDC[16] = {
     &TRS80Emulator::WriteFDC      // 0x37ef
 };
 
-static ReadMemoryFn g_trs80readPrinterFDC[16] = {
+static ReadMemoryFn g_trs80ReadPrinterFDC[16] = {
     &TRS80Emulator::ReadInterrupt, // 0x37e0
-    &TRS80Emulator::ReadDrvSel,  // 0x37e1
-    &TRS80Emulator::ReadLog,     // 0x37e2
-    &TRS80Emulator::ReadLog,     // 0x37e3
-    &TRS80Emulator::ReadLog,     // 0x37e4
-    &TRS80Emulator::ReadLog,     // 0x37e5
-    &TRS80Emulator::ReadLog,     // 0x37e6
-    &TRS80Emulator::ReadLog,     // 0x37e7
-    &TRS80Emulator::ReadPrinter, // 0x37e8
-    &TRS80Emulator::ReadLog,     // 0x37e9
-    &TRS80Emulator::ReadLog,     // 0x37ea
-    &TRS80Emulator::ReadLog,     // 0x37eb
-    &TRS80Emulator::ReadFDC,     // 0x37ec
-    &TRS80Emulator::ReadFDC,     // 0x37ed
-    &TRS80Emulator::ReadFDC,     // 0x37ee
-    &TRS80Emulator::ReadFDC,     // 0x37ef
+    &TRS80Emulator::ReadDrvSel,    // 0x37e1
+    &TRS80Emulator::ReadLog,       // 0x37e2
+    &TRS80Emulator::ReadLog,       // 0x37e3
+    &TRS80Emulator::ReadLog,       // 0x37e4
+    &TRS80Emulator::ReadLog,       // 0x37e5
+    &TRS80Emulator::ReadLog,       // 0x37e6
+    &TRS80Emulator::ReadLog,       // 0x37e7
+    &TRS80Emulator::ReadPrinter,   // 0x37e8
+    &TRS80Emulator::ReadLog,       // 0x37e9
+    &TRS80Emulator::ReadLog,       // 0x37ea
+    &TRS80Emulator::ReadLog,       // 0x37eb
+    &TRS80Emulator::ReadFDC,       // 0x37ec
+    &TRS80Emulator::ReadFDC,       // 0x37ed
+    &TRS80Emulator::ReadFDC,       // 0x37ee
+    &TRS80Emulator::ReadFDC        // 0x37ef
 };
 
 void TRS80Emulator::WritePrinterFDC(uint16_t addr, uint8_t val)
@@ -511,7 +526,7 @@ void TRS80Emulator::WritePrinterFDC(uint16_t addr, uint8_t val)
 
 uint8_t TRS80Emulator::ReadPrinterFDC(uint16_t addr)
 {
-  return std::invoke(g_trs80readPrinterFDC[addr & 0x000f], *this, addr);
+  return std::invoke(g_trs80ReadPrinterFDC[addr & 0x000f], *this, addr);
 }
 
 static WriteMemoryFn g_trs80WriteMemIO[16] = {

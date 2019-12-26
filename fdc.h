@@ -23,7 +23,7 @@ class VirtualDrive
     virtual bool IsReadOnly() const;
     virtual std::string GetName() const;
 
-    virtual int ReadSector(int track, int sector, uint8_t * data, int len) = 0;
+    virtual int ReadSector(int track, int sector, uint8_t & dam, uint8_t * data, int len) = 0;
     virtual int WriteSector(int track, int sector, uint8_t * data, int len) = 0;
 
   protected:  
@@ -53,19 +53,21 @@ class VirtualDriveFile : public VirtualDrive
     virtual bool Open(const std::string & name, bool readOnly) override;
     virtual bool Mount(bool readOnly) override;
 
-    virtual int ReadSector(int track, int sector, uint8_t * data, int len) override;
+    virtual int ReadSector(int track, int sector, uint8_t & dam, uint8_t * data, int len) override;
     virtual int WriteSector(int track, int sector, uint8_t * data, int len) override;
 
     struct SectorInfo 
     {
       SectorInfo(const SectorInfo & obj) = default;
-      SectorInfo(off_t offset, int size)
+      SectorInfo(off_t offset, int size, uint8_t dam)
         : m_offset(offset)
         , m_size(size)
+        , m_dam(dam)
       {}
 
       off_t m_offset;
       int m_size;
+      uint8_t m_dam;
     };
 
   protected:
@@ -117,6 +119,7 @@ class WD_FDC
     uint8_t m_buffer[MAX_SECTOR_SIZE];
     int m_bufferLen;
     int m_bufferPtr;
+    uint8_t m_dam;
 };
 
 #endif // FDC_H_

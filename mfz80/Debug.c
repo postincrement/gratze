@@ -6,7 +6,7 @@
 /** the Z80 emulator which is called on each Z80 step when  **/
 /** Trap!=0.                                                **/
 /**                                                         **/
-/** Copyright (C) Marat Fayzullin 1995-2002                 **/
+/** Copyright (C) Marat Fayzullin 1995-2007                 **/
 /**     You are not allowed to distribute this software     **/
 /**     commercially. Please, notify me, if you make any    **/
 /**     changes to this file.                               **/
@@ -19,7 +19,12 @@
 #include <ctype.h>
 #include <string.h>
 
-static char *Mnemonics[256] =
+#ifdef FMSX
+#include "AY8910.h"
+extern AY8910 PSG;
+#endif
+
+static const char *Mnemonics[256] =
 {
   "NOP","LD BC,#h","LD (BC),A","INC BC","INC B","DEC B","LD B,*h","RLCA",
   "EX AF,AF'","ADD HL,BC","LD A,(BC)","DEC BC","INC C","DEC C","LD C,*h","RRCA",
@@ -55,7 +60,7 @@ static char *Mnemonics[256] =
   "RET M","LD SP,HL","JP M,#h","EI","CALL M,#h","PFX_FD","CP *h","RST 38h"
 };
 
-static char *MnemonicsCB[256] =
+static const char *MnemonicsCB[256] =
 {
   "RLC B","RLC C","RLC D","RLC E","RLC H","RLC L","RLC (HL)","RLC A",
   "RRC B","RRC C","RRC D","RRC E","RRC H","RRC L","RRC (HL)","RRC A",
@@ -91,7 +96,7 @@ static char *MnemonicsCB[256] =
   "SET 7,B","SET 7,C","SET 7,D","SET 7,E","SET 7,H","SET 7,L","SET 7,(HL)","SET 7,A"
 };
 
-static char *MnemonicsED[256] =
+static const char *MnemonicsED[256] =
 {
   "DB EDh,00h","DB EDh,01h","DB EDh,02h","DB EDh,03h",
   "DB EDh,04h","DB EDh,05h","DB EDh,06h","DB EDh,07h",
@@ -159,7 +164,7 @@ static char *MnemonicsED[256] =
   "DB EDh,FCh","DB EDh,FDh","DB EDh,FEh","DB EDh,FFh"
 };
 
-static char *MnemonicsXX[256] =
+static const char *MnemonicsXX[256] =
 {
   "NOP","LD BC,#h","LD (BC),A","INC BC","INC B","DEC B","LD B,*h","RLCA",
   "EX AF,AF'","ADD I%,BC","LD A,(BC)","DEC BC","INC C","DEC C","LD C,*h","RRCA",
@@ -195,7 +200,7 @@ static char *MnemonicsXX[256] =
   "RET M","LD SP,I%","JP M,#h","EI","CALL M,#h","PFX_FD","CP *h","RST 38h"
 };
 
-static char *MnemonicsXCB[256] =
+static const char *MnemonicsXCB[256] =
 {
   "RLC B","RLC C","RLC D","RLC E","RLC H","RLC L","RLC (I%@h)","RLC A",
   "RRC B","RRC C","RRC D","RRC E","RRC H","RRC L","RRC (I%@h)","RRC A",
@@ -238,7 +243,8 @@ static char *MnemonicsXCB[256] =
 /*************************************************************/
 static int DAsm(char *S,word A)
 {
-  char R[128],H[10],C,*T,*P;
+  char R[128],H[10],C,*P;
+  const char *T;
   byte J,Offset;
   word B;
 
@@ -309,7 +315,7 @@ static int DAsm(char *S,word A)
 /*************************************************************/
 byte DebugZ80(Z80 *R)
 {
-  static char Flags[9] = "SZ.H.PNC";
+  static const char Flags[9] = "SZ.H.PNC";
   char S[128],T[10];
   byte J,I;
 
@@ -406,6 +412,18 @@ byte DebugZ80(Z80 *R)
           }
         }
         break;
+
+#ifdef FMSX
+      case 'S':
+        for(J=0;J<AY8910_CHANNELS;J++)
+        {
+          printf("Channel %d: Volume %d, Frequency %dHz",J,PSG.Volume[J],PSG.Freq[J]);
+          if(!(PSG.R[8+(J%3)]&0x10)) printf("\n");
+          else printf(", Envelope %d\n",PSG.R[8+(J%3)]&0x0F);
+        }
+        printf("Envelope period %dms\n",PSG.EPeriod);
+        break;
+#endif /* FMSX */
     }
   }
 
