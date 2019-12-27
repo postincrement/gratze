@@ -60,6 +60,7 @@ class TRS80Emulator : public Emulator
 
   protected:  
     std::unique_ptr<MemoryMappedVideo::Font> m_font;
+    std::vector<uint8_t> m_fontData;
 
     uint8_t m_rom[12*1024];
     uint8_t m_ram[48*1024];

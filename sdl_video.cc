@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define CHAR_COUNT      128
+#define CHAR_COUNT      256
 #define TRS_CHAR_HEIGHT 12
 
 

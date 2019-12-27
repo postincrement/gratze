@@ -17,10 +17,17 @@ using namespace std;
 
 #define RTC_INTERVAL_MS 40
 
-#define RESET_SYM SDLK_F1
-#define TRACE_SYM SDLK_F2
+#define RESET_SYM   SDLK_F1
+#define TRACE_SYM   SDLK_F2
+#define REBOOT_SYM  SDLK_F12
 
 #define EXTENDED_SYM_START 0x4000004f
+
+#define FONT_HEIGHT   12    // must be divisble by 3
+#define FONT_WIDTH    6     // must be divisible by 2
+
+#define FONT_NUMBER   0  
+
 
 /////////////////////////////////////////////////////////////
 
@@ -45,7 +52,35 @@ bool TRS80Emulator::Open(const Options &options)
 
 bool TRS80Emulator::Start(uint16_t addr)
 {
-  m_font.reset(new MemoryMappedVideo::Font(6, 12, &trs_char_data[0][0][0]));
+  // create font with graphics chars
+  m_fontData.resize(FONT_HEIGHT * 256);
+  memcpy(&m_fontData[0], &trs_char_data[FONT_NUMBER][0][0], 128 * FONT_HEIGHT);
+
+  uint8_t maskRight = (1 << (FONT_WIDTH / 2)) - 1;
+  uint8_t maskLeft  = maskRight << (FONT_WIDTH / 2);
+
+  cout << hex << (int)maskRight << " " << hex << (int)maskLeft << endl;
+
+  for (uint8_t i = 0; i < 64; ++i) {
+    uint8_t * dst = &m_fontData[(128 + i) * FONT_HEIGHT];
+    uint8_t val = i;
+    for (int y = 0; y < 3; ++y) {
+      *dst = 0;
+#if 1
+      if (val & 1)
+        *dst |= maskRight;
+      if (val & 2)
+        *dst |= maskLeft;
+      for (int z = 1; z < FONT_HEIGHT / 3; ++z)
+        dst[z] = dst[0];  
+#endif
+      dst += FONT_HEIGHT / 3;
+      val = val >> 2;  
+    }
+  }
+  memcpy(&m_fontData[(128 + 64) * FONT_HEIGHT], &m_fontData[128 * FONT_HEIGHT], 64 * FONT_HEIGHT);
+
+  m_font.reset(new MemoryMappedVideo::Font(FONT_WIDTH, FONT_HEIGHT, &m_fontData[0]));
   if (!OpenVideo(16, 64, m_font.get())) {
     return -1;
   }
@@ -234,7 +269,10 @@ static uint8_t g_symToCode[KB_SYM_COUNT][2][2] = {
 
 void TRS80Emulator::OnKeyDown(SDL_Keysym &keysym)
 {
-  if (keysym.sym == RESET_SYM)
+  if (keysym.sym == REBOOT_SYM)
+    Reset();
+
+  else if (keysym.sym == RESET_SYM)
     NMI();
 
   else if (keysym.sym == TRACE_SYM)

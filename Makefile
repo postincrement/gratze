@@ -4,7 +4,7 @@ SDL_DIR =  ./SDL2-2.0.10/i686-w64-mingw32
 CXX = i686-w64-mingw32-g++
 CC  = i686-w64-mingw32-gcc
 
-CXXFLAGS += -I$(SDL_DIR)/include -std=c++17 -Wno-register -g -DEXECZ80 -DLSB_FIRST 
+CXXFLAGS += -I$(SDL_DIR)/include -std=c++17 -Wno-register -g -DEXECZ80  
 CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80
 
 LDFLAGS += -L$(SDL_DIR)/lib 
