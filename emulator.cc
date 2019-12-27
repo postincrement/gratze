@@ -51,7 +51,8 @@ extern "C"
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-Emulator::Emulator()
+Emulator::Emulator(const std::string & title)
+  : m_title(title)
 {
   g_z80Instance = this;
 
@@ -81,18 +82,24 @@ bool Emulator::Open(const Options &options)
 bool Emulator::Start(uint16_t addr)
 {
   cout << "resetting Z80 to " << hex << addr << endl;
+  Reset(addr);
+  return true;
+}
+
+void Emulator::Reset(uint16_t addr)
+{
   ResetZ80(&m_cpu);
-  //m_cpu.IAutoReset = 1;
   m_cpu.PC.W       = addr;
   m_cpu.TrapBadOps = 1;
   m_cpu.Trap       = 0xffff;
-  return true;
+
+  m_fdc.Reset();
 }
 
 bool Emulator::Run()
 {
-  if (m_cpu.Trace)
-    DebugZ80(&m_cpu);
+  //if (m_cpu.Trace)
+  //  DebugZ80(&m_cpu);
 
   ExecZ80(&m_cpu, 3);
 }
@@ -111,7 +118,7 @@ void Emulator::SetTrace(bool v)
 bool Emulator::OpenVideo(int rows, int cols, MemoryMappedVideo::Font *font)
 {
   m_video.reset(new MemoryMappedVideo(rows, cols, 2, font));
-  if (!m_video->Open())
+  if (!m_video->Open(m_title))
   {
     return false;
   }

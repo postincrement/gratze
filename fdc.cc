@@ -29,6 +29,11 @@ using namespace std;
 
 WD_FDC::WD_FDC()
 {
+  Reset();
+}
+
+void WD_FDC::Reset()
+{
   m_state = 0;
   m_drive = -1;
 
@@ -38,7 +43,7 @@ WD_FDC::WD_FDC()
   m_setInterrupt = false;
   m_intOnNotReadyToReady = false;
 
-  Reset();
+  ResetStatus();
 }
 
 void WD_FDC::SetInterruptHandler(std::function<void ()> handler)
@@ -68,7 +73,7 @@ bool WD_FDC::SelectDrive(int drive)
   m_drive = drive;
 }
 
-void WD_FDC::Reset()
+void WD_FDC::ResetStatus()
 {
   m_status    = 0;
   m_bufferLen = 0;
@@ -167,7 +172,7 @@ void WD_FDC::WriteCommand(int8_t command)
         // restore
         case 0x00:
           cmdName = "Restore";
-          Reset();
+          ResetStatus();
           m_track = 0;
           m_setInterrupt = true;
           break;
@@ -175,7 +180,7 @@ void WD_FDC::WriteCommand(int8_t command)
         // seek
         case 0x10:
           cmdName = "Seek";
-          Reset();
+          ResetStatus();
           m_track = m_data;
           m_setInterrupt = true;
           break;
@@ -184,20 +189,20 @@ void WD_FDC::WriteCommand(int8_t command)
         case 0x20:
         case 0x30:
           cmdName = "Step";
-          Reset();
+          ResetStatus();
           break;
 
         // step in
         case 0x40:
         case 0x50:
           cmdName = "Step In";
-          Reset();
+          ResetStatus();
           break;
 
         // step out
         case 0x60:
         case 0x70:
-          Reset();
+          ResetStatus();
           cmdName = "Step Out";
           break;
 
@@ -205,7 +210,7 @@ void WD_FDC::WriteCommand(int8_t command)
         case 0x80:
         case 0x90:
           cmdName = "Read";
-          Reset();
+          ResetStatus();
           if (!m_drives[m_drive]) {
             m_status = STATUS_LOST_DATA;
             m_setInterrupt = true;
@@ -227,35 +232,35 @@ void WD_FDC::WriteCommand(int8_t command)
         case 0xa0:
         case 0xb0:
           cmdName = "Write";
-          Reset();
+          ResetStatus();
           break;
 
         // read address
         case 0xc0:
           cmdName = "Read Address";
-          Reset();
+          ResetStatus();
           break;
 
         // read track
         case 0xe0:
           cmdName = "Read Track";
-          Reset();
+          ResetStatus();
           break;
 
         // write track
         case 0xf0:
           cmdName = "Write Track";
-          Reset();
+          ResetStatus();
           break;
 
         // force interrupt
         case 0xd0:
           cmdName = "Force Interrupt";
           if (m_status & STATUS_BUSY) {
-            Reset();
+            ResetStatus();
           }
           else {
-            Reset();
+            ResetStatus();
             m_intOnNotReadyToReady = (command & 0x01) != 0;
             if ((command & 0x0e) != 0) {
               cerr << "error: unsupported ForceInterrupt 0x" << setw(2) << std::setfill('0') << hex << (command & 0x0f) << endl;

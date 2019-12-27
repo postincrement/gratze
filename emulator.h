@@ -19,7 +19,7 @@ extern "C" {
 class Emulator
 {
   public:
-    Emulator();
+    Emulator(const std::string & title);
 
     virtual bool Open(const Options & options);
 
@@ -46,6 +46,7 @@ class Emulator
 
     void NMI();
     void Interrupt(uint16_t vector = 0);
+    void Reset(uint16_t addr = 0);
 
     virtual uint8_t ReadNull(uint16_t);
     virtual void WriteNull(uint16_t, uint8_t);
@@ -63,6 +64,8 @@ class Emulator
 
   protected:
     bool OpenVideo(int rows, int cols, MemoryMappedVideo::Font * font);
+
+    std::string m_title;
     std::unique_ptr<MemoryMappedVideo> m_video;
 
     WD_FDC m_fdc;

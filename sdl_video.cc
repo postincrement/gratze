@@ -10,7 +10,6 @@ using namespace std;
 #define CHAR_COUNT      256
 #define TRS_CHAR_HEIGHT 12
 
-
 MemoryMappedVideo::Font::Font(int width, int height, uint8_t * data)
   : m_width(width)
   , m_height(height)
@@ -74,38 +73,77 @@ MemoryMappedVideo::MemoryMappedVideo(int rows, int cols, int scale, Font * font,
 
 MemoryMappedVideo::~MemoryMappedVideo()
 {
+#if USE_TEXTURES  
+#else
   SDL_FreeSurface(m_winSurface);
   SDL_FreeSurface(m_fontSurface);
+#endif  
   SDL_DestroyWindow(m_window);
 }
 
 
-bool MemoryMappedVideo::Open()
+bool MemoryMappedVideo::Open(const std::string & title)
 {
+  m_panelWidth = 200;
+
   // get font height and width
   m_charWidth = m_font->GetWidth();
   m_charHeight = m_font->GetHeight();
 
-  // set border
+  // set screen borders
   m_left   = 1 * m_charWidth;
   m_right  = 1 * m_charWidth;
   m_top    = 1 * m_charWidth;
   m_bottom = 1 * m_charWidth;
 
+  // calcuate screen rect
+  m_screenRect = { m_left * m_scale, 
+                   m_top  * m_scale, 
+                   m_cols * m_charWidth  * m_scale, 
+                   m_rows * m_charHeight * m_scale };
+
+  int screenPanelWidth  = (m_left + m_cols * m_charWidth  + m_right)  * m_scale;
+  int screenPanelHeight = (m_top  + m_rows * m_charHeight + m_bottom) * m_scale;
+
+  // calculate panel rect
+  m_panelRect  = { screenPanelWidth, 0, m_panelWidth, screenPanelHeight };
+
   // create window
-  int height = (m_top + m_rows * m_charHeight + m_bottom) * m_scale;
-  int width  = (m_left + m_cols * m_charWidth + m_right) * m_scale;
-  m_window = SDL_CreateWindow("Emulator", 
+  cout << m_top << " " << m_screenRect.h << " " << m_bottom << endl;
+
+  int height = screenPanelHeight;
+  int width  = screenPanelWidth + m_panelWidth; 
+  m_window = SDL_CreateWindow(title.c_str(), 
                               SDL_WINDOWPOS_CENTERED, 
                               SDL_WINDOWPOS_CENTERED, 
                               width, height, SDL_WINDOW_SHOWN); 
 
-  // create a surface for the window
-  m_winSurface = SDL_GetWindowSurface(m_window);
+#if USE_TEXTURES
+  m_renderer = SDL_CreateRenderer(m_window, -1, 0);
+
+  SDL_Surface * fontSurface = m_font->GetSurface();
+  if (fontSurface == NULL)
+    return false;
+
+  m_fontTexture = SDL_CreateTextureFromSurface(m_renderer, fontSurface);
+  SDL_FreeSurface(fontSurface);
 
   // set foreground and background colour
-  m_backgroundColour = SDL_MapRGB(m_winSurface->format,   0,   0,   0);
-  m_foregroundColour = SDL_MapRGB(m_winSurface->format,   0, 255,   0);
+  m_backgroundColour = { 0,   0,   0 };
+  m_foregroundColour = { 0, 255,   0 };
+
+  SDL_Color bg = { 80,   80,   80 };
+
+  // clear panel
+  SDL_Rect bgRect = { 0, 0, screenPanelWidth, screenPanelHeight };
+  SDL_SetRenderDrawColor(m_renderer, bg.r, bg.g, bg.b, 255);
+  SDL_RenderFillRect(m_renderer, &m_panelRect);
+  SDL_RenderPresent(m_renderer);
+
+#else  
+
+  // create a surface for the window
+  m_winSurface = SDL_GetWindowSurface(m_window);
 
   // create a surface for the font
   m_fontSurface = m_font->GetSurface();
@@ -115,22 +153,40 @@ bool MemoryMappedVideo::Open()
   // convert the surface to match the screen
   SDL_ConvertSurface(m_fontSurface, m_winSurface->format, 0);  
 
+  // set foreground and background colour
+  m_backgroundColour = SDL_MapRGB(m_winSurface->format,   0,   0,   0);
+  m_foregroundColour = SDL_MapRGB(m_winSurface->format,   0, 255,   0);
+
+  auto bg = SDL_MapRGB(m_winSurface->format,   80,   80,   80);
+
+  // clear panel
+  SDL_Rect bgRect = { 0, 0, screenPanelWidth, screenPanelHeight };
+  SDL_FillRect(m_winSurface, &m_panelRect, bg);
+
+#endif
+
   // clear the window
-  Clear();
+//  Clear();
 
   return true;
 }
 
 void MemoryMappedVideo::Clear()
 {
-  // clear the surface
-  SDL_FillRect(m_winSurface, NULL, m_backgroundColour);
-
   // set memory to spaces
   memset(&m_memory[0], 0x20, m_memory.size());
 
+#if USE_TEXTURES
+  SDL_SetRenderDrawColor(m_renderer, m_backgroundColour.r, m_backgroundColour.g, m_backgroundColour.b, 255);
+  SDL_RenderFillRect(m_renderer, &m_panelRect);
+  SDL_RenderPresent(m_renderer);
+#else
+  // clear the surface
+  SDL_FillRect(m_winSurface, &m_screenRect, m_backgroundColour);
+
   // Update the window display
 	SDL_UpdateWindowSurface(m_window);
+#endif  
 }
 
 void MemoryMappedVideo::WriteChar(unsigned offset, uint8_t ch)
@@ -147,11 +203,15 @@ void MemoryMappedVideo::WriteChar(unsigned offset, uint8_t ch)
 
   SDL_Rect dstRect = { (m_left + x) * m_scale, (m_top + y) * m_scale, m_charWidth * m_scale, m_charHeight * m_scale };
 
-  // fill char rect
-  //SDL_FillRect(m_winSurface, &dstRect, m_foregroundColour);
-
   // blit char rect
   SDL_Rect srcRect = { 0, ch * m_charHeight, m_charWidth, m_charHeight };
+
+#if USE_TEXTURES
+
+  SDL_RenderCopy(m_renderer, m_fontTexture, &srcRect, &dstRect);
+  SDL_RenderPresent(m_renderer);
+ 
+#else
 
   int result = SDL_BlitScaled(m_fontSurface, &srcRect, m_winSurface, &dstRect);
   if (result != 0) {
@@ -162,5 +222,6 @@ void MemoryMappedVideo::WriteChar(unsigned offset, uint8_t ch)
   // Update the window display
 	//SDL_UpdateWindowSurface(m_window);
   SDL_UpdateWindowSurfaceRects(m_window, &dstRect, 1);
+#endif  
 }
 

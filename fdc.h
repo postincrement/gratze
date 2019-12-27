@@ -89,16 +89,18 @@ class WD_FDC
 
     bool SelectDrive(int drive);
 
+    void SetInterruptHandler(std::function<void ()> handler);
+
     void Reset();
+
+  protected:
+    void ResetStatus();
 
     uint8_t ReadStatus();
     uint8_t ReadData();
 
     void WriteCommand(int8_t command);
 
-    void SetInterruptHandler(std::function<void ()> handler);
-
-  protected:
     uint8_t m_cmd;
     uint8_t m_status;
     uint8_t m_track;

@@ -32,6 +32,7 @@ using namespace std;
 /////////////////////////////////////////////////////////////
 
 TRS80Emulator::TRS80Emulator()
+  : Emulator("TRS-80 Model 1")
 {
 }
 
@@ -59,21 +60,17 @@ bool TRS80Emulator::Start(uint16_t addr)
   uint8_t maskRight = (1 << (FONT_WIDTH / 2)) - 1;
   uint8_t maskLeft  = maskRight << (FONT_WIDTH / 2);
 
-  cout << hex << (int)maskRight << " " << hex << (int)maskLeft << endl;
-
   for (uint8_t i = 0; i < 64; ++i) {
     uint8_t * dst = &m_fontData[(128 + i) * FONT_HEIGHT];
     uint8_t val = i;
     for (int y = 0; y < 3; ++y) {
       *dst = 0;
-#if 1
       if (val & 1)
         *dst |= maskRight;
       if (val & 2)
         *dst |= maskLeft;
       for (int z = 1; z < FONT_HEIGHT / 3; ++z)
         dst[z] = dst[0];  
-#endif
       dst += FONT_HEIGHT / 3;
       val = val >> 2;  
     }
@@ -100,8 +97,8 @@ void TRS80Emulator::Poll()
     if (!m_rtcPending) {
       //cerr << "RTC INTERRUPT" << endl;
       m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
-      m_rtcPending = true;
-      Interrupt();
+      //m_rtcPending = true;
+      //Interrupt();
     }
   }
 }

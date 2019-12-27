@@ -8,6 +8,8 @@
 #include <vector>
 #include <memory>
 
+#define USE_TEXTURES    1
+
 class MemoryMappedVideo
 {
   public:
@@ -33,7 +35,7 @@ class MemoryMappedVideo
     MemoryMappedVideo(int rows, int cols, int scale, Font * font, uint8_t * data = NULL);
     ~MemoryMappedVideo();
 
-    bool Open();
+    bool Open(const std::string & title);
 
     void Clear();
 
@@ -50,15 +52,27 @@ class MemoryMappedVideo
     int m_left;
     int m_right;
 
+    int m_panelWidth;
+
+    SDL_Rect m_screenRect;
+    SDL_Rect m_panelRect;
+
     std::vector<uint8_t> m_memory;
     std::unique_ptr<Font> m_font;
 
-    uint32_t m_backgroundColour;
-    uint32_t m_foregroundColour;
-
     SDL_Window * m_window = NULL;
+
+#if USE_TEXTURES
+    SDL_Renderer * m_renderer;
+    SDL_Texture  * m_fontTexture;
+    SDL_Color m_backgroundColour;
+    SDL_Color m_foregroundColour;
+#else       
     SDL_Surface * m_winSurface = NULL;
     SDL_Surface * m_fontSurface = NULL;
+    uint32_t m_backgroundColour;
+    uint32_t m_foregroundColour;
+#endif    
 };
 
 /////////////////////////////////////////////////////

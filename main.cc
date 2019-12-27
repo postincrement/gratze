@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     emulator->Run();
 
     // look for events
-    if (count++ > 20) {
+    if (count++ > 40) {
       emulator->Poll();
       count = 0;
       SDL_Event event;
