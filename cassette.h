@@ -1,0 +1,40 @@
+#ifndef CASSETTE_H_
+#define CASSETTE_H_
+
+#include <string>
+#include <vector>
+
+class VirtualCassetteFile
+{
+  public:
+    // update g_formatNames in fdc.cc if this is changed
+    enum class Format {
+      eUnknown,
+      eCAS,     // bytes being encoded
+      eCPT,     // pulse train with 1ms resolution
+      eWAV,     // wav file recorded from tape
+      eCount
+    };
+
+    VirtualCassetteFile();
+    ~VirtualCassetteFile();
+
+    bool Open(const std::string & fn, bool reading);
+    void Close();
+
+    void ReadCAS(std::stringstream & formatError);
+    void ReadCPT(std::stringstream & formatError);
+    void ReadWAV(std::stringstream & formatError);
+
+    void WriteByte(int val);
+    int ReadByte();
+
+  protected:
+    std::string m_name;
+    bool m_reading;
+    int m_fd;
+    Format m_format;
+    std::vector<uint8_t> m_rawFile;
+};
+
+#endif // CASSETTE_H_

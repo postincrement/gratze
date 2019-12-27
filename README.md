@@ -13,5 +13,9 @@ Disk Formats
   https://www.tim-mann.org/trs80/dskspec.html
   http://www.trs-80.com/wordpress/dsk-and-dmk-image-utilities/
 
+Cassette formats
+----------------
+  https://github.com/Fortyseven/TRS-80-Model-II/blob/master/_Source%20Code/xtrs-4.9a/cassette.man
+  http://www.topherlee.com/software/pcm-tut-wavformat.html
 
 

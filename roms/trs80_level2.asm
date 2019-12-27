@@ -383,7 +383,7 @@ sub_01c9h:
 ;
 ; Output one bit to the cassette port
 ;
-cass_obit:
+cass_opulse:
 	ld hl,0fc01h		;01d9	21 01 fc 	! . . 
 	call sub_0221h		;01dc	cd 21 02 	. ! . 
 	ld b,00bh		;01df	06 0b 	. . 
@@ -522,12 +522,12 @@ cass_obyte:
 	ld c,008h		;0268	0e 08 	. . 
 	ld d,a			;026a	57 	W 
 l026bh:
-	call cass_obit		;026b	cd d9 01 	. . . 
+	call cass_opulse		;026b	cd d9 01 	. . . 
 	ld a,d			;026e	7a 	z 
 	rlca			;026f	07 	. 
 	ld d,a			;0270	57 	W 
 	jr nc,l027eh		;0271	30 0b 	0 . 
-	call cass_obit		;0273	cd d9 01 	. . . 
+	call cass_opulse	;0273	cd d9 01 	. . . 
 l0276h:
 	dec c			;0276	0d 	. 
 	jr nz,l026bh		;0277	20 f2 	  . 

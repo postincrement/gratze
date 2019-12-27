@@ -80,6 +80,40 @@ int main(int argc, char *argv[])
       options.m_breakpoint = addr;
     }
 
+    // diskette
+    else if (opt == "diskette") {
+      if (++optIndex >= argc) {
+        cerr << "error: --diskette option requires filename argument" << endl;
+        return -1;
+      }
+      std::string arg(argv[optIndex]);
+
+      VirtualDriveFile file;
+      if (!file.Open(arg, true)) {
+        cerr << "error: could not open diskette file '" << arg << "'" << endl;
+        return -1;
+      }
+      cerr << "file '" << arg << "' opened" << endl;
+      return 0;
+    }
+
+    // cassette
+    else if (opt == "cassette") {
+      if (++optIndex >= argc) {
+        cerr << "error: --cassette option requires filename argument" << endl;
+        return -1;
+      }
+      std::string arg(argv[optIndex]);
+
+      VirtualCassetteFile file;
+      if (!file.Open(arg, true)) {
+        cerr << "error: could not open cassette file '" << arg << "'" << endl;
+        return -1;
+      }
+      cerr << "file '" << arg << "' opened" << endl;
+      return 0;
+    }
+
     else {
       cerr << "error: unknown option '" << arg << "'" << endl;
       return -1;

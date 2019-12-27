@@ -722,6 +722,8 @@ extern "C" {
 
 /////////////////////////////////////////////////////////////
 
+#define GETWORD(addr)   (m_ram[addr - 0x4000] + (m_ram[addr + 1 - 0x4000] << 8))
+
 void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
 {
   // detect changes in cassette motor
@@ -731,6 +733,8 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
     if (!cassOn) {
       cerr << "CASS: motor off" << endl;
       m_cassetteTrigger = false;
+      if (m_cassette)
+        m_cassette.reset();
     }
     else {
       cerr << "CASS: motor on" << endl;
@@ -740,11 +744,28 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
 
   // detect changes in cassette output when trigger is set
   int cassOut = (val & 0x3);
-  if (cassOn && m_cassetteTrigger && (cassOut != 0)) {
-    cerr << "CASS: writing to cassette" << endl;
-    m_cassetteTrigger = false;
-    nfdchar_t * outPath = NULL;
-    nfdresult_t result = NFD_SaveDialog(NULL, NULL, &outPath);
+  if (cassOn) {
+    if (m_cassetteTrigger && (cassOut != 0)) {
+      cerr << "CASS: writing to cassette" << endl;
+      m_cassetteTrigger = false;
+      nfdchar_t * outPath = NULL;
+      if ((NFD_SaveDialog(NULL, NULL, &outPath) == NFD_OKAY) && (outPath != NULL)) {
+        m_cassette.reset(new VirtualCassetteFile());
+        if (!m_cassette->Open(outPath, false)) {
+          cerr << "CASS: cannot create file" << endl;
+          m_cassette.reset();
+        }
+      }
+    }
+
+    if (m_cassette) {
+      uint16_t sp = m_cpu.SP.W;
+      uint16_t c1 = GETWORD(sp - 0);
+      uint16_t c2 = GETWORD(sp + 2);
+      if ((c1 == 0x01df) && (c2 == 0x026e) && (m_cpu.BC.B.l == 0x8)) {
+        m_cassette->WriteByte(m_cpu.DE.B.h);
+      }
+    }
   }
 }
 

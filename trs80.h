@@ -3,6 +3,7 @@
 
 #include "emulator.h"
 #include "fdc.h"
+#include "cassette.h"
 #include "options.h"
 
 class TRS80Emulator : public Emulator
@@ -82,6 +83,7 @@ class TRS80Emulator : public Emulator
     bool m_cassette2;
     bool m_cassetteMotor;
     bool m_cassetteTrigger;
+    std::unique_ptr<VirtualCassetteFile> m_cassette;
 };
 
 #endif // TRS80_H_

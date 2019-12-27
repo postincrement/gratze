@@ -242,11 +242,6 @@ void Emulator::WriteLog(uint16_t addr, uint8_t val)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-//bool Emulator::ReadROM(const std::string & filename, int addr, int len = -1)
-//{
-//  return ReadROM(filename, (unsigned char *)&m_memory[addr], len);
-//}
-
 bool Emulator::ReadROMFromFile(const std::string &filename, unsigned char *ptr, int len)
 {
   ifstream file(filename.c_str(), ifstream::in | ifstream::binary);

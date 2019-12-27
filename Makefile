@@ -18,10 +18,10 @@ LINK.o = $(LINK.cc)
 
 vpath %.c mfz80
 
-gratze:	main.o Z80.o sdl_video.o emulator.o trs80.o Debug.o fdc.o $(NFD_LIB)
+gratze:	main.o cassette.o Z80.o sdl_video.o emulator.o trs80.o Debug.o fdc.o $(NFD_LIB)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-main.o:	main.cc Makefile trs80.h emulator.h fdc.h options.h
+main.o:	main.cc Makefile trs80.h emulator.h fdc.h options.h cassette.h
 
 Z80.o: mfz80/Z80.c Makefile
 
@@ -29,11 +29,13 @@ debug.o: mfz80/debug.c
 
 sdl_video.o: sdl_video.cc
 
-emulator.o: emulator.cc emulator.h fdc.h options.h
+emulator.o: emulator.cc emulator.h fdc.h options.h cassette.h
 
-trs80.o: trs80.cc trs80.h fdc.h emulator.h options.h
+trs80.o: trs80.cc trs80.h fdc.h emulator.h options.h cassette.h
 
 fdc.o: fdc.cc fdc.h options.h
+
+cassette.o: cassette.cc cassette.h
 
 clean:
 	rm -f gratze *.o

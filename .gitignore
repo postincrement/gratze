@@ -10,3 +10,4 @@ fdc.o
 debug.o
 .vscode/settings.json
 mfz80/Z80-081707.zip
+cassette.o
