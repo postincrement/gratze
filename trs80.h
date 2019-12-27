@@ -58,6 +58,12 @@ class TRS80Emulator : public Emulator
 
     uint8_t ReadInterrupt(uint16_t);
 
+    void WriteFF(register uint16_t, register uint8_t val);
+    uint8_t ReadFF(register uint16_t);
+
+    void WriteFx(register uint16_t, register uint8_t val);
+    uint8_t ReadFx(register uint16_t);
+
   protected:  
     std::unique_ptr<MemoryMappedVideo::Font> m_font;
     std::vector<uint8_t> m_fontData;
@@ -72,6 +78,10 @@ class TRS80Emulator : public Emulator
     bool m_fdcPending;
     bool m_rtcPending;
     std::chrono::system_clock::time_point m_rtcTimer;
+
+    bool m_cassette2;
+    bool m_cassetteMotor;
+    bool m_cassetteTrigger;
 };
 
 #endif // TRS80_H_

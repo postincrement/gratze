@@ -4,16 +4,21 @@ SDL_DIR =  ./SDL2-2.0.10/i686-w64-mingw32
 CXX = i686-w64-mingw32-g++
 CC  = i686-w64-mingw32-gcc
 
-CXXFLAGS += -I$(SDL_DIR)/include -std=c++17 -Wno-register -g -DEXECZ80 -O2
+NFD_DIR=./nativefiledialog
+
+NFD_LIB=$(NFD_DIR)/build/lib/Release/x86/nfd.lib
+
+CXXFLAGS += -I$(SDL_DIR)/include -I$(NFD_DIR)/src/include -std=c++17 -Wno-register -g -DEXECZ80 -O2
 CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80 -O2
 
 LDFLAGS += -L$(SDL_DIR)/lib 
-LDLIBS += -lmingw32 -lSDL2main -lSDL2 -static-libstdc++ -static-libgcc  
+LDLIBS += $(NFD_LIB) -lole32 -luuid -lmingw32 -lSDL2main -lSDL2 -static-libstdc++ -static-libgcc  
 LINK.o = $(LINK.cc)
+
 
 vpath %.c mfz80
 
-gratze:	main.o Z80.o sdl_video.o emulator.o trs80.o debug.o fdc.o
+gratze:	main.o Z80.o sdl_video.o emulator.o trs80.o Debug.o fdc.o $(NFD_LIB)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 main.o:	main.cc Makefile trs80.h emulator.h fdc.h options.h
@@ -33,7 +38,8 @@ fdc.o: fdc.cc fdc.h options.h
 clean:
 	rm -f gratze *.o
 
-nfd: nativefiledialog
+$(NFD_LIB): nativefiledialog
+	cd nativefiledialog/build/gmake_windows && CC=$(CXX) CXX=$(CXX) sh -c "make config=release_x86 clean ; make config=release_x86"
 
 nativefiledialog:
 	git clone https://github.com/mlabbe/nativefiledialog.git

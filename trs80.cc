@@ -48,6 +48,10 @@ bool TRS80Emulator::Open(const Options &options)
   m_rtcPending = false;
   m_fdcPending = false;
 
+  m_cassetteMotor    = false;
+  m_cassetteTrigger  = false;
+  m_cassette2        = false;
+
   return Emulator::Open(options);
 }
 
@@ -698,7 +702,6 @@ static WriteMemoryFn g_trs80WriteMemory[16] = {
     &TRS80Emulator::WriteRAM,  // 0xf000 to 0xffff
 };
 
-/////////////////////////////////////////////////////////////
 
 void TRS80Emulator::WrZ80(register uint16_t addr, register uint8_t val)
 {
@@ -710,13 +713,149 @@ uint8_t TRS80Emulator::RdZ80(register uint16_t addr)
   return std::invoke(g_trs80ReadMemory[(addr & 0xf000) >> 12], *this, addr);
 }
 
+/////////////////////////////////////////////////////////////
+
+
+extern "C" {
+#include "nfd.h"
+};
+
+/////////////////////////////////////////////////////////////
+
+void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
+{
+  // detect changes in cassette motor
+  bool cassOn = (val & 0x04) != 0;
+  if (cassOn != m_cassetteMotor) {
+    m_cassetteMotor = cassOn;
+    if (!cassOn) {
+      cerr << "CASS: motor off" << endl;
+      m_cassetteTrigger = false;
+    }
+    else {
+      cerr << "CASS: motor on" << endl;
+      m_cassetteTrigger = true;
+    }
+  }
+
+  // detect changes in cassette output when trigger is set
+  int cassOut = (val & 0x3);
+  if (cassOn && m_cassetteTrigger && (cassOut != 0)) {
+    cerr << "CASS: writing to cassette" << endl;
+    m_cassetteTrigger = false;
+    nfdchar_t * outPath = NULL;
+    nfdresult_t result = NFD_SaveDialog(NULL, NULL, &outPath);
+  }
+}
+
+uint8_t TRS80Emulator::ReadFF(register uint16_t)
+{
+  // if a read is done when the trigger is active, we are reading a cassette
+  if (m_cassetteTrigger) {
+    cerr << "CASS: reading from cassette" << endl;
+    m_cassetteTrigger = false;
+    nfdchar_t * outPath = NULL;
+    nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
+  }
+  return 0;
+}
+
+/////////////////////////////////////////////////////////////
+
+static WriteMemoryFn g_trs80WriteFx[16] = {
+    &TRS80Emulator::WriteNull, // 0x00 to 0x0f
+    &TRS80Emulator::WriteNull, // 0x10 to 0x1f
+    &TRS80Emulator::WriteNull, // 0x20 to 0x2f
+    &TRS80Emulator::WriteNull, // 0x30 to 0x3f
+    &TRS80Emulator::WriteNull, // 0x40 to 0x4f
+    &TRS80Emulator::WriteNull, // 0x50 to 0x5f
+    &TRS80Emulator::WriteNull, // 0x60 to 0x6f
+    &TRS80Emulator::WriteNull, // 0x70 to 0x7f
+    &TRS80Emulator::WriteNull, // 0x80 to 0x8f
+    &TRS80Emulator::WriteNull, // 0x90 to 0x9f
+    &TRS80Emulator::WriteNull, // 0xa0 to 0xaf
+    &TRS80Emulator::WriteNull, // 0xb0 to 0xbf
+    &TRS80Emulator::WriteNull, // 0xc0 to 0xcf
+    &TRS80Emulator::WriteNull, // 0xd0 to 0xdf
+    &TRS80Emulator::WriteNull, // 0xe0 to 0xef
+    &TRS80Emulator::WriteFF    // 0xf0 to 0xff
+};
+
+static ReadMemoryFn g_trs80ReadFx[16] = {
+    &TRS80Emulator::ReadNull, // 0x00 to 0x0f
+    &TRS80Emulator::ReadNull, // 0x10 to 0x1f
+    &TRS80Emulator::ReadNull, // 0x20 to 0x2f
+    &TRS80Emulator::ReadNull, // 0x30 to 0x3f
+    &TRS80Emulator::ReadNull, // 0x40 to 0x4f
+    &TRS80Emulator::ReadNull, // 0x50 to 0x5f
+    &TRS80Emulator::ReadNull, // 0x60 to 0x6f
+    &TRS80Emulator::ReadNull, // 0x70 to 0x7f
+    &TRS80Emulator::ReadNull, // 0x80 to 0x8f
+    &TRS80Emulator::ReadNull, // 0x90 to 0x9f
+    &TRS80Emulator::ReadNull, // 0xa0 to 0xaf
+    &TRS80Emulator::ReadNull, // 0xb0 to 0xbf
+    &TRS80Emulator::ReadNull, // 0xc0 to 0xcf
+    &TRS80Emulator::ReadNull, // 0xd0 to 0xdf
+    &TRS80Emulator::ReadNull, // 0xe0 to 0xef
+    &TRS80Emulator::ReadFF    // 0xf0 to 0xff
+};
+
+void TRS80Emulator::WriteFx(register uint16_t port, register uint8_t val)
+{
+  std::invoke(g_trs80WriteFx[port & 0x000f], *this, port, val);
+}
+
+uint8_t TRS80Emulator::ReadFx(register uint16_t port)
+{
+  return std::invoke(g_trs80ReadFx[port & 0x000f], *this, port);
+}
+
+/////////////////////////////////////////////////////////////
+
+static WriteMemoryFn g_trs80WritePort[16] = {
+    &TRS80Emulator::WriteNull, // 0x00 to 0x0f
+    &TRS80Emulator::WriteNull, // 0x10 to 0x1f
+    &TRS80Emulator::WriteNull, // 0x20 to 0x2f
+    &TRS80Emulator::WriteNull, // 0x30 to 0x3f
+    &TRS80Emulator::WriteNull, // 0x40 to 0x4f
+    &TRS80Emulator::WriteNull, // 0x50 to 0x5f
+    &TRS80Emulator::WriteNull, // 0x60 to 0x6f
+    &TRS80Emulator::WriteNull, // 0x70 to 0x7f
+    &TRS80Emulator::WriteNull, // 0x80 to 0x8f
+    &TRS80Emulator::WriteNull, // 0x90 to 0x9f
+    &TRS80Emulator::WriteNull, // 0xa0 to 0xaf
+    &TRS80Emulator::WriteNull, // 0xb0 to 0xbf
+    &TRS80Emulator::WriteNull, // 0xc0 to 0xcf
+    &TRS80Emulator::WriteNull, // 0xd0 to 0xdf
+    &TRS80Emulator::WriteNull, // 0xe0 to 0xef
+    &TRS80Emulator::WriteFx    // 0xf0 to 0xff
+};
+
+static ReadMemoryFn g_trs80ReadPort[16] = {
+    &TRS80Emulator::ReadNull, // 0x00 to 0x0f
+    &TRS80Emulator::ReadNull, // 0x10 to 0x1f
+    &TRS80Emulator::ReadNull, // 0x20 to 0x2f
+    &TRS80Emulator::ReadNull, // 0x30 to 0x3f
+    &TRS80Emulator::ReadNull, // 0x40 to 0x4f
+    &TRS80Emulator::ReadNull, // 0x50 to 0x5f
+    &TRS80Emulator::ReadNull, // 0x60 to 0x6f
+    &TRS80Emulator::ReadNull, // 0x70 to 0x7f
+    &TRS80Emulator::ReadNull, // 0x80 to 0x8f
+    &TRS80Emulator::ReadNull, // 0x90 to 0x9f
+    &TRS80Emulator::ReadNull, // 0xa0 to 0xaf
+    &TRS80Emulator::ReadNull, // 0xb0 to 0xbf
+    &TRS80Emulator::ReadNull, // 0xc0 to 0xcf
+    &TRS80Emulator::ReadNull, // 0xd0 to 0xdf
+    &TRS80Emulator::ReadNull, // 0xe0 to 0xef
+    &TRS80Emulator::ReadFx    // 0xf0 to 0xff
+};
+
 void TRS80Emulator::OutZ80(register uint16_t port, register uint8_t val)
 {
-  cout << "OUT: " << hex << std::setfill('0') << std::setw(2) << (int)port << " = 0x" << (int)val << endl;
+  std::invoke(g_trs80WritePort[(port & 0x0f0) >> 4], *this, port, val);
 }
 
 uint8_t TRS80Emulator::InZ80(register uint16_t port)
 {
-  cout << "IN: " << hex << std::setfill('0') << std::setw(2) << (int)port << endl;
-  return 0;
+  return std::invoke(g_trs80ReadPort[(port & 0x0f0) >> 4], *this, port);
 }
