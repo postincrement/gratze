@@ -113,6 +113,43 @@ void Emulator::SetTrace(bool v)
   m_cpu.Trace = v ? 1 : 0;
 }
 
+void Emulator::Execute()
+{
+  // run emulator
+  int count = 0;
+  for (;;) {
+    //if (emulator->m_cpu.PC.W == options.m_breakpoint)
+    //  emulator->SetTrace(true);
+
+    // give CPU some time
+    Run();
+
+    // look for events
+    if (count++ > 40) {
+      Poll();
+      m_video->Update(false);
+      count = 0;
+      SDL_Event event;
+      if (SDL_PollEvent(&event)) {
+        switch (event.type) { 
+          case SDL_KEYDOWN:
+            if (event.key.repeat == 0)
+              OnKeyDown(event.key.keysym);
+            break;
+
+          case SDL_KEYUP:
+            if (event.key.repeat == 0)
+              OnKeyUp(event.key.keysym);
+            break;
+
+          default:
+            break;
+        }
+      }
+    }
+  }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 bool Emulator::OpenVideo(int rows, int cols, MemoryMappedVideo::Font *font)
@@ -122,6 +159,8 @@ bool Emulator::OpenVideo(int rows, int cols, MemoryMappedVideo::Font *font)
   {
     return false;
   }
+
+  m_video->SetLazyUpdate(true);
 
   return true;
 }

@@ -111,38 +111,7 @@ int main(int argc, char *argv[])
   for (int i = 0; i < 64*16; ++i)
     emulator->WriteVideoChar(i, i & 0xff);
 
-  // run emulator
-  int count = 0;
-  for (;;) {
-    //if (emulator->m_cpu.PC.W == options.m_breakpoint)
-    //  emulator->SetTrace(true);
-
-    // give CPU some time
-    emulator->Run();
-
-    // look for events
-    if (count++ > 40) {
-      emulator->Poll();
-      count = 0;
-      SDL_Event event;
-      if (SDL_PollEvent(&event)) {
-        switch (event.type) { 
-          case SDL_KEYDOWN:
-            if (event.key.repeat == 0)
-              emulator->OnKeyDown(event.key.keysym);
-            break;
-
-          case SDL_KEYUP:
-            if (event.key.repeat == 0)
-              emulator->OnKeyUp(event.key.keysym);
-            break;
-
-          default:
-            break;
-        }
-      }
-    }
-  }
-
+  emulator->Execute();  
+  
   cout << "finished" << endl;
 }

@@ -27,6 +27,8 @@ class Emulator
 
     virtual bool Run();
 
+    virtual void Execute();
+
     virtual void Poll();
 
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);

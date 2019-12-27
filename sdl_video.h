@@ -2,11 +2,10 @@
 #define SDL_VIDEO_H_
 
 #include <SDL2/SDL.h> 
-//#include <SDL2/SDL_image.h> 
-//#include <SDL2/SDL_timer.h> 
 
 #include <vector>
 #include <memory>
+#include <chrono>
 
 #define USE_TEXTURES    1
 
@@ -35,11 +34,15 @@ class MemoryMappedVideo
     MemoryMappedVideo(int rows, int cols, int scale, Font * font, uint8_t * data = NULL);
     ~MemoryMappedVideo();
 
+    bool SetLazyUpdate(bool v);
+
     bool Open(const std::string & title);
 
     void Clear();
 
     void WriteChar(unsigned offset, uint8_t ch);
+
+    void Update(bool hasChanged = false);
 
   protected:
     int m_rows;
@@ -53,6 +56,10 @@ class MemoryMappedVideo
     int m_right;
 
     int m_panelWidth;
+
+    bool m_lazyUpdates;
+    bool m_dirty;
+    std::chrono::system_clock::time_point m_updateTimer;
 
     SDL_Rect m_screenRect;
     SDL_Rect m_panelRect;

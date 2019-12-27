@@ -10,6 +10,8 @@ using namespace std;
 #define CHAR_COUNT      256
 #define TRS_CHAR_HEIGHT 12
 
+#define LAZY_UPDATE_MSECS   20
+
 MemoryMappedVideo::Font::Font(int width, int height, uint8_t * data)
   : m_width(width)
   , m_height(height)
@@ -66,6 +68,7 @@ MemoryMappedVideo::MemoryMappedVideo(int rows, int cols, int scale, Font * font,
   : m_rows(rows)
   , m_cols(cols)
   , m_scale(scale)
+  , m_lazyUpdates(false)
   , m_font(font)
 {
   m_memory.resize(m_rows * m_cols);
@@ -81,6 +84,10 @@ MemoryMappedVideo::~MemoryMappedVideo()
   SDL_DestroyWindow(m_window);
 }
 
+bool MemoryMappedVideo::SetLazyUpdate(bool v)
+{
+  m_lazyUpdates = v;
+}
 
 bool MemoryMappedVideo::Open(const std::string & title)
 {
@@ -138,7 +145,7 @@ bool MemoryMappedVideo::Open(const std::string & title)
   SDL_Rect bgRect = { 0, 0, screenPanelWidth, screenPanelHeight };
   SDL_SetRenderDrawColor(m_renderer, bg.r, bg.g, bg.b, 255);
   SDL_RenderFillRect(m_renderer, &m_panelRect);
-  SDL_RenderPresent(m_renderer);
+  Update(true);
 
 #else  
 
@@ -179,7 +186,7 @@ void MemoryMappedVideo::Clear()
 #if USE_TEXTURES
   SDL_SetRenderDrawColor(m_renderer, m_backgroundColour.r, m_backgroundColour.g, m_backgroundColour.b, 255);
   SDL_RenderFillRect(m_renderer, &m_panelRect);
-  SDL_RenderPresent(m_renderer);
+  Update(true);
 #else
   // clear the surface
   SDL_FillRect(m_winSurface, &m_screenRect, m_backgroundColour);
@@ -187,6 +194,27 @@ void MemoryMappedVideo::Clear()
   // Update the window display
 	SDL_UpdateWindowSurface(m_window);
 #endif  
+}
+
+void MemoryMappedVideo::Update(bool hasChanged)
+{
+  if (!m_lazyUpdates) {
+    if (!hasChanged || m_dirty)
+      SDL_RenderPresent(m_renderer);
+    m_dirty = false;  
+    return;
+  }
+
+  auto now = std::chrono::system_clock::now();
+  if (!m_dirty && hasChanged) {
+    m_updateTimer = now + std::chrono::milliseconds(LAZY_UPDATE_MSECS);
+    m_dirty = true;
+  }
+
+  if (m_dirty && (now > m_updateTimer)) {
+    SDL_RenderPresent(m_renderer);
+    m_dirty = false;
+  }
 }
 
 void MemoryMappedVideo::WriteChar(unsigned offset, uint8_t ch)
@@ -208,9 +236,8 @@ void MemoryMappedVideo::WriteChar(unsigned offset, uint8_t ch)
 
 #if USE_TEXTURES
 
-  SDL_RenderCopy(m_renderer, m_fontTexture, &srcRect, &dstRect);
-  SDL_RenderPresent(m_renderer);
- 
+  SDL_RenderCopy(m_renderer, m_fontTexture, &srcRect, &dstRect);  
+  Update(true);
 #else
 
   int result = SDL_BlitScaled(m_fontSurface, &srcRect, m_winSurface, &dstRect);
