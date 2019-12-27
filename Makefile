@@ -32,3 +32,8 @@ fdc.o: fdc.cc fdc.h options.h
 
 clean:
 	rm -f gratze *.o
+
+nfd: nativefiledialog
+
+nativefiledialog:
+	git clone https://github.com/mlabbe/nativefiledialog.git
