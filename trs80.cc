@@ -456,22 +456,23 @@ uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
 
 void TRS80Emulator::WriteDrvSel(uint16_t, uint8_t val)
 {
+  if (m_drvSel != val)
+    cerr << "WriteDrvSel 0x" << setw(2) << setfill('0') << (int)val << endl;
   m_drvSel = val;
   int sel = -1;
-  switch (val)
-  {
-  case 1:
-    sel = 0;
-    break;
-  case 2:
-    sel = 1;
-    break;
-  case 4:
-    sel = 2;
-    break;
-  case 8:
-    sel = 3;
-    break;
+  switch (val) {
+    case 1:
+      sel = 0;
+      break;
+    case 2:
+      sel = 1;
+      break;
+    case 4:
+      sel = 2;
+      break;
+    case 8:
+      sel = 3;
+      break;
   }
   m_fdc.SelectDrive(sel);
 }
