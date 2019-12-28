@@ -655,7 +655,7 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
 
     // if writing, peek inside the CPU to get the byte data
     if (m_cassette) {
-      uint16_t pc = m_cpu.SP.W;
+      uint16_t pc = m_cpu.PC.W;
       if (pc == 0x228) {
         uint16_t sp = m_cpu.SP.W;
         uint16_t c1 = ReadMemoryWord(sp - 0);
