@@ -35,8 +35,8 @@ WD_FDC::WD_FDC()
 void WD_FDC::Reset()
 {
   m_state = 0;
-  m_drive = -1;
 
+  m_drive = -1;
   m_sector = 1;
   m_track = 0;
 
@@ -64,13 +64,15 @@ bool WD_FDC::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
 
 bool WD_FDC::SelectDrive(int drive)
 {
-  if ((drive >= m_drives.size()) || (!m_drives[drive])) {
-    cerr << "FDC SELECT DRIVE " << drive << " - error : undefined drive " << (int)drive << endl;
-    return false;
-  }
+  if (drive != m_drive) {
+    if ((drive >= m_drives.size()) || (!m_drives[drive])) {
+      cerr << "FDC: SELECT DRIVE " << drive << " - error : undefined drive " << (int)drive << endl;
+      return false;
+    }
 
-  cerr << "FDC SELECT DRIVE " << drive << endl;
-  m_drive = drive;
+    cerr << "FDC: SELECT DRIVE " << drive << endl;
+    m_drive = drive;
+  }
 }
 
 void WD_FDC::ResetStatus()
@@ -117,7 +119,7 @@ uint8_t WD_FDC::ReadData()
 {
   // if no data, reset DRQ
   if (m_bufferLen == 0) {
-    Reset();
+    ResetStatus();
     return 0;
   }
 
@@ -127,7 +129,7 @@ uint8_t WD_FDC::ReadData()
     m_status |= STATUS_DRQ;
   } 
   else {
-    Reset();
+    ResetStatus();
     m_status &= 0x60;
     switch (m_dam) {
       case 0xf8:
@@ -272,7 +274,7 @@ void WD_FDC::WriteCommand(int8_t command)
   }
 
   m_noPrint = true;
-  cerr << "FDC CMD : 0x" << setw(2) << hex << std::setfill('0') << (((unsigned int)command) & 0xff) << " " << cmdName << endl;
+  //cerr << "FDC CMD : 0x" << setw(2) << hex << std::setfill('0') << (((unsigned int)command) & 0xff) << " " << cmdName << endl;
 
   if (m_setInterrupt) {
     m_interruptHandler();
@@ -302,8 +304,8 @@ void WD_FDC::Write(uint16_t addr, uint8_t value)
       m_data = value;
       break;
   }
-  if (!m_noPrint)
-    cerr << "FDC SET " << title << ": 0x" << setw(2) << hex << std::setfill('0') << (int)value << endl;
+  //if (!m_noPrint)
+  //  cerr << "FDC SET " << title << ": 0x" << setw(2) << hex << std::setfill('0') << (int)value << endl;
 
   if (m_setInterrupt) {
     m_interruptHandler();
@@ -594,7 +596,7 @@ int VirtualDriveFile::ReadSector(int track, int sector, uint8_t & dam, uint8_t *
 
   dam = info.m_dam;
 
-  cerr << "info: reading sector " << dec << sector << " and track " << track << " of length " << len << " with DAM " << hex << (int)dam << endl;
+  cerr << "FDC: read track=" << dec << track << ",sector=" << dec << sector << ", len = " << len << ", DAM 0x" << hex << setw(2) << setfill('0') << (int)dam << endl;
 
   return ::read(m_fd, data, len);
 }

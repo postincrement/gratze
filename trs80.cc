@@ -9,6 +9,20 @@ extern "C"
 #include "trs_chars.c"
 };
 
+#define   ROM_START_ADDR    0x0000
+#define   ROM_END_ADDR      0x2fff
+
+#define   MEMIO_START_ADDR  0x3000
+#define   MEMIO_END_ADDR    0x37ff
+
+#define   KB_START_ADDR     0x3800
+#define   KB_END_ADDR       0x3bff
+
+#define   VIDEO_START_ADDR  0x3c00
+#define   VIDEO_END_ADDR    0x3fff
+
+#define   RAM_START_ADDR    0x4000
+#define   RAM_END_ADDR      0xffff
 
 /*
   Port FF
@@ -21,10 +35,6 @@ extern "C"
 
 
 using namespace std;
-
-#define KB_MEM_ADDR 0x3800
-#define VIDEO_MEM_ADDR 0x3c00
-#define RAM_MEM_ADDR 0x4000
 
 #define RTC_INTERVAL_MS 40
 
@@ -112,8 +122,8 @@ void TRS80Emulator::Poll()
     if (!m_rtcPending) {
       //cerr << "RTC INTERRUPT" << endl;
       m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
-      //m_rtcPending = true;
-      //Interrupt();
+      m_rtcPending = true;
+      Interrupt();
     }
   }
 }
@@ -385,44 +395,6 @@ typedef void (TRS80Emulator::*WriteMemoryFn)(uint16_t, uint8_t);
 
 /////////////////////////////////////////////////////////////
 
-uint8_t TRS80Emulator::ReadROM(uint16_t addr)
-{
-  return m_rom[addr];
-}
-
-uint8_t TRS80Emulator::ReadRAM(uint16_t addr)
-{
-  return m_ram[addr - RAM_MEM_ADDR];
-}
-
-void TRS80Emulator::WriteRAM(uint16_t addr, uint8_t val)
-{
-  m_ram[addr - RAM_MEM_ADDR] = val;
-}
-
-/////////////////////////////////////////////////////////////
-
-uint8_t TRS80Emulator::ReadVideo(uint16_t addr)
-{
-  return m_videoRAM[addr - VIDEO_MEM_ADDR];
-}
-
-void TRS80Emulator::WriteVideo(uint16_t addr, uint8_t val)
-{
-  uint16_t offset = addr - VIDEO_MEM_ADDR;
-
-  if (val < 0x20)
-    val += 0x40;
-
-  if (m_videoRAM[offset] != val)
-  {
-    m_videoRAM[offset] = val;
-    WriteVideoChar(offset, val);
-  }
-}
-
-/////////////////////////////////////////////////////////////
-
 uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
 {
   uint16_t mask = 1;
@@ -531,201 +503,93 @@ uint8_t TRS80Emulator::ReadInterrupt(uint16_t)
 
 /////////////////////////////////////////////////////////////
 
-static WriteMemoryFn g_trs80WritePrinterFDC[16] = {
-    &TRS80Emulator::WriteLog,     // 0x37e0
-    &TRS80Emulator::WriteDrvSel,  // 0x37e1
-    &TRS80Emulator::WriteLog,     // 0x37e2
-    &TRS80Emulator::WriteLog,     // 0x37e3
-    &TRS80Emulator::WriteLog,     // 0x37e4
-    &TRS80Emulator::WriteLog,     // 0x37e5
-    &TRS80Emulator::WriteLog,     // 0x37e6
-    &TRS80Emulator::WriteLog,     // 0x37e7
-    &TRS80Emulator::WritePrinter, // 0x37e8
-    &TRS80Emulator::WriteLog,     // 0x37e9
-    &TRS80Emulator::WriteLog,     // 0x37ea
-    &TRS80Emulator::WriteLog,     // 0x37eb
-    &TRS80Emulator::WriteFDC,     // 0x37ec
-    &TRS80Emulator::WriteFDC,     // 0x37ed
-    &TRS80Emulator::WriteFDC,     // 0x37ee
-    &TRS80Emulator::WriteFDC      // 0x37ef
-};
-
-static ReadMemoryFn g_trs80ReadPrinterFDC[16] = {
-    &TRS80Emulator::ReadInterrupt, // 0x37e0
-    &TRS80Emulator::ReadDrvSel,    // 0x37e1
-    &TRS80Emulator::ReadLog,       // 0x37e2
-    &TRS80Emulator::ReadLog,       // 0x37e3
-    &TRS80Emulator::ReadLog,       // 0x37e4
-    &TRS80Emulator::ReadLog,       // 0x37e5
-    &TRS80Emulator::ReadLog,       // 0x37e6
-    &TRS80Emulator::ReadLog,       // 0x37e7
-    &TRS80Emulator::ReadPrinter,   // 0x37e8
-    &TRS80Emulator::ReadLog,       // 0x37e9
-    &TRS80Emulator::ReadLog,       // 0x37ea
-    &TRS80Emulator::ReadLog,       // 0x37eb
-    &TRS80Emulator::ReadFDC,       // 0x37ec
-    &TRS80Emulator::ReadFDC,       // 0x37ed
-    &TRS80Emulator::ReadFDC,       // 0x37ee
-    &TRS80Emulator::ReadFDC        // 0x37ef
-};
-
-void TRS80Emulator::WritePrinterFDC(uint16_t addr, uint8_t val)
-{
-  std::invoke(g_trs80WritePrinterFDC[addr & 0x000f], *this, addr, val);
-}
-
-uint8_t TRS80Emulator::ReadPrinterFDC(uint16_t addr)
-{
-  return std::invoke(g_trs80ReadPrinterFDC[addr & 0x000f], *this, addr);
-}
-
-static WriteMemoryFn g_trs80WriteMemIO[16] = {
-    &TRS80Emulator::WriteLog,        // 0x3700 to 0x370f
-    &TRS80Emulator::WriteLog,        // 0x3710 to 0x371f
-    &TRS80Emulator::WriteLog,        // 0x3720 to 0x372f
-    &TRS80Emulator::WriteLog,        // 0x3730 to 0x373f
-    &TRS80Emulator::WriteLog,        // 0x3740 to 0x374f
-    &TRS80Emulator::WriteLog,        // 0x3750 to 0x375f
-    &TRS80Emulator::WriteLog,        // 0x3760 to 0x376f
-    &TRS80Emulator::WriteLog,        // 0x3770 to 0x377f
-    &TRS80Emulator::WriteLog,        // 0x3780 to 0x378f
-    &TRS80Emulator::WriteLog,        // 0x3790 to 0x379f
-    &TRS80Emulator::WriteLog,        // 0x37a0 to 0x37af
-    &TRS80Emulator::WriteLog,        // 0x37b0 to 0x37bf
-    &TRS80Emulator::WriteLog,        // 0x37c0 to 0x37cf
-    &TRS80Emulator::WriteLog,        // 0x37d0 to 0x37df
-    &TRS80Emulator::WritePrinterFDC, // 0x37e0 to 0x37ef
-    &TRS80Emulator::WriteLog,        // 0x37f0 to 0x37ff
-};
-
-static ReadMemoryFn g_trs80ReadMemIO[16] = {
-    &TRS80Emulator::ReadLog,        // 0x3700 to 0x370f
-    &TRS80Emulator::ReadLog,        // 0x3710 to 0x371f
-    &TRS80Emulator::ReadLog,        // 0x3720 to 0x372f
-    &TRS80Emulator::ReadLog,        // 0x3730 to 0x373f
-    &TRS80Emulator::ReadLog,        // 0x3740 to 0x374f
-    &TRS80Emulator::ReadLog,        // 0x3750 to 0x375f
-    &TRS80Emulator::ReadLog,        // 0x3760 to 0x376f
-    &TRS80Emulator::ReadLog,        // 0x3770 to 0x377f
-    &TRS80Emulator::ReadLog,        // 0x3780 to 0x378f
-    &TRS80Emulator::ReadLog,        // 0x3790 to 0x379f
-    &TRS80Emulator::ReadLog,        // 0x37a0 to 0x37af
-    &TRS80Emulator::ReadLog,        // 0x37b0 to 0x37bf
-    &TRS80Emulator::ReadLog,        // 0x37c0 to 0x37cf
-    &TRS80Emulator::ReadLog,        // 0x37d0 to 0x37df
-    &TRS80Emulator::ReadPrinterFDC, // 0x37e0 to 0x37ef
-    &TRS80Emulator::ReadLog,        // 0x37f0 to 0x37ff
-};
-
-void TRS80Emulator::WriteMemIO(uint16_t addr, uint8_t val)
-{
-  std::invoke(g_trs80WriteMemIO[(addr & 0x00f0) >> 4], *this, addr, val);
-}
-
-uint8_t TRS80Emulator::ReadMemIO(uint16_t addr)
-{
-  return std::invoke(g_trs80ReadMemIO[(addr & 0x00f0) >> 4], *this, addr);
-}
-
-static WriteMemoryFn g_trs80WriteIO[16] = {
-    &TRS80Emulator::WriteLog,   // 0x3000 to 0x30ff
-    &TRS80Emulator::WriteLog,   // 0x3100 to 0x31ff
-    &TRS80Emulator::WriteLog,   // 0x3200 to 0x32ff
-    &TRS80Emulator::WriteLog,   // 0x3300 to 0x33ff
-    &TRS80Emulator::WriteLog,   // 0x3400 to 0x34ff
-    &TRS80Emulator::WriteLog,   // 0x3500 to 0x35ff
-    &TRS80Emulator::WriteLog,   // 0x3600 to 0x36ff
-    &TRS80Emulator::WriteMemIO, // 0x3700 to 0x37ff
-    &TRS80Emulator::WriteLog,   // 0x3800 to 0x38ff
-    &TRS80Emulator::WriteLog,   // 0x3900 to 0x39ff
-    &TRS80Emulator::WriteLog,   // 0x3a00 to 0x3aff
-    &TRS80Emulator::WriteLog,   // 0x3b00 to 0x3bff
-    &TRS80Emulator::WriteVideo, // 0x3c00 to 0x3cff
-    &TRS80Emulator::WriteVideo, // 0x3d00 to 0x3dff
-    &TRS80Emulator::WriteVideo, // 0x3e00 to 0x3eff
-    &TRS80Emulator::WriteVideo, // 0x3f00 to 0x3fff
-};
-
-static ReadMemoryFn g_trs80ReadIO[16] = {
-    &TRS80Emulator::ReadLog,      // 0x3000 to 0x30ff
-    &TRS80Emulator::ReadLog,      // 0x3100 to 0x31ff
-    &TRS80Emulator::ReadLog,      // 0x3200 to 0x32ff
-    &TRS80Emulator::ReadLog,      // 0x3300 to 0x33ff
-    &TRS80Emulator::ReadLog,      // 0x3400 to 0x34ff
-    &TRS80Emulator::ReadLog,      // 0x3500 to 0x35ff
-    &TRS80Emulator::ReadLog,      // 0x3600 to 0x36ff
-    &TRS80Emulator::ReadMemIO,    // 0x3700 to 0x37ff
-    &TRS80Emulator::ReadKeyboard, // 0x3800 to 0x38ff
-    &TRS80Emulator::ReadKeyboard, // 0x3900 to 0x39ff
-    &TRS80Emulator::ReadKeyboard, // 0x3a00 to 0x3aff
-    &TRS80Emulator::ReadKeyboard, // 0x3b00 to 0x3bff
-    &TRS80Emulator::ReadVideo,    // 0x3c00 to 0x3cff
-    &TRS80Emulator::ReadVideo,    // 0x3d00 to 0x3dff
-    &TRS80Emulator::ReadVideo,    // 0x3e00 to 0x3eff
-    &TRS80Emulator::ReadVideo,    // 0x3f00 to 0x3fff
-};
-
-void TRS80Emulator::WriteIO(uint16_t addr, uint8_t val)
-{
-  return std::invoke(g_trs80WriteIO[(addr & 0x0f00) >> 8], *this, addr, val);
-}
-
-uint8_t TRS80Emulator::ReadIO(uint16_t addr)
-{
-  return std::invoke(g_trs80ReadIO[(addr & 0x0f00) >> 8], *this, addr);
-}
-
-static ReadMemoryFn g_trs80ReadMemory[16] = {
-    &TRS80Emulator::ReadROM, // 0x0000 to 0x0fff
-    &TRS80Emulator::ReadROM, // 0x1000 to 0x1fff
-    &TRS80Emulator::ReadROM, // 0x2000 to 0x2fff
-    &TRS80Emulator::ReadIO,  // 0x3000 to 0x3fff
-    &TRS80Emulator::ReadRAM, // 0x4000 to 0x4fff
-    &TRS80Emulator::ReadRAM, // 0x5000 to 0x5fff
-    &TRS80Emulator::ReadRAM, // 0x6000 to 0x6fff
-    &TRS80Emulator::ReadRAM, // 0x7000 to 0x7fff
-    &TRS80Emulator::ReadRAM, // 0x8000 to 0x8fff
-    &TRS80Emulator::ReadRAM, // 0x9000 to 0x9fff
-    &TRS80Emulator::ReadRAM, // 0xa000 to 0xafff
-    &TRS80Emulator::ReadRAM, // 0xb000 to 0xbfff
-    &TRS80Emulator::ReadRAM, // 0xc000 to 0xcfff
-    &TRS80Emulator::ReadRAM, // 0xd000 to 0xdfff
-    &TRS80Emulator::ReadRAM, // 0xe000 to 0xefff
-    &TRS80Emulator::ReadRAM, // 0xf000 to 0xffff
-};
-
-static WriteMemoryFn g_trs80WriteMemory[16] = {
-    &TRS80Emulator::WriteNull, // 0x0000 to 0x0fff
-    &TRS80Emulator::WriteNull, // 0x1000 to 0x1fff
-    &TRS80Emulator::WriteNull, // 0x2000 to 0x2fff
-    &TRS80Emulator::WriteIO,   // 0x3000 to 0x3fff
-    &TRS80Emulator::WriteRAM,  // 0x4000 to 0x4fff
-    &TRS80Emulator::WriteRAM,  // 0x5000 to 0x5fff
-    &TRS80Emulator::WriteRAM,  // 0x6000 to 0x6fff
-    &TRS80Emulator::WriteRAM,  // 0x7000 to 0x7fff
-    &TRS80Emulator::WriteRAM,  // 0x8000 to 0x8fff
-    &TRS80Emulator::WriteRAM,  // 0x9000 to 0x9fff
-    &TRS80Emulator::WriteRAM,  // 0xa000 to 0xafff
-    &TRS80Emulator::WriteRAM,  // 0xb000 to 0xbfff
-    &TRS80Emulator::WriteRAM,  // 0xc000 to 0xcfff
-    &TRS80Emulator::WriteRAM,  // 0xd000 to 0xdfff
-    &TRS80Emulator::WriteRAM,  // 0xe000 to 0xefff
-    &TRS80Emulator::WriteRAM,  // 0xf000 to 0xffff
-};
-
-
 void TRS80Emulator::WrZ80(register uint16_t addr, register uint8_t val)
 {
-  return std::invoke(g_trs80WriteMemory[(addr & 0xf000) >> 12], *this, addr, val);
+  if (addr >= RAM_START_ADDR) {
+    m_ram[addr - RAM_START_ADDR] = val;
+    return;
+  }
+
+  if ((addr >= VIDEO_START_ADDR) && (addr <= VIDEO_END_ADDR)) {
+    if (val < 0x20)
+      val += 0x40;
+    unsigned offset = addr - VIDEO_START_ADDR;  
+    if (m_videoRAM[offset] != val) {
+      m_videoRAM[offset] = val;
+      WriteVideoChar(offset, val);
+    }
+    return;
+  }
+
+  if ((addr >= MEMIO_START_ADDR) && (addr <= MEMIO_END_ADDR)) {
+    if ((addr & 0xfff0) == 0x37e0) {
+      int reg = addr & 0x000f;
+      if (reg >= 0xc)  
+        WriteFDC(addr, val);
+      else if (reg == 1)
+        WriteDrvSel(addr, val);
+      else if (reg == 8)  
+        WritePrinter(addr, val);
+      else
+        WriteLog(addr, val);
+    }
+    else
+      WriteLog(addr, val);
+    return;
+  }
+
+  if ((addr >= KB_START_ADDR) && (addr <= KB_END_ADDR)) {
+    return;
+  }
+
+  if (addr <= ROM_END_ADDR) {
+    return;
+  }
+
+  cerr << "error: no write handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
 }
 
 uint8_t TRS80Emulator::RdZ80(register uint16_t addr)
 {
-  return std::invoke(g_trs80ReadMemory[(addr & 0xf000) >> 12], *this, addr);
+  if (addr <= ROM_END_ADDR) {
+    return m_rom[addr - ROM_START_ADDR];
+  }
+
+  if (addr >= RAM_START_ADDR) {
+    return m_ram[addr - RAM_START_ADDR];
+  }
+
+  if ((addr >= VIDEO_START_ADDR) && (addr <= VIDEO_END_ADDR)) {
+    return m_videoRAM[addr - VIDEO_START_ADDR];
+  }
+
+  if ((addr >= KB_START_ADDR) && (addr <= KB_END_ADDR)) {
+    return ReadKeyboard(addr);
+  }
+
+  if ((addr >= MEMIO_START_ADDR) && (addr <= MEMIO_END_ADDR)) {
+    if ((addr & 0xfff0) == 0x37e0) {
+      int reg = addr & 0x000f;
+      if (reg >= 0xc)  
+        return ReadFDC(addr);
+      else if (reg == 0)
+        return ReadInterrupt(addr);  
+      else if (reg == 1)
+        return ReadDrvSel(addr);
+      else if (reg == 8)  
+        return ReadPrinter(addr);
+      else
+        return ReadLog(addr);
+    }
+    else
+      return ReadLog(addr);
+  }
+
+  cerr << "error: no read handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
+  return 0;
 }
 
 /////////////////////////////////////////////////////////////
-
 
 extern "C" {
 #include "nfd.h"

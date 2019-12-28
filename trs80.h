@@ -27,14 +27,6 @@ class TRS80Emulator : public Emulator
     virtual void Poll() override;
 
     // new functions
-    uint8_t ReadRAM(uint16_t);
-    void WriteRAM(uint16_t, uint8_t);
-
-    uint8_t ReadROM(uint16_t);
-
-    uint8_t ReadVideo(uint16_t);
-    void WriteVideo(uint16_t, uint8_t);
-
     uint8_t ReadIO(uint16_t addr);
     void WriteIO(uint16_t addr, uint8_t val);
 
@@ -42,9 +34,6 @@ class TRS80Emulator : public Emulator
 
     uint8_t ReadMemIO(uint16_t addr);
     void WriteMemIO(uint16_t addr, uint8_t val);
-
-    void WritePrinterFDC(uint16_t addr, uint8_t val);
-    uint8_t ReadPrinterFDC(uint16_t addr);
 
     uint8_t ReadPrinter(uint16_t addr);
     void WritePrinter(uint16_t addr, uint8_t val);
