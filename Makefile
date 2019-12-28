@@ -45,7 +45,11 @@ cassette.o: cassette.cc cassette.h
 clean:
 	rm -f gratze *.o
 
+
 $(NFD_LIB): nativefiledialog
+	cd nativefiledialog/build/gmake_windows && CC=$(CXX) CXX=$(CXX) sh -c "make config=release_x86 clean ; make config=release_x86"
+
+nfd: 
 	cd nativefiledialog/build/gmake_windows && CC=$(CXX) CXX=$(CXX) sh -c "make config=release_x86 clean ; make config=release_x86"
 
 nativefiledialog:

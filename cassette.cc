@@ -255,12 +255,14 @@ bool VirtualCassetteFile::WriteClose(const std::string & filename)
   }
 
   int len = ::write(fd, &m_rawFile[0], m_rawFile.size());
+  ::close(fd);
+
   if (len != m_rawFile.size()) {
     cerr << "error: cannot write file '" << filename << "' - " << strerror(errno) << endl;
     return false;
   }
 
-  ::close(fd);
+  return true;
 }
 
 void VirtualCassetteFile::ReadCAS(std::stringstream & formatError)

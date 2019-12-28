@@ -752,8 +752,17 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
       if (m_cassette && !m_cassette->IsReading()) {
         // get name from data, if we can
         std::string filename = m_cassette->GetFilename();
+        cerr << "CASS: filename is '" << filename << "'" << endl;
+
+        nfd_SaveDialogExt extInfo;
+        memset(&extInfo, 0, sizeof(extInfo));
+        extInfo.filterList      = "cas;cpt;wav";
+        extInfo.title           = "Save cassette image";
+        extInfo.defaultFilename = (filename.length() > 0) ? filename.c_str() : NULL;
+
         nfdchar_t * outPath = NULL;
-        if (NFD_SaveDialog("cas;cpt;wav", (filename.length() > 0) ? filename.c_str() : NULL, &outPath) == NFD_OKAY) {
+
+        if (NFD_SaveDialogExt(&extInfo, &outPath) == NFD_OKAY) {
           m_cassette->WriteClose(outPath);
         }
         free(outPath);
@@ -794,8 +803,14 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
   if (m_cassetteTrigger) {
     cerr << "CASS: reading from cassette" << endl;
     m_cassetteTrigger = false;
+
+    nfd_OpenDialogExt extInfo;
+    memset(&extInfo, 0, sizeof(extInfo));
+    extInfo.filterList      = "cas;cpt;wav";
+    extInfo.title           = "Open cassette image";
+
     nfdchar_t * outPath = NULL;
-    if (NFD_OpenDialog("cas;cpt;wav", NULL, &outPath) == NFD_OKAY) {
+    if (NFD_OpenDialogExt(&extInfo, &outPath) == NFD_OKAY) {
       m_cassette.reset(new VirtualCassetteFile());
       m_cassette->ReadOpen(outPath);
     } 
