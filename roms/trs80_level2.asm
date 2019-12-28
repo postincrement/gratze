@@ -1,8 +1,27 @@
 ; z80dasm 1.1.5
 ; command line: z80dasm -lta -g 0 trs80_level2.rom
 
+0none Re-boot- power on or RESET
+84000JP 1C96If (HL) = ((SP))- do RST10H logic, else print SN error
+104003JP 1D78Find next non-blank character in a string
+184006JP 1C90DE compared to HL. Z set if DE = HL, C set if DE > HL
+204009JP 25D9Test NTF flag at 40AF. Z flag set if string, M if integer, P&C if single, P&NC if double, A=NTF – 3.
+28400CRET
+NOP
+NOPBREAK key vector. you can put your own 3 byte instruction here to jump to your own routine.
+30400FRET
+NOP
+NOPUsed by DOS
+384012EI
+RET
+NOP
+
 	org	00000h
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; RST 0 - reboot
+;
 l0000h:
 	di			;0000	f3 	. 
 l0001h:
@@ -18,7 +37,7 @@ l0005h:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RST 8
+; RST 8 - If (HL) = ((SP))- do RST 10 logic, else print SN error
 ;
 	jp 04000h		;0008	c3 00 40 	. . @ 
 
@@ -33,7 +52,7 @@ l000bh:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RST 10
+; RST 10 - Find next non-blank character in a string
 ;
 	jp 04003h		;0010	c3 03 40 	. . @ 
 
@@ -48,7 +67,7 @@ l0013h:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RST 18
+; RST 18 - DE compared to HL. Z set if DE = HL, C set if DE > HL
 ;
 	jp 04006h		;0018	c3 06 40 	. . @ 
 
@@ -64,7 +83,8 @@ l001eh:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RST 20
+; RST 20 - Test NTF flag at 40AF. Z flag set if string,
+;          M if integer, P&C if single, P&NC if double, A=NTF – 3.
 ;
 	jp 04009h		;0020	c3 09 40 	. . @ 
 
@@ -77,17 +97,21 @@ l001eh:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RST 28
+; RST 28 - break key vector
 ;
 l0028h:
 	jp 0400ch		;0028	c3 0c 40 	. . @ 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; 
 sub_002bh:
 	ld de,04015h		;002b	11 15 40 	. . @ 
 	jr l0013h		;002e	18 e3 	. . 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RST 30
+; RST 30 - used by DOS
 ;
 	jp 0400fh		;0030	c3 0f 40 	. . @ 
 
@@ -102,7 +126,7 @@ l0036h:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RST 38
+; RST 38 - used by DOS
 ;
 	jp 04012h		;0038	c3 12 40 	. . @ 
 
@@ -381,31 +405,39 @@ sub_01c9h:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Output one bit to the cassette port
+; Output a pulse on the cassette port
 ;
 cass_opulse:
 	ld hl,0fc01h		;01d9	21 01 fc 	! . . 
-	call sub_0221h		;01dc	cd 21 02 	. ! . 
+	call set_portff		;01dc	cd 21 02 	. ! . 
 	ld b,00bh		;01df	06 0b 	. . 
 l01e1h:
 	djnz l01e1h		;01e1	10 fe 	. . 
 	ld hl,0fc02h		;01e3	21 02 fc 	! . . 
-	call sub_0221h		;01e6	cd 21 02 	. ! . 
+	call set_portff		;01e6	cd 21 02 	. ! . 
 	ld b,00bh		;01e9	06 0b 	. . 
 l01ebh:
 	djnz l01ebh		;01eb	10 fe 	. . 
 	ld hl,0fc00h		;01ed	21 00 fc 	! . . 
-	call sub_0221h		;01f0	cd 21 02 	. ! . 
+	call set_portff		;01f0	cd 21 02 	. ! . 
 	ld b,05ch		;01f3	06 5c 	. \ 
 l01f5h:
 	djnz l01f5h		;01f5	10 fe 	. . 
 	ret			;01f7	c9 	. 
 
-sub_01f8h:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; set 64 char mode
+;
+set_vid64:
 	push hl			;01f8	e5 	. 
 	ld hl,0fb00h		;01f9	21 00 fb 	! . . 
 	jr l0219h		;01fc	18 1b 	. . 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; 
+;
 sub_01feh:
 	ld a,(hl)			;01fe	7e 	~ 
 	sub 023h		;01ff	d6 23 	. # 
@@ -424,7 +456,7 @@ l0212h:
 	push hl			;0215	e5 	. 
 	ld hl,0ff04h		;0216	21 04 ff 	! . . 
 l0219h:
-	call sub_0221h		;0219	cd 21 02 	. ! . 
+	call set_portff		;0219	cd 21 02 	. ! . 
 	pop hl			;021c	e1 	. 
 	ret			;021d	c9 	. 
 
@@ -437,11 +469,11 @@ sub_021eh:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; Use HL to AND then OR with the value of port 0xff,
-; but preserve the state of the 32/64 flag
-; which is maintained in 0x403d. 
+; Set the value of port 0xff using HL to
+; AND then OR. This is used to preserve the state
+; of the 32/64 flag which is maintained in 0x403d. 
 ;
-sub_0221h:
+set_portff:
 	ld a,(print_size)	;0221	3a 3d 40 	: = @ 
 	and h			;0224	a4 	. 
 	or l			;0225	b5 	. 
@@ -507,7 +539,7 @@ l0251h:
 ;
 ; Output a byte twice to cassette
 ;
-sub_0261h:
+cass_obyte2:
 	call cass_obyte		;0261	cd 64 02 	. d . 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -567,7 +599,7 @@ l028ah:
 ;
 ; turn on cassette, search for leader and sync byte
 ;
-sub_0293h:
+cass_istart:
 	call sub_01feh		;0293	cd fe 01 	. . . 
 sub_0296h:
 	push hl			;0296	e5 	. 
@@ -587,12 +619,18 @@ l0298h:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-;
+; read last two bytes from cassette, store, set 64 char
+; mode and re-enter SYSTEM mode
 ;
 l02a9h:
-	call sub_0314h		;02a9	cd 14 03 	. . . 
+	call cass_ibyte2	;02a9	cd 14 03 	. . . 
 	ld (040dfh),hl		;02ac	22 df 40 	" . @ 
-	call sub_01f8h		;02af	cd f8 01 	. . . 
+	call set_vid64		;02af	cd f8 01 	. . . 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; SYSTEM command mode
+
 l02b2h:
 	call 041e2h		;02b2	cd e2 41 	. . A 
 	ld sp,04288h		;02b5	31 88 42 	1 . B 
@@ -605,11 +643,20 @@ l02b2h:
 	jp z,l1997h		;02c7	ca 97 19 	. . . 
 	cp 02fh			;02ca	fe 2f 	. / 
 	jr z,l031dh		;02cc	28 4f 	( O 
-	call sub_0293h		;02ce	cd 93 02 	. . . 
+;
+; SYSTEM tape read logic
+;
+	call cass_istart	;02ce	cd 93 02 	. . . 
+;
+; wait for 0x55 sync
+;
 l02d1h:
 	call cass_ibyte		;02d1	cd 35 02 	. 5 . 
 	cp 055h			;02d4	fe 55 	. U 
 	jr nz,l02d1h		;02d6	20 f9 	  . 
+;
+; read and verify filename. Entered filename is at HL
+;
 	ld b,006h		;02d8	06 06 	. . 
 l02dah:
 	ld a,(hl)			;02da	7e 	~ 
@@ -620,19 +667,27 @@ l02dah:
 	jr nz,l02d1h		;02e2	20 ed 	  . 
 	inc hl			;02e4	23 	# 
 	djnz l02dah		;02e5	10 f3 	. . 
+
+; read block from tape
 l02e7h:
 	call blink_star		;02e7	cd 2c 02 	. , . 
 l02eah:
 	call cass_ibyte		;02ea	cd 35 02 	. 5 . 
+; 0x78 = end of tape
 	cp 078h			;02ed	fe 78 	. x 
 	jr z,l02a9h		;02ef	28 b8 	( . 
+; 0x3c = data block
 	cp 03ch			;02f1	fe 3c 	. < 
 	jr nz,l02eah		;02f3	20 f5 	  . 
+
+; read data block length
 	call cass_ibyte		;02f5	cd 35 02 	. 5 . 
 	ld b,a			;02f8	47 	G 
-	call sub_0314h		;02f9	cd 14 03 	. . . 
+; read data block address
+	call cass_ibyte2	;02f9	cd 14 03 	. . . 
 	add a,l			;02fc	85 	. 
 	ld c,a			;02fd	4f 	O 
+; read block
 l02feh:
 	call cass_ibyte		;02fe	cd 35 02 	. 5 . 
 	ld (hl),a			;0301	77 	w 
@@ -640,18 +695,26 @@ l02feh:
 	add a,c			;0303	81 	. 
 	ld c,a			;0304	4f 	O 
 	djnz l02feh		;0305	10 f7 	. . 
+; read checksum
 	call cass_ibyte		;0307	cd 35 02 	. 5 . 
 	cp c			;030a	b9 	. 
 	jr z,l02e7h		;030b	28 da 	( . 
+; if checksum fails, put C on screen and read another block
 	ld a,043h		;030d	3e 43 	> C 
 	ld (03c3eh),a		;030f	32 3e 3c 	2 > < 
 	jr l02eah		;0312	18 d6 	. . 
-sub_0314h:
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; read 2 bytes from cassette into HL
+;
+cass_ibyte2:
 	call cass_ibyte		;0314	cd 35 02 	. 5 . 
 	ld l,a			;0317	6f 	o 
 	call cass_ibyte		;0318	cd 35 02 	. 5 . 
 	ld h,a			;031b	67 	g 
 	ret			;031c	c9 	. 
+
 l031dh:
 	ex de,hl			;031d	eb 	. 
 	ld hl,(040dfh)		;031e	2a df 40 	* . @ 
@@ -4781,7 +4844,7 @@ l1a06h:
 l1a19h:
 	call sub_038bh		;1a19	cd 8b 03 	. . . 
 	call 041ach		;1a1c	cd ac 41 	. . A 
-	call sub_01f8h		;1a1f	cd f8 01 	. . . 
+	call set_vid64		;1a1f	cd f8 01 	. . . 
 	call sub_20f9h		;1a22	cd f9 20 	. .   
 	ld hl,l1929h		;1a25	21 29 19 	! ) . 
 	call sub_28a7h		;1a28	cd a7 28 	. . ( 
@@ -5978,7 +6041,7 @@ l2164h:
 sub_2169h:
 	ld a,(0409ch)		;2169	3a 9c 40 	: . @ 
 	or a			;216c	b7 	. 
-	call m,sub_01f8h		;216d	fc f8 01 	. . . 
+	call m,set_vid64		;216d	fc f8 01 	. . . 
 	xor a			;2170	af 	. 
 	ld (0409ch),a		;2171	32 9c 40 	2 . @ 
 	call 041beh		;2174	cd be 41 	. . A 
@@ -6011,7 +6074,7 @@ l217fh:
 	ld (040a9h),a		;21a3	32 a9 40 	2 . @ 
 	ld a,(hl)			;21a6	7e 	~ 
 	jr nz,l21c9h		;21a7	20 20 	    
-	call sub_0293h		;21a9	cd 93 02 	. . . 
+	call cass_istart	;21a9	cd 93 02 	. . . 
 	push hl			;21ac	e5 	. 
 	ld b,0fah		;21ad	06 fa 	. . 
 	ld hl,(040a7h)		;21af	2a a7 40 	* . @ 
@@ -6025,7 +6088,7 @@ l21b2h:
 l21bdh:
 	dec hl			;21bd	2b 	+ 
 	ld (hl),000h		;21be	36 00 	6 . 
-	call sub_01f8h		;21c0	cd f8 01 	. . . 
+	call set_vid64		;21c0	cd f8 01 	. . . 
 	ld hl,(040a7h)		;21c3	2a a7 40 	* . @ 
 	dec hl			;21c6	2b 	+ 
 	jr l21ebh		;21c7	18 22 	. " 
@@ -7823,14 +7886,19 @@ l2be8h:
 	ld l,c			;2bf0	69 	i 
 	ld (040f9h),hl		;2bf1	22 f9 40 	" . @ 
 	ret			;2bf4	c9 	. 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; CSAVE logic
+;
 	call cass_out_start	;2bf5	cd 84 02 	. . . 
 	call 02337h		;2bf8	cd 37 23 	. 7 # 
 	push hl			;2bfb	e5 	. 
 	call sub_2a13h		;2bfc	cd 13 2a 	. . * 
 	ld a,0d3h		;2bff	3e d3 	> . 
 	call cass_obyte		;2c01	cd 64 02 	. d . 
-	call sub_0261h		;2c04	cd 61 02 	. a . 
-	ld a,(de)			;2c07	1a 	. 
+	call cass_obyte2	;2c04	cd 61 02 	. a . 
+	ld a,(de)		;2c07	1a 	. 
 	call cass_obyte		;2c08	cd 64 02 	. d . 
 	ld hl,(040a4h)		;2c0b	2a a4 40 	* . @ 
 	ex de,hl			;2c0e	eb 	. 
@@ -7841,11 +7909,16 @@ l2c12h:
 	call cass_obyte		;2c14	cd 64 02 	. d . 
 	rst 18h			;2c17	df 	. 
 	jr nz,l2c12h		;2c18	20 f8 	  . 
-	call sub_01f8h		;2c1a	cd f8 01 	. . . 
+	call set_vid64		;2c1a	cd f8 01 	. . . 
 	pop hl			;2c1d	e1 	. 
 	ret			;2c1e	c9 	. 
-	call sub_0293h		;2c1f	cd 93 02 	. . . 
-	ld a,(hl)			;2c22	7e 	~ 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;
+;
+	call cass_istart	;2c1f	cd 93 02 	. . . 
+	ld a,(hl)		;2c22	7e 	~ 
 	sub 0b2h		;2c23	d6 b2 	. . 
 	jr z,$+4		;2c25	28 02 	( . 
 	xor a			;2c27	af 	. 
@@ -7901,7 +7974,7 @@ l2c61h:
 	ld (040f9h),hl		;2c77	22 f9 40 	" . @ 
 	ld hl,l1929h		;2c7a	21 29 19 	! ) . 
 	call sub_28a7h		;2c7d	cd a7 28 	. . ( 
-	call sub_01f8h		;2c80	cd f8 01 	. . . 
+	call set_vid64		;2c80	cd f8 01 	. . . 
 	ld hl,(040a4h)		;2c83	2a a4 40 	* . @ 
 	push hl			;2c86	e5 	. 
 	jp l1ae8h		;2c87	c3 e8 1a 	. . . 

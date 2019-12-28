@@ -19,17 +19,24 @@ class VirtualCassetteFile
     VirtualCassetteFile();
     ~VirtualCassetteFile();
 
-    bool Open(const std::string & fn, bool reading);
-    void Close();
+    bool ReadOpen(const std::string & fn);
+    bool WriteOpen();
+    bool WriteClose(const std::string & fn);
 
     void ReadCAS(std::stringstream & formatError);
     void ReadCPT(std::stringstream & formatError);
     void ReadWAV(std::stringstream & formatError);
 
+    bool IsReading() const;
+
     void WriteByte(int val);
     int ReadByte();
 
+    std::string GetFilename() const;
+    static Format FormatFromExtension(const std::string & name);
+
   protected:
+    size_t FindHeader() const;
     std::string m_name;
     bool m_reading;
     int m_fd;

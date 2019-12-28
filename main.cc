@@ -11,14 +11,7 @@ using namespace std;
 
 /////////////////////////////////////////////////////
 
-#if 0
-void Zed80::SigHandler(int sig)
-{
-  if (sig == SIGINT)
-    g_instance->m_sigInt = true;
-}
-#endif
-
+extern "C"
 int main(int argc, char *argv[]) 
 {
   Options options;
@@ -106,11 +99,12 @@ int main(int argc, char *argv[])
       std::string arg(argv[optIndex]);
 
       VirtualCassetteFile file;
-      if (!file.Open(arg, true)) {
+      if (!file.ReadOpen(arg)) {
         cerr << "error: could not open cassette file '" << arg << "'" << endl;
         return -1;
       }
-      cerr << "file '" << arg << "' opened" << endl;
+      cout << "info: file '" << arg << "' opened, internal filename is " << file.GetFilename() << endl;
+
       return 0;
     }
 

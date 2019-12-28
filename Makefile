@@ -8,11 +8,14 @@ NFD_DIR=./nativefiledialog
 
 NFD_LIB=$(NFD_DIR)/build/lib/Release/x86/nfd.lib
 
-CXXFLAGS += -I$(SDL_DIR)/include -I$(NFD_DIR)/src/include -std=c++17 -Wno-register -g -DEXECZ80 -O2
-CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80 -O2
+#SDL_LIBS = $(shell $(SDL_DIR)/bin/sdl2-config --libs)
+SDL_LIBS=-lmingw32 -lSDL2main -lSDL2
+
+CXXFLAGS += -I$(SDL_DIR)/include -I$(NFD_DIR)/src/include -std=c++17 -Wno-register -g -DEXECZ80 
+CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80 
 
 LDFLAGS += -L$(SDL_DIR)/lib 
-LDLIBS += $(NFD_LIB) -lole32 -luuid -lmingw32 -lSDL2main -lSDL2 -static-libstdc++ -static-libgcc  
+LDLIBS += $(NFD_LIB) -lole32 -luuid $(SDL_LIBS) -static-libstdc++ -static-libgcc  
 LINK.o = $(LINK.cc)
 
 
@@ -33,6 +36,8 @@ emulator.o: emulator.cc emulator.h fdc.h options.h cassette.h
 
 trs80.o: trs80.cc trs80.h fdc.h emulator.h options.h cassette.h
 
+trs80.cc: $(NFD_LIB)
+
 fdc.o: fdc.cc fdc.h options.h
 
 cassette.o: cassette.cc cassette.h
@@ -44,4 +49,5 @@ $(NFD_LIB): nativefiledialog
 	cd nativefiledialog/build/gmake_windows && CC=$(CXX) CXX=$(CXX) sh -c "make config=release_x86 clean ; make config=release_x86"
 
 nativefiledialog:
-	git clone https://github.com/mlabbe/nativefiledialog.git
+	git clone https://github.com/postincrement/nativefiledialog.git
+	#git clone https://github.com/mlabbe/nativefiledialog.git

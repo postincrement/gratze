@@ -9,6 +9,17 @@ extern "C"
 #include "trs_chars.c"
 };
 
+
+/*
+  Port FF
+  -------
+    bit 0,1   cassette voltage level
+    bit 2     cassette motor on/off
+    bit 3     0 = 64 char, 1 = 32 char
+    bit 4-7   unused
+*/
+
+
 using namespace std;
 
 #define KB_MEM_ADDR 0x3800
@@ -730,34 +741,42 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
   bool cassOn = (val & 0x04) != 0;
   if (cassOn != m_cassetteMotor) {
     m_cassetteMotor = cassOn;
-    if (!cassOn) {
-      cerr << "CASS: motor off" << endl;
-      m_cassetteTrigger = false;
-      if (m_cassette)
-        m_cassette.reset();
-    }
-    else {
+
+    if (cassOn) {
       cerr << "CASS: motor on" << endl;
       m_cassetteTrigger = true;
+    }
+    else {
+      cerr << "CASS: motor off" << endl;
+      m_cassetteTrigger = false;
+      if (m_cassette && !m_cassette->IsReading()) {
+        // get name from data, if we can
+        std::string filename = m_cassette->GetFilename();
+        nfdchar_t * outPath = NULL;
+        if (NFD_SaveDialog("cas;cpt;wav", (filename.length() > 0) ? filename.c_str() : NULL, &outPath) == NFD_OKAY) {
+          m_cassette->WriteClose(outPath);
+        }
+        free(outPath);
+      }
+      m_cassette.reset();
     }
   }
 
   // detect changes in cassette output when trigger is set
   int cassOut = (val & 0x3);
   if (cassOn) {
+
+    //cerr << "CASS: write data " << hex << cassOut << ' ' << m_cassetteTrigger << endl;
+
+    // open for writing if this is the first time
     if (m_cassetteTrigger && (cassOut != 0)) {
       cerr << "CASS: writing to cassette" << endl;
+      m_cassette.reset(new VirtualCassetteFile());
+      m_cassette->WriteOpen();
       m_cassetteTrigger = false;
-      nfdchar_t * outPath = NULL;
-      if ((NFD_SaveDialog(NULL, NULL, &outPath) == NFD_OKAY) && (outPath != NULL)) {
-        m_cassette.reset(new VirtualCassetteFile());
-        if (!m_cassette->Open(outPath, false)) {
-          cerr << "CASS: cannot create file" << endl;
-          m_cassette.reset();
-        }
-      }
     }
 
+    // if writing, peek inside the CPU to get the byte data
     if (m_cassette) {
       uint16_t sp = m_cpu.SP.W;
       uint16_t c1 = GETWORD(sp - 0);
@@ -776,7 +795,10 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
     cerr << "CASS: reading from cassette" << endl;
     m_cassetteTrigger = false;
     nfdchar_t * outPath = NULL;
-    nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
+    if (NFD_OpenDialog("cas;cpt;wav", NULL, &outPath) == NFD_OKAY) {
+      m_cassette.reset(new VirtualCassetteFile());
+      m_cassette->ReadOpen(outPath);
+    } 
   }
   return 0;
 }
