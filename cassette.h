@@ -29,8 +29,8 @@ class VirtualCassetteFile
 
     bool IsReading() const;
 
-    void WriteByte(int val);
-    int ReadByte();
+    void WriteByte(uint8_t val);
+    uint8_t ReadByte();
 
     std::string GetFilename() const;
     static Format FormatFromExtension(const std::string & name);
@@ -42,6 +42,7 @@ class VirtualCassetteFile
     int m_fd;
     Format m_format;
     std::vector<uint8_t> m_rawFile;
+    size_t m_readPtr;
 };
 
 #endif // CASSETTE_H_

@@ -462,9 +462,9 @@ l0219h:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; 
+;  set cassette outut to 00
 ;
-sub_021eh:
+cass_ozero:
 	ld hl,0ff00h		;021e	21 00 ff 	! . . 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -520,17 +520,17 @@ l0243h:
 	ld b,041h		;0248	06 41 	. A 
 l024ah:
 	djnz l024ah		;024a	10 fe 	. . 
-	call sub_021eh		;024c	cd 1e 02 	. . . 
+	call cass_ozero		;024c	cd 1e 02 	. . . 
 	ld b,076h		;024f	06 76 	. v 
 l0251h:
 	djnz l0251h		;0251	10 fe 	. . 
 	in a,(0ffh)		;0253	db ff 	. . 
 	ld b,a			;0255	47 	G 
 	pop af			;0256	f1 	. 
-	rl b		;0257	cb 10 	. . 
+	rl b			;0257	cb 10 	. . 
 	rla			;0259	17 	. 
 	push af			;025a	f5 	. 
-	call sub_021eh		;025b	cd 1e 02 	. . . 
+	call cass_ozero		;025b	cd 1e 02 	. . . 
 	pop af			;025e	f1 	. 
 	pop bc			;025f	c1 	. 
 	ret			;0260	c9 	. 
@@ -5500,7 +5500,7 @@ l1dd4h:
 	pop hl			;1dfe	e1 	. 
 	ret			;1dff	c9 	. 
 	ld e,003h		;1e00	1e 03 	. . 
-	ld bc,sub_021eh		;1e02	01 1e 02 	. . . 
+	ld bc,cass_ozero	;1e02	01 1e 02 	. . . 
 	ld bc,0041eh		;1e05	01 1e 04 	. . . 
 	ld bc,l081eh		;1e08	01 1e 08 	. . . 
 l1e0bh:

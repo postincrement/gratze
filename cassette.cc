@@ -169,6 +169,7 @@ bool VirtualCassetteFile::ReadOpen(const std::string & name)
   m_name    = name;
   m_reading = true;
   m_format  = Format::eUnknown;
+  m_readPtr = 0;
 
   //int fd = ::open(name.c_str(), O_BINARY | O_RDONLY);
   int fd = ::open(name.c_str(), O_RDONLY);
@@ -238,13 +239,25 @@ bool VirtualCassetteFile::ReadOpen(const std::string & name)
   return true;
 }
 
-void VirtualCassetteFile::WriteByte(int val)
+void VirtualCassetteFile::WriteByte(uint8_t val)
 {
   if (m_reading)
     return;
 
   m_rawFile.push_back(val);
 }
+
+uint8_t VirtualCassetteFile::ReadByte()
+{
+  if (!m_reading)
+    return 0;
+
+  if (m_readPtr >= m_rawFile.size())
+    return 0x00;
+
+  return m_rawFile[m_readPtr++];
+}
+
 
 bool VirtualCassetteFile::WriteClose(const std::string & filename)
 {

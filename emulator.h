@@ -62,6 +62,11 @@ class Emulator
 
     void SetTrace(bool v);
 
+    void GetStack(std::vector<uint16_t> & stack);
+    void DumpStack(int count);
+    void DumpStack(const std::vector<uint16_t> & stack);
+    uint16_t ReadMemoryWord(uint16_t addr);
+
     Z80 m_cpu;
 
   protected:

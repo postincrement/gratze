@@ -262,3 +262,41 @@ bool Emulator::ReadROMFromFile(const std::string &filename, unsigned char *ptr, 
 
   return !file.fail();
 }
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+uint16_t Emulator::ReadMemoryWord(uint16_t addr)
+{
+  uint8_t lsb = RdZ80(addr + 0);
+  uint8_t msb = RdZ80(addr + 1);
+  return lsb + (msb << 8);
+}
+
+void Emulator::GetStack(std::vector<uint16_t> & stack)
+{
+  uint16_t sp = m_cpu.SP.W;
+  for (auto & r : stack) {
+    r = ReadMemoryWord(sp);
+    sp += 2;
+  }
+}
+
+void Emulator::DumpStack(int count)
+{
+  std::vector<uint16_t> stack;
+  stack.resize(count);
+  GetStack(stack);
+  DumpStack(stack);
+}
+
+void Emulator::DumpStack(const std::vector<uint16_t> & stack)
+{
+  cerr << "----------" << endl;
+  cerr << "PC : 0x" << setw(4) << setfill('0') << hex << m_cpu.PC.W << endl;
+  cerr << "SP : 0x" << setw(4) << setfill('0') << hex << m_cpu.SP.W << endl;
+  int i = 0;
+  for (auto & r : stack) {
+    cerr << "STACK + " << dec << setw(2) << i << " : 0x" << setw(4) << setfill('0') << hex << r << endl;
+    i += 2; 
+  }
+}
