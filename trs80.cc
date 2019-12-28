@@ -25,12 +25,17 @@ extern "C"
 #define   RAM_END_ADDR      0xffff
 
 /*
-  Port FF
-  -------
+  Port FF write
+  -------------
     bit 0,1   cassette voltage level
     bit 2     cassette motor on/off
     bit 3     0 = 64 char, 1 = 32 char
     bit 4-7   unused
+
+  Port FF read
+  -------------
+    bit 0,6   unused
+    bit 7     cassette read
 */
 
 
@@ -598,8 +603,6 @@ extern "C" {
 
 /////////////////////////////////////////////////////////////
 
-#define GETWORD(addr)   (m_ram[addr - 0x4000] + (m_ram[addr + 1 - 0x4000] << 8))
-
 void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
 {
   // detect changes in cassette motor
@@ -652,11 +655,14 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
 
     // if writing, peek inside the CPU to get the byte data
     if (m_cassette) {
-      uint16_t sp = m_cpu.SP.W;
-      uint16_t c1 = GETWORD(sp - 0);
-      uint16_t c2 = GETWORD(sp + 2);
-      if ((c1 == 0x01df) && (c2 == 0x026e) && (m_cpu.BC.B.l == 0x8)) {
-        m_cassette->WriteByte(m_cpu.DE.B.h);
+      uint16_t pc = m_cpu.SP.W;
+      if (pc == 0x228) {
+        uint16_t sp = m_cpu.SP.W;
+        uint16_t c1 = ReadMemoryWord(sp - 0);
+        uint16_t c2 = ReadMemoryWord(sp + 2);
+        if ((c1 == 0x01df) && (c2 == 0x026e) && (m_cpu.BC.B.l == 0x8)) {
+          m_cassette->WriteByte(m_cpu.DE.B.h);
+        }
       }
     }
   }
@@ -680,6 +686,73 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
       m_cassette->ReadOpen(outPath);
     } 
   }
+
+  // peek inside the CPU
+  uint16_t pc = m_cpu.PC.W;
+
+  // always set clock bit
+  if (pc == 0x245) {
+    return 0x80;
+  }
+
+  // look for data bits
+  else if (pc == 0x0255) {
+
+    /*
+        code:
+
+        0253   db ff      in a,(0ffh) 
+        0255   47         ld b,a     
+        0256   f1         pop af     
+        0257   cb 10      rl b        
+        0259   17         rla        
+    */
+
+    uint16_t sp = m_cpu.SP.W;
+    uint16_t c4 = ReadMemoryWord(sp + 4);
+
+    // sync byte
+    if (c4 == 0x029b) {
+
+       /*
+       stack looks like:
+       SP + 00 : 0x??      F saved
+       SP + 01 : 0x??      A saved
+       SP + 02 : 0x41e8    BC saved
+       SP + 04 : 0x029b    return address
+       */
+      //DumpStack(5);
+      uint8_t data = m_cassette->ReadByte();
+      //cerr << "CASS: Read sync " << hex << setfill('0') << (int)data << endl;
+      WrZ80(sp + 1, data >> 1); // get A ready to accept new bit 0 
+      //if (data == 0xa5)
+      //  SetTrace(true);
+      return (data << 7);       // shift bit 0 into bit 7
+    }
+    else {
+       /*
+       stack looks like:
+       SP + 00 : 0x??      F saved
+       SP + 01 : 0x??      A saved
+       SP + 02 : 0x??      C saved
+       SP + 03 : 0x??      B saved
+       SP + 04 : 0x029b    return address
+       */
+      //DumpStack(5);
+      uint8_t data;
+      if (RdZ80(sp + 3) == 1) {
+        data = m_cassette->ReadByte();
+        //cerr << "CASS: Read data " << hex << setfill('0') << (int)data << endl;
+      }
+      WrZ80(sp + 1, data >> 1); // get A ready to accept new bit 0 
+      //SetTrace(true);
+      return (data << 7);       // shift bit 0 into bit 7
+    }
+  }
+  else {
+    DumpStack(5);
+  }
+
   return 0;
 }
 
