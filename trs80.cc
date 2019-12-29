@@ -1,8 +1,9 @@
-#include "trs80.h"
-
 #include <functional>
 #include <iostream>
 #include <iomanip>
+
+#include "config.h"
+#include "trs80.h"
 
 extern "C"
 {

@@ -1,6 +1,7 @@
 #ifndef TRS80_H_
 #define TRS80_H_
 
+#include "config.h"
 #include "emulator.h"
 #include "fdc.h"
 #include "cassette.h"

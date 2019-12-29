@@ -1,23 +1,27 @@
 #SDL_DIR =  `pwd`/SDL2-2.0.10/x86_64-w64-mingw32/
 SDL_DIR =  ./SDL2-2.0.10/i686-w64-mingw32
 
-CXX = i686-w64-mingw32-g++
-CC  = i686-w64-mingw32-gcc
 
-NFD_DIR=./nativefiledialog
+#CXX = i686-w64-mingw32-g++
+#CC  = i686-w64-mingw32-gcc
+CXX=@CXX@
+CC=@CC@
 
-NFD_LIB=$(NFD_DIR)/build/lib/Release/x86/nfd.lib
+NFD_BUILD_TYPE=@NFD_BUILD_TYPE@
+NFD_BUILD_ENV=@NFD_BUILD_ENV@
+NFD_BUILD_DIR=@NFD_BUILD_DIR@
 
 #SDL_LIBS = $(shell $(SDL_DIR)/bin/sdl2-config --libs)
-SDL_LIBS=-lmingw32 -lSDL2main -lSDL2
+SDL_LIBS=-lSDL2main -lSDL2
 
-CXXFLAGS += -I$(SDL_DIR)/include -I$(NFD_DIR)/src/include -std=c++17 -Wno-register -g -DEXECZ80 
-CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80 
+#CXXFLAGS += -I$(SDL_DIR)/include -I$(NFD_DIR)/src/include -std=c++17 -Wno-register -g -DEXECZ80 
+#CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80 
+CXXFLAGS=@CXXFLAGS@
+CFLAGS=@CFLAGS@
 
-LDFLAGS += -L$(SDL_DIR)/lib 
-LDLIBS += $(NFD_LIB) -lole32 -luuid $(SDL_LIBS) -static-libstdc++ -static-libgcc  
+LDFLAGS += @LDFLAGS@ 
+LDLIBS = @LDLIBS@  
 LINK.o = $(LINK.cc)
-
 
 vpath %.c mfz80
 
@@ -45,12 +49,11 @@ cassette.o: cassette.cc cassette.h
 clean:
 	rm -f gratze *.o
 
-
 $(NFD_LIB): nativefiledialog
-	cd nativefiledialog/build/gmake_windows && CC=$(CXX) CXX=$(CXX) sh -c "make config=release_x86 clean ; make config=release_x86"
+	cd nativefiledialog/build/$(NFD_BUILD_DIR) && $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean ; make config=$(NFD_BUILD_TYPE)"
 
 nfd: 
-	cd nativefiledialog/build/gmake_windows && CC=$(CXX) CXX=$(CXX) sh -c "make config=release_x86 clean ; make config=release_x86"
+	cd nativefiledialog/build/$(NFD_BUILD_DIR) && $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean ; make config=$(NFD_BUILD_TYPE)"
 
 nativefiledialog:
 	git clone https://github.com/postincrement/nativefiledialog.git

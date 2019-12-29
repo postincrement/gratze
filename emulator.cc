@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 
+#include "config.h"
 #include "emulator.h"
 #include "fdc.h"
 

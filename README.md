@@ -19,3 +19,15 @@ Cassette formats
   http://www.topherlee.com/software/pcm-tut-wavformat.html
 
 
+Todo
+----
+  - autoconf
+  - OSX and Linux support
+  - CPU speed setting
+  - lower level cassette emulation
+  - Fix disk drive interface
+  - Model III and Model IV support
+  - state save and load
+  - 32/64/40/80 support
+  - F1-F4 keys
+  - 

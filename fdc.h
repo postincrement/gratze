@@ -9,6 +9,8 @@
 #include <functional>
 #include <map>
 
+#include "config.h"
+
 #define MAX_SECTOR_SIZE  1024
 
 class VirtualDrive

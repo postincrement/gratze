@@ -1,9 +1,9 @@
-#include "sdl_video.h"
-
 #include <iostream>
 #include <stdio.h>
 #include <unistd.h>
 
+#include "config.h"
+#include "sdl_video.h"
 
 using namespace std;
 

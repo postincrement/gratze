@@ -1,0 +1,10 @@
+#ifndef CONFIG_H_
+#define CONFIG_H_
+
+#ifndef __MINGW32__
+#ifndef O_BINARY
+#define O_BINARY      0
+#endif
+#endif
+
+#endif // CONFIG_H_

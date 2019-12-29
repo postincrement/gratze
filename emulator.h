@@ -2,7 +2,6 @@
 #define EMULATOR_H_
 
 #include <sys/types.h>
-
 #include <SDL2/SDL_keyboard.h> 
 
 extern "C" {
@@ -10,6 +9,7 @@ extern "C" {
 #include "mfz80/Z80.h"
 };
 
+#include "config.h"
 #include "sdl_video.h"
 #include "fdc.h"
 #include "options.h"

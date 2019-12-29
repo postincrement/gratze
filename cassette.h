@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "config.h"
+
 class VirtualCassetteFile
 {
   public:

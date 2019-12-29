@@ -7,6 +7,8 @@
 #include <memory>
 #include <chrono>
 
+#include "config.h"
+
 #define USE_TEXTURES    1
 
 class MemoryMappedVideo

@@ -5,7 +5,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 
+#include "config.h"
 #include "cassette.h"
 
 using namespace std;
@@ -171,7 +173,6 @@ bool VirtualCassetteFile::ReadOpen(const std::string & name)
   m_format  = Format::eUnknown;
   m_readPtr = 0;
 
-  //int fd = ::open(name.c_str(), O_BINARY | O_RDONLY);
   int fd = ::open(name.c_str(), O_RDONLY);
   if (fd < 0) {
     cerr << "error: cannot open '" << name << "' - " << strerror(errno) << endl;
@@ -261,7 +262,7 @@ uint8_t VirtualCassetteFile::ReadByte()
 
 bool VirtualCassetteFile::WriteClose(const std::string & filename)
 {
-  int fd = ::open(filename.c_str(), O_BINARY | O_RDWR | O_CREAT);
+  int fd = ::open(filename.c_str(), O_BINARY | O_RDWR | O_CREAT, 0644);
   if (fd < 0) {
     cerr << "error: cannot create file '" << filename << "' - " << strerror(errno) << endl;
     return false;
