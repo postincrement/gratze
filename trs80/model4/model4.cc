@@ -9,7 +9,7 @@ std::string Model4_Emulator::GetTitle() const
   return "TRS-80 Model IV"; 
 }
 
-int Model4_Emulator::GetDefaultMemorySize_k() const
+int Model4_Emulator::GetDefaultRAMSize_k() const
 { 
   return 48;
 }

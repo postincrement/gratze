@@ -10,7 +10,7 @@ class Model4_Emulator : public TRS80Emulator
     
     virtual std::string GetTitle() const override;
 
-    virtual int GetDefaultMemorySize_k() const override;
+    virtual int GetDefaultRAMSize_k() const override;
 };
 
 #endif // MODEL4_H_

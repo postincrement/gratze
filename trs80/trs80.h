@@ -16,8 +16,8 @@ class TRS80Emulator : public Z80Emulator
     virtual bool Open(const Options & options) override;
     virtual bool Start(uint16_t addr) override;
 
-    virtual uint8_t RdZ80(register uint16_t addr) override;
-    virtual void WrZ80(register uint16_t addr,register uint8_t value) override;
+//    virtual uint8_t RdZ80(register uint16_t addr) override;
+//    virtual void WrZ80(register uint16_t addr,register uint8_t value) override;
 
     virtual uint8_t InZ80(register uint16_t port) override;
     virtual void OutZ80(register uint16_t port, register uint8_t value) override;
@@ -59,8 +59,10 @@ class TRS80Emulator : public Z80Emulator
     std::unique_ptr<MemoryMappedVideo::Font> m_font;
     std::vector<uint8_t> m_fontData;
 
-    uint8_t m_rom[12*1024];
-    uint8_t m_ram[48*1024];
+    std::vector<uint8_t> m_romData;
+    uint8_t * m_rom;
+    int m_romSize;
+
     uint8_t m_videoRAM[1*1024];
     uint8_t m_kbData[8];
     uint8_t m_shiftDown;

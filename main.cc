@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
   g_emulatorFactory.AddWorker<Model4_Emulator>("m4");
 
   Options options;
-  options.m_memSize_k = -1;
+  options.m_ramSize_k = -1;
 
   // parse command line arguments
   int optIndex = 1;
@@ -110,6 +110,15 @@ int main(int argc, char *argv[])
       options.m_romFn = argv[optIndex++];
     }
 
+    // set RAM size
+    if (option == "ram") {
+      if (++optIndex >= argc) {
+        cerr << "error: --ram option requires size in k" << endl;
+        return -1;
+      }
+      options.m_ramSize_k = atoi(argv[optIndex++]);
+    }
+
     // select drives
     else if ((option.substr(0, 5) == "drive")) {
       std::string driveNumStr(option.substr(5));
@@ -127,7 +136,7 @@ int main(int argc, char *argv[])
         cerr << "error: --breakpoint option requires address argument" << endl;
         return -1;
       }
-      std::string arg(argv[optIndex]);
+      std::string arg(argv[optIndex++]);
       int addr = strtoul(arg.c_str(), NULL, 16);
       options.m_breakpoint = addr;
     }
@@ -138,7 +147,7 @@ int main(int argc, char *argv[])
         cerr << "error: --diskette option requires filename argument" << endl;
         return -1;
       }
-      std::string arg(argv[optIndex]);
+      std::string arg(argv[optIndex++]);
 
       VirtualDriveFile file;
       if (!file.Open(arg, true)) {
@@ -155,7 +164,7 @@ int main(int argc, char *argv[])
         cerr << "error: --cassette option requires filename argument" << endl;
         return -1;
       }
-      std::string arg(argv[optIndex]);
+      std::string arg(argv[optIndex++]);
 
       VirtualCassetteFile file;
       if (!file.ReadOpen(arg)) {
@@ -174,12 +183,16 @@ int main(int argc, char *argv[])
       for (auto & r : keys) {
         if (option == r) {
           options.m_typeName = r;
+          optIndex++;
           break;
         }
       }
 
       // if option not found, show error
-      if (options.m_typeName.empty()) {
+      if (!options.m_typeName.empty()) {
+        cout << "info: selected type " << option << endl;
+      }
+      else {
         cerr << "error: unknown option '" << option << "'" << endl;
         return -1;
       }
@@ -197,6 +210,19 @@ int main(int argc, char *argv[])
   }
 
   cout << "info: running " << emulator->GetTitle() << endl;
+
+  if (options.m_ramSize_k >= 0) {
+    emulator->SetRAMSize_k(options.m_ramSize_k);
+  }
+  else {
+    emulator->SetRAMSize_k(emulator->GetDefaultRAMSize_k());
+  }
+
+  cout << "info: RAM size set to " << emulator->GetRAMSize_k() << "k" << endl;
+
+  // load ROM
+  //if (!ReadROMFromFile(options.m_romFn, m_rom))
+  //  return false;
 
   // returns zero on success else non-zero 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 

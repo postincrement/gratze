@@ -21,7 +21,6 @@ class Emulator
     Emulator();
 
     virtual std::string GetTitle() const = 0;
-    virtual int GetDefaultMemorySize_k() const = 0;
 
     virtual bool Open(const Options & options);
 
@@ -40,6 +39,10 @@ class Emulator
 
     virtual void OnKeyDown(SDL_Keysym & keysym);
     virtual void OnKeyUp(SDL_Keysym & keysym);
+
+    virtual int GetDefaultRAMSize_k() const = 0;
+    virtual bool SetRAMSize_k(int len);  
+    virtual int GetRAMSize_k() const;
 
     bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);
 
@@ -60,6 +63,10 @@ class Emulator
   protected:  
     bool OpenVideo(int rows, int cols, MemoryMappedVideo::Font * font);
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
+
+    std::vector<uint8_t> m_ram;
+    int m_ramSize;
+    int m_ramMask;
 
     uint8_t m_drvSel;
     std::unique_ptr<MemoryMappedVideo> m_video;

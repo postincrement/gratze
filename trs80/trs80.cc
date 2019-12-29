@@ -12,20 +12,6 @@ extern "C"
 #include "trs_chars.c"
 };
 
-#define   ROM_START_ADDR    0x0000
-#define   ROM_END_ADDR      0x2fff
-
-#define   MEMIO_START_ADDR  0x3000
-#define   MEMIO_END_ADDR    0x37ff
-
-#define   KB_START_ADDR     0x3800
-#define   KB_END_ADDR       0x3bff
-
-#define   VIDEO_START_ADDR  0x3c00
-#define   VIDEO_END_ADDR    0x3fff
-
-#define   RAM_START_ADDR    0x4000
-#define   RAM_END_ADDR      0xffff
 
 /*
   Port FF write
@@ -63,15 +49,12 @@ using namespace std;
 TRS80Emulator::TRS80Emulator()
   : Z80Emulator()
 {
+  m_romSize = 0;
 }
 
 bool TRS80Emulator::Open(const Options &options)
 {
   m_fdc.SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
-
-  // load ROM
-  if (!ReadROMFromFile(options.m_romFn, m_rom))
-    return false;
 
   m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
@@ -514,95 +497,6 @@ uint8_t TRS80Emulator::ReadInterrupt(uint16_t)
 }
 
 /////////////////////////////////////////////////////////////
-
-void TRS80Emulator::WrZ80(register uint16_t addr, register uint8_t val)
-{
-  if (addr >= RAM_START_ADDR) {
-    m_ram[addr - RAM_START_ADDR] = val;
-    return;
-  }
-
-  if ((addr >= VIDEO_START_ADDR) && (addr <= VIDEO_END_ADDR)) {
-    if (val < 0x20)
-      val += 0x40;
-    unsigned offset = addr - VIDEO_START_ADDR;  
-    if (m_videoRAM[offset] != val) {
-      m_videoRAM[offset] = val;
-      WriteVideoChar(offset, val);
-    }
-    return;
-  }
-
-  if ((addr >= MEMIO_START_ADDR) && (addr <= MEMIO_END_ADDR)) {
-    if ((addr & 0xfff0) == 0x37e0) {
-      int reg = addr & 0x000f;
-      if (reg >= 0xc)  
-        WriteFDC(addr, val);
-      else if (reg == 1)
-        WriteDrvSel(addr, val);
-      else if (reg == 8)  
-        WritePrinter(addr, val);
-      else
-        WriteLog(addr, val);
-    }
-    else
-      WriteLog(addr, val);
-    return;
-  }
-
-  if ((addr >= KB_START_ADDR) && (addr <= KB_END_ADDR)) {
-    return;
-  }
-
-  if (addr <= ROM_END_ADDR) {
-    return;
-  }
-
-  cerr << "error: no write handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
-}
-
-uint8_t TRS80Emulator::RdZ80(register uint16_t addr)
-{
-  if (addr <= ROM_END_ADDR) {
-    return m_rom[addr - ROM_START_ADDR];
-  }
-
-  if (addr >= RAM_START_ADDR) {
-    return m_ram[addr - RAM_START_ADDR];
-  }
-
-  if ((addr >= VIDEO_START_ADDR) && (addr <= VIDEO_END_ADDR)) {
-    return m_videoRAM[addr - VIDEO_START_ADDR];
-  }
-
-  if ((addr >= KB_START_ADDR) && (addr <= KB_END_ADDR)) {
-    return ReadKeyboard(addr);
-  }
-
-  if ((addr >= MEMIO_START_ADDR) && (addr <= MEMIO_END_ADDR)) {
-#if 0
-    if ((addr & 0xfff0) == 0x37e0) {
-      int reg = addr & 0x000f;
-      if (reg >= 0xc)  
-        return ReadFDC(addr);
-      else if (reg == 0)
-        return ReadInterrupt(addr);  
-      else if (reg == 1)
-        return ReadDrvSel(addr);
-      else if (reg == 8)  
-        return ReadPrinter(addr);
-      else
-        return ReadLog(addr);
-    }
-    else
-#endif
-      return ReadLog(addr);
-  }
-
-  cerr << "error: no read handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
-  return 0;
-}
-
 /////////////////////////////////////////////////////////////
 
 extern "C" {

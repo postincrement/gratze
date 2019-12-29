@@ -11,3 +11,15 @@ debug.o
 .vscode/settings.json
 mfz80/Z80-081707.zip
 cassette.o
+config.h
+config.status
+log
+trs80/model1/rom_level2.o
+autom4te.cache/*
+trs80/model1/model1.o
+trs80/model3/model3.o
+trs80/model4/model4.o
+Makefile
+configure
+config.log
+trs80/model1/rom_level1.o

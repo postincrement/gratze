@@ -31,6 +31,20 @@ bool Emulator::Open(const Options & options)
   return true;
 }
 
+bool Emulator::SetRAMSize_k(int len)
+{
+  m_ram.resize(len * 1024);
+  m_ramSize = m_ram.size();
+  m_ramMask = (m_ramSize - 1);
+
+  cout << "info: RAM size " << len << " k, " << m_ramSize << " bytes, " << hex << m_ramMask << endl;
+} 
+
+int Emulator::GetRAMSize_k() const
+{
+  return (m_ramSize + 1023) / 1024;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 bool Emulator::OpenVideo(int rows, int cols, MemoryMappedVideo::Font *font)

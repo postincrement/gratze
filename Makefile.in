@@ -31,6 +31,7 @@ SRCS_CC = main.cc \
 					trs80/model4/model4.cc \
 
 SRCS_C  = emulators/mfz80/Z80.c \
+          trs80/model1/rom_level1.c \
           trs80/model1/rom_level2.c
 
 vpath %.cc $(sort $(dir $(SRCS_CC)))
