@@ -1,5 +1,28 @@
 # gratze
 
+Compiling On Linux or OSX
+-------------------------
+Use the following commands:
+    aclocal
+    autoconf
+    ./configure
+    make
+
+Compiling on using MingW
+------------------------
+Select one of following target type:
+
+    i686-mingw32          Using MingW32, compiling for Win32  
+    i686-w64-mingw32      Using MingW64, compiling for Win32  
+    x86_64-w64-mingw32    Using MingW64, compiling for Win64
+
+Use the following commands:
+
+    aclocal
+    autoconf
+    ./configure --host=TARGET
+    make
+
 MingW
 -----
   sudo apt-get install g++-mingw-w64-i686

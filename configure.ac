@@ -24,10 +24,6 @@ AC_CONFIG_SRCDIR([emulator.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
-if test \! -d m4/aclocal.m4 ; then
-  AC_MSG_ERROR([run "aclocal"])
-fi
-
 # get system type
 AC_CANONICAL_SYSTEM
 
@@ -67,9 +63,21 @@ AC_PROG_CC
 # set SDL  
 #
 
-#CXXFLAGS += -I$(SDL_DIR)/include -I$(NFD_DIR)/src/include 
-#CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80 
+case "$target" in
+        *-mingw32)
+                MING_SDL=1
+                SDL_LIBS="-lSDL2main -lSDL2"
+                ;;
+        *-linux-*,*)
+                NFD_BUILD_DIR=gmake_linux
+                PKG_CHECK_MODULES([SDL], [sdl2],
+                        [AC_DEFINE([HAVE_SDL], [1], [Define if SDL library available])],
+                        [AC_MSG_ERROR([SDL2 required. Install libsdl2-dev])])
+                SDL_LIBS=`pkg-config --libs sdl2`
+                ;;
+esac
 
+AC_SUBST(MING_SDL)
 
 ##########################################################
 #
@@ -84,17 +92,16 @@ NFD_CXXFLAGS="-I$NFD_INCLUDE_DIR"
 AC_CHECK_FILE([$NFD_INCLUDE_DIR/nfd.h], [], AC_MSG_ERROR([cannot find nfd.h]))
 
 case "$target" in
-        *-mingw32-*)
+        *-mingw32)
                 NFD_BUILD_DIR=gmake_windows
-                NFD_LIBS="-lole32 -luuid" 
+                NFD_LIBS="-l:nfd.lib -lole32 -luuid" 
+                NFD_LIB_NAME=nfd.lib
                 ;;
         *-linux-*)
                 NFD_BUILD_DIR=gmake_linux
-                PKG_CHECK_MODULES([GTK], [gtk+-3.0],
-                        [AC_DEFINE([HAVE_GTK], [1], [Define if gtk+-3.0 library available])],
-                        [AC_MSG_ERROR([nfd on linux requires gtk. Install libgtk-3-dev])])
+                NFD_LIB_NAME=libnfd.a
                 ;;
-                # none of the above        
+        # none of the above        
         *)
                 AC_MSG_NOTICE([cannot determine NFD build type for $target])
                 ;;
@@ -104,11 +111,11 @@ case "$target" in
         # generic linux systems
         i686-*)
                 NFD_BUILD_TYPE=release_x86
-                NFD_LDFLAGS="-L$NFD_DIR/build/lib/Release/x86"
+                NFD_LIB_DIR="$NFD_DIR/build/lib/Release/x86"
                 ;;
         x86_64-*)
                 NFD_BUILD_TYPE=release_x64
-                NFD_LDFLAGS="-L$NFD_DIR/build/lib/Release/x64"
+                NFD_LIB_DIR="$NFD_DIR/build/lib/Release/x64"
                 ;;
         # none of the above        
         *)
@@ -116,9 +123,13 @@ case "$target" in
                 ;;
 esac
 
+NFD_LDFLAGS="-L$NFD_LIB_DIR"
+
 AC_SUBST(NFD_BUILD_ENV)
 AC_SUBST(NFD_BUILD_DIR)
 AC_SUBST(NFD_BUILD_TYPE)
+AC_SUBST(NFD_LIB_DIR)
+AC_SUBST(NFD_LIB_NAME)
 
 AC_MSG_NOTICE([NFD build type is $NFD_BUILD_TYPE])
 
@@ -128,8 +139,9 @@ AC_MSG_NOTICE([NFD build type is $NFD_BUILD_TYPE])
 #
 case "$target" in
         # generic linux systems
-        *-mingw32-*)
-                MING_LIBS="-lmingw32 -static-libstdc++ -static-libgcc"
+        *-mingw32)
+                MING_LDFLAGS="-static-libstdc++ -static-libgcc"
+                MING_LDLIBS="-lmingw32"
                 ;;
         # none of the above        
         *)
@@ -151,7 +163,6 @@ MFZ_CFLAGS="-DEXECZ80"
 #
 # Checks for header files.
 #
-#AC_SEARCH_LIBS(deflate, z, [], [AC_ERROR([A working zlib is required])])
 
 ##########################################################
 #
@@ -169,8 +180,10 @@ MFZ_CFLAGS="-DEXECZ80"
 #
 CFLAGS="$MFZ_CFLAGS"
 CXXFLAGS="$MFZ_CFLAGS $NFD_CXXFLAGS -std=c++17 -Wno-register"
-LDFLAGS="$NFD_LDFLAGS"
-LDLIBS="-lnfd $MING_LIBS"
+LDFLAGS="$MING_LDFLAGS $NFD_LDFLAGS"
+LDLIBS="$NFD_LIBS $GTK_LIBS $MING_LDLIBS $SDL_LIBS"
+
+AC_MSG_NOTICE([GTK $GTK_LIBS, SDL $SDL_LIBS, MING $MING_LIBS, NFD $NFD_LIBS])
 
 ##########################################################
 #
