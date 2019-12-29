@@ -5,17 +5,75 @@
 #include <iostream>
 
 #include "config.h"
-#include "trs80.h"
+
+#include "model1.h"
+#include "model3.h"
+#include "model4.h"
 
 
 using namespace std;
+
+template<class Abstract, class KeyType = std::string>
+class Factory
+{
+  public:
+    Factory()
+    { }
+
+    struct Worker 
+    {
+      virtual Abstract * CreateInstance() = 0;
+    };
+
+    typedef std::map<KeyType, Worker *> WorkerMap;
+
+    template <class Concrete>
+    struct ConcreteWorker : public Worker
+    {
+      Abstract * CreateInstance() override
+      { return new Concrete(); }
+    };
+
+    template <class Concrete>
+    void AddWorker(const KeyType & key)
+    { m_workers[key] = new ConcreteWorker<Concrete>(); }
+
+    Abstract * CreateInstance(const KeyType & key)
+    { 
+      typename WorkerMap::iterator r = m_workers.find(key);
+      if (r == m_workers.end())
+        return NULL;
+      return r->second->CreateInstance();
+    }
+
+    size_t GetKeys(std::vector<KeyType> & keys)
+    {
+      keys.clear();
+      for (auto & r : m_workers)
+        keys.push_back(r.first);
+      return keys.size();  
+    }
+
+  protected:  
+    WorkerMap m_workers;
+};
+
+using EmulatorFactory = Factory<Emulator, std::string>;
+static EmulatorFactory g_emulatorFactory;
 
 /////////////////////////////////////////////////////
 
 extern "C"
 int main(int argc, char *argv[]) 
 {
+  g_emulatorFactory.AddWorker<Model1Level2_Emulator>("m1");
+  g_emulatorFactory.AddWorker<Model1Level1_Emulator>("m11");
+  g_emulatorFactory.AddWorker<Model1Level2_Emulator>("m12");
+  g_emulatorFactory.AddWorker<Model3_Emulator>("m3");
+  g_emulatorFactory.AddWorker<Model4_Emulator>("m4");
+
   Options options;
+  options.m_memSize_k = -1;
 
   // parse command line arguments
   int optIndex = 1;
@@ -33,18 +91,18 @@ int main(int argc, char *argv[])
       break;
     }
 
-    std::string opt(arg.substr(1, 1));
+    std::string option(arg.substr(1, 1));
     if (arg[0] == '-') {
       // solitary "--" terminates options
       if (len == 2) {
         optIndex++;
         break;
       }
-      opt = arg.substr(2);
+      option = arg.substr(2);
     }
 
-    // select ROM
-    if ((opt == "rom") || (opt == "r")) {
+    // select ROM file
+    if ((option == "rom") || (option == "r")) {
       if (++optIndex >= argc) {
         cerr << "error: --rom option requires filename argument" << endl;
         return -1;
@@ -53,8 +111,8 @@ int main(int argc, char *argv[])
     }
 
     // select drives
-    else if ((opt.substr(0, 5) == "drive")) {
-      std::string driveNumStr(opt.substr(5));
+    else if ((option.substr(0, 5) == "drive")) {
+      std::string driveNumStr(option.substr(5));
       int driveNum = atoi(driveNumStr.c_str());
       if (++optIndex >= argc) {
         cerr << "error: --drivex option requires filename argument" << endl;
@@ -64,7 +122,7 @@ int main(int argc, char *argv[])
     }
 
     // breakpoint
-    else if ((opt == "b") || (opt == "breakpoint")) {
+    else if ((option == "b") || (option == "breakpoint")) {
       if (++optIndex >= argc) {
         cerr << "error: --breakpoint option requires address argument" << endl;
         return -1;
@@ -75,7 +133,7 @@ int main(int argc, char *argv[])
     }
 
     // diskette
-    else if (opt == "diskette") {
+    else if (option == "diskette") {
       if (++optIndex >= argc) {
         cerr << "error: --diskette option requires filename argument" << endl;
         return -1;
@@ -92,7 +150,7 @@ int main(int argc, char *argv[])
     }
 
     // cassette
-    else if (opt == "cassette") {
+    else if (option == "cassette") {
       if (++optIndex >= argc) {
         cerr << "error: --cassette option requires filename argument" << endl;
         return -1;
@@ -110,10 +168,35 @@ int main(int argc, char *argv[])
     }
 
     else {
-      cerr << "error: unknown option '" << arg << "'" << endl;
-      return -1;
+      // look for model option
+      std::vector<std::string> keys;
+      size_t count = g_emulatorFactory.GetKeys(keys);
+      for (auto & r : keys) {
+        if (option == r) {
+          options.m_typeName = r;
+          break;
+        }
+      }
+
+      // if option not found, show error
+      if (options.m_typeName.empty()) {
+        cerr << "error: unknown option '" << option << "'" << endl;
+        return -1;
+      }
     }
   }
+
+  if (options.m_typeName.empty())
+    options.m_typeName  = "m1";
+
+  // attempt to instantiate emulator
+  std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(options.m_typeName));
+  if (!emulator) {
+    cerr << "error: system type '" << options.m_typeName << "' not found" << endl;
+    return -1;
+  }
+
+  cout << "info: running " << emulator->GetTitle() << endl;
 
   // returns zero on success else non-zero 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
@@ -121,8 +204,7 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  // instantiate and open and start the emulator
-  std::unique_ptr<Emulator> emulator(new TRS80Emulator());
+  // open and start the emulator
   if (!emulator->Open(options)) {
     cerr << "error: cannot open emulator" << endl;
     return -1;

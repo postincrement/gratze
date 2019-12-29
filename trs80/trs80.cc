@@ -5,6 +5,8 @@
 #include "config.h"
 #include "trs80.h"
 
+#include "model1/model1.h"
+
 extern "C"
 {
 #include "trs_chars.c"
@@ -59,7 +61,7 @@ using namespace std;
 /////////////////////////////////////////////////////////////
 
 TRS80Emulator::TRS80Emulator()
-  : Emulator("TRS-80 Model 1")
+  : Z80Emulator()
 {
 }
 
@@ -118,7 +120,7 @@ bool TRS80Emulator::Start(uint16_t addr)
 
   InitFDC();
 
-  return Emulator::Start(addr);
+  return Z80Emulator::Start(addr);
 }
 
 void TRS80Emulator::Poll()
@@ -129,7 +131,7 @@ void TRS80Emulator::Poll()
       //cerr << "RTC INTERRUPT" << endl;
       m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
       m_rtcPending = true;
-      Interrupt();
+      //Interrupt();
     }
   }
 }
@@ -439,8 +441,8 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
 void TRS80Emulator::FDCInterrupt()
 {
   //cerr << "FDC INTERRUPT" << endl;
-  m_fdcPending = true;
-  Interrupt();
+  //m_fdcPending = true;
+  //Interrupt();
 }
 
 void TRS80Emulator::InitFDC()
@@ -450,11 +452,12 @@ void TRS80Emulator::InitFDC()
 
 void TRS80Emulator::WriteFDC(uint16_t addr, uint8_t val)
 {
-  m_fdc.Write(addr, val);
+  //m_fdc.Write(addr, val);
 }
 
 uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
 {
+  return 0x00;
   if (addr == 0x37ec)
     m_fdcPending = false;
   return m_fdc.Read(addr);
@@ -490,6 +493,8 @@ uint8_t TRS80Emulator::ReadDrvSel(uint16_t)
 
 uint8_t TRS80Emulator::ReadInterrupt(uint16_t)
 {
+  return 0xff;
+
   // 0x80 = RTC interrupt
   // 0x80 = FDC interrupt
 
@@ -575,6 +580,7 @@ uint8_t TRS80Emulator::RdZ80(register uint16_t addr)
   }
 
   if ((addr >= MEMIO_START_ADDR) && (addr <= MEMIO_END_ADDR)) {
+#if 0
     if ((addr & 0xfff0) == 0x37e0) {
       int reg = addr & 0x000f;
       if (reg >= 0xc)  
@@ -589,6 +595,7 @@ uint8_t TRS80Emulator::RdZ80(register uint16_t addr)
         return ReadLog(addr);
     }
     else
+#endif
       return ReadLog(addr);
   }
 

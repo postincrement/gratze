@@ -14,38 +14,58 @@ LDFLAGS += @LDFLAGS@
 LDLIBS = @LDLIBS@  
 LINK.o = $(LINK.cc)
 
-vpath %.c mfz80
+APP = gratze
 
-SRCS_CC = main.cc emulator.cc trs80.cc fdc.cc cassette.cc sdl_video.cc
-SRCS_C  = mfz80/Z80.c
+all:	$(APP)
 
-OBJS		= $(SRCS_CC:.cc=.o) $(SRCS_C:.c=.o)
+################################################################################################	
 
-all:	gratze
+SRCS_CC = main.cc \
+	  			magmedia/fdc.cc \
+					magmedia/cassette.cc \
+					video/sdl_video.cc \
+					emulators/emulator.cc \
+					trs80/trs80.cc \
+					trs80/model1/model1.cc \
+					trs80/model3/model3.cc \
+					trs80/model4/model4.cc \
 
-t:
-	echo $(OBJS)
+SRCS_C  = emulators/mfz80/Z80.c \
+          trs80/model1/rom_level2.c
 
-main.o:	main.cc Makefile trs80.h emulator.h fdc.h options.h cassette.h
+vpath %.cc $(sort $(dir $(SRCS_CC)))
+vpath %.c  $(sort $(dir $(SRCS_C)))
 
-Z80.o: mfz80/Z80.c Makefile
+INC_DIRS = -I. $(addprefix -I./,$(sort $(dir $(SRCS_C) $(SRCS_CC))))
 
-debug.o: mfz80/debug.c
+CXXFLAGS := $(CXXFLAGS) $(INC_DIRS)
+CCFLAGS := $(CCFLAGS) $(INC_DIRS)
 
-sdl_video.o: sdl_video.cc
+OBJS	= $(SRCS_CC:.cc=.o) $(SRCS_C:.c=.o)
 
-emulator.o: emulator.cc emulator.h fdc.h options.h cassette.h
+gratze:	$(OBJS)
 
-trs80.o: trs80.cc trs80.h fdc.h emulator.h options.h cassette.h
+gratze:	nfd sdl $(OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
-trs80.cc: $(NFD_LIB)
 
-fdc.o: fdc.cc fdc.h options.h
+################################################################################################	
 
-cassette.o: cassette.cc cassette.h
+main.o:	main.cc 
 
-clean: clean_nfd
-	rm -f gratze $(OBJS)
+Z80.o: emulators/mfz80/Z80.c
+
+debug.o: emulators/mfz80/debug.c
+
+sdl_video.o: video/sdl_video.cc
+
+emulator.o: emulators/emulator.cc 
+
+trs80.o: trs80/trs80.cc 
+
+fdc.o: magmedia/fdc.cc 
+
+cassette.o: magmedia/cassette.cc
 
 ################################################################################################	
 
@@ -85,8 +105,6 @@ nfd:
 
 ################################################################################################	
 
-gratze:	$(OBJS)
-
-gratze:	nfd sdl $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+clean: clean_nfd
+	rm -f $(APP) $(OBJS)
 

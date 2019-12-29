@@ -18,7 +18,7 @@ AC_INIT([gratze],
 AC_PREREQ([2.68])
 
 # Safety check - list a source file that wouldn't be in other directories:
-AC_CONFIG_SRCDIR([emulator.cc])
+AC_CONFIG_SRCDIR([emulators/emulator.cc])
 
 # Put autotools auxiliary files in subdirectories to reduce clutter:
 AC_CONFIG_AUX_DIR([build-aux])
@@ -152,7 +152,7 @@ esac
 #
 #  set flags for MFZ
 #
-MFZ_CFLAGS="-DEXECZ80"
+MFZ_CFLAGS="-DEXECZ80 -DLSB_FIRST"
 
 ##########################################################
 #
@@ -182,8 +182,6 @@ CFLAGS="$MFZ_CFLAGS"
 CXXFLAGS="$MFZ_CFLAGS $NFD_CXXFLAGS -std=c++17 -Wno-register"
 LDFLAGS="$MING_LDFLAGS $NFD_LDFLAGS"
 LDLIBS="$NFD_LIBS $GTK_LIBS $MING_LDLIBS $SDL_LIBS"
-
-AC_MSG_NOTICE([GTK $GTK_LIBS, SDL $SDL_LIBS, MING $MING_LIBS, NFD $NFD_LIBS])
 
 ##########################################################
 #

@@ -6,8 +6,10 @@
 
 struct Options
 {
+  std::string m_typeName;
   std::string m_romFn;
   std::map<int, std::string> m_driveFns;
+  int m_memSize_k;
   int m_breakpoint = -1;
 };
 

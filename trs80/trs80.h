@@ -7,7 +7,7 @@
 #include "cassette.h"
 #include "options.h"
 
-class TRS80Emulator : public Emulator
+class TRS80Emulator : public Z80Emulator
 {
   public:
     TRS80Emulator();
