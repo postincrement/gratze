@@ -25,7 +25,7 @@ class Emulator
     virtual bool Open(const Options & options);
 
     virtual bool Start(uint16_t addr = 0) = 0;
-    virtual bool Run() = 0;
+    virtual bool Run(int cycles = 1000) = 0;
     virtual void Execute() = 0;
 
     virtual void NMI() = 0;
@@ -82,7 +82,7 @@ class Z80Emulator : public Emulator
 
     // overrides from Emulator
     virtual bool Start(uint16_t addr = 0) override;
-    virtual bool Run()  override;
+    virtual bool Run(int cycles = 1000)  override;
     virtual void Execute()  override;
 
     virtual uint8_t RdZ80(register uint16_t Addr);
@@ -102,6 +102,7 @@ class Z80Emulator : public Emulator
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;
     Z80 m_cpu;
+    long long m_cycleCounter;
 };
 
 #endif // EMULATOR_H_

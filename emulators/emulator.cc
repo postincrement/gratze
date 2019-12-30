@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <unistd.h>
+#include <time.h>
 
 #include "config.h"
 #include "emulator.h"
@@ -173,14 +175,7 @@ void Z80Emulator::Reset(uint16_t addr)
   m_cpu.Trap       = 0xffff;
 
   m_fdc.Reset();
-}
-
-bool Z80Emulator::Run()
-{
-  //if (m_cpu.Trace)
-  //  DebugZ80(&m_cpu);
-
-  ExecZ80(&m_cpu, 3);
+  m_cycleCounter = 0;
 }
 
 void Z80Emulator::SetTrace(bool v)
@@ -188,19 +183,28 @@ void Z80Emulator::SetTrace(bool v)
   m_cpu.Trace = v ? 1 : 0;
 }
 
+double target_Hz = 4000000; //1774000;
+double actualSpeed_Hz = 0;
+double cpuRepeat = 0;
+
 void Z80Emulator::Execute()
 {
   // run emulator
   int count = 0;
+  
+  auto then = std::chrono::system_clock::now();
+  m_cycleCounter = 0;
+
   for (;;) {
     //if (emulator->m_cpu.PC.W == options.m_breakpoint)
     //  emulator->SetTrace(true);
 
     // give CPU some time
-    Run();
+    Run(500);
 
-    // look for events
-    if (count++ > 40) {
+    double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - then).count();
+
+    if (interval >= 50e-6) {
       Poll();
       m_video->Update(false);
       count = 0;
@@ -222,8 +226,72 @@ void Z80Emulator::Execute()
         }
       }
     }
+
+
+    if (interval >= 1) {
+      cout << std::fixed << std::setprecision(3) << (actualSpeed_Hz / 1e+6) << " MHz using " << cpuRepeat << endl;
+      then = std::chrono::system_clock::now();
+    }
   }
 }
+
+double ki = 0.0003;
+double kp = 0.0005;
+
+double sigma = 0;
+auto pidThen = std::chrono::system_clock::now();
+
+bool Z80Emulator::Run(int cycles)
+{
+  //if (m_cpu.Trace)
+  //  DebugZ80(&m_cpu);
+
+  // full speed
+#if 0  
+  m_cycleCounter += cycles - ExecZ80(&m_cpu, cycles);
+#endif  
+
+#define INC  4
+#define PID_INTERVAL 0.05  
+
+  uint8_t buffer[32];
+
+  while (cycles > 0) {
+
+    int done = INC - ExecZ80(&m_cpu, INC);
+    m_cycleCounter += done;
+    cycles -= done;
+
+    if (m_cycleCounter > 100) {
+      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - pidThen).count();
+
+      if (interval >= 0.001) {
+        actualSpeed_Hz = m_cycleCounter / interval;
+
+        cpuRepeat = cpuRepeat * actualSpeed_Hz / target_Hz;
+        //cout << dec << "interval = " << interval << ", cycles = " << m_cycleCounter << ", speed = " << actualSpeed_Hz/1e+6 << " MHz, rep = " << cpuRepeat << endl;
+#if 0
+        double error = (actualSpeed_Hz - target_Hz);
+
+        //cout << dec << "interval = " << interval << ", cycles = " << m_cycleCounter << ", speed = " << actualSpeed_Hz/1e+6 << " MHz, rep = " << cpuRepeat << ", error = " << error << endl;
+        sigma += (error * interval);
+        cpuRepeat = (error * kp) + (sigma * ki);
+#endif
+
+        if (cpuRepeat < 1)
+          cpuRepeat = 1;
+
+        m_cycleCounter = 0;
+
+        pidThen = std::chrono::system_clock::now();
+      }
+    }
+
+    for (int i = 0; i < cpuRepeat; ++i)
+      memset(buffer, 0, sizeof(buffer));
+  }
+}
+
 
 void Z80Emulator::NMI()
 {

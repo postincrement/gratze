@@ -3,21 +3,6 @@
 
 #include "trs80.h"
 
-#define   MODEL1_ROM_START_ADDR    0x0000
-#define   MODEL1_ROM_END_ADDR      0x2fff
-
-#define   MODEL1_MEMIO_START_ADDR  0x3000
-#define   MODEL1_MEMIO_END_ADDR    0x37ff
-
-#define   MODEL1_KB_START_ADDR     0x3800
-#define   MODEL1_KB_END_ADDR       0x3bff
-
-#define   MODEL1_VIDEO_START_ADDR  0x3c00
-#define   MODEL1_VIDEO_END_ADDR    0x3fff
-
-#define   MODEL1_RAM_START_ADDR    0x4000
-#define   MODEL1_RAM_END_ADDR      0xffff
-
 class Model1_Emulator : public TRS80Emulator
 {
   public:

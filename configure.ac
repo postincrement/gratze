@@ -86,7 +86,7 @@ case "$target" in
                 NFD_LIB_NAME=nfd.lib
 
                 SDL_LIBS="-lSDL2_ttf -lSDL2main -lSDL2"
-                MING_LDLIBS="-lmingw32" 
+                MING_LDLIBS="-static-libgcc -static-libstdc++ -lmingw32" 
                 ;;
 
         *-linux-*,*)

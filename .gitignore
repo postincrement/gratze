@@ -17,3 +17,4 @@ config.log
 trs80/model1/rom_level1.o
 SDL2-*
 SDL2_ttf-*
+*.dll

@@ -48,7 +48,7 @@ void Model1_Emulator::WrZ80(register uint16_t addr, register uint8_t val)
     return;
   }
 
-  if (addr <= MODEL1_ROM_END_ADDR) {
+  if (addr <= MODEL1_L2_ROM_END_ADDR) {
     return;
   }
 

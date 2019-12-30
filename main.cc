@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
     emulator->SetRAMSize_k(emulator->GetDefaultRAMSize_k());
   }
 
-  cout << "info: RAM size set to " << emulator->GetRAMSize_k() << "k" << endl;
+  cout << "info: RAM size set to " << dec << emulator->GetRAMSize_k() << "k" << endl;
 
   // load ROM
   //if (!ReadROMFromFile(options.m_romFn, m_rom))

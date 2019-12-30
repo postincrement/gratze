@@ -11,6 +11,9 @@ class Model3_Emulator : public TRS80Emulator
     virtual std::string GetTitle() const override;
 
     virtual int GetDefaultRAMSize_k() const override;
+
+    virtual void WrZ80(register uint16_t addr, register uint8_t val) override;
+    virtual uint8_t RdZ80(register uint16_t addr) override;
 };
 
 #endif // MODEL3_H_
