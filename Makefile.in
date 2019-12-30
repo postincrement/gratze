@@ -1,22 +1,24 @@
 
+CC=@CC@
+CXX=@CXX@
+CXXFLAGS=@CXXFLAGS@
+CFLAGS=@CFLAGS@
+LDFLAGS=@LDFLAGS@ 
+LDLIBS=@LDLIBS@
+
+LINK.o = $(LINK.cc)
+OBJDIR = ./obj
+DEPDIR = ./.deps
+
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
+
 NFD_BUILD_TYPE=@NFD_BUILD_TYPE@
 NFD_BUILD_ENV=@NFD_BUILD_ENV@
 NFD_BUILD_DIR=@NFD_BUILD_DIR@
 NFD_LIB_DIR=@NFD_LIB_DIR@
 NFD_LIB=$(NFD_LIB_DIR)/@NFD_LIB_NAME@
 
-CC=@CC@
-CXX=@CXX@
-CXXFLAGS=@CXXFLAGS@
-CFLAGS=@CFLAGS@
-
-LDFLAGS += @LDFLAGS@ 
-LDLIBS = @LDLIBS@  
-LINK.o = $(LINK.cc)
-
 APP = gratze
-
-all:	$(APP)
 
 ################################################################################################	
 
@@ -32,54 +34,133 @@ SRCS_CC = main.cc \
 
 SRCS_C  = emulators/mfz80/Z80.c \
           trs80/model1/rom_level1.c \
-          trs80/model1/rom_level2.c
+          trs80/model1/rom_level2.c \
+          trs80/model3/rom_model3.c \
+					SDL_FontCache/SDL_FontCache.c
 
-vpath %.cc $(sort $(dir $(SRCS_CC)))
 vpath %.c  $(sort $(dir $(SRCS_C)))
+vpath %.cc $(sort $(dir $(SRCS_CC)))
 
-INC_DIRS = -I. $(addprefix -I./,$(sort $(dir $(SRCS_C) $(SRCS_CC))))
+INC_DIRS = $(addprefix -I./,$(sort $(dir $(SRCS_C) $(SRCS_CC))))
 
 CXXFLAGS := $(CXXFLAGS) $(INC_DIRS)
-CCFLAGS := $(CCFLAGS) $(INC_DIRS)
+CFLAGS   := $(DEPFLAGS) $(CFLAGS) $(INC_DIRS)
 
-OBJS	= $(SRCS_CC:.cc=.o) $(SRCS_C:.c=.o)
+FILENAMES	:= $(notdir $(basename $(SRCS_CC) $(SRCS_C)))
+OBJS	    := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
 
-gratze:	$(OBJS)
+DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
 
-gratze:	nfd sdl $(OBJS)
+COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+
+OUTPUT_OPTION = -o $(OBJDIR)/$*.o
+
+%.o : %.c 
+$(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+				
+%.o : %.cc
+$(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+all:	$(APP)
+
+$(APP):	$(OBJS)
+
+gratze:	nfd sdl ttf $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
+$(OBJDIR):
+	@mkdir -p $@
+
+$(DEPFILES): $(DEPDIR)
+
+$(DEPDIR):
+	@mkdir -p $@
+
+include $(wildcard $(DEPFILES))
 
 ################################################################################################	
 
-main.o:	main.cc 
+MING_ARCH=@MING_ARCH@
 
-Z80.o: emulators/mfz80/Z80.c
+MING_SDL_BUILD_TYPE=@MING_SDL_BUILD_TYPE@
 
-debug.o: emulators/mfz80/debug.c
+ifneq ($(MING_ARCH),)
 
-sdl_video.o: video/sdl_video.cc
+SDL_VERSION=2.0.10
+SDL_TTF_VERSION=2.0.15
 
-emulator.o: emulators/emulator.cc 
+################################################################################################	
+#
+# MingW SDL
+#
 
-trs80.o: trs80/trs80.cc 
+# Original URL https://www.libsdl.org/release/SDL2-devel-2.0.10-mingw.tar.gz
 
-fdc.o: magmedia/fdc.cc 
+SDL_BASE=SDL2-$(SDL_VERSION)
+SDL_TGZ=SDL2-devel-$(SDL_VERSION)-mingw.tar.gz
+SDL_URL=https://www.libsdl.org/release/$(SDL_TGZ)
+SDL_TARGETS=SDL2.dll
 
-cassette.o: magmedia/cassette.cc
+SDL_DIR=$(SDL_BASE)/$(MING_ARCH)-w64-mingw32
+SDL_TARGET_SRC=$(addprefix $(SDL_DIR)/bin/,$(SDL_TARGETS))  
+
+.PHONY: sdl
+sdl: $(SDL_TARGETS)
+
+$(SDL_TARGETS): $(SDL_TARGET_SRC)
+	cp $^ .
+
+$(SDL_TARGET_SRC) : $(SDL_TGZ)
+	@echo "Extracting SDL" && \
+	tar -xmzf $(SDL_TGZ)
+
+$(SDL_TGZ) :
+	@echo "Downloading SDL - $(SDL_URL)" && \
+	wget $(SDL_URL)
+
+################################################################################################	
+#
+# MingW SDL_ttf
+#
+
+# Original URL https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.15-mingw.tar.gz
+
+SDL_TTF_BASE=SDL2_ttf-$(SDL_TTF_VERSION)
+SDL_TTF_TGZ=SDL2_ttf-devel-$(SDL_TTF_VERSION)-mingw.tar.gz
+SDL_TTF_URL=https://www.libsdl.org/projects/SDL_ttf/release/$(SDL_TTF_TGZ)
+SDL_TTF_TARGETS=SDL2_ttf.dll libfreetype-6.dll zlib1.dll
+
+SDL_TTF_DIR=$(SDL_TTF_BASE)/$(MING_ARCH)-w64-mingw32
+SDL_TTF_TARGET_SRC=$(addprefix $(SDL_TTF_DIR)/bin/,$(SDL_TTF_TARGETS))  
+
+.PHONY: ttf
+ttf: $(SDL_TTF_TARGETS)
+
+$(SDL_TTF_TARGETS): $(SDL_TTF_TARGET_SRC)
+	cp $^ .
+
+$(SDL_TTF_TARGET_SRC) : $(SDL_TTF_TGZ)
+	@echo "Extracting SDL_ttf" && \
+	tar -xmzf $(SDL_TTF_TGZ)
+
+$(SDL_TTF_TGZ) :
+	@echo "Downloading SDL_ttf - $(SDL_TTF_URL)" && \
+	wget $(SDL_TTF_URL)
+
+#####
+
+clean_sdl:
+	rm -rf $(SDL_DIR)     $(SDL_TGZ)     $(SDL_TARGETS) \
+	       $(SDL_TTF_DIR) $(SDL_TTF_TGZ) $(SDL_TTF_TARGETS)
 
 ################################################################################################	
 
-MING_SDL=@MING_SDL@
-
-ifeq ($(MING_SDL),1)
-
-SDL_DIR=SDL2-2.0.10/i686-w64-mingw32
-
-LDFLAGS:=$(LDFLAGS) -L$(SDL_DIR)/lib
-CXXFLAGS:=$(CXXFLAGS) -I$(SDL_DIR)/include
-LDLIBS:= $(LDLIBS)
-sdl:
+LDFLAGS  :=$(LDFLAGS)  -L$(SDL_DIR)/lib     -L$(SDL_TTF_DIR)/lib
+CFLAGS   :=$(CFLAGS)   -I$(SDL_DIR)/include -I$(SDL_DIR)/include/SDL2 -I$(SDL_TTF_DIR)/include -I$(SDL_TTF_DIR)/include/SDL2
+CXXFLAGS :=$(CXXFLAGS) -I$(SDL_DIR)/include -I$(SDL_DIR)/include/SDL2 -I$(SDL_TTF_DIR)/include -I$(SDL_TTF_DIR)/include/SDL2
 
 else
 
@@ -90,6 +171,8 @@ endif
 ################################################################################################	
 
 $(NFD_LIB): nfd
+
+.PHONY : clean_nfd
 
 clean_nfd:
 	cd nativefiledialog/build/$(NFD_BUILD_DIR) && $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean"
@@ -106,6 +189,15 @@ nfd:
 
 ################################################################################################	
 
+./SDL_FontCache/SDL_FontCache.c : ./SDL_FontCache
+
+./SDL_FontCache :
+		git clone https://github.com/grimfang4/SDL_FontCache.git
+
+################################################################################################	
+
+.PHONY : clean
+
 clean: clean_nfd
-	rm -f $(APP) $(OBJS)
+	rm -f $(APP) $(OBJS) $(DEPFILES)
 

@@ -44,13 +44,16 @@ Cassette formats
 
 Todo
 ----
-  - autoconf
-  - OSX and Linux support
+  - OSX support
   - CPU speed setting
+  - Refactor disk drive code
+  - Refactor video support
+  - Use fonts for video
   - lower level cassette emulation
-  - Fix disk drive interface
   - Model III and Model IV support
   - state save and load
   - 32/64/40/80 support
   - F1-F4 keys
-  - 
+  - DONE: autoconf
+  - DONE: linux support
+  - DONE: Fix disk drive interface

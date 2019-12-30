@@ -60,34 +60,22 @@ AC_PROG_CC
 
 ##########################################################
 #
-# set SDL  
-#
-
-case "$target" in
-        *-mingw32)
-                MING_SDL=1
-                SDL_LIBS="-lSDL2main -lSDL2"
-                ;;
-        *-linux-*,*)
-                NFD_BUILD_DIR=gmake_linux
-                PKG_CHECK_MODULES([SDL], [sdl2],
-                        [AC_DEFINE([HAVE_SDL], [1], [Define if SDL library available])],
-                        [AC_MSG_ERROR([SDL2 required. Install libsdl2-dev])])
-                SDL_LIBS=`pkg-config --libs sdl2`
-                ;;
-esac
-
-AC_SUBST(MING_SDL)
-
-##########################################################
-#
-# handle nativefiledialog 
+# settings based on architecture
 #
 
 NFD_DIR=./nativefiledialog
 NFD_INCLUDE_DIR="$NFD_DIR/src/include"
 NFD_BUILD_ENV="CC=$CXX CXX=$CXX"
 NFD_CXXFLAGS="-I$NFD_INCLUDE_DIR"
+
+AC_SUBST(MING_ARCH)
+AC_SUBST(MING_SDL_BUILD_TYPE)
+
+AC_SUBST(NFD_BUILD_ENV)
+AC_SUBST(NFD_BUILD_DIR)
+AC_SUBST(NFD_BUILD_TYPE)
+AC_SUBST(NFD_LIB_DIR)
+AC_SUBST(NFD_LIB_NAME)
 
 AC_CHECK_FILE([$NFD_INCLUDE_DIR/nfd.h], [], AC_MSG_ERROR([cannot find nfd.h]))
 
@@ -96,14 +84,22 @@ case "$target" in
                 NFD_BUILD_DIR=gmake_windows
                 NFD_LIBS="-l:nfd.lib -lole32 -luuid" 
                 NFD_LIB_NAME=nfd.lib
+
+                SDL_LIBS="-lSDL2_ttf -lSDL2main -lSDL2"
+                MING_LDLIBS="-lmingw32" 
                 ;;
-        *-linux-*)
+
+        *-linux-*,*)
                 NFD_BUILD_DIR=gmake_linux
                 NFD_LIB_NAME=libnfd.a
-                ;;
-        # none of the above        
-        *)
-                AC_MSG_NOTICE([cannot determine NFD build type for $target])
+
+                PKG_CHECK_MODULES([SDL], [sdl2],
+                        [AC_DEFINE([HAVE_SDL], [1], [Define if SDL library available])],
+                        [AC_MSG_ERROR([SDL2 required. Install libsdl2-dev])])
+                PKG_CHECK_MODULES([SDL_ttf], [sdl2_ttf],
+                        [AC_DEFINE([HAVE_SDL_TTF], [1], [Define if SDL-ttf library available])],
+                        [AC_MSG_ERROR([SDL2 TTF required. Install libsdl2-ttf-dev])])
+                SDL_LIBS=`pkg-config --libs sdl2 sdl2-ttf`
                 ;;
 esac
 
@@ -112,10 +108,16 @@ case "$target" in
         i686-*)
                 NFD_BUILD_TYPE=release_x86
                 NFD_LIB_DIR="$NFD_DIR/build/lib/Release/x86"
+
+                MING_ARCH=i686
+                MING_SDL_BUILD_TYPE=i686-w64-mingw32
                 ;;
         x86_64-*)
                 NFD_BUILD_TYPE=release_x64
                 NFD_LIB_DIR="$NFD_DIR/build/lib/Release/x64"
+
+                MING_ARCH=x86_64
+                MING_SDL_BUILD_TYPE=x86_64-w64-mingw32
                 ;;
         # none of the above        
         *)
@@ -125,28 +127,7 @@ esac
 
 NFD_LDFLAGS="-L$NFD_LIB_DIR"
 
-AC_SUBST(NFD_BUILD_ENV)
-AC_SUBST(NFD_BUILD_DIR)
-AC_SUBST(NFD_BUILD_TYPE)
-AC_SUBST(NFD_LIB_DIR)
-AC_SUBST(NFD_LIB_NAME)
-
 AC_MSG_NOTICE([NFD build type is $NFD_BUILD_TYPE])
-
-##########################################################
-#
-# set compile flags for mingw
-#
-case "$target" in
-        # generic linux systems
-        *-mingw32)
-                MING_LDFLAGS="-static-libstdc++ -static-libgcc"
-                MING_LDLIBS="-lmingw32"
-                ;;
-        # none of the above        
-        *)
-                ;;
-esac
 
 ##########################################################
 #
