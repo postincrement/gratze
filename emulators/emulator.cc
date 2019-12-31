@@ -61,14 +61,19 @@ double Emulator::GetActualCPUSpeed_Hz() const
   return m_actualCPUClock_Hz;
 }
 
-void Emulator::Poll()
+bool Emulator::Poll()
 {
   if (m_video)
     m_video->Update(false);
 
   SDL_Event event;
   if (SDL_PollEvent(&event)) {
-    switch (event.type) { 
+    switch (event.type) {
+
+      case SDL_QUIT:
+        return false;
+        break;
+
       case SDL_KEYDOWN:
         if (event.key.repeat == 0) {
           OnKeyDown(event.key.keysym);
@@ -84,6 +89,8 @@ void Emulator::Poll()
         break;
     }
   }
+
+  return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

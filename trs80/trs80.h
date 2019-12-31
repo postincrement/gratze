@@ -51,8 +51,7 @@ class TRS80Emulator : public Z80Emulator
     virtual bool Open(const Options & options) override;
     virtual bool Start(uint16_t addr) override;
 
-//    virtual uint8_t RdZ80(register uint16_t addr) override;
-//    virtual void WrZ80(register uint16_t addr,register uint8_t value) override;
+    virtual uint8_t ReadNull(uint16_t) override;
 
     virtual uint8_t InZ80(register uint16_t port) override;
     virtual void OutZ80(register uint16_t port, register uint8_t value) override;
@@ -60,7 +59,7 @@ class TRS80Emulator : public Z80Emulator
     virtual void OnKeyDown(SDL_Keysym & keysym) override;
     virtual void OnKeyUp(SDL_Keysym & keysym) override;
 
-    virtual void Poll() override;
+    virtual bool Poll() override;
 
     // new functions
     uint8_t ReadIO(uint16_t addr);
@@ -105,7 +104,10 @@ class TRS80Emulator : public Z80Emulator
     std::vector<uint8_t> m_fontData;
     std::unique_ptr<PixelFont> m_font;
 
+    bool m_fdcEnabled;
     bool m_fdcPending;
+
+    bool m_rtcEnabled;
     bool m_rtcPending;
     std::chrono::system_clock::time_point m_rtcTimer;
 

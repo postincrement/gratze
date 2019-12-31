@@ -25,7 +25,7 @@ class Emulator
     virtual std::string GetTitle() const = 0;
 
     virtual bool Open(const Options & options);
-    virtual void Poll();
+    virtual bool Poll();
 
     // CPU functions
     virtual double GetTargetClockSpeed_Hz() const;

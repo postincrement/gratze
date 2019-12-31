@@ -8,6 +8,8 @@ class Model1_Emulator : public TRS80Emulator
   public:
     Model1_Emulator();
 
+    virtual bool Open(const Options & options) override;
+
     virtual void WrZ80(register uint16_t addr, register uint8_t val) override;
     virtual uint8_t RdZ80(register uint16_t addr) override;
 
@@ -19,6 +21,9 @@ class Model1_Emulator : public TRS80Emulator
     virtual double GetTargetClockSpeed_Hz() const override;
 
     virtual int GetVideoMemSize_k();
+
+  protected:
+    bool m_withEI;    
 };
 
 class Model1Level1_Emulator : public Model1_Emulator

@@ -44,6 +44,8 @@ TRS80Emulator::TRS80Emulator()
   : Z80Emulator()
 {
   m_romSize = 0;
+  m_rtcEnabled = false;
+  m_fdcEnabled = false;
 }
 
 bool TRS80Emulator::Open(const Options &options)
@@ -57,6 +59,9 @@ bool TRS80Emulator::Open(const Options &options)
   m_cassetteMotor    = false;
   m_cassetteTrigger  = false;
   m_cassette2        = false;
+
+  cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl; 
+  cout << "info: RTC is " << (m_rtcEnabled ? "en" : "dis") << "abled" << endl; 
 
   return Emulator::Open(options);
 }
@@ -102,7 +107,7 @@ void TRS80Emulator::CreateFontData(int width, int height, uint8_t * fontData)
   m_video->SetFont(new PixelFont(256, width, height, &m_fontData[0]));
 }
 
-void TRS80Emulator::Poll()
+bool TRS80Emulator::Poll()
 {
   auto now = std::chrono::system_clock::now();
   if (now > m_rtcTimer) {
@@ -116,6 +121,14 @@ void TRS80Emulator::Poll()
 
   return Z80Emulator::Poll();
 }
+
+/////////////////////////////////////////////////////////////
+
+uint8_t TRS80Emulator::ReadNull(uint16_t)
+{
+  return 0xff;
+}
+
 
 /////////////////////////////////////////////////////////////
 
@@ -421,9 +434,8 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
 
 void TRS80Emulator::FDCInterrupt()
 {
-  //cerr << "FDC INTERRUPT" << endl;
-  //m_fdcPending = true;
-  //Interrupt();
+  m_fdcPending = true;
+  Interrupt();
 }
 
 void TRS80Emulator::InitFDC()
@@ -433,19 +445,26 @@ void TRS80Emulator::InitFDC()
 
 void TRS80Emulator::WriteFDC(uint16_t addr, uint8_t val)
 {
-  //m_fdc.Write(addr, val);
+  if (m_fdcEnabled)
+    m_fdc.Write(addr, val);
 }
 
 uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
 {
-  return 0x00;
+  if (!m_fdcEnabled)
+    return ReadNull(addr);
+
   if (addr == 0x37ec)
     m_fdcPending = false;
+
   return m_fdc.Read(addr);
 }
 
 void TRS80Emulator::WriteDrvSel(uint16_t, uint8_t val)
 {
+  if (!m_fdcEnabled)
+    return;
+
   if (m_drvSel != val)
     cerr << "WriteDrvSel 0x" << setw(2) << setfill('0') << (int)val << endl;
   m_drvSel = val;
@@ -467,14 +486,18 @@ void TRS80Emulator::WriteDrvSel(uint16_t, uint8_t val)
   m_fdc.SelectDrive(sel);
 }
 
-uint8_t TRS80Emulator::ReadDrvSel(uint16_t)
+uint8_t TRS80Emulator::ReadDrvSel(uint16_t addr)
 {
+  if (!m_fdcEnabled)
+    return ReadNull(addr);
+
   return m_drvSel;
 }
 
-uint8_t TRS80Emulator::ReadInterrupt(uint16_t)
+uint8_t TRS80Emulator::ReadInterrupt(uint16_t addr)
 {
-  return 0xff;
+  if (!m_fdcEnabled && !m_rtcEnabled)
+    return ReadNull(addr);
 
   // 0x80 = RTC interrupt
   // 0x80 = FDC interrupt
@@ -494,7 +517,6 @@ uint8_t TRS80Emulator::ReadInterrupt(uint16_t)
   return value;
 }
 
-/////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////
 
 extern "C" {

@@ -8,6 +8,7 @@ using namespace std;
 extern uint8_t g_trs80CharSets_128[][128][MODEL1_FONT_HEIGHT];
 
 Model1_Emulator::Model1_Emulator()
+  : m_withEI(true)
 {
 }
 
@@ -30,6 +31,19 @@ double Model1_Emulator::GetTargetClockSpeed_Hz() const
 {
   return 1774000;
 }
+
+bool Model1_Emulator::Open(const Options & options)
+{
+  m_withEI = options.m_withEI;
+
+  cout << "info: expansion interface is " << (m_withEI ? "en" : "dis") << "abled" << endl; 
+
+  m_rtcEnabled = m_withEI;
+  m_fdcEnabled = m_withEI;
+
+  return TRS80Emulator::Open(options);
+}
+
 
 bool Model1_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
@@ -107,7 +121,6 @@ uint8_t Model1_Emulator::RdZ80(register uint16_t addr)
   }
 
   if ((addr >= MODEL1_MEMIO_START_ADDR) && (addr <= MODEL1_MEMIO_END_ADDR)) {
-#if 0
     if ((addr & 0xfff0) == 0x37e0) {
       int reg = addr & 0x000f;
       if (reg >= 0xc)  
@@ -122,7 +135,6 @@ uint8_t Model1_Emulator::RdZ80(register uint16_t addr)
         return ReadLog(addr);
     }
     else
-#endif
       return ReadLog(addr);
   }
 
@@ -156,7 +168,7 @@ extern unsigned char g_model1Level2ROM[12288];
 
 Model1Level2_Emulator::Model1Level2_Emulator()
 {
-  m_rom = g_model1Level2ROM;
+  m_rom     = g_model1Level2ROM;
   m_romSize = sizeof(g_model1Level2ROM);
 }
 
