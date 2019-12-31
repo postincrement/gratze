@@ -76,6 +76,7 @@ class TRS80Emulator : public Z80Emulator
     void WriteDrvSel(uint16_t, uint8_t val);
     uint8_t ReadDrvSel(uint16_t);
 
+    virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly) override;;
     void InitFDC();
     uint8_t ReadFDC(uint16_t addr);
     void WriteFDC(uint16_t addr, uint8_t val);
@@ -106,6 +107,8 @@ class TRS80Emulator : public Z80Emulator
 
     bool m_fdcEnabled;
     bool m_fdcPending;
+    uint8_t m_drvSel;
+    std::unique_ptr<WD_FDC> m_fdc;
 
     bool m_rtcEnabled;
     bool m_rtcPending;

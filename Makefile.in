@@ -33,11 +33,12 @@ SRCS_CC = main.cc \
 					trs80/model3/model3.cc \
 					trs80/model4/model4.cc \
 
-SRCS_C  = emulators/mfz80/Z80.c \
-          trs80/model1/rom_level1.c \
+SRCS_C  = trs80/model1/rom_level1.c \
           trs80/model1/rom_level2.c \
           trs80/model3/rom_model3.c \
-					SDL_FontCache/SDL_FontCache.c
+					SDL_FontCache/SDL_FontCache.c \
+  				emulators/mfz80/Z80.c \
+					emulators/mfz80/Debug.c \
 
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))
@@ -45,9 +46,9 @@ vpath %.cc $(sort $(dir $(SRCS_CC)))
 INC_DIRS = $(addprefix -I./,$(sort $(dir $(SRCS_C) $(SRCS_CC))))
 
 CXXFLAGS := $(CXXFLAGS) $(INC_DIRS)
-CFLAGS   := $(DEPFLAGS) $(CFLAGS) $(INC_DIRS)
+CFLAGS   := $(DEPFLAGS) $(CFLAGS) $(INC_DIRS) -DDEBUG  # DEBUG symbol needed for mf80 debug
 
-FILENAMES	:= $(notdir $(basename $(SRCS_CC) $(SRCS_C)))
+FILENAMES	:= $(notdir $(basename $(SRCS_C) $(SRCS_CC)))
 OBJS	    := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
 
 DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))

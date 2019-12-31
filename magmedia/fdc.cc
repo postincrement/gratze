@@ -10,6 +10,8 @@
 
 using namespace std;
 
+#define   DISK_SPEED_5_INCH_RPM     300.0
+
 #define   INIT_TIME_MS      200
 
 #define   JV3_SECTOR_COUNT  (2901 / 3)
@@ -17,35 +19,98 @@ using namespace std;
 #define   SD_SECTOR_SIZE    256
 #define   SD_SECTOR_COUNT   10   
 
-#define   STATUS_BUSY           (1 << 0)
-#define   STATUS_INDEX          (1 << 1)
-#define   STATUS_DRQ            (1 << 1)
-#define   STATUS_TRK0           (1 << 2)
-#define   STATUS_LOST_DATA      (1 << 2)
-#define   STATUS_CRCERR         (1 << 3)
-#define   STATUS_SEEKERR        (1 << 4)
-#define   STATUS_RECORDNOTFOUND (1 << 4)
-#define   STATUS_HEADON         (1 << 5)
-#define   STATUS_WR_PROT        (1 << 6)
-#define   STATUS_NOT_READY      (1 << 7)
+// status for multiple types
+#define   STATUS_BUSY               (1 << 0)    // type I and II
+#define   STATUS_WR_PROT            (1 << 6)    // type I and type II write
+#define   STATUS_NOT_READY          (1 << 7)    // type II and III
+
+// status for type I
+#define   STATUS_INDEX              (1 << 1)    // type I
+#define   STATUS_TRK0               (1 << 2)    // type I
+#define   STATUS_SEEKERR            (1 << 4)    // type I
+#define   STATUS_HEADON             (1 << 5)    // type I
+
+// status for type II and III
+#define   STATUS_DRQ                (1 << 1)    // type II
+#define   STATUS_LOST_DATA          (1 << 2)    // type II
+#define   STATUS_CRCERR             (1 << 3)    // type II
+#define   STATUS_RECORDNOTFOUND     (1 << 4)    // type II
+#define   STATUS_REC_TYPE           (1 << 5)    // type II write
+#define   STATUS_DAM_MASK           (STATUS_REC_TYPE | (STATUS_REC_TYPE << 1))
+#define   STATUS_WR_FAULT           (1 << 5)    // type II write
+#define   STATUS_WR_PROT            (1 << 6)    // type II
+
+// comand bits for type I
+#define   COMMAND_VERIFY            (1 << 2)      // type I
+#define   COMMAND_HEAD_LOAD_I         (1 << 3)      // type I
+#define   COMMAND_UPDATE            (1 << 4)      // type I  
+
+// comand bits for type II
+#define   COMMAND_DAM               (1 << 0)      // type II
+#define   COMMAND_HEAD_LOAD_II      (1 << 2)      // type II
+#define   COMMAND_BLOCK_LEN         (1 << 3)      // type II
+#define   COMMAND_MULT_RECS         (1 << 4)      // type II
+
+#define   COMMAND_FORCE_INT_NR2R    (1 << 0)
+#define   COMMAND_FORCE_INT_R2NR    (1 << 1)
+#define   COMMAND_FORCE_INT_INDEX   (1 << 2)
+#define   COMMAND_FORCE_INT_IMMED   (1 << 3)
+
+
+#define  MAX_DRIVE      4
+
+
+static WD_FDC::CommandInfo g_commands[] = {
+  { 0xf0, 0x00, "home",       1, &WD_FDC::HomeCommand },
+  { 0xf0, 0x10, "seek",       1, &WD_FDC::SeekCommand },
+  { 0xf0, 0x20, "step",       1, &WD_FDC::StepCommand },
+  { 0xe0, 0x30, "stepIn",     1, &WD_FDC::StepInCommand },
+  { 0xe0, 0x60, "stepOut",    1, &WD_FDC::StepOutCommand },
+
+  { 0xe3, 0x80, "read",       2, &WD_FDC::ReadCommand },
+  { 0xe0, 0xa0, "write",      2, 0 },
+
+  { 0xff, 0xc0, "readAddr",   3, 0 },
+  { 0xfe, 0xe4, "readTrack",  3, 0 },
+  { 0xff, 0xf4, "writeTrack", 3, 0 },
+
+  { 0xf0, 0xd0, "forceInt",   4, WD_FDC::ForceIntCommand }
+};
+
+///////////////////////////////////////////////////////////
 
 WD_FDC::WD_FDC()
 {
+  m_diskRevTime_ms = (1000.0 / DISK_SPEED_5_INCH_RPM);
   Reset();
 }
 
 void WD_FDC::Reset()
 {
-  m_state = 0;
+  m_state       = 0;
+  m_drive       = -1;
+  m_headLoaded  = false;
+  m_directionIn = true;
+  m_realTrack   = 0;
 
-  m_drive = -1;
-  m_sector = 1;
-  m_track = 0;
+  m_status      = STATUS_BUSY;  // IMPORTANT: without this, the L2 ROM won't detect the FDC
+  m_sector      = 1;
+  m_track       = m_realTrack;
+  m_data        = 0;
+
+  m_bufferPtr   = 0;
+  m_bufferLen   = 0;
 
   m_setInterrupt = false;
-  m_intOnNotReadyToReady = false;
+  m_interrupt    = false;
 
-  ResetStatus();
+  m_reading      = false;
+  m_writing      = false;
+
+  m_currentCommand = -1;
+
+  if (m_driveChangedHandler)
+    m_driveChangedHandler(m_drive, m_headLoaded);
 }
 
 void WD_FDC::SetInterruptHandler(std::function<void ()> handler)
@@ -53,293 +118,396 @@ void WD_FDC::SetInterruptHandler(std::function<void ()> handler)
   m_interruptHandler = handler;
 }
 
+void WD_FDC::SetDriveChangedHandler(std::function<void (int, bool)> handler)
+{
+  m_driveChangedHandler = handler;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
 bool WD_FDC::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
 {
+  if ((driveNum < 0) || (driveNum >= MAX_DRIVE))
+    return false;
+
   if (driveNum >= m_drives.size()) {
     m_drives.resize(driveNum+1);
   }
 
   m_drives[driveNum].reset(drive);
-
   return m_drives[driveNum]->Mount(readOnly);
 }
 
-bool WD_FDC::SelectDrive(int drive)
+bool WD_FDC::SelectDrive(int driveNum)
 {
-  if (drive != m_drive) {
-    if ((drive >= m_drives.size()) || (!m_drives[drive])) {
-      cerr << "FDC: SELECT DRIVE " << drive << " - error : undefined drive " << (int)drive << endl;
-    }
+  int oldDrive = driveNum;
 
-    cerr << "FDC: SELECT DRIVE " << drive << endl;
-    m_drive = drive;
+  bool ret = false;
+  if (driveNum >= MAX_DRIVE) {
+    cerr << "FDC: Canonot selected drive " << dec << driveNum << endl;
+    driveNum = -1;
   }
+
+  if (driveNum < 0) {
+    cerr << "FDC: SELECT NO DRIVE" << endl;
+    m_drive = -1;
+    ret = true;
+  }
+  else if (driveNum != m_drive) {
+    cerr << "FDC: SELECT DRIVE " << dec << driveNum << endl;
+    m_drive = driveNum;
+  }
+
+  if (m_driveChangedHandler && (m_drive != oldDrive))
+    m_driveChangedHandler(m_drive, m_headLoaded);
+
+  return true;
 }
 
-void WD_FDC::ResetStatus()
+bool WD_FDC::IsCurrentDriveAvailable() const
 {
-  m_status    = 0;
-  m_bufferLen = 0;
-  m_bufferPtr = 0;
+  return (m_drive >= 0) && (m_drive < m_drives.size()) && m_drives[m_drive];
 }
 
-uint8_t WD_FDC::ReadStatus()
+/////////////////////////////////////////////////////////////////////////////////////
+
+WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd)
+{
+  WD_FDC::CommandInfo * info = g_commands;
+  for (int i = 0; i < (sizeof(g_commands)/sizeof(g_commands[0])); ++i) {
+    if ((cmd & info->m_andMask) == (info->m_cmd))
+      return info;
+    info++;
+ }
+
+ return nullptr;   
+}
+
+
+void WD_FDC::Run()
 {
   auto now = std::chrono::system_clock::now();
 
   switch (m_state) {
-    // startup
-    case 0:
-      m_status = STATUS_BUSY;
-      m_state = 1;
-      m_timer = now + std::chrono::milliseconds(INIT_TIME_MS);
-      //m_noPrint = true;
-      break; 
+    case 0:  // idle state
+      break;
 
-    // starting (used to fake out the ROM)
-    case 1:
-      if (now < m_timer) {
-        //m_noPrint = true;
-        return m_status;
-      }
-
-      m_status = 0;
-      m_state = 2;
+    case 1:  // type 1
       break;  
+  }
+}
 
-    // ready
-    // ready
-    case 2:
+void WD_FDC::WriteCmdReg(int8_t command)
+{
+  auto now = std::chrono::system_clock::now();
+
+  UpdateInterrupt(false);
+
+  CommandInfo * info = GetCommand(command);
+  if (info == nullptr) {
+    cerr << "FDC: unknown command " << hex << setw(2) << setfill('0') << ((int)command & 0xff) << endl;
+    return;
+  }
+
+  if (!info->m_function) {
+    cerr << "FDC: " << info->m_name << " command not implemented" << endl;
+    return;
+  }
+
+  cerr << "FDC: command " << hex << setw(2) << setfill('0') << ((int)command & 0xff) << " " << info->m_name << endl;
+
+  switch (info->m_type) {
+
+    case 1:  // TYPE I
+      m_setInterrupt   = false;
+      m_status         = STATUS_BUSY;
+      m_currentCommand = -1;
+      std::invoke(info->m_function, this, command);
+
+    case 2:  // TYPE II
+      m_setInterrupt   = false;
+      m_status         = STATUS_BUSY;
+      m_currentCommand = command;
+      std::invoke(info->m_function, this, command);
+      break;
+
+    case 3:  // TYPE III
+      cerr << "FDC: " << info->m_name << " command not supported" << endl;
+      break;
+
+    case 4:  // TYPE IV
+      std::invoke(info->m_function, this, command);
+      break;
+
+    default:
+      cerr << "FDC: " << info->m_name << " command has unknown type " << dec << info->m_type << endl;
       break;
   }
 
+  if (m_setInterrupt) {
+    UpdateInterrupt(true);
+    m_setInterrupt = false;
+  }
+}
+
+uint8_t WD_FDC::ReadStatusReg()
+{
+  UpdateInterrupt(false);
   return m_status;
 }
 
-uint8_t WD_FDC::ReadData()
+uint8_t WD_FDC::ReadDataReg()
 {
-  // if no data, reset DRQ
-  if (m_bufferLen == 0) {
-    ResetStatus();
+  if (!m_reading)
     return 0;
-  }
 
   // if more data, reset DRQ
-  uint8_t data = m_buffer[m_bufferPtr++];
-  if (m_bufferPtr < m_bufferLen) {
-    m_status |= STATUS_DRQ;
-  } 
-  else {
-    ResetStatus();
-    m_status &= 0x60;
-    switch (m_dam) {
-      case 0xf8:
-        m_status |= 0x60;
-        break; 
-      case 0xf9:
-        m_status |= 0x40;
-        break; 
-      case 0xfa:
-        m_status |= 0x20;
-        break; 
-      case 0xfb:
-        m_status |= 0x00;
-        break; 
+  for (;;) {
+    m_data = m_buffer[m_bufferPtr++];
+    if (m_bufferPtr < m_bufferLen) {
+      //cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
+      m_status |= STATUS_DRQ;
+      break;
+    } 
+    else if (m_currentCommand & COMMAND_MULT_RECS) {
+      m_sector++;
+      cerr << "FDC: read multiple moving to sector " << dec << (int)m_sector << endl;
+      ReadCommand(m_currentCommand);
     }
-    if (m_intOnNotReadyToReady)
-      m_setInterrupt = true;
+    else {
+      cerr << "FDC: read ended" << endl;
+      m_currentCommand = -1;
+      m_status &= m_statusMask;
+      m_reading = 0;
+      UpdateInterrupt(true);
+      break;
+    }
   }
 
-  //cerr << "FDC READ DATA: " << dec << setw(4) << m_bufferPtr << " 0x" << setw(2) << setfill('0') << hex << (int)data << endl;
-
-  return data;  
+  return m_data;
 }
 
-void WD_FDC::WriteCommand(int8_t command)
+void WD_FDC::RestartHeadLoadTimer()
 {
-  auto now = std::chrono::system_clock::now();
+  m_headLoadtimer = std::chrono::system_clock::now() + std::chrono::milliseconds((int)(2 * m_diskRevTime_ms));
+}
 
-  std::string cmdName; // = "unknown";
+void WD_FDC::UpdateInterrupt(bool interruptOn)
+{
+  if (interruptOn == m_interrupt)
+    return;
 
-  switch (m_state) {
+  m_interrupt = interruptOn;
+  if (interruptOn && m_interruptHandler)
+    m_interruptHandler();
+}
 
-    // startup
-    case 0:
-      break;
+void WD_FDC::LoadHead(bool loadHead)
+{
+  bool oldHeadLoaded = m_headLoaded;
+  m_headLoaded = loadHead;
+  if (m_driveChangedHandler && (oldHeadLoaded != loadHead))
+    m_driveChangedHandler(m_drive, m_headLoaded);
+  RestartHeadLoadTimer();
+}
 
-    // starting (used to fake out the ROM)
-    case 1:
-    // ready
-    case 2:
-      switch (command & 0xf0) {
-        // restore
-        case 0x00:
-          cmdName = "Home";
-          ResetStatus();
-          m_track = 0;
-          m_setInterrupt = true;
-          break;
+////////////////////////////////////////////////////////////////
+//
+//  TYPE I commands
+//
 
-        // seek
-        case 0x10:
-          {
-            std::stringstream strm;
-            strm << "Seek " << dec << (int)m_data;
-            cmdName = strm.str();
-          }
-          if (!m_drives[m_drive]) {
-            m_status = STATUS_RECORDNOTFOUND;
-          }
-          else {
-            ResetStatus();
-            m_track = m_data;
-          }
-          m_setInterrupt = true;
-          break;
+int WD_FDC::HomeCommand(uint8_t cmd)
+{
+  return SeekTrack(cmd, 0, false);
+}
 
-        // step
-        case 0x20:
-        case 0x30:
-          cmdName = "Step";
-          ResetStatus();
-          break;
+int WD_FDC::SeekCommand(uint8_t cmd)
+{
+  return SeekTrack(cmd, m_data, false);
+}
 
-        // step in
-        case 0x40:
-        case 0x50:
-          cmdName = "Step In";
-          ResetStatus();
-          break;
+int WD_FDC::StepInCommand(uint8_t cmd)
+{
+  m_directionIn = true; 
+  SeekTrack(cmd, m_track-1, cmd & COMMAND_UPDATE);
+}
 
-        // step out
-        case 0x60:
-        case 0x70:
-          ResetStatus();
-          cmdName = "Step Out";
-          break;
+int WD_FDC::StepOutCommand(uint8_t cmd)
+{
+  m_directionIn = false; 
+  SeekTrack(cmd, m_track-1, cmd & COMMAND_UPDATE);
+}
 
-        // read
-        case 0x80:
-        case 0x90:
-          //cmdName = "Read";
-          ResetStatus();
-          if (!m_drives[m_drive]) {
-            m_status = STATUS_RECORDNOTFOUND;
-            m_setInterrupt = true;
-          }
-          else {
-            VirtualDrive::SectorInfo info;
-            m_bufferLen = m_drives[m_drive]->ReadSector(m_track, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
-            if ((m_bufferLen <= 0)) { // || (info.m_density != m_density)) {
-              cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
-              m_status = STATUS_RECORDNOTFOUND;
-              m_setInterrupt = true;
-              m_bufferPtr = 0;
-              m_bufferLen = 0;
-            }
-            else {
-              cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ", len = " << (int)m_bufferLen << ", density = " << (int)info.m_density << ", DAM 0x" << hex << setw(2) << setfill('0') << (int)info.m_dam << endl;
-              m_bufferPtr = 0;
-              m_dam = info.m_dam;
-              m_status |= (STATUS_DRQ | STATUS_BUSY);
-            }
-          }
-          break;
+int WD_FDC::StepCommand(uint8_t cmd)
+{
+  int newTrack = m_track + (m_directionIn ? 1 : -1);
+  return SeekTrack(cmd, newTrack, cmd & COMMAND_UPDATE);
+}
 
-        // write
-        case 0xa0:
-        case 0xb0:
-          cmdName = "Write";
-          ResetStatus();
-          break;
+int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
+{
+  cerr << "FDC: seek to track " << dec << (int)track << endl;
 
-        // read address
-        case 0xc0:
-          cmdName = "Read Address";
-          ResetStatus();
-          break;
+  LoadHead(cmd & COMMAND_HEAD_LOAD_I);
 
-        // read track
-        case 0xe0:
-          cmdName = "Read Track";
-          ResetStatus();
-          break;
-
-        // write track
-        case 0xf0:
-          if ((command & 0xff) == 0xfe) {
-            cmdName = "Enable Double Density";
-            m_density = true;
-          }
-          else if ((command & 0xff) == 0xf4) {
-            cmdName = "Write Track";
-            ResetStatus();
-          }
-          else {
-            cmdName = "Unknown command";
-          }
-          break;
-
-        // force interrupt
-        case 0xd0:
-          cmdName = "Force Interrupt";
-          if (m_status & STATUS_BUSY) {
-            ResetStatus();
-          }
-          else {
-            ResetStatus();
-            m_intOnNotReadyToReady = (command & 0x01) != 0;
-            if ((command & 0x0e) != 0) {
-              cerr << "error: unsupported ForceInterrupt 0x" << setw(2) << std::setfill('0') << hex << (command & 0x0f) << endl;
-            }
-          }
-          break;
-      }
-      break;
+  // update track and do update bit logic
+  m_realTrack = track;
+  if (update) {
+    m_track = m_realTrack;
   }
 
-  m_noPrint = true;
-  if (!cmdName.empty())
-    cerr << "FDC CMD : 0x" << setw(2) << hex << std::setfill('0') << (((unsigned int)command) & 0xff) << " " << cmdName << endl;
+  // verify logic
+  if (!(cmd & COMMAND_VERIFY)) {
+    m_status = 0;
+  }
+  else {
+    // "no disk"            STATUS_NOT_READY
+    // "Bad CRC"            CRC_ERROR
+    // "CRC, wrong track"   SEEK_ERROR
+    // "valid"              no error
+    // 
+    if (IsCurrentDriveAvailable()) {
+      m_status = STATUS_SEEKERR;
+    }
+    else if (m_track != m_realTrack) {
+      m_status = STATUS_SEEKERR;
+    }
+    else {
+      m_status = 0;
+    }
+  }
 
-  if (m_setInterrupt) {
-    m_interruptHandler();
-    m_setInterrupt = false;
+  SetTypeIStatus();
+
+  m_setInterrupt = true;
+  return 0;
+}
+
+void WD_FDC::SetTypeIStatus()
+{
+  // set track 0 bit
+  m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
+}
+
+
+////////////////////////////////////////////////////////////////
+//
+//  TYPE II commands
+//
+
+int WD_FDC::ReadCommand(uint8_t cmd)
+{
+  LoadHead(cmd & COMMAND_HEAD_LOAD_II);
+
+  if (!IsCurrentDriveAvailable()) {
+    m_status = STATUS_SEEKERR;
+    m_setInterrupt = true;
+  }
+  else {
+    VirtualDrive::SectorInfo info;
+    int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
+    if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
+      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
+      m_status = STATUS_RECORDNOTFOUND;
+      m_setInterrupt = true;
+    }
+    else {
+      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ", len = " << (int)bufferLen << ", density = " << (int)info.m_density << ", DAM 0x" << hex << setw(2) << setfill('0') << (int)info.m_dam << endl;
+      m_bufferPtr = 0;
+      m_bufferLen = bufferLen;
+      m_reading   = true;
+      /*
+      {
+        int i;
+        for (i = 0; i < bufferLen; ++i) {
+          if ((i % 16) == 0)
+            cout << setw(4) << setfill('0') << hex << i << "  ";
+          cout << ' ' << setw(2) << setfill('0') << hex << (int)m_buffer[i];
+          if ((i % 16) == 15)
+            cout << endl;
+        }
+        if ((i % 16) != 15)
+          cout << endl;
+      }
+      */
+      m_status |= STATUS_DRQ;
+      switch (info.m_dam) {
+        case 0xf8:
+          m_status |= 0x60;
+          break; 
+        case 0xf9:
+          m_status |= 0x40;
+          break; 
+        case 0xfa:
+          m_status |= 0x20;
+          break; 
+        case 0xfb:
+          m_status |= 0x00;
+          break; 
+      }
+      m_statusMask = STATUS_DAM_MASK;
+    }
   }
 }
+
+
+////////////////////////////////////////////////////////////////
+//
+//  TYPE III commands
+//
+
+////////////////////////////////////////////////////////////////
+//
+//  TYPE IV commands
+//
+
+int WD_FDC::ForceIntCommand(uint8_t cmd)
+{
+  if (m_status & STATUS_BUSY) {
+    if (m_currentCommand < 0)
+      cerr << "FDC: force int on busy with no command" << endl;
+    else  
+      cerr << "FDC: force int on busy with command " << hex << setw(2) << setfill('0') << ((int)m_currentCommand & 0xff) << endl;
+    if (cmd & COMMAND_FORCE_INT_NR2R)
+      UpdateInterrupt(true);
+  }
+  else {
+    cerr << "FDC: force int not busy with no command" << endl;
+    SetTypeIStatus();
+  }
+  m_status &= !STATUS_BUSY;
+}
+
+
+////////////////////////////////////////////////////////////////
+//
+//  
+//
 
 void WD_FDC::Write(uint16_t addr, uint8_t value)
 {
-  m_noPrint = false;
+  //m_noPrint = false;
   std::string title;
   switch (addr & 0x3) {
     case 0:
-      if (addr != 0x37ec) {
-        cerr << "FDC: write to command reg from address 0x" << setw(4) << setfill('0') << addr << endl;
-      }
-      WriteCommand(value);
-      title = "CMD";
+      WriteCmdReg(value);
+      //title = "CMD";
       break;
     case 1:
-      title = "TRK";
+      //title = "TRK";
       m_track = value;
       break;
     case 2:
-      title = "SECT";
+      //title = "SECT";
       m_sector = value;
       break;
     case 3:
-      title = "DATA";
+      //title = "DATA";
       m_data = value;
       break;
   }
-  //if (!m_noPrint)
-  //  cerr << "FDC SET " << title << ": 0x" << setw(2) << hex << std::setfill('0') << (int)value << endl;
-
-  if (m_setInterrupt) {
-    m_interruptHandler();
-    m_setInterrupt = false;
-  }
+  if (!title.empty())
+    cerr << "FDC SET " << title << ": 0x" << setw(2) << hex << std::setfill('0') << (int)value << endl;
 }
 
 uint8_t WD_FDC::Read(uint16_t addr)
@@ -347,7 +515,7 @@ uint8_t WD_FDC::Read(uint16_t addr)
   uint8_t value = 0;
   switch (addr & 0x3) {
     case 0:
-      value = ReadStatus();
+      value = ReadStatusReg();
       break;
     case 1:
       value = m_track;
@@ -356,16 +524,17 @@ uint8_t WD_FDC::Read(uint16_t addr)
       value = m_sector;
       break;
     case 3:
-      value = ReadData(); 
+      value = ReadDataReg(); 
       break;
   }
 
-  if (m_setInterrupt) {
-    m_interruptHandler();
-    m_setInterrupt = false;
-  }
-
   return value;
+}
+
+/////////////////////////////////////////////////////////////
+
+WD_FD1771::WD_FD1771()
+{
 }
 
 /////////////////////////////////////////////////////////////

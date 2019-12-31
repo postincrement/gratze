@@ -11,72 +11,18 @@
 #include "model1.h"
 #include "model3.h"
 #include "model4.h"
+#include "factory.h"
 
 
 using namespace std;
-
-template<class Abstract, class KeyType = std::string>
-class Factory
-{
-  public:
-    Factory()
-    { }
-
-    struct Worker 
-    {
-      virtual Abstract * CreateInstance() = 0;
-    };
-
-    typedef std::map<KeyType, Worker *> WorkerMap;
-
-    template <class Concrete>
-    struct ConcreteWorker : public Worker
-    {
-      Abstract * CreateInstance() override
-      { return new Concrete(); }
-    };
-
-    template <class Concrete>
-    void AddWorker(const KeyType & key)
-    { m_workers[key] = new ConcreteWorker<Concrete>(); }
-
-    Abstract * CreateInstance(const KeyType & key)
-    { 
-      typename WorkerMap::iterator r = m_workers.find(key);
-      if (r == m_workers.end())
-        return NULL;
-      return r->second->CreateInstance();
-    }
-
-    size_t GetKeys(std::vector<KeyType> & keys)
-    {
-      keys.clear();
-      for (auto & r : m_workers)
-        keys.push_back(r.first);
-      return keys.size();  
-    }
-
-  protected:  
-    WorkerMap m_workers;
-};
 
 using EmulatorFactory = Factory<Emulator, std::string>;
 static EmulatorFactory g_emulatorFactory;
 
 /////////////////////////////////////////////////////
 
-extern "C"
-int main(int argc, char *argv[]) 
+bool ParseOptions(int argc, char *argv[], Options & options)
 {
-  g_emulatorFactory.AddWorker<Model1Level2_Emulator>("m1");
-  g_emulatorFactory.AddWorker<Model1Level1_Emulator>("m11");
-  g_emulatorFactory.AddWorker<Model1Level2_Emulator>("m12");
-  g_emulatorFactory.AddWorker<Model3_Emulator>("m3");
-  g_emulatorFactory.AddWorker<Model4_Emulator>("m4");
-
-  Options options;
-  options.m_ramSize_k = -1;
-
   // parse command line arguments
   int optIndex = 1;
   while (optIndex < argc) {
@@ -190,17 +136,66 @@ int main(int argc, char *argv[])
         }
       }
 
-      // if option not found, show error
+      // if mode option not found, display it
       if (!options.m_typeName.empty()) {
         cout << "info: selected type " << option << endl;
       }
+
+      // look for enable/disable options
       else {
-        cerr << "error: unknown option '" << option << "'" << endl;
-        return -1;
+        std:string enableOpt;
+        bool on = false;
+        if ((option.length() > 7) && option.substr(0, 7) == "enable-") {
+          enableOpt = option.substr(7);
+          on = true;
+        }
+        else if ((option.length() > 8) && option.substr(0, 8) == "disable-") {
+          enableOpt = option.substr(8);
+          on = false;
+        }
+        if (!enableOpt.empty()) {
+          for (auto & r : enableOpt) r = tolower(r); 
+
+          // enable/disable EI
+          if (enableOpt == "ei") {
+            options.m_withEI = on;
+            optIndex++;
+          }
+
+          // unknown option
+          else {
+            enableOpt.clear();
+          }
+        }
+        if (enableOpt.empty()) {
+          cerr << "error: unknown option '" << option << "'" << endl;
+          return -1;
+        }
       }
     }
   }
 
+  return 0;
+}
+
+/////////////////////////////////////////////////////
+
+extern "C"
+int main(int argc, char *argv[]) 
+{
+  g_emulatorFactory.AddConcreteClass<Model1Level2_Emulator>("m1");
+  g_emulatorFactory.AddConcreteClass<Model1Level1_Emulator>("m11");
+  g_emulatorFactory.AddConcreteClass<Model1Level2_Emulator>("m12");
+  g_emulatorFactory.AddConcreteClass<Model3_Emulator>("m3");
+  g_emulatorFactory.AddConcreteClass<Model4_Emulator>("m4");
+
+  Options options;
+
+  if (ParseOptions(argc, argv, options) < 0) {
+    return -1;
+  }
+
+  // set default type
   if (options.m_typeName.empty())
     options.m_typeName  = "m1";
 
@@ -275,7 +270,8 @@ int main(int argc, char *argv[])
 
     double interval = std::chrono::duration<double>(now - lastPoll).count();
     if (interval >= 50e-3) {
-      emulator->Poll();
+      if (!emulator->Poll())
+        break;
       lastPoll = now;
     }
 
@@ -285,4 +281,6 @@ int main(int argc, char *argv[])
       lastSpeed = now;
     }
   }
+
+  // exiting
 }

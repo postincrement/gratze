@@ -72,7 +72,7 @@ class Emulator
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
 
     // Floppy/hard drive functions
-    virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
+    virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly) = 0;
 
   protected:  
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
@@ -80,9 +80,6 @@ class Emulator
     std::vector<uint8_t> m_ram;
     int m_ramSize;
     int m_ramMask;
-
-    uint8_t m_drvSel;
-    WD_FDC m_fdc;
 
     std::unique_ptr<VirtualScreen> m_video;
 

@@ -12,6 +12,9 @@
 
 using namespace std;
 
+
+//extern "C" byte DebugZ80(Z80 *R);
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 Emulator::Emulator()
@@ -119,13 +122,6 @@ void Emulator::OnKeyUp(SDL_Keysym &keysym)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-bool Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
-{
-  return m_fdc.MountDrive(driveNum, drive, readOnly);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////
-
 uint8_t Emulator::ReadNull(uint16_t)
 {
   return 0x00;
@@ -209,7 +205,6 @@ void Z80Emulator::Reset(uint16_t addr)
   m_cpu.TrapBadOps = 1;
   m_cpu.Trap       = 0xffff;
 
-  m_fdc.Reset();
   m_cycleCounter = 0;
   m_cpuDelayTimer = std::chrono::system_clock::now();
 }
@@ -222,8 +217,10 @@ void Z80Emulator::SetTrace(bool v)
 
 bool Z80Emulator::Run(int cycles)
 {
-  //if (m_cpu.Trace)
-  //  DebugZ80(&m_cpu);
+  if (m_cpu.Trace) {
+    ExecZ80(&m_cpu, 1);
+    return false;
+  }
 
   // full speed
 #if 0  
@@ -332,8 +329,6 @@ extern "C"
   {
     return Z80Emulator::g_z80Instance->InZ80(Port);
   }
-
-  extern byte DebugZ80(Z80 *R);
 };
 
 

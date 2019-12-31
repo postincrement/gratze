@@ -9,6 +9,7 @@
 #include <functional>
 #include <map>
 
+#include "factory.h"
 #include "config.h"
 
 #define MAX_SECTOR_SIZE  1024
@@ -96,39 +97,107 @@ class WD_FDC
     bool SelectDrive(int drive);
 
     void SetInterruptHandler(std::function<void ()> handler);
+    void SetDriveChangedHandler(std::function<void (int, bool)> handler);
 
     void Reset();
 
+    typedef int (WD_FDC::*CommandFunction)(uint8_t cmd); 
+
+    struct CommandInfo
+    {
+      uint8_t m_andMask;
+      uint8_t m_cmd;
+
+      const char * m_name;
+      int m_type;
+
+      CommandFunction m_function;
+    };
+
+    virtual void Run();
+
+    bool IsCurrentDriveAvailable() const;
+
+    // type I commands
+    int HomeCommand(uint8_t cmd);
+    int SeekCommand(uint8_t cmd);
+    int StepCommand(uint8_t cmd);
+    int StepInCommand(uint8_t cmd); 
+    int StepOutCommand(uint8_t cmd);
+
+    // type II commands
+    int ReadCommand(uint8_t cmd);
+
+    // type IV commands
+    int ForceIntCommand(uint8_t cmd);
+
   protected:
-    void ResetStatus();
+    virtual CommandInfo * GetCommand(uint8_t cmd);
+    void UpdateInterrupt(bool interruptOn);
+    void WriteCmdReg(int8_t command);
+    uint8_t ReadStatusReg();
+    uint8_t ReadDataReg();
 
-    uint8_t ReadStatus();
-    uint8_t ReadData();
+    int SeekTrack(uint8_t cmd, uint8_t track, bool update);
+    void RestartHeadLoadTimer();
+    void LoadHead(bool load);
+    void SetTypeIStatus();
 
-    void WriteCommand(int8_t command);
+    int m_state;
+    int m_drive;
+    bool m_headLoaded;
+    bool m_interrupt;
+    double m_diskRevTime_ms;
+    std::chrono::system_clock::time_point m_headLoadtimer;
 
-    uint8_t m_cmd;
+    bool m_directionIn;
+    bool m_setInterrupt;
+    uint8_t m_realTrack;
+
+    int m_currentCommand;  // currently active command, or -1
+    uint8_t m_statusMask;  // how to mask the status reg at the end of the command
+
+    // copies of registers
     uint8_t m_status;
     uint8_t m_track;
     uint8_t m_sector;
     uint8_t m_data;
 
-    int m_state;
-    int m_drive;
+    std::function<void ()> m_interruptHandler;
+    std::vector<std::unique_ptr<VirtualDrive>> m_drives;
+
+    std::function<void (int, bool)> m_driveChangedHandler;
+
+    uint8_t m_buffer[MAX_SECTOR_SIZE];
+    uint8_t m_density;
+    int m_bufferLen;
+    int m_bufferPtr;
+    bool m_reading;
+    bool m_writing;
+
+    ///////////////////////
+/*
+    void ResetStatus();
+
+
+
+    uint8_t m_cmd;
+
     std::chrono::system_clock::time_point m_timer;
     bool m_noPrint;
     bool m_setInterrupt;
 
     bool m_intOnNotReadyToReady;
 
-    std::function<void ()> m_interruptHandler;
-    std::vector<std::unique_ptr<VirtualDrive>> m_drives;
 
-    uint8_t m_buffer[MAX_SECTOR_SIZE];
-    uint8_t m_density;
-    int m_bufferLen;
-    int m_bufferPtr;
-    uint8_t m_dam;
+ */   
 };
+
+class WD_FD1771 : public WD_FDC
+{
+  public:
+    WD_FD1771();
+};
+
 
 #endif // FDC_H_

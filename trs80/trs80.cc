@@ -50,8 +50,6 @@ TRS80Emulator::TRS80Emulator()
 
 bool TRS80Emulator::Open(const Options &options)
 {
-  m_fdc.SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
-
   m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
   m_fdcPending = false;
@@ -61,6 +59,11 @@ bool TRS80Emulator::Open(const Options &options)
   m_cassette2        = false;
 
   cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl; 
+  if (m_fdcEnabled) {
+    m_fdc.reset(new WD_FD1771());
+    m_fdc->SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
+  }
+
   cout << "info: RTC is " << (m_rtcEnabled ? "en" : "dis") << "abled" << endl; 
 
   return Emulator::Open(options);
@@ -128,7 +131,6 @@ uint8_t TRS80Emulator::ReadNull(uint16_t)
 {
   return 0xff;
 }
-
 
 /////////////////////////////////////////////////////////////
 
@@ -432,21 +434,36 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
 
 /////////////////////////////////////////////////////////////
 
+bool TRS80Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
+{
+  if (!m_fdcEnabled || !m_fdc)
+    return false;
+
+  return m_fdc->MountDrive(driveNum, drive, readOnly);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
 void TRS80Emulator::FDCInterrupt()
 {
+  cerr << "FDC: interrupt" << endl;
   m_fdcPending = true;
   Interrupt();
 }
 
 void TRS80Emulator::InitFDC()
 {
+  if (!m_fdcEnabled || !m_fdc)
+    return;
+
+  m_fdc->Reset();
   m_drvSel = -1;
 }
 
 void TRS80Emulator::WriteFDC(uint16_t addr, uint8_t val)
 {
-  if (m_fdcEnabled)
-    m_fdc.Write(addr, val);
+  if (m_fdcEnabled && m_fdc)
+    m_fdc->Write(addr, val);
 }
 
 uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
@@ -457,16 +474,14 @@ uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
   if (addr == 0x37ec)
     m_fdcPending = false;
 
-  return m_fdc.Read(addr);
+  return m_fdc->Read(addr);
 }
 
 void TRS80Emulator::WriteDrvSel(uint16_t, uint8_t val)
 {
-  if (!m_fdcEnabled)
+  if (!m_fdcEnabled || !m_fdc)
     return;
 
-  if (m_drvSel != val)
-    cerr << "WriteDrvSel 0x" << setw(2) << setfill('0') << (int)val << endl;
   m_drvSel = val;
   int sel = -1;
   switch (val) {
@@ -483,12 +498,12 @@ void TRS80Emulator::WriteDrvSel(uint16_t, uint8_t val)
       sel = 3;
       break;
   }
-  m_fdc.SelectDrive(sel);
+  m_fdc->SelectDrive(sel);
 }
 
 uint8_t TRS80Emulator::ReadDrvSel(uint16_t addr)
 {
-  if (!m_fdcEnabled)
+  if (!m_fdcEnabled || !m_fdc)
     return ReadNull(addr);
 
   return m_drvSel;
