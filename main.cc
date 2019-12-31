@@ -3,8 +3,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <iostream>
+#include <iomanip>
 
 #include "config.h"
+#include "mainwindow.h"
 
 #include "model1.h"
 #include "model3.h"
@@ -224,31 +226,63 @@ int main(int argc, char *argv[])
   //if (!ReadROMFromFile(options.m_romFn, m_rom))
   //  return false;
 
-  // returns zero on success else non-zero 
-  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
-    printf("error initializing SDL: %s\n", SDL_GetError()); 
-    return -1;
-  }
-
   // open and start the emulator
   if (!emulator->Open(options)) {
     cerr << "error: cannot open emulator" << endl;
     return -1;
   }
+
+  MainWindow mainWindow;
+  bool hasVideo = emulator->GetVideoMemSize_k() > 0;
+
+  if (hasVideo) {
+
+    // initlialize SDL 
+    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
+      printf("error initializing SDL: %s\n", SDL_GetError()); 
+      return -1;
+    }
+
+    // create main window
+    mainWindow.Open(2, emulator->GetScreenWidth(), emulator->GetScreenHeight());
+
+    // tell emulator about the video
+    emulator->OpenVideo(mainWindow, options);
+  }
+
   if (!emulator->Start()) {
     cerr << "error: cannot start emulator" << endl;
     return -1;
   }
 
-  // capture signal handler
-  //m_sigInt = false;
-  //signal(SIGINT, &Zed80::SigHandler);
+  if (emulator->GetVideoMemSize_k() == 0) {
+    cerr << "error: non-video emulators not yet supported" << endl;
+    return -1;
+  }
 
-  // put something in the video memory
-  for (int i = 0; i < 64*16; ++i)
-    emulator->WriteVideoChar(i, i & 0xff);
+  // run emulator
+  auto lastPoll  = std::chrono::system_clock::now();
+  auto lastSpeed = std::chrono::system_clock::now();
 
-  emulator->Execute();  
-  
-  cout << "finished" << endl;
+  for (;;) {
+    //if (emulator->m_cpu.PC.W == options.m_breakpoint)
+    //  emulator->SetTrace(true);
+
+    // give CPU some time
+    emulator->Run(500);
+
+    auto now = std::chrono::system_clock::now();
+
+    double interval = std::chrono::duration<double>(now - lastPoll).count();
+    if (interval >= 50e-3) {
+      emulator->Poll();
+      lastPoll = now;
+    }
+
+    interval = std::chrono::duration<double>(now - lastSpeed).count();
+    if (interval >= 1) {
+      //cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
+      lastSpeed = now;
+    }
+  }
 }

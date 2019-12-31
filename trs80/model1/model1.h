@@ -10,6 +10,15 @@ class Model1_Emulator : public TRS80Emulator
 
     virtual void WrZ80(register uint16_t addr, register uint8_t val) override;
     virtual uint8_t RdZ80(register uint16_t addr) override;
+
+    virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
+
+    virtual int GetScreenWidth() const override;
+    virtual int GetScreenHeight() const override;
+
+    virtual double GetTargetClockSpeed_Hz() const override;
+
+    virtual int GetVideoMemSize_k();
 };
 
 class Model1Level1_Emulator : public Model1_Emulator

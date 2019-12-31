@@ -38,12 +38,6 @@ using namespace std;
 
 #define EXTENDED_SYM_START 0x4000004f
 
-#define FONT_HEIGHT   12    // must be divisble by 3
-#define FONT_WIDTH    6     // must be divisible by 2
-
-#define FONT_NUMBER   0  
-
-
 /////////////////////////////////////////////////////////////
 
 TRS80Emulator::TRS80Emulator()
@@ -69,15 +63,28 @@ bool TRS80Emulator::Open(const Options &options)
 
 bool TRS80Emulator::Start(uint16_t addr)
 {
-  // create font with graphics chars
-  m_fontData.resize(FONT_HEIGHT * 256);
-  memcpy(&m_fontData[0], &trs_char_data[FONT_NUMBER][0][0], 128 * FONT_HEIGHT);
+  // clear keyboard
+  memset(m_kbData, 0x00, sizeof(m_kbData));
+  m_shiftDown = 0;
 
-  uint8_t maskRight = (1 << (FONT_WIDTH / 2)) - 1;
-  uint8_t maskLeft  = maskRight << (FONT_WIDTH / 2);
+  // init floppy drive 
+  InitFDC();
+
+  return Z80Emulator::Start(addr);
+}
+
+void TRS80Emulator::CreateFontData(int width, int height, uint8_t * fontData)
+{
+  // set alpha numeric
+  m_fontData.resize(height * 256);
+  memcpy(&m_fontData[0], fontData, 128 * height);
+
+  // set graphics
+  uint8_t maskRight = (1 << (width / 2)) - 1;
+  uint8_t maskLeft  = maskRight << (width / 2);
 
   for (uint8_t i = 0; i < 64; ++i) {
-    uint8_t * dst = &m_fontData[(128 + i) * FONT_HEIGHT];
+    uint8_t * dst = &m_fontData[(128 + i) * height];
     uint8_t val = i;
     for (int y = 0; y < 3; ++y) {
       *dst = 0;
@@ -85,25 +92,14 @@ bool TRS80Emulator::Start(uint16_t addr)
         *dst |= maskRight;
       if (val & 2)
         *dst |= maskLeft;
-      for (int z = 1; z < FONT_HEIGHT / 3; ++z)
+      for (int z = 1; z < height / 3; ++z)
         dst[z] = dst[0];  
-      dst += FONT_HEIGHT / 3;
+      dst += height / 3;
       val = val >> 2;  
     }
   }
-  memcpy(&m_fontData[(128 + 64) * FONT_HEIGHT], &m_fontData[128 * FONT_HEIGHT], 64 * FONT_HEIGHT);
-
-  m_font.reset(new MemoryMappedVideo::Font(FONT_WIDTH, FONT_HEIGHT, &m_fontData[0]));
-  if (!OpenVideo(16, 64, m_font.get())) {
-    return -1;
-  }
-
-  memset(m_kbData, 0x00, sizeof(m_kbData));
-  m_shiftDown = 0;
-
-  InitFDC();
-
-  return Z80Emulator::Start(addr);
+  memcpy(&m_fontData[(128 + 64) * height], &m_fontData[128 * height], 64 * height);
+  m_video->SetFont(new PixelFont(256, width, height, &m_fontData[0]));
 }
 
 void TRS80Emulator::Poll()
@@ -117,6 +113,8 @@ void TRS80Emulator::Poll()
       //Interrupt();
     }
   }
+
+  return Z80Emulator::Poll();
 }
 
 /////////////////////////////////////////////////////////////

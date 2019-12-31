@@ -45,7 +45,6 @@ Cassette formats
 Todo
 ----
   - OSX support
-  - CPU speed setting
   - Refactor disk drive code
   - Refactor video support
   - Use fonts for video
@@ -53,7 +52,12 @@ Todo
   - Model III and Model IV support
   - state save and load
   - 32/64/40/80 support
-  - F1-F4 keys
-  - DONE: autoconf
-  - DONE: linux support
-  - DONE: Fix disk drive interface
+  - Model IV F1-F4 keys
+  - Model III shift keys
+
+Done
+----  
+  - CPU speed setting
+  - autoconf
+  - linux support
+  - Fix disk drive interface

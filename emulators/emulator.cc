@@ -20,6 +20,7 @@ Emulator::Emulator()
 
 bool Emulator::Open(const Options & options)
 {
+  // get the drives
   for (auto &r : options.m_driveFns) {
     std::string fn(r.second);
     VirtualDriveFile *drive = new VirtualDriveFile();
@@ -29,6 +30,9 @@ bool Emulator::Open(const Options & options)
       return false;
     cerr << "info: mounted '" << fn << " as drive " << r.first << endl;
   }
+  
+  m_targetCPUClock_Hz = GetTargetClockSpeed_Hz();
+  m_actualCPUClock_Hz = m_targetCPUClock_Hz;
 
   return true;
 }
@@ -47,18 +51,46 @@ int Emulator::GetRAMSize_k() const
   return (m_ramSize + 1023) / 1024;
 }
 
+double Emulator::GetTargetClockSpeed_Hz() const
+{
+  return m_targetCPUClock_Hz;
+}
+
+double Emulator::GetActualCPUSpeed_Hz() const
+{
+  return m_actualCPUClock_Hz;
+}
+
+void Emulator::Poll()
+{
+  if (m_video)
+    m_video->Update(false);
+
+  SDL_Event event;
+  if (SDL_PollEvent(&event)) {
+    switch (event.type) { 
+      case SDL_KEYDOWN:
+        if (event.key.repeat == 0) {
+          OnKeyDown(event.key.keysym);
+        }
+        break;
+
+      case SDL_KEYUP:
+        if (event.key.repeat == 0)
+          OnKeyUp(event.key.keysym);
+        break;
+
+      default:
+        break;
+    }
+  }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 
-bool Emulator::OpenVideo(int rows, int cols, MemoryMappedVideo::Font *font)
+bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
-  m_video.reset(new MemoryMappedVideo(rows, cols, 2, font));
-  if (!m_video->Open(GetTitle()))
-  {
-    return false;
-  }
-
-  m_video->SetLazyUpdate(true);
-
+  m_video.reset(new VirtualScreen(mainWindow, options, GetScreenWidth(), GetScreenHeight(), GetVideoMemSize_k() * 1024));
   return true;
 }
 
@@ -143,10 +175,6 @@ void Emulator::DumpStack(int count)
   DumpStack(stack);
 }
 
-void Emulator::Poll()
-{
-}
-
 /////////////////////////////////////////////////////////////////////////////////////
 
 Z80Emulator::Z80Emulator()
@@ -176,6 +204,7 @@ void Z80Emulator::Reset(uint16_t addr)
 
   m_fdc.Reset();
   m_cycleCounter = 0;
+  m_cpuDelayTimer = std::chrono::system_clock::now();
 }
 
 void Z80Emulator::SetTrace(bool v)
@@ -183,63 +212,6 @@ void Z80Emulator::SetTrace(bool v)
   m_cpu.Trace = v ? 1 : 0;
 }
 
-double target_Hz = 4000000; //1774000;
-double actualSpeed_Hz = 0;
-double cpuRepeat = 0;
-
-void Z80Emulator::Execute()
-{
-  // run emulator
-  int count = 0;
-  
-  auto then = std::chrono::system_clock::now();
-  m_cycleCounter = 0;
-
-  for (;;) {
-    //if (emulator->m_cpu.PC.W == options.m_breakpoint)
-    //  emulator->SetTrace(true);
-
-    // give CPU some time
-    Run(500);
-
-    double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - then).count();
-
-    if (interval >= 50e-6) {
-      Poll();
-      m_video->Update(false);
-      count = 0;
-      SDL_Event event;
-      if (SDL_PollEvent(&event)) {
-        switch (event.type) { 
-          case SDL_KEYDOWN:
-            if (event.key.repeat == 0)
-              OnKeyDown(event.key.keysym);
-            break;
-
-          case SDL_KEYUP:
-            if (event.key.repeat == 0)
-              OnKeyUp(event.key.keysym);
-            break;
-
-          default:
-            break;
-        }
-      }
-    }
-
-
-    if (interval >= 1) {
-      cout << std::fixed << std::setprecision(3) << (actualSpeed_Hz / 1e+6) << " MHz using " << cpuRepeat << endl;
-      then = std::chrono::system_clock::now();
-    }
-  }
-}
-
-double ki = 0.0003;
-double kp = 0.0005;
-
-double sigma = 0;
-auto pidThen = std::chrono::system_clock::now();
 
 bool Z80Emulator::Run(int cycles)
 {
@@ -252,9 +224,6 @@ bool Z80Emulator::Run(int cycles)
 #endif  
 
 #define INC  4
-#define PID_INTERVAL 0.05  
-
-  uint8_t buffer[32];
 
   while (cycles > 0) {
 
@@ -263,32 +232,23 @@ bool Z80Emulator::Run(int cycles)
     cycles -= done;
 
     if (m_cycleCounter > 100) {
-      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - pidThen).count();
+      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
 
       if (interval >= 0.001) {
-        actualSpeed_Hz = m_cycleCounter / interval;
+        m_actualCPUClock_Hz = m_cycleCounter / interval;
+        m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
 
-        cpuRepeat = cpuRepeat * actualSpeed_Hz / target_Hz;
-        //cout << dec << "interval = " << interval << ", cycles = " << m_cycleCounter << ", speed = " << actualSpeed_Hz/1e+6 << " MHz, rep = " << cpuRepeat << endl;
-#if 0
-        double error = (actualSpeed_Hz - target_Hz);
-
-        //cout << dec << "interval = " << interval << ", cycles = " << m_cycleCounter << ", speed = " << actualSpeed_Hz/1e+6 << " MHz, rep = " << cpuRepeat << ", error = " << error << endl;
-        sigma += (error * interval);
-        cpuRepeat = (error * kp) + (sigma * ki);
-#endif
-
-        if (cpuRepeat < 1)
-          cpuRepeat = 1;
+        if (m_cpuDelayRepeat < 1)
+          m_cpuDelayRepeat = 1;
 
         m_cycleCounter = 0;
 
-        pidThen = std::chrono::system_clock::now();
+        m_cpuDelayTimer = std::chrono::system_clock::now();
       }
     }
 
-    for (int i = 0; i < cpuRepeat; ++i)
-      memset(buffer, 0, sizeof(buffer));
+    for (int i = 0; i < m_cpuDelayRepeat; ++i)
+      memset(m_delayBuffer, 0, sizeof(m_delayBuffer));
   }
 }
 

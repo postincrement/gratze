@@ -5,7 +5,10 @@
 
 using namespace std;
 
-extern unsigned char g_model3ROM[14336];  
+extern uint8_t g_model3ROM[14336];  
+
+extern uint8_t g_trs80CharSets_256[][256][MODEL3_FONT_HEIGHT];
+
 
 Model3_Emulator::Model3_Emulator()
 {
@@ -18,9 +21,30 @@ std::string Model3_Emulator::GetTitle() const
   return "TRS-80 Model III"; 
 }
 
-int Model3_Emulator::GetDefaultRAMSize_k() const
-{ 
-  return 48;
+double Model3_Emulator::GetTargetClockSpeed_Hz() const
+{
+  return 2000000;
+}
+
+int Model3_Emulator::GetScreenWidth() const
+{
+  return MODEL3_SCREEN_WIDTH;
+}
+
+int Model3_Emulator::GetScreenHeight() const
+{
+  return MODEL3_SCREEN_HEIGHT;
+}
+
+bool Model3_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
+{
+  if (!Z80Emulator::OpenVideo(mainWindow,  options) || !m_video)
+    return false;
+
+  // set the font
+  CreateFontData(MODEL3_FONT_WIDTH, MODEL3_FONT_HEIGHT, g_trs80CharSets_256[7-4][0]);
+
+  return true;
 }
 
 void Model3_Emulator::WrZ80(register uint16_t addr, register uint8_t val)

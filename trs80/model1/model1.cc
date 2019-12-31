@@ -5,8 +5,41 @@
 
 using namespace std;
 
+extern uint8_t g_trs80CharSets_128[][128][MODEL1_FONT_HEIGHT];
+
 Model1_Emulator::Model1_Emulator()
 {
+}
+
+int Model1_Emulator::GetVideoMemSize_k()
+{
+  return 1;
+}
+
+int Model1_Emulator::GetScreenWidth() const
+{
+  return MODEL1_SCREEN_WIDTH;
+}
+
+int Model1_Emulator::GetScreenHeight() const
+{
+  return MODEL1_SCREEN_HEIGHT;
+}
+
+double Model1_Emulator::GetTargetClockSpeed_Hz() const
+{
+  return 1774000;
+}
+
+bool Model1_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
+{
+  if (!Z80Emulator::OpenVideo(mainWindow,  options) || !m_video)
+    return false;
+
+  // set the font
+  CreateFontData(MODEL1_FONT_WIDTH, MODEL1_FONT_HEIGHT, g_trs80CharSets_128[1][0]);
+
+  return true;
 }
 
 void Model1_Emulator::WrZ80(register uint16_t addr, register uint8_t val)

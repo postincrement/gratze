@@ -23,9 +23,10 @@ APP = gratze
 ################################################################################################	
 
 SRCS_CC = main.cc \
+					mainwindow.cc \
 	  			magmedia/fdc.cc \
 					magmedia/cassette.cc \
-					video/sdl_video.cc \
+					video/virtual_screen.cc \
 					emulators/emulator.cc \
 					trs80/trs80.cc \
 					trs80/model1/model1.cc \
