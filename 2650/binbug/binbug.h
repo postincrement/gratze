@@ -1,7 +1,7 @@
 #ifndef SYSTEM_2650_H
 #define SYSTEM_2650_H
 
-#include "2650emulator.h"
+#include "cpu/2650emulator.h"
 
 class BINBUG_2650 : public S2650Emulator
 {
@@ -19,8 +19,8 @@ class BINBUG_2650 : public S2650Emulator
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
 
-    virtual int GetScreenWidth() const override;
-    virtual int GetScreenHeight() const override;
+    virtual int GetScreenSizePixels(int & x, int & y) const = 0;
+    virtual int GetScreenSizeChars(int & x, int & y) const = 0;
 
     virtual double GetTargetClockSpeed_Hz() const override;
 

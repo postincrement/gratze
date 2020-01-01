@@ -2,7 +2,7 @@
 #define DG680_H_
 
 #include "config.h"
-#include "z80emulator.h"
+#include "cpu/z80emulator.h"
 #include "options.h"
 
 #define   DG680_ROM_START_ADDR    0xd000
@@ -31,8 +31,8 @@ class DG680_Emulator : public Z80Emulator
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
 
-    virtual int GetScreenWidth() const override;
-    virtual int GetScreenHeight() const override;
+    virtual void GetScreenSizePixels(int & x, int & y) const = 0;
+    virtual void GetScreenSizeChars(int & x, int & y) const = 0;
 
     virtual double GetTargetClockSpeed_Hz() const override;
 

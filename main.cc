@@ -8,11 +8,11 @@
 #include "config.h"
 #include "mainwindow.h"
 
-#include "model1.h"
-#include "model3.h"
-#include "model4.h"
-#include "dg680.h"
-#include "binbug.h"
+#include "trs80/model1/model1.h"
+#include "trs80/model3/model3.h"
+#include "trs80/model4/model4.h"
+#include "dg680/dg680.h"
+#include "2650/binbug/binbug.h"
 
 #include "factory.h"
 
@@ -248,6 +248,11 @@ int main(int argc, char *argv[])
 
     // tell emulator about the video
     emulator->OpenVideo(mainWindow, options);
+
+    // if the virtual screen was the wrong size (probably because we used a TTF font, then reopen it)
+    
+    mainWindow.Open(2, emulator->GetScreenWidth(), emulator->GetScreenHeight());
+    if ()
   }
 
   if (!emulator->Start()) {

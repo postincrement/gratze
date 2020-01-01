@@ -17,14 +17,16 @@ int Model1_Emulator::GetVideoMemSize_k()
   return 1;
 }
 
-int Model1_Emulator::GetScreenWidth() const
+void Model1_Emulator::GetScreenSizePixels(int & x, int & y) const
 {
-  return MODEL1_SCREEN_WIDTH;
+  x = MODEL1_SCREEN_WIDTH_PIXELS;
+  y = MODEL1_SCREEN_WIDTH_PIXELS;
 }
 
-int Model1_Emulator::GetScreenHeight() const
+int Model1_Emulator::GetScreenSizeChars(int & x, int & y) const
 {
-  return MODEL1_SCREEN_HEIGHT;
+  x = MODEL1_SCREEN_WIDTH_CHARS;
+  y = MODEL1_SCREEN_WIDTH_CHARS;
 }
 
 double Model1_Emulator::GetTargetClockSpeed_Hz() const
@@ -51,7 +53,8 @@ bool Model1_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options
     return false;
 
   // set the font
-  CreateFontData(MODEL1_FONT_WIDTH, MODEL1_FONT_HEIGHT, g_trs80CharSets_128[1][0]);
+  m_video->SetFont(new TTFFont("./SDL_FontCache/test/fonts/FreeSans.ttf", 256, MODEL1_FONT_WIDTH, MODEL1_FONT_HEIGHT));
+  //CreateFontData(MODEL1_FONT_WIDTH, MODEL1_FONT_HEIGHT, g_trs80CharSets_128[1][0]);
 
   return true;
 }

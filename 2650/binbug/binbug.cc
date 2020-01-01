@@ -4,7 +4,7 @@
 #include <iomanip>
 
 #include "binbug.h"
-#include "dg640.h"
+#include "video/dg640.h"
 
 using namespace std;
 
@@ -41,14 +41,16 @@ int BINBUG_2650::GetVideoMemSize_k()
   return 2;
 }
 
-int BINBUG_2650::GetScreenWidth() const
+void BINBUG_2650::GetScreenSizePixels(int & x, int & y) const
 {
-  return DG6480_SCREEN_WIDTH;
+  x = DG6480_SCREEN_WIDTH_PIXELS;
+  y = DG6480_SCREEN_HEIGHT_PIXELS;
 }
 
-int BINBUG_2650::GetScreenHeight() const
+int BINBUG_2650::GetScreenSizeChars(int & x, int & y) const
 {
-  return DG6480_SCREEN_HEIGHT;
+  x = DG6480_SCREEN_WIDTH_CHARS;
+  y = DG6480_SCREEN_HEIGHT_CHARS;
 }
 
 double BINBUG_2650::GetTargetClockSpeed_Hz() const

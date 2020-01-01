@@ -7,7 +7,7 @@
 
 #include "config.h"
 #include "mainwindow.h"
-#include "virtual_screen.h"
+#include "video/virtual_screen.h"
 
 #include "SDL_FontCache/SDL_FontCache.h"
 
@@ -53,10 +53,16 @@ bool MainWindow::Open(int scale, int screenWidth, int screenHeight)
   // create window
   int height = screenAreaHeight;
   int width  = screenAreaWidth + m_panelWidth; 
-  m_window = SDL_CreateWindow(m_title.c_str(), 
-                              SDL_WINDOWPOS_CENTERED, 
-                              SDL_WINDOWPOS_CENTERED, 
-                              width, height, SDL_WINDOW_SHOWN); 
+
+  if (m_window == nullptr) {
+    m_window = SDL_CreateWindow(m_title.c_str(), 
+                                SDL_WINDOWPOS_CENTERED, 
+                                SDL_WINDOWPOS_CENTERED, 
+                                width, height, SDL_WINDOW_SHOWN); 
+  }
+  else {
+    SDL_SetWindowSize(m_window, width, height);
+  }
 
   // create renderer
   m_renderer = SDL_CreateRenderer(m_window, -1, 0);

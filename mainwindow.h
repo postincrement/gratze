@@ -7,7 +7,7 @@
 
 #include <SDL.h>
 
-#include "virtual_screen.h"
+#include "video/virtual_screen.h"
 
 #define LAZY_UPDATE_MSECS   20
 

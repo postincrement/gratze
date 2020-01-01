@@ -27,6 +27,7 @@ SRCS_CC = main.cc \
 	  			magmedia/fdc.cc \
 					magmedia/cassette.cc \
 					video/virtual_screen.cc \
+					video/font.cc \
 					video/dg640.cc \
 					cpu/emulator.cc \
 					cpu/z80emulator.cc \
@@ -52,7 +53,7 @@ SRCS_C  = trs80/model1/rom_level1.c \
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))
 
-INC_DIRS = $(addprefix -I./,$(sort $(dir $(SRCS_C) $(SRCS_CC))))
+INC_DIRS = -I.
 
 CXXFLAGS := $(CXXFLAGS) $(INC_DIRS)
 CFLAGS   := $(DEPFLAGS) $(CFLAGS) $(INC_DIRS) -DDEBUG  # DEBUG symbol needed for mf80 debug

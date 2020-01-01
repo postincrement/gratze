@@ -4,7 +4,7 @@
 #include <iomanip>
 
 #include "dg680.h"
-#include "dg640.h"
+#include "video/dg640.h"
 
 using namespace std;
 
@@ -36,14 +36,16 @@ uint16_t DG680_Emulator::GetStartAddress() const
   return DG680_ROM_START_ADDR;
 }
 
-int DG680_Emulator::GetScreenWidth() const
+void DG680_Emulator::GetScreenSizePixels(int & x, int & y) const
 {
-  return DG6480_SCREEN_WIDTH;
+  x = DG6480_SCREEN_WIDTH_PIXELS;
+  y = DG6480_SCREEN_HEIGHT_PIXELS;
 }
 
-int DG680_Emulator::GetScreenHeight() const
+int DG680_Emulator::GetScreenSizeChars(int & x, int & y) const
 {
-  return DG6480_SCREEN_HEIGHT;
+  x = DG6480_SCREEN_WIDTH_CHARS;
+  y = DG6480_SCREEN_HEIGHT_CHARS;
 }
 
 double DG680_Emulator::GetTargetClockSpeed_Hz() const

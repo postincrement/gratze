@@ -21,14 +21,16 @@ int Model4_Emulator::GetVideoMemSize_k()
   return 2048;
 }
 
-int Model4_Emulator::GetScreenWidth() const
+void Model1_Emulator::GetScreenSizePixels(int & x, int & y) const
 {
-  return MODEL4_SCREEN_WIDTH;
+  x = MODEL4_SCREEN_WIDTH_PIXELS;
+  y = MODEL4_SCREEN_WIDTH_PIXELS;
 }
 
-int Model4_Emulator::GetScreenHeight() const
+int Model1_Emulator::GetScreenSizeChars(int & x, int & y) const
 {
-  return MODEL4_SCREEN_HEIGHT;
+  x = MODEL4_SCREEN_WIDTH_CHARS;
+  y = MODEL4_SCREEN_WIDTH_CHARS;
 }
 
 double Model4_Emulator::GetTargetClockSpeed_Hz() const

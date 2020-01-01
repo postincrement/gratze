@@ -1,5 +1,5 @@
-#include "emulator.h"
-#include "virtual_screen.h"
+#include "cpu/emulator.h"
+#include "video/virtual_screen.h"
 #include "dg640.h"
 
 extern unsigned char g_dg640Char_ROM[1024];

@@ -2,16 +2,15 @@
 #define EMULATOR_H_
 
 #include <sys/types.h>
+#include <string>
+
 #include <SDL2/SDL_keyboard.h> 
 
 #include "config.h"
-#include "fdc.h"
+#include "magmedia/fdc.h"
 #include "options.h"
-
-#include <string>
-
 #include "mainwindow.h"
-#include "virtual_screen.h"
+#include "video/virtual_screen.h"
 
 class Emulator
 {
@@ -65,9 +64,9 @@ class Emulator
     bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);
 
     // Video functions
-    virtual int GetVideoMemSize_k() = 0;
-    virtual int GetScreenWidth() const = 0;
-    virtual int GetScreenHeight() const = 0;
+    virtual void GetVideoMemSize_k() = 0;
+    virtual void GetScreenSizePixels(int & x, int & y) const = 0;
+    virtual int GetScreenSizeChars(int & x, int & y) const = 0;
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options);
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
     virtual void InitializeDG640();

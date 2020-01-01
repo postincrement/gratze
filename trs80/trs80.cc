@@ -9,7 +9,7 @@
 
 extern "C"
 {
-#include "trs_chars.c"
+#include "model1/trs_chars.c"
 };
 
 

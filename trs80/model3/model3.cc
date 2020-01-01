@@ -26,14 +26,16 @@ double Model3_Emulator::GetTargetClockSpeed_Hz() const
   return 2000000;
 }
 
-int Model3_Emulator::GetScreenWidth() const
+void Model1_Emulator::GetScreenSizePixels(int & x, int & y) const
 {
-  return MODEL3_SCREEN_WIDTH;
+  x = MODEL3_SCREEN_WIDTH_PIXELS;
+  y = MODEL3_SCREEN_WIDTH_PIXELS;
 }
 
-int Model3_Emulator::GetScreenHeight() const
+int Model1_Emulator::GetScreenSizeChars(int & x, int & y) const
 {
-  return MODEL3_SCREEN_HEIGHT;
+  x = MODEL3_SCREEN_WIDTH_CHARS;
+  y = MODEL3_SCREEN_WIDTH_CHARS;
 }
 
 bool Model3_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)

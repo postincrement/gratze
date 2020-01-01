@@ -2,10 +2,10 @@
 #ifndef Z80_EMULATOR_H_
 #define Z80_EMULATOR_H_
 
-#include "emulator.h"
+#include "cpu/emulator.h"
 
 extern "C" {
-#include "mfz80/Z80.h"
+#include "cpu/mfz80/Z80.h"
 };
 
 class Z80Emulator : public Emulator

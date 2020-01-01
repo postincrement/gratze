@@ -1,7 +1,7 @@
 #ifndef MODEL1_H_
 #define MODEL1_H_
 
-#include "trs80.h"
+#include "trs80/trs80.h"
 
 class Model1_Emulator : public TRS80Emulator
 {
@@ -15,8 +15,8 @@ class Model1_Emulator : public TRS80Emulator
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
 
-    virtual int GetScreenWidth() const override;
-    virtual int GetScreenHeight() const override;
+    virtual void GetScreenSizePixels(int & x, int & y) const = 0;
+    virtual void GetScreenSizeChars(int & x, int & y) const = 0;
 
     virtual double GetTargetClockSpeed_Hz() const override;
 

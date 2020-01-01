@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 
-#include "z80emulator.h"
+#include "cpu/z80emulator.h"
 
 using namespace std;
 

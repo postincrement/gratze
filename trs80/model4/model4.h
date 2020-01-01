@@ -1,7 +1,7 @@
 #ifndef MODEL4_H_
 #define MODEL4_H_
 
-#include "trs80.h"
+#include "trs80/trs80.h"
 
 class Model4_Emulator : public TRS80Emulator
 {
@@ -16,8 +16,9 @@ class Model4_Emulator : public TRS80Emulator
     virtual uint8_t ReadMemory(register uint16_t addr) override;
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
-    virtual int GetScreenWidth() const override;
-    virtual int GetScreenHeight() const override;
+
+    virtual void GetScreenSizePixels(int & x, int & y) const = 0;
+    virtual void GetScreenSizeChars(int & x, int & y) const = 0;
 
     virtual int GetVideoMemSize_k();
 

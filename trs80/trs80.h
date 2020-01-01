@@ -2,9 +2,9 @@
 #define TRS80_H_
 
 #include "config.h"
-#include "z80emulator.h"
-#include "fdc.h"
-#include "cassette.h"
+#include "cpu/z80emulator.h"
+#include "magmedia/fdc.h"
+#include "magmedia/cassette.h"
 #include "options.h"
 
 #define   MODEL1_ROM_START_ADDR    0x0000

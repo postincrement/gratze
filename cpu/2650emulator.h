@@ -2,8 +2,8 @@
 #ifndef S2650_EMULATOR_H_
 #define S2650_EMULATOR_H_
 
-#include "emulator.h"
-#include "cpu_2650.h"
+#include "cpu/emulator.h"
+#include "cpu/cpu_2650.h"
 
 class S2650Emulator : public Emulator
 {

@@ -6,8 +6,8 @@
 #include <time.h>
 
 #include "config.h"
-#include "emulator.h"
-#include "fdc.h"
+#include "cpu/emulator.h"
+#include "magmedia/fdc.h"
 
 using namespace std;
 
@@ -105,7 +105,8 @@ bool Emulator::Poll()
 
 bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
-  m_video.reset(new VirtualScreen(mainWindow, options, GetScreenWidth(), GetScreenHeight(), GetVideoMemSize_k() * 1024));
+  // create the virtual screen
+  m_video.reset(new VirtualScreen(mainWindow, *this, options, *this));
   return true;
 }
 

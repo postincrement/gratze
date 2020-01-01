@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <unistd.h>
 
-#include "2650emulator.h"
+#include "cpu/2650emulator.h"
 
 using namespace std;
 

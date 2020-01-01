@@ -1,8 +1,8 @@
 #ifndef MODEL3_H_
 #define MODEL3_H_
 
-#include "trs80.h"
-#include "model1.h"
+#include "trs80/trs80.h"
+#include "trs80/model1/model1.h"
 
 class Model3_Emulator : public Model1Level1_Emulator
 {
@@ -11,8 +11,8 @@ class Model3_Emulator : public Model1Level1_Emulator
     
     virtual std::string GetTitle() const override;
 
-    virtual int GetScreenWidth() const override;
-    virtual int GetScreenHeight() const override;
+    virtual void GetScreenSizePixels(int & x, int & y) const = 0;
+    virtual void GetScreenSizeChars(int & x, int & y) const = 0;
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
     virtual void WriteMemory(register uint16_t addr, register uint8_t val) override;
