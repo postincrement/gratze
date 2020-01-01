@@ -1,10 +1,14 @@
 #ifndef DG640_H_
 #define DG640_H_
 
-#define   DG6480_SCREEN_WIDTH     512
-#define   DG6480_SCREEN_HEIGHT    256
+#define   DG640_FONT_WIDTH               8
+#define   DG640_FONT_HEIGHT              16
 
-#define   DG640_FONT_WIDTH        8
-#define   DG640_FONT_HEIGHT       16
+#define   DG640_SCREEN_WIDTH_CHARS      64
+#define   DG640_SCREEN_HEIGHT_CHARS     16
+
+#define   DG640_SCREEN_WIDTH_PIXELS     (DG640_SCREEN_WIDTH_CHARS * DG640_FONT_WIDTH)
+#define   DG640_SCREEN_HEIGHT_PIXELS    (DG640_SCREEN_HEIGHT_CHARS * DG640_FONT_HEIGHT)
+
 
 #endif // DG640_H_

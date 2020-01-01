@@ -81,33 +81,39 @@ bool TRS80Emulator::Start(int addr)
   return Z80Emulator::Start(addr);
 }
 
-void TRS80Emulator::CreateFontData(int width, int height, uint8_t * fontData)
+void TRS80Emulator::CreateFontData(const Options & options, int width, int height, uint8_t * fontData)
 {
-  // set alpha numeric
-  m_fontData.resize(height * 256);
-  memcpy(&m_fontData[0], fontData, 128 * height);
-
-  // set graphics
-  uint8_t maskRight = (1 << (width / 2)) - 1;
-  uint8_t maskLeft  = maskRight << (width / 2);
-
-  for (uint8_t i = 0; i < 64; ++i) {
-    uint8_t * dst = &m_fontData[(128 + i) * height];
-    uint8_t val = i;
-    for (int y = 0; y < 3; ++y) {
-      *dst = 0;
-      if (val & 1)
-        *dst |= maskRight;
-      if (val & 2)
-        *dst |= maskLeft;
-      for (int z = 1; z < height / 3; ++z)
-        dst[z] = dst[0];  
-      dst += height / 3;
-      val = val >> 2;  
-    }
+  if (!options.m_font.empty()) {
+    m_video->SetFont(new TTFFont(options.m_font, 256));
   }
-  memcpy(&m_fontData[(128 + 64) * height], &m_fontData[128 * height], 64 * height);
-  m_video->SetFont(new PixelFont(256, width, height, &m_fontData[0]));
+  else {  
+
+    // set alpha numeric
+    m_fontData.resize(height * 256);
+    memcpy(&m_fontData[0], fontData, 128 * height);
+
+    // set graphics
+    uint8_t maskRight = (1 << (width / 2)) - 1;
+    uint8_t maskLeft  = maskRight << (width / 2);
+
+    for (uint8_t i = 0; i < 64; ++i) {
+      uint8_t * dst = &m_fontData[(128 + i) * height];
+      uint8_t val = i;
+      for (int y = 0; y < 3; ++y) {
+        *dst = 0;
+        if (val & 1)
+          *dst |= maskRight;
+        if (val & 2)
+          *dst |= maskLeft;
+        for (int z = 1; z < height / 3; ++z)
+          dst[z] = dst[0];  
+        dst += height / 3;
+        val = val >> 2;  
+      }
+    }
+    memcpy(&m_fontData[(128 + 64) * height], &m_fontData[128 * height], 64 * height);
+    m_video->SetFont(new PixelFont(256, width, height, &m_fontData[0]));
+  }
 }
 
 bool TRS80Emulator::Poll()

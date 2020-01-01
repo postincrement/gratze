@@ -6,7 +6,7 @@
 class Font
 {
   public:
-    Font(int charCount, int width, int height);
+    Font(int charCount);
     ~Font();
     virtual int GetWidth() const;
     virtual int GetHeight() const;
@@ -34,7 +34,7 @@ class PixelFont : public Font
 class TTFFont : public Font
 {
   public:
-    TTFFont(const std::string & fontName, int charCount, int width, int height);
+    TTFFont(const std::string & fontName, int charCount);
     ~TTFFont();
 
     bool Open(SDL_Renderer * m_renderer, const SDL_Color & fg, const SDL_Color & bg) override;

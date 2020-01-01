@@ -26,16 +26,16 @@ double Model3_Emulator::GetTargetClockSpeed_Hz() const
   return 2000000;
 }
 
-void Model1_Emulator::GetScreenSizePixels(int & x, int & y) const
+void Model3_Emulator::GetScreenSizePixels(int & x, int & y) const
 {
   x = MODEL3_SCREEN_WIDTH_PIXELS;
-  y = MODEL3_SCREEN_WIDTH_PIXELS;
+  y = MODEL3_SCREEN_HEIGHT_PIXELS;
 }
 
-int Model1_Emulator::GetScreenSizeChars(int & x, int & y) const
+void Model3_Emulator::GetScreenSizeChars(int & x, int & y) const
 {
   x = MODEL3_SCREEN_WIDTH_CHARS;
-  y = MODEL3_SCREEN_WIDTH_CHARS;
+  y = MODEL3_SCREEN_HEIGHT_CHARS;
 }
 
 bool Model3_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
@@ -44,7 +44,7 @@ bool Model3_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options
     return false;
 
   // set the font
-  CreateFontData(MODEL3_FONT_WIDTH, MODEL3_FONT_HEIGHT, g_trs80CharSets_256[7-4][0]);
+  CreateFontData(options, MODEL3_FONT_WIDTH, MODEL3_FONT_HEIGHT, g_trs80CharSets_256[7-4][0]);
 
   return true;
 }

@@ -6,11 +6,14 @@
 
 #include <SDL2/SDL_keyboard.h> 
 
+#include "video/virtual_screen.h"
 #include "config.h"
 #include "magmedia/fdc.h"
 #include "options.h"
-#include "mainwindow.h"
-#include "video/virtual_screen.h"
+
+class MainWindow;
+class VirtualScreen;
+class Font;
 
 class Emulator
 {
@@ -64,10 +67,11 @@ class Emulator
     bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);
 
     // Video functions
-    virtual void GetVideoMemSize_k() = 0;
+    virtual int GetVideoMemSize_k() = 0;
     virtual void GetScreenSizePixels(int & x, int & y) const = 0;
-    virtual int GetScreenSizeChars(int & x, int & y) const = 0;
+    virtual void GetScreenSizeChars(int & x, int & y) const = 0;
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options);
+    virtual void CreateScreen(MainWindow & mainWindow, const Options & options);
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
     virtual void InitializeDG640();
 
@@ -85,7 +89,7 @@ class Emulator
     int m_romSize;
 
     std::vector<uint8_t> m_fontData;
-    std::unique_ptr<PixelFont> m_font;
+    std::unique_ptr<Font> m_font;
 
     std::vector<uint8_t> m_ram;
     int m_ramSize_bytes;

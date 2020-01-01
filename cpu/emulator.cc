@@ -8,6 +8,8 @@
 #include "config.h"
 #include "cpu/emulator.h"
 #include "magmedia/fdc.h"
+#include "video/virtual_screen.h"
+#include "mainwindow.h"
 
 using namespace std;
 
@@ -106,8 +108,63 @@ bool Emulator::Poll()
 bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
   // create the virtual screen
-  m_video.reset(new VirtualScreen(mainWindow, *this, options, *this));
+  m_video.reset(new VirtualScreen(mainWindow, *this, options));
   return true;
+}
+
+void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
+{
+  int width, height;
+  int rows, cols;
+  GetScreenSizeChars(cols, rows);
+  GetScreenSizePixels(width, height);
+
+   cerr << "Opening window at " << dec << width << "x" << height << endl;
+
+  // create main window with out best guess at the size
+  mainWindow.Open(2, width, height);
+
+   cerr << "Opening virtual screen" << endl;
+
+  // get the emulator to create the font, and any other video options
+  OpenVideo(mainWindow, options);
+
+   cerr << "Getting font size" << endl;
+
+  // calculate the correct size given the final font and the required rows and columns
+  int fontWidth, fontHeight;
+  m_video->GetFontSizePixels(fontWidth, fontHeight);
+
+  int finalWidth  = cols * fontWidth;
+  int finalHeight = rows * fontHeight;
+
+  double hScale = 1.0;
+  double vScale = 1.0;
+
+  bool changed = false;
+
+  if (finalWidth != width) {
+    hScale = finalWidth * 1.0 / width;
+    changed = true;
+  }
+  if (finalHeight != height) {
+    vScale = finalHeight * 1.0 / height;
+    changed = true;
+  }
+
+  if (changed) {
+    cout << "info: screen resize from " << dec << width << "x" << height << " to " <<  finalWidth << "x" << finalHeight << endl; 
+    //mainWindow.SetFinalSizePixels(finalWidth, finalHeight)
+    mainWindow.Open(2, finalWidth, finalHeight);
+
+    // get the emulator to create the font, and any other video options
+    OpenVideo(mainWindow, options);
+/*
+    SDL_RenderSetScale(SDL_Renderer* renderer,
+                       float         scaleX,
+                       float         scaleY)
+*/
+  }
 }
 
 void Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)

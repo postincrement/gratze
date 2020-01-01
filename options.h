@@ -21,6 +21,10 @@ struct Options
   // enable expansion interface (for Model I)
   bool m_withEI = false;
 
+  // use TTF font
+  std::string m_font;
+  unsigned m_fontSize = -1;
+
   // set breakpoint (not used yet)
   int m_breakpoint = -1;
 };

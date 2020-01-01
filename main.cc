@@ -56,7 +56,7 @@ bool ParseOptions(int argc, char *argv[], Options & options)
     if ((option == "rom") || (option == "r")) {
       if (++optIndex >= argc) {
         cerr << "error: --rom option requires filename argument" << endl;
-        return -1;
+        return false;
       }
       options.m_romFn = argv[optIndex++];
     }
@@ -65,7 +65,7 @@ bool ParseOptions(int argc, char *argv[], Options & options)
     if (option == "ram") {
       if (++optIndex >= argc) {
         cerr << "error: --ram option requires size in k" << endl;
-        return -1;
+        return false;
       }
       options.m_ramSize_k = atoi(argv[optIndex++]);
     }
@@ -76,37 +76,60 @@ bool ParseOptions(int argc, char *argv[], Options & options)
       int driveNum = atoi(driveNumStr.c_str());
       if (++optIndex >= argc) {
         cerr << "error: --drivex option requires filename argument" << endl;
-        return -1;
+        return false;
       }
       options.m_driveFns[driveNum] = std::string(argv[optIndex++]);
+      cerr << "file '" << arg << "' opened for drive " << driveNum << endl;
+      options.m_withEI = true;
     }
 
     // breakpoint
     else if ((option == "b") || (option == "breakpoint")) {
       if (++optIndex >= argc) {
         cerr << "error: --breakpoint option requires address argument" << endl;
-        return -1;
+        return false;
       }
       std::string arg(argv[optIndex++]);
       int addr = strtoul(arg.c_str(), NULL, 16);
       options.m_breakpoint = addr;
     }
 
+    // font
+    else if ((option == "f") || (option == "font")) {
+      if (++optIndex >= argc) {
+        cerr << "error: --font option requires address argument" << endl;
+        return false;
+      }
+      std::string arg(argv[optIndex++]);
+      options.m_font = arg;
+    }
+
+    // breakpoint
+    else if ((option == "s") || (option == "fontSize")) {
+      if (++optIndex >= argc) {
+        cerr << "error: --fontSize option requires address argument" << endl;
+        return false;
+      }
+      std::string arg(argv[optIndex++]);
+      int num = strtoul(arg.c_str(), NULL, 10);
+      options.m_fontSize = num;
+    }
+
     // diskette
     else if (option == "diskette") {
       if (++optIndex >= argc) {
         cerr << "error: --diskette option requires filename argument" << endl;
-        return -1;
+        return false;
       }
       std::string arg(argv[optIndex++]);
 
       VirtualDriveFile file;
       if (!file.Open(arg, true)) {
         cerr << "error: could not open diskette file '" << arg << "'" << endl;
-        return -1;
+        return false;
       }
       cerr << "file '" << arg << "' opened" << endl;
-      return 0;
+      return false;
     }
 
     // cassette
@@ -124,7 +147,7 @@ bool ParseOptions(int argc, char *argv[], Options & options)
       }
       cout << "info: file '" << arg << "' opened, internal filename is " << file.GetFilename() << endl;
 
-      return 0;
+      return false;
     }
 
     else {
@@ -172,13 +195,13 @@ bool ParseOptions(int argc, char *argv[], Options & options)
         }
         if (enableOpt.empty()) {
           cerr << "error: unknown option '" << option << "'" << endl;
-          return -1;
+          return false;
         }
       }
     }
   }
 
-  return 0;
+  return true;
 }
 
 /////////////////////////////////////////////////////
@@ -196,13 +219,17 @@ int main(int argc, char *argv[])
 
   Options options;
 
-  if (ParseOptions(argc, argv, options) < 0) {
+  if (!ParseOptions(argc, argv, options) < 0) {
     return -1;
   }
 
   // set default type
   if (options.m_typeName.empty())
     options.m_typeName  = "m1";
+
+  // make sure font size is set
+  if (options.m_font.empty() && (options.m_fontSize < 0))
+    options.m_fontSize = 20; 
 
   // attempt to instantiate emulator
   std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(options.m_typeName));
@@ -243,16 +270,9 @@ int main(int argc, char *argv[])
       return -1;
     }
 
-    // create main window
-    mainWindow.Open(2, emulator->GetScreenWidth(), emulator->GetScreenHeight());
+    cerr << "Creating screen" << endl;
 
-    // tell emulator about the video
-    emulator->OpenVideo(mainWindow, options);
-
-    // if the virtual screen was the wrong size (probably because we used a TTF font, then reopen it)
-    
-    mainWindow.Open(2, emulator->GetScreenWidth(), emulator->GetScreenHeight());
-    if ()
+    emulator->CreateScreen(mainWindow, options);
   }
 
   if (!emulator->Start()) {

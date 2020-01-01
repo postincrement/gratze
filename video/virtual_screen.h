@@ -13,6 +13,7 @@
 #include "video/font.h"
 
 class MainWindow;
+class Emulator;
 
 class VirtualScreen
 {
@@ -31,6 +32,8 @@ class VirtualScreen
 
     bool SetFont(Font * font);
 
+    void GetFontSizePixels(int & x, int & y);
+
     virtual void WriteChar(int offs, uint8_t ch);
     virtual uint8_t ReadChar(int offs) const;
 
@@ -46,8 +49,6 @@ class VirtualScreen
 
     int m_cols;
     int m_rows;
-    int m_width;
-    int m_height;
 
     SDL_Color m_bgColour;
     SDL_Color m_fgColour;

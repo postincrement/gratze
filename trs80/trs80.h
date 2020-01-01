@@ -33,14 +33,23 @@
 #define   MODEL4_FONT_HEIGHT   12    // must be divisble by 3
 #define   MODEL4_FONT_WIDTH    8     // must be divisible by 2
 
-#define   MODEL1_SCREEN_WIDTH     (64*MODEL1_FONT_WIDTH)
-#define   MODEL1_SCREEN_HEIGHT    (16*MODEL1_FONT_HEIGHT)
+#define   MODEL1_SCREEN_WIDTH_CHARS      64
+#define   MODEL1_SCREEN_HEIGHT_CHARS     16
 
-#define   MODEL3_SCREEN_WIDTH     (64*MODEL3_FONT_WIDTH)
-#define   MODEL3_SCREEN_HEIGHT    (16*MODEL3_FONT_HEIGHT)
+#define   MODEL3_SCREEN_WIDTH_CHARS      64
+#define   MODEL3_SCREEN_HEIGHT_CHARS     16
 
-#define   MODEL4_SCREEN_WIDTH     (64*MODEL4_FONT_WIDTH)
-#define   MODEL4_SCREEN_HEIGHT    (16*MODEL4_FONT_HEIGHT)
+#define   MODEL4_SCREEN_WIDTH_CHARS      64
+#define   MODEL4_SCREEN_HEIGHT_CHARS     16
+
+#define   MODEL1_SCREEN_WIDTH_PIXELS     (MODEL1_SCREEN_WIDTH_CHARS*MODEL1_FONT_WIDTH)
+#define   MODEL1_SCREEN_HEIGHT_PIXELS    (MODEL1_SCREEN_HEIGHT_CHARS*MODEL1_FONT_HEIGHT)
+
+#define   MODEL3_SCREEN_WIDTH_PIXELS     (MODEL3_SCREEN_WIDTH_CHARS*MODEL3_FONT_WIDTH)
+#define   MODEL3_SCREEN_HEIGHT_PIXELS    (MODEL3_SCREEN_HEIGHT_CHARS*MODEL3_FONT_HEIGHT)
+
+#define   MODEL4_SCREEN_WIDTH_PIXELS     (MODEL4_SCREEN_WIDTH_CHARS*MODEL4_FONT_WIDTH)
+#define   MODEL4_SCREEN_HEIGHT_PIXELS    (MODEL4_SCREEN_HEIGHT_CHARS*MODEL4_FONT_HEIGHT)
 
 class TRS80Emulator : public Z80Emulator
 {
@@ -91,7 +100,7 @@ class TRS80Emulator : public Z80Emulator
     uint8_t ReadFx(register uint16_t);
 
   protected:  
-    void CreateFontData(int width, int height, uint8_t * fontData);
+    void CreateFontData(const Options & options, int width, int height, uint8_t * fontData);
 
     uint8_t m_kbData[8];
     uint8_t m_shiftDown;

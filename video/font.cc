@@ -26,7 +26,8 @@ int Font::GetHeight() const
 /////////////////////////////////////////////////////////////////////////////
 
 PixelFont::PixelFont(int charCount, int width, int height, uint8_t * data)
-  : m_data(data)
+  : Font(charCount)
+  , m_data(data)
 {
   m_width  = width;
   m_height = height;
@@ -103,13 +104,37 @@ bool TTFFont::Open(SDL_Renderer * renderer, const SDL_Color & fg, const SDL_Colo
   if (m_font)
     FC_FreeFont(m_font);
 
+  int pointSize = 20;  
+
   m_bg = bg;  
 
   m_font = FC_CreateFont();  
-  FC_LoadFont(m_font, renderer, m_name.c_str(), m_height, FC_MakeColor(fg.r, fg.g, fg.b,255), TTF_STYLE_NORMAL); 
+  FC_LoadFont(m_font, renderer, m_name.c_str(), pointSize, FC_MakeColor(fg.r, fg.g, fg.b, 255), TTF_STYLE_NORMAL); 
 
-  m_width  = FC_GetMaxWidth(m_font);
-  m_height = FC_GetLineSpacing(font);
+  if (!m_font) {
+    cerr << "error: could not load font " << m_name << endl;
+    return false;
+  }
+
+  {
+    TTF_Font * ttf = TTF_OpenFont(m_name.c_str(), pointSize / 2);
+  
+    // calculate maximum character width - the hard way
+    m_height = TTF_FontHeight(ttf);
+    m_width = 0;
+
+    char str[2] = { 0x00, 0x00 };
+    for (int i = 0x20; i < 0x7f; ++i) {
+      str[0] = i;
+      int w, h;
+      TTF_SizeUTF8(ttf, str, &w, &h);
+      m_width = std::max<int>(w, m_width);
+    }
+
+    TTF_CloseFont(ttf);
+  }
+
+  cerr << "info: TTF font '" << m_name << "' is " << dec << m_width << "x" << m_height << endl;
 
   return true;
 }
@@ -120,5 +145,5 @@ void TTFFont::RenderChar(int ch, SDL_Renderer * renderer, const SDL_Rect & dstRe
   SDL_RenderFillRect(renderer, &dstRect);
 
   char str[2] = { (char)(ch & 0xff), 0x00 };
-  FC_DrawBox(m_font, renderer, dstRect, str); 
+  FC_DrawBoxAlign(m_font, renderer, dstRect, FC_ALIGN_CENTER, str); 
 }

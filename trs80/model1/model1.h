@@ -15,8 +15,8 @@ class Model1_Emulator : public TRS80Emulator
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
 
-    virtual void GetScreenSizePixels(int & x, int & y) const = 0;
-    virtual void GetScreenSizeChars(int & x, int & y) const = 0;
+    virtual void GetScreenSizePixels(int & x, int & y) const override;
+    virtual void GetScreenSizeChars(int & x, int & y) const override;
 
     virtual double GetTargetClockSpeed_Hz() const override;
 

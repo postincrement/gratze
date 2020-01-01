@@ -15,6 +15,7 @@ using namespace std;
 
 MainWindow::MainWindow()
 {
+  m_window = nullptr;
 }
 
 MainWindow::~MainWindow()
@@ -59,13 +60,18 @@ bool MainWindow::Open(int scale, int screenWidth, int screenHeight)
                                 SDL_WINDOWPOS_CENTERED, 
                                 SDL_WINDOWPOS_CENTERED, 
                                 width, height, SDL_WINDOW_SHOWN); 
+    cout << "window created" << endl;
   }
   else {
+    SDL_DestroyRenderer(m_renderer);
     SDL_SetWindowSize(m_window, width, height);
+    cout << "window resized" << endl;
   }
 
   // create renderer
   m_renderer = SDL_CreateRenderer(m_window, -1, 0);
+
+  cout << "renderer created" << endl;
 
   SDL_Color bg = { 0, 0, 0 };
   SDL_SetRenderDrawColor(m_renderer, bg.r, bg.g, bg.b, 255);

@@ -3,10 +3,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "SDL_FontCache/SDL_FontCache.h"
+
 #include "config.h"
 #include "virtual_screen.h"
 #include "mainwindow.h"
-#include "SDL_FontCache/SDL_FontCache.h"
+#include "cpu/emulator.h"
 
 using namespace std;
 
@@ -14,17 +16,15 @@ using namespace std;
 
 VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options)
   : m_mainWindow(mainWindow)
-  , m_width(width)
-  , m_height(height)
 {
   // clear video memory
-  m_memory.resize(emulator->GetVideoMemSize_k() * 1024);
-  memset(&m_memory[0], 0x20, dataLen);
+  m_memory.resize(emulator.GetVideoMemSize_k() * 1024);
+  memset(&m_memory[0], 0x20, m_memory.size());
+  m_offsMask = m_memory.size() - 1;
 
-  emulator->GetScreenSizeChars(m_cols, m_rows);
-  emulator->GetScreenSizePixels(m_width, m_height);
+  emulator.GetScreenSizeChars(m_cols, m_rows);
+  emulator.GetScreenSizePixels(m_width, m_height);
 
-  m_offsMask = dataLen - 1;
   m_start = 0;
 
   m_fgColour = { 255, 255, 255 };
@@ -34,7 +34,7 @@ VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const
   m_dirty = true;
   m_updateTimer = std::chrono::system_clock::now();
 
-  cout << "info: virtual screen is " << width << " x " << height << endl;
+  cout << "info: virtual screen is " << m_width << " x " << m_height << endl;
 }
 
 VirtualScreen::~VirtualScreen()
@@ -55,8 +55,18 @@ bool VirtualScreen::SetFont(Font * font)
     return false;
 
   cout << "info: virtual screen font is " << m_font->GetWidth() << " x " << m_font->GetHeight() << endl;
+}
 
-  m_
+void VirtualScreen::GetFontSizePixels(int & x, int & y)
+{
+  if (!m_font) {
+    x = 0;
+    y = 0;
+  }
+  else {
+    x = m_font->GetWidth();
+    y = m_font->GetHeight();
+  }
 }
 
 void VirtualScreen::WriteChar(int offs, uint8_t ch)

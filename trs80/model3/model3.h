@@ -11,8 +11,8 @@ class Model3_Emulator : public Model1Level1_Emulator
     
     virtual std::string GetTitle() const override;
 
-    virtual void GetScreenSizePixels(int & x, int & y) const = 0;
-    virtual void GetScreenSizeChars(int & x, int & y) const = 0;
+    virtual void GetScreenSizePixels(int & x, int & y) const override;
+    virtual void GetScreenSizeChars(int & x, int & y) const  override;
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
     virtual void WriteMemory(register uint16_t addr, register uint8_t val) override;

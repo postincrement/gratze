@@ -43,14 +43,14 @@ int BINBUG_2650::GetVideoMemSize_k()
 
 void BINBUG_2650::GetScreenSizePixels(int & x, int & y) const
 {
-  x = DG6480_SCREEN_WIDTH_PIXELS;
-  y = DG6480_SCREEN_HEIGHT_PIXELS;
+  x = DG640_SCREEN_WIDTH_PIXELS;
+  y = DG640_SCREEN_HEIGHT_PIXELS;
 }
 
-int BINBUG_2650::GetScreenSizeChars(int & x, int & y) const
+void BINBUG_2650::GetScreenSizeChars(int & x, int & y) const
 {
-  x = DG6480_SCREEN_WIDTH_CHARS;
-  y = DG6480_SCREEN_HEIGHT_CHARS;
+  x = DG640_SCREEN_WIDTH_CHARS;
+  y = DG640_SCREEN_HEIGHT_CHARS;
 }
 
 double BINBUG_2650::GetTargetClockSpeed_Hz() const

@@ -21,16 +21,16 @@ int Model4_Emulator::GetVideoMemSize_k()
   return 2048;
 }
 
-void Model1_Emulator::GetScreenSizePixels(int & x, int & y) const
+void Model4_Emulator::GetScreenSizePixels(int & x, int & y) const
 {
   x = MODEL4_SCREEN_WIDTH_PIXELS;
-  y = MODEL4_SCREEN_WIDTH_PIXELS;
+  y = MODEL4_SCREEN_HEIGHT_PIXELS;
 }
 
-int Model1_Emulator::GetScreenSizeChars(int & x, int & y) const
+void Model4_Emulator::GetScreenSizeChars(int & x, int & y) const
 {
   x = MODEL4_SCREEN_WIDTH_CHARS;
-  y = MODEL4_SCREEN_WIDTH_CHARS;
+  y = MODEL4_SCREEN_HEIGHT_CHARS;
 }
 
 double Model4_Emulator::GetTargetClockSpeed_Hz() const
@@ -44,7 +44,7 @@ bool Model4_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options
     return false;
 
   // set the font
-  CreateFontData(MODEL4_FONT_WIDTH, MODEL4_FONT_HEIGHT, g_trs80CharSets_256[7-4][0]);
+  CreateFontData(options, MODEL4_FONT_WIDTH, MODEL4_FONT_HEIGHT, g_trs80CharSets_256[7-4][0]);
 
   return true;
 }

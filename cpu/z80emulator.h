@@ -3,6 +3,7 @@
 #define Z80_EMULATOR_H_
 
 #include "cpu/emulator.h"
+#include "video/virtual_screen.h"
 
 extern "C" {
 #include "cpu/mfz80/Z80.h"
