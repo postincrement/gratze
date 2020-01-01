@@ -11,6 +11,7 @@
 #include "model1.h"
 #include "model3.h"
 #include "model4.h"
+#include "dg680.h"
 #include "factory.h"
 
 
@@ -188,6 +189,7 @@ int main(int argc, char *argv[])
   g_emulatorFactory.AddConcreteClass<Model1Level2_Emulator>("m12");
   g_emulatorFactory.AddConcreteClass<Model3_Emulator>("m3");
   g_emulatorFactory.AddConcreteClass<Model4_Emulator>("m4");
+  g_emulatorFactory.AddConcreteClass<DG680_Emulator>("dg680");
 
   Options options;
 
@@ -253,6 +255,20 @@ int main(int argc, char *argv[])
   if (emulator->GetVideoMemSize_k() == 0) {
     cerr << "error: non-video emulators not yet supported" << endl;
     return -1;
+  }
+
+  int videoTest = 1;
+
+  if (videoTest) {
+    for (int i = 0; i < emulator->GetVideoMemSize_k() * 1024; ++i) {
+      emulator->m_video->WriteChar(i, i & 0xff);
+    }
+    auto now = std::chrono::system_clock::now();
+    auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);
+    while (std::chrono::system_clock::now() < finish) {
+      usleep(1000);
+      emulator->m_video->Update(false);
+    }
   }
 
   // run emulator

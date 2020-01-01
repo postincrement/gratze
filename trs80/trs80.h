@@ -2,7 +2,7 @@
 #define TRS80_H_
 
 #include "config.h"
-#include "emulator.h"
+#include "z80emulator.h"
 #include "fdc.h"
 #include "cassette.h"
 #include "options.h"
@@ -49,7 +49,7 @@ class TRS80Emulator : public Z80Emulator
 
     // overrides from Emulator
     virtual bool Open(const Options & options) override;
-    virtual bool Start(uint16_t addr) override;
+    virtual bool Start(int addr = -1) override;
 
     virtual uint8_t ReadNull(uint16_t) override;
 
@@ -93,17 +93,9 @@ class TRS80Emulator : public Z80Emulator
   protected:  
     void CreateFontData(int width, int height, uint8_t * fontData);
 
-    std::vector<uint8_t> m_romData;
-    uint8_t * m_rom;
-    int m_romSize;
-
-    uint8_t m_videoRAM[1*1024];
     uint8_t m_kbData[8];
     uint8_t m_shiftDown;
     std::vector<uint8_t> m_data;
-
-    std::vector<uint8_t> m_fontData;
-    std::unique_ptr<PixelFont> m_font;
 
     bool m_fdcEnabled;
     bool m_fdcPending;

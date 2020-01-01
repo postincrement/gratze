@@ -4,10 +4,6 @@
 #include <sys/types.h>
 #include <SDL2/SDL_keyboard.h> 
 
-extern "C" {
-#include "mfz80/Z80.h"
-};
-
 #include "config.h"
 #include "fdc.h"
 #include "options.h"
@@ -30,7 +26,8 @@ class Emulator
     // CPU functions
     virtual double GetTargetClockSpeed_Hz() const;
     virtual double GetActualCPUSpeed_Hz() const;
-    virtual bool Start(uint16_t addr = 0) = 0;
+    virtual uint16_t GetStartAddress() const;
+    virtual bool Start(int addr = -1) = 0;
     virtual bool Run(int cycles = 1000) = 0;
 
     virtual void NMI() = 0;
@@ -72,16 +69,24 @@ class Emulator
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
 
     // Floppy/hard drive functions
-    virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly) = 0;
+    virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
+
+    std::vector<uint8_t> m_videoRAM;
+    std::unique_ptr<VirtualScreen> m_video;
 
   protected:  
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
 
-    std::vector<uint8_t> m_ram;
-    int m_ramSize;
-    int m_ramMask;
+    std::vector<uint8_t> m_romData;
+    uint8_t * m_rom;
+    int m_romSize;
 
-    std::unique_ptr<VirtualScreen> m_video;
+    std::vector<uint8_t> m_fontData;
+    std::unique_ptr<PixelFont> m_font;
+
+    std::vector<uint8_t> m_ram;
+    int m_ramSize_bytes;
+    int m_ramMask;
 
     double m_targetCPUClock_Hz;
     double m_actualCPUClock_Hz;
@@ -90,36 +95,5 @@ class Emulator
     std::chrono::system_clock::time_point m_cpuDelayTimer;
 };
 
-class Z80Emulator : public Emulator
-{
-  public:
-    Z80Emulator();
-
-    static Z80Emulator * g_z80Instance;
-
-    // overrides from Emulator
-    virtual bool Start(uint16_t addr = 0) override;
-    virtual bool Run(int cycles = 1000)  override;
-
-    virtual uint8_t RdZ80(register uint16_t Addr);
-    virtual void WrZ80(register uint16_t Addr,register uint8_t Value);
-
-    virtual uint8_t InZ80(register uint16_t Port);
-    virtual void OutZ80(register uint16_t Port, register uint8_t Value);
-
-    virtual void NMI() override;
-    virtual void Interrupt(uint16_t vector = 0) override;
-    virtual void Reset(uint16_t addr = 0) override;
-    virtual uint16_t ReadMemoryWord(uint16_t addr) override;
-
-    virtual void GetStack(std::vector<uint16_t> & stack) override;
-    virtual void SetTrace(bool v) override;
-
-  protected:
-    virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;
-    Z80 m_cpu;
-    int m_cpuDelayRepeat;
-    uint8_t m_delayBuffer[32];
-};
 
 #endif // EMULATOR_H_

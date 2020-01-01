@@ -27,18 +27,22 @@ SRCS_CC = main.cc \
 	  			magmedia/fdc.cc \
 					magmedia/cassette.cc \
 					video/virtual_screen.cc \
-					emulators/emulator.cc \
+					cpu/emulator.cc \
+					cpu/z80emulator.cc \
 					trs80/trs80.cc \
 					trs80/model1/model1.cc \
 					trs80/model3/model3.cc \
 					trs80/model4/model4.cc \
+					dg680/dg680.cc
 
 SRCS_C  = trs80/model1/rom_level1.c \
           trs80/model1/rom_level2.c \
           trs80/model3/rom_model3.c \
 					SDL_FontCache/SDL_FontCache.c \
-  				emulators/mfz80/Z80.c \
-					emulators/mfz80/Debug.c \
+  				cpu/mfz80/Z80.c \
+					cpu/mfz80/Debug.c \
+					dg680/rom_dg640_font.c \
+					dg680/rom_dgos1_4.c
 
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))

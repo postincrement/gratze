@@ -69,7 +69,7 @@ bool TRS80Emulator::Open(const Options &options)
   return Emulator::Open(options);
 }
 
-bool TRS80Emulator::Start(uint16_t addr)
+bool TRS80Emulator::Start(int addr)
 {
   // clear keyboard
   memset(m_kbData, 0x00, sizeof(m_kbData));
