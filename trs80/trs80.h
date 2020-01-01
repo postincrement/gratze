@@ -7,7 +7,12 @@
 #include "magmedia/cassette.h"
 #include "options.h"
 
+#define   MODEL1_CLOCK_SPEED      1.774
+#define   MODEL3_CLOCK_SPEED      2.048
+#define   MODEL4_CLOCK_SPEED      4.000
+
 #define   MODEL1_ROM_START_ADDR    0x0000
+
 #define   MODEL1_L1_ROM_END_ADDR   0x0fff
 #define   MODEL1_L2_ROM_END_ADDR   0x2fff
 #define   MODEL3_ROM_END_ADDR      0x37ff
@@ -54,7 +59,7 @@
 class TRS80Emulator : public Z80Emulator
 {
   public:
-    TRS80Emulator();
+    TRS80Emulator(EmulatorInfo * info);
 
     // overrides from Emulator
     virtual bool Open(const Options & options) override;

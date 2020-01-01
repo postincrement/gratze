@@ -12,7 +12,7 @@ extern "C" {
 class Z80Emulator : public Emulator
 {
   public:
-    Z80Emulator();
+    Z80Emulator(EmulatorInfo * info);
 
     static Z80Emulator * g_z80Instance;
 

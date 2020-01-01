@@ -10,47 +10,28 @@ using namespace std;
 
 extern unsigned char g_dgos680_1_4ROM[2048];
 
+static EmulatorInfo g_emulatorInfo = 
+{
+  "dg680",                        // command line option
+  "DG-680",                       // short name
+  "DG-680 with DGOS",             // long name
+
+  4,                              // nominal CPU clock speed
+  DG680_ROM_START_ADDR,           // address to start when reset
+
+  DG640_VIDEO_DRIVER,
+
+  DEFINE_ROM(DG680_ROM_START_ADDR, g_dgos680_1_4ROM),
+
+  48,                             // default RAM size, in k
+  8,                              // min RAM size, in k
+  DG680_ROM_START_ADDR / 1024,    // max RAM size, in k
+};
+
+
 DG680_Emulator::DG680_Emulator()
+  : Z80Emulator(&g_emulatorInfo)
 {
-  m_rom = g_dgos680_1_4ROM;
-  m_romSize = sizeof(g_dgos680_1_4ROM);
-}
-
-std::string DG680_Emulator::GetTitle() const
-{ 
-  return "DG-680"; 
-}
-
-int DG680_Emulator::GetDefaultRAMSize_k() const
-{ 
-  return 48;
-}
-
-int DG680_Emulator::GetVideoMemSize_k()
-{
-  return 2;
-}
-
-uint16_t DG680_Emulator::GetStartAddress() const
-{
-  return DG680_ROM_START_ADDR;
-}
-
-void DG680_Emulator::GetScreenSizePixels(int & x, int & y) const
-{
-  x = DG640_SCREEN_WIDTH_PIXELS;
-  y = DG640_SCREEN_HEIGHT_PIXELS;
-}
-
-void DG680_Emulator::GetScreenSizeChars(int & x, int & y) const
-{
-  x = DG640_SCREEN_WIDTH_CHARS;
-  y = DG640_SCREEN_HEIGHT_CHARS;
-}
-
-double DG680_Emulator::GetTargetClockSpeed_Hz() const
-{
-  return 4000000;
 }
 
 bool DG680_Emulator::Open(const Options & options)

@@ -20,42 +20,27 @@ extern unsigned char g_rom_binbug6_1ROM[2048];
 #define   BINBUG_DG640_END_ADDR     0x7fff
 
 
+static EmulatorInfo g_emulatorInfo =
+{
+  "binbug",                       // command line option
+  "BINBUG",                       // short name
+  "Signetics 2650 with BINBUG",   // long name
+
+  1,                              // nominal CPU clock speed
+  0x0000,                         // address to start when reset
+
+  DG640_VIDEO_DRIVER,
+  
+  DEFINE_ROM(0x0000, g_rom_binbug6_1ROM),
+
+  4,                                // default RAM size, in k
+  1,                                // min RAM size, in k
+  32 - 1 - DG640_VIDEO_RAM_SIZE_K,  // max RAM size, in k
+};
+
 BINBUG_2650::BINBUG_2650()
+  : S2650Emulator(&g_emulatorInfo)
 {
-  m_rom = g_rom_binbug6_1ROM;
-  m_romSize = sizeof(g_rom_binbug6_1ROM);
-}
-
-std::string BINBUG_2650::GetTitle() const
-{ 
-  return "BINBUG 2650"; 
-}
-
-int BINBUG_2650::GetDefaultRAMSize_k() const
-{ 
-  return 32 - 1 - 2;
-}
-
-int BINBUG_2650::GetVideoMemSize_k()
-{
-  return 2;
-}
-
-void BINBUG_2650::GetScreenSizePixels(int & x, int & y) const
-{
-  x = DG640_SCREEN_WIDTH_PIXELS;
-  y = DG640_SCREEN_HEIGHT_PIXELS;
-}
-
-void BINBUG_2650::GetScreenSizeChars(int & x, int & y) const
-{
-  x = DG640_SCREEN_WIDTH_CHARS;
-  y = DG640_SCREEN_HEIGHT_CHARS;
-}
-
-double BINBUG_2650::GetTargetClockSpeed_Hz() const
-{
-  return 1000000;
 }
 
 bool BINBUG_2650::Open(const Options & options)

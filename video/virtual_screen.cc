@@ -18,12 +18,14 @@ VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const
   : m_mainWindow(mainWindow)
 {
   // clear video memory
-  m_memory.resize(emulator.GetVideoMemSize_k() * 1024);
+  m_memory.resize(emulator.GetInfo().m_video.m_memorySize_k * 1024);
   memset(&m_memory[0], 0x20, m_memory.size());
   m_offsMask = m_memory.size() - 1;
 
-  emulator.GetScreenSizeChars(m_cols, m_rows);
-  emulator.GetScreenSizePixels(m_width, m_height);
+  m_cols   = emulator.GetInfo().m_video.m_screenCols;
+  m_rows   = emulator.GetInfo().m_video.m_screenRows;
+  m_width  = emulator.GetInfo().m_video.m_screenWidth;
+  m_height = emulator.GetInfo().m_video.m_screenHeight;
 
   m_start = 0;
 

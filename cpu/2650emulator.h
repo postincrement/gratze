@@ -8,7 +8,7 @@
 class S2650Emulator : public Emulator
 {
   public:
-    S2650Emulator();
+    S2650Emulator(EmulatorInfo * info);
 
     // overrides from Emulator
     virtual bool Start(int addr = -1) override;

@@ -7,31 +7,9 @@ using namespace std;
 
 extern uint8_t g_trs80CharSets_128[][128][MODEL1_FONT_HEIGHT];
 
-Model1_Emulator::Model1_Emulator()
-  : m_withEI(true)
+Model1_Emulator::Model1_Emulator(EmulatorInfo * info)
+  : TRS80Emulator(info)
 {
-}
-
-int Model1_Emulator::GetVideoMemSize_k()
-{
-  return 1;
-}
-
-void Model1_Emulator::GetScreenSizePixels(int & x, int & y) const
-{
-  x = MODEL1_SCREEN_WIDTH_PIXELS;
-  y = MODEL1_SCREEN_HEIGHT_PIXELS;
-}
-
-void Model1_Emulator::GetScreenSizeChars(int & x, int & y) const
-{
-  x = MODEL1_SCREEN_WIDTH_CHARS;
-  y = MODEL1_SCREEN_HEIGHT_CHARS;
-}
-
-double Model1_Emulator::GetTargetClockSpeed_Hz() const
-{
-  return 1774000;
 }
 
 bool Model1_Emulator::Open(const Options & options)
@@ -45,7 +23,6 @@ bool Model1_Emulator::Open(const Options & options)
 
   return TRS80Emulator::Open(options);
 }
-
 
 bool Model1_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
@@ -93,20 +70,20 @@ void Model1_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
     return;
   }
 
-  if ((addr >= MODEL1_KB_START_ADDR) && (addr <= MODEL1_KB_END_ADDR)) {
-    return;
-  }
+  //if ((addr >= MODEL1_KB_START_ADDR) && (addr <= MODEL1_KB_END_ADDR)) {
+  //  return;
+  //}
 
-  if (addr <= MODEL1_L2_ROM_END_ADDR) {
-    return;
-  }
+  //if (addr <= MODEL1_L2_ROM_END_ADDR) {
+  //  return;
+  //}
 
   cerr << "error: no write handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
 }
 
 uint8_t Model1_Emulator::ReadMemory(register uint16_t addr)
 {
-  if (addr <= m_romSize) {
+  if (addr <= m_romSize_bytes) {
     return m_rom[addr - MODEL1_ROM_START_ADDR];
   }
 
@@ -148,39 +125,77 @@ uint8_t Model1_Emulator::ReadMemory(register uint16_t addr)
 
 extern unsigned char g_model1Level1ROM[4096];
 
-Model1Level1_Emulator::Model1Level1_Emulator()
+static struct EmulatorInfo g_level1EmulatorInfo
 {
-  m_rom = g_model1Level1ROM;
-  m_romSize = sizeof(g_model1Level1ROM);
-}
+  "m1",                           // command line option
+  "Model 1 L1",                   // short name
+  "TRS-80 Model 1, Level 1",      // long name
 
-std::string Model1Level1_Emulator::GetTitle() const
-{ 
-  return "TRS-80 Model 1, Level 1"; 
-}
+  MODEL1_CLOCK_SPEED,             // nominal CPU clock speed
+  0x0000,                         // address to start when reset
 
-int Model1Level1_Emulator::GetDefaultRAMSize_k() const
-{ 
-  return 4;
+  {
+    EmulatorInfo::VideoDriver::eExplicit,
+
+    1,                              // video memory size in k
+    MODEL1_SCREEN_WIDTH_CHARS,      // screen char cols (X)
+    MODEL1_SCREEN_HEIGHT_CHARS,     // screen char rows (Y)
+
+    MODEL1_SCREEN_WIDTH_PIXELS,     // screen width in pixels (X)
+    MODEL1_SCREEN_HEIGHT_PIXELS,    // screen height in pixels (Y)
+
+    MODEL1_FONT_WIDTH,              // nominal font width in pixels (X)
+    MODEL1_FONT_HEIGHT              // nominal font height in pixels (X)
+  },
+
+  DEFINE_ROM(0x0000, g_model1Level1ROM),
+  
+  4,                              // default RAM size, in k
+  4,                              // min RAM size, in k
+  16,                             // max RAM size, in k
+
+};
+
+Model1Level1_Emulator::Model1Level1_Emulator()
+  : Model1_Emulator(&g_level1EmulatorInfo)
+{
 }
 
 ////////////////////////////////////////////////////////////////
 
 extern unsigned char g_model1Level2ROM[12288];
 
-Model1Level2_Emulator::Model1Level2_Emulator()
+static struct EmulatorInfo g_levelEmulatorInfo =
 {
-  m_rom     = g_model1Level2ROM;
-  m_romSize = sizeof(g_model1Level2ROM);
-}
+  "m2",                           // command line option
+  "Model 1 L2",                   // short name
+  "TRS-80 Model 1, Level 2",      // long name
 
-std::string Model1Level2_Emulator::GetTitle() const
-{ 
-  return "TRS-80 Model 1, Level 2"; 
-}
+  MODEL1_CLOCK_SPEED,             // nominal CPU clock speed
+  0x0000,                         // address to start when reset
 
-int Model1Level2_Emulator::GetDefaultRAMSize_k() const
-{ 
-  return 48;
+  {
+    EmulatorInfo::VideoDriver::eExplicit,
+    1,                              // video memory size in k
+    MODEL1_SCREEN_WIDTH_CHARS,      // screen char cols (X)
+    MODEL1_SCREEN_HEIGHT_CHARS,     // screen char rows (Y)
+
+    MODEL1_SCREEN_WIDTH_PIXELS,     // screen width in pixels (X)
+    MODEL1_SCREEN_HEIGHT_PIXELS,    // screen height in pixels (Y)
+
+    MODEL1_FONT_WIDTH,              // nominal font width in pixels (X)
+    MODEL1_FONT_HEIGHT              // nominal font height in pixels (X)
+  },
+
+  DEFINE_ROM(0x0000, g_model1Level2ROM),
+  
+  4,                              // default RAM size, in k
+  4,                              // min RAM size, in k
+  48                              // max RAM size, in k
+};
+
+Model1Level2_Emulator::Model1Level2_Emulator()
+  : Model1_Emulator(&g_levelEmulatorInfo)
+{
 }
 

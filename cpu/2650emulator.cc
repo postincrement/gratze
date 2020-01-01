@@ -56,7 +56,8 @@ class Our2650 : public CPU2650
     S2650Emulator & m_emulator;
 };
 
-S2650Emulator::S2650Emulator()
+S2650Emulator::S2650Emulator(EmulatorInfo * info)
+  : Emulator(info)
 {
   m_cpu.reset(new Our2650(*this));
 }
@@ -64,7 +65,8 @@ S2650Emulator::S2650Emulator()
 bool S2650Emulator::Start(int addr)
 {
   if (addr < 0)
-    addr = GetStartAddress();
+    addr = m_info->m_resetAddr;
+
   cout << "resetting 2650 to " << hex << addr << endl;
   Reset(addr);
   return true;

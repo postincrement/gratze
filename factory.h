@@ -1,7 +1,7 @@
 #ifndef FACTORY_H_
 #define FACTORY_H_
 
-template<class Abstract, class KeyType = std::string>
+template<class Abstract, class KeyType, class ... Args>
 class Factory
 {
   public:
@@ -26,12 +26,12 @@ class Factory
     void AddConcreteClass(const KeyType & key)
     { m_workers[key] = new ConcreteWorker<Concrete>(); }
 
-    Abstract * CreateInstance(const KeyType & key)
+    Abstract * CreateInstance(const KeyType & key, Args ... args)
     { 
       typename WorkerMap::iterator r = m_workers.find(key);
       if (r == m_workers.end())
         return NULL;
-      return r->second->CreateInstance();
+      return r->second->CreateInstance(args...);
     }
 
     size_t GetKeys(std::vector<KeyType> & keys)

@@ -40,10 +40,9 @@ using namespace std;
 
 /////////////////////////////////////////////////////////////
 
-TRS80Emulator::TRS80Emulator()
-  : Z80Emulator()
+TRS80Emulator::TRS80Emulator(EmulatorInfo * info)
+  : Z80Emulator(info)
 {
-  m_romSize = 0;
   m_rtcEnabled = false;
   m_fdcEnabled = false;
 }

@@ -15,8 +15,18 @@ using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-Emulator::Emulator()
+Emulator::Emulator(EmulatorInfo * info)
+  : m_info(info)
 {
+  if ((info->m_rom.m_size_k > 0) && info->m_rom.m_data) {
+    m_rom           = info->m_rom.m_data;
+    m_romSize_bytes = info->m_rom.m_size_k * 1024;
+  } 
+}
+
+const EmulatorInfo & Emulator::GetInfo() const
+{
+  return *m_info;
 }
 
 bool Emulator::Open(const Options & options)
@@ -33,10 +43,12 @@ bool Emulator::Open(const Options & options)
   }
 
   // size the video RAM
-  m_videoRAM.resize(GetVideoMemSize_k() * 1024);
+  if (m_info->m_video.m_memorySize_k > 0) {
+    m_videoRAM.resize(m_info->m_video.m_memorySize_k * 1024);
+  }
 
   // set target CPU speed
-  m_targetCPUClock_Hz = GetTargetClockSpeed_Hz();
+  m_targetCPUClock_Hz = m_info->m_cpuCLockSpeed_MHz * 1000000.0;
   m_actualCPUClock_Hz = m_targetCPUClock_Hz;
 
   return true;
@@ -53,22 +65,13 @@ bool Emulator::SetRAMSize_k(int len)
 
 int Emulator::GetRAMSize_k() const
 {
-  return (m_ramSize_bytes + 1023) / 1024;
+  return m_ram.size() / 1024;
 }
 
-double Emulator::GetTargetClockSpeed_Hz() const
-{
-  return m_targetCPUClock_Hz;
-}
 
 double Emulator::GetActualCPUSpeed_Hz() const
 {
   return m_actualCPUClock_Hz;
-}
-
-uint16_t Emulator::GetStartAddress() const
-{
-  return 0x0000;
 }
 
 bool Emulator::Poll()
@@ -107,6 +110,17 @@ bool Emulator::Poll()
 
 bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
+  switch (m_info->m_video.m_type) {
+    case EmulatorInfo::VideoDriver::eExplicit:
+      break;
+    case EmulatorInfo::VideoDriver::eDG640:
+      InitializeDG640();
+      break;
+    case EmulatorInfo::VideoDriver::eNone:
+      return false;
+      break;
+  }
+
   // create the virtual screen
   m_video.reset(new VirtualScreen(mainWindow, *this, options));
   return true;
@@ -114,46 +128,38 @@ bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 
 void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 {
-  int width, height;
-  int rows, cols;
-  GetScreenSizeChars(cols, rows);
-  GetScreenSizePixels(width, height);
-
-   cerr << "Opening window at " << dec << width << "x" << height << endl;
+  cerr << "Opening window at " << dec << m_info->m_video.m_screenWidth << "x" << m_info->m_video.m_screenHeight << endl;
 
   // create main window with out best guess at the size
-  mainWindow.Open(2, width, height);
+  mainWindow.Open(2, m_info->m_video.m_screenWidth, m_info->m_video.m_screenHeight);
 
-   cerr << "Opening virtual screen" << endl;
+  cerr << "Opening virtual screen" << endl;
 
   // get the emulator to create the font, and any other video options
   OpenVideo(mainWindow, options);
 
-   cerr << "Getting font size" << endl;
+  cerr << "Getting font size" << endl;
 
   // calculate the correct size given the final font and the required rows and columns
-  int fontWidth, fontHeight;
-  m_video->GetFontSizePixels(fontWidth, fontHeight);
-
-  int finalWidth  = cols * fontWidth;
-  int finalHeight = rows * fontHeight;
+  int finalWidth  = m_info->m_video.m_screenCols * m_info->m_video.m_fontWidth;
+  int finalHeight = m_info->m_video.m_screenRows * m_info->m_video.m_fontHeight;
 
   double hScale = 1.0;
   double vScale = 1.0;
 
   bool changed = false;
 
-  if (finalWidth != width) {
-    hScale = finalWidth * 1.0 / width;
+  if (finalWidth != m_info->m_video.m_screenWidth) {
+    hScale = finalWidth * 1.0 / m_info->m_video.m_screenWidth;
     changed = true;
   }
-  if (finalHeight != height) {
-    vScale = finalHeight * 1.0 / height;
+  if (finalHeight != m_info->m_video.m_screenHeight) {
+    vScale = finalHeight * 1.0 / m_info->m_video.m_screenHeight;
     changed = true;
   }
 
   if (changed) {
-    cout << "info: screen resize from " << dec << width << "x" << height << " to " <<  finalWidth << "x" << finalHeight << endl; 
+    cout << "info: screen resize from " << dec << m_info->m_video.m_screenWidth << "x" << m_info->m_video.m_screenHeight << " to " <<  finalWidth << "x" << finalHeight << endl; 
     //mainWindow.SetFinalSizePixels(finalWidth, finalHeight)
     mainWindow.Open(2, finalWidth, finalHeight);
 

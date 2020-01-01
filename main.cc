@@ -238,13 +238,13 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  cout << "info: running " << emulator->GetTitle() << endl;
+  cout << "info: running " << emulator->GetInfo().m_name << endl;
 
   if (options.m_ramSize_k >= 0) {
     emulator->SetRAMSize_k(options.m_ramSize_k);
   }
   else {
-    emulator->SetRAMSize_k(emulator->GetDefaultRAMSize_k());
+    emulator->SetRAMSize_k(emulator->GetInfo().m_ramSize_K);
   }
 
   cout << "info: RAM size set to " << dec << emulator->GetRAMSize_k() << "k" << endl;
@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
   }
 
   MainWindow mainWindow;
-  bool hasVideo = emulator->GetVideoMemSize_k() > 0;
+  bool hasVideo = emulator->GetInfo().m_video.m_memorySize_k > 0;
 
   if (hasVideo) {
 
@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  if (emulator->GetVideoMemSize_k() == 0) {
+  if (emulator->GetInfo().m_video.m_memorySize_k == 0) {
     cerr << "error: non-video emulators not yet supported" << endl;
     return -1;
   }
@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
   int videoTest = 1;
 
   if (videoTest) {
-    for (int i = 0; i < emulator->GetVideoMemSize_k() * 1024; ++i) {
+    for (int i = 0; i < emulator->GetInfo().m_video.m_memorySize_k * 1024; ++i) {
       emulator->m_video->WriteChar(i, i & 0xff);
     }
     auto now = std::chrono::system_clock::now();

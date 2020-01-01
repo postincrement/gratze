@@ -7,7 +7,8 @@
 
 using namespace std;
 
-Z80Emulator::Z80Emulator()
+Z80Emulator::Z80Emulator(EmulatorInfo * info)
+  : Emulator(info)
 {
   g_z80Instance = this;
 
@@ -21,7 +22,8 @@ Z80Emulator::Z80Emulator()
 bool Z80Emulator::Start(int addr)
 {
   if (addr < 0)
-    addr = GetStartAddress();
+    addr = m_info->m_resetAddr;
+
   cout << "resetting Z80 to " << hex << addr << endl;
   Reset(addr);
   return true;
