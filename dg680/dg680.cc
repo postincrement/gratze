@@ -1,14 +1,14 @@
 
-#include "dg680.h"
 
 #include <iostream>
 #include <iomanip>
 
+#include "dg680.h"
+#include "dg640.h"
+
 using namespace std;
 
 extern unsigned char g_dgos680_1_4ROM[2048];
-extern unsigned char g_dg640Char_ROM[1024];
-
 
 DG680_Emulator::DG680_Emulator()
 {
@@ -56,45 +56,17 @@ bool DG680_Emulator::Open(const Options & options)
   return Z80Emulator::Open(options);
 }
 
-static unsigned char reverse(unsigned char b) {
-   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-   return b;
-}
-
 bool DG680_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
   if (!Z80Emulator::OpenVideo(mainWindow,  options) || !m_video)
     return false;
 
-  // set the base font
-  m_fontData.resize(DG640_FONT_HEIGHT * 256);
-  memcpy(&m_fontData[0], g_dg640Char_ROM, 128 * DG640_FONT_HEIGHT);
-
-  // reverse bits
-  {
-    uint8_t * ptr = &m_fontData[0];
-    for (int i = 0; i < 128*DG640_FONT_HEIGHT; ++i) {
-      *ptr = reverse(*ptr);
-      ++ptr;
-    }
-  }
-
-  // create inverted chars
-  {
-    uint8_t * src = &m_fontData[0];
-    uint8_t * dst = &m_fontData[128 * DG640_FONT_HEIGHT];
-    for (int i = 0; i < 128*DG640_FONT_HEIGHT; ++i)
-      *dst++ = *src++ ^ 0xff;
-  }
-
-  m_video->SetFont(new PixelFont(256, DG640_FONT_WIDTH, DG640_FONT_HEIGHT, &m_fontData[0]));
+  InitializeDG640();
 
   return true;
 }
 
-void DG680_Emulator::WrZ80(register uint16_t addr, register uint8_t val)
+void DG680_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
 {
   if (addr < m_ramSize_bytes) {
     m_ram[addr & m_ramMask] = val;
@@ -122,7 +94,7 @@ void DG680_Emulator::WrZ80(register uint16_t addr, register uint8_t val)
   cerr << "error: no write handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
 }
 
-uint8_t DG680_Emulator::RdZ80(register uint16_t addr)
+uint8_t DG680_Emulator::ReadMemory(register uint16_t addr)
 {
   if (addr < m_ramSize_bytes) {
     return m_ram[addr & m_ramMask];

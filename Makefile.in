@@ -27,13 +27,17 @@ SRCS_CC = main.cc \
 	  			magmedia/fdc.cc \
 					magmedia/cassette.cc \
 					video/virtual_screen.cc \
+					video/dg640.cc \
 					cpu/emulator.cc \
 					cpu/z80emulator.cc \
+					cpu/2650emulator.cc \
+					cpu/cpu_2650.cc \
 					trs80/trs80.cc \
 					trs80/model1/model1.cc \
 					trs80/model3/model3.cc \
 					trs80/model4/model4.cc \
-					dg680/dg680.cc
+					dg680/dg680.cc \
+					2650/binbug/binbug.cc \
 
 SRCS_C  = trs80/model1/rom_level1.c \
           trs80/model1/rom_level2.c \
@@ -41,8 +45,9 @@ SRCS_C  = trs80/model1/rom_level1.c \
 					SDL_FontCache/SDL_FontCache.c \
   				cpu/mfz80/Z80.c \
 					cpu/mfz80/Debug.c \
-					dg680/rom_dg640_font.c \
-					dg680/rom_dgos1_4.c
+					video/rom_dg640_font.c \
+					dg680/rom_dgos1_4.c \
+					2650/binbug/rom_binbug_6_1ROM.c
 
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))
@@ -88,6 +93,9 @@ $(DEPDIR):
 include $(wildcard $(DEPFILES))
 
 ################################################################################################	
+#
+#   MingW libraries
+#
 
 MING_ARCH=@MING_ARCH@
 
@@ -98,7 +106,6 @@ ifneq ($(MING_ARCH),)
 SDL_VERSION=2.0.10
 SDL_TTF_VERSION=2.0.15
 
-################################################################################################	
 #
 # MingW SDL
 #
@@ -127,7 +134,6 @@ $(SDL_TGZ) :
 	@echo "Downloading SDL - $(SDL_URL)" && \
 	wget $(SDL_URL)
 
-################################################################################################	
 #
 # MingW SDL_ttf
 #
@@ -170,11 +176,14 @@ CXXFLAGS :=$(CXXFLAGS) -I$(SDL_DIR)/include -I$(SDL_DIR)/include/SDL2 -I$(SDL_TT
 
 else
 
-sdl:
+sdl:		# configure uses packages on other platforms
 
 endif
 
 ################################################################################################	
+#
+#  Native file dialogs
+#
 
 $(NFD_LIB): nfd
 
@@ -194,6 +203,9 @@ nfd:
 	fi
 
 ################################################################################################	
+#
+#  SDLFontCache
+#
 
 ./SDL_FontCache/SDL_FontCache.c : ./SDL_FontCache
 

@@ -2,7 +2,7 @@
 #define DG680_H_
 
 #include "config.h"
-#include "emulator.h"
+#include "z80emulator.h"
 #include "options.h"
 
 #define   DG680_ROM_START_ADDR    0xd000
@@ -13,12 +13,6 @@
 
 #define   DG640_VIDEO_START_ADDR  0xf000
 #define   DG640_VIDEO_END_ADDR    0xf7ff
-
-#define   DG6480_SCREEN_WIDTH     512
-#define   DG6480_SCREEN_HEIGHT    256
-
-#define   DG640_FONT_WIDTH        8
-#define   DG640_FONT_HEIGHT       16
 
 class DG680_Emulator : public Z80Emulator
 {
@@ -32,8 +26,8 @@ class DG680_Emulator : public Z80Emulator
     virtual int GetDefaultRAMSize_k() const override;
     virtual uint16_t GetStartAddress() const override;
 
-    virtual void WrZ80(register uint16_t addr, register uint8_t val) override;
-    virtual uint8_t RdZ80(register uint16_t addr) override;
+    virtual void WriteMemory(register uint16_t addr, register uint8_t val) override;
+    virtual uint8_t ReadMemory(register uint16_t addr) override;
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
 

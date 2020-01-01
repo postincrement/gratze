@@ -661,7 +661,7 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
       //DumpStack(5);
       uint8_t data = m_cassette->ReadByte();
       //cerr << "CASS: Read sync " << hex << setfill('0') << (int)data << endl;
-      WrZ80(sp + 1, data >> 1); // get A ready to accept new bit 0 
+      WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0 
       //if (data == 0xa5)
       //  SetTrace(true);
       return (data << 7);       // shift bit 0 into bit 7
@@ -677,11 +677,11 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
        */
       //DumpStack(5);
       uint8_t data;
-      if (RdZ80(sp + 3) == 1) {
+      if (ReadMemory(sp + 3) == 1) {
         data = m_cassette->ReadByte();
         //cerr << "CASS: Read data " << hex << setfill('0') << (int)data << endl;
       }
-      WrZ80(sp + 1, data >> 1); // get A ready to accept new bit 0 
+      WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0 
       //SetTrace(true);
       return (data << 7);       // shift bit 0 into bit 7
     }

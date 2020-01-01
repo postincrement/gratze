@@ -98,8 +98,8 @@ void Z80Emulator::Interrupt(uint16_t vector)
 
 uint16_t Z80Emulator::ReadMemoryWord(uint16_t addr)
 {
-  uint8_t lsb = RdZ80(addr + 0);
-  uint8_t msb = RdZ80(addr + 1);
+  uint8_t lsb = ReadMemory(addr + 0);
+  uint8_t msb = ReadMemory(addr + 1);
   return lsb + (msb << 8);
 }
 
@@ -141,12 +141,12 @@ extern "C"
 
   void WrZ80(register word Addr, register byte Value)
   {
-    Z80Emulator::g_z80Instance->WrZ80(Addr, Value);
+    Z80Emulator::g_z80Instance->WriteMemory(Addr, Value);
   }
 
   byte RdZ80(register word Addr)
   {
-    return Z80Emulator::g_z80Instance->RdZ80(Addr);
+    return Z80Emulator::g_z80Instance->ReadMemory(Addr);
   }
 
   void OutZ80(register word Port, register byte Value)
@@ -159,16 +159,6 @@ extern "C"
     return Z80Emulator::g_z80Instance->InZ80(Port);
   }
 };
-
-
-void Z80Emulator::WrZ80(register uint16_t Addr, register uint8_t Value)
-{
-}
-
-uint8_t Z80Emulator::RdZ80(register uint16_t Addr)
-{
-  return 0;
-}
 
 void Z80Emulator::OutZ80(register uint16_t Port, register uint8_t Value)
 {

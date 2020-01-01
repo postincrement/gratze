@@ -15,8 +15,8 @@ class Model3_Emulator : public Model1Level1_Emulator
     virtual int GetScreenHeight() const override;
 
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
-    virtual void WrZ80(register uint16_t addr, register uint8_t val) override;
-    virtual uint8_t RdZ80(register uint16_t addr) override;
+    virtual void WriteMemory(register uint16_t addr, register uint8_t val) override;
+    virtual uint8_t ReadMemory(register uint16_t addr) override;
 
     virtual double GetTargetClockSpeed_Hz() const override;
 };

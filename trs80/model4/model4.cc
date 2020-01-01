@@ -47,6 +47,14 @@ bool Model4_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options
   return true;
 }
 
+void Model4_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
+{}
+
+uint8_t Model4_Emulator::ReadMemory(register uint16_t addr)
+{
+  return 0;
+}
+
 
 
 

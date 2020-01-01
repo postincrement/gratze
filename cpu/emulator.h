@@ -41,6 +41,9 @@ class Emulator
     virtual void SetTrace(bool v) = 0;
 
     // memory functions
+    virtual uint8_t ReadMemory(uint16_t) = 0;
+    virtual void WriteMemory(uint16_t, uint8_t data) = 0;
+
     virtual uint8_t ReadNull(uint16_t);
     virtual void WriteNull(uint16_t, uint8_t);
 
@@ -67,6 +70,7 @@ class Emulator
     virtual int GetScreenHeight() const = 0;
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options);
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
+    virtual void InitializeDG640();
 
     // Floppy/hard drive functions
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);

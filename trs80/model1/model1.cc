@@ -56,7 +56,7 @@ bool Model1_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options
   return true;
 }
 
-void Model1_Emulator::WrZ80(register uint16_t addr, register uint8_t val)
+void Model1_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
 {
   if (addr >= MODEL1_RAM_START_ADDR) {
     m_ram[(addr - MODEL1_RAM_START_ADDR) & m_ramMask] = val;
@@ -102,7 +102,7 @@ void Model1_Emulator::WrZ80(register uint16_t addr, register uint8_t val)
   cerr << "error: no write handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
 }
 
-uint8_t Model1_Emulator::RdZ80(register uint16_t addr)
+uint8_t Model1_Emulator::ReadMemory(register uint16_t addr)
 {
   if (addr <= m_romSize) {
     return m_rom[addr - MODEL1_ROM_START_ADDR];

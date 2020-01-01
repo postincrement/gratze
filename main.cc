@@ -12,6 +12,8 @@
 #include "model3.h"
 #include "model4.h"
 #include "dg680.h"
+#include "binbug.h"
+
 #include "factory.h"
 
 
@@ -190,6 +192,7 @@ int main(int argc, char *argv[])
   g_emulatorFactory.AddConcreteClass<Model3_Emulator>("m3");
   g_emulatorFactory.AddConcreteClass<Model4_Emulator>("m4");
   g_emulatorFactory.AddConcreteClass<DG680_Emulator>("dg680");
+  g_emulatorFactory.AddConcreteClass<BINBUG_2650>("binbug");
 
   Options options;
 
