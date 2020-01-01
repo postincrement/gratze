@@ -21,6 +21,8 @@ Emulator::Emulator(EmulatorInfo * info)
   if ((info->m_rom.m_size_k > 0) && info->m_rom.m_data) {
     m_rom           = info->m_rom.m_data;
     m_romSize_bytes = info->m_rom.m_size_k * 1024;
+
+    cerr << "info: ROM is " << dec << m_romSize_bytes << " at 0x" << hex << info->m_rom.m_addr << endl;
   } 
 }
 
@@ -108,37 +110,13 @@ bool Emulator::Poll()
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
-{
-  switch (m_info->m_video.m_type) {
-    case EmulatorInfo::VideoDriver::eExplicit:
-      break;
-    case EmulatorInfo::VideoDriver::eDG640:
-      InitializeDG640();
-      break;
-    case EmulatorInfo::VideoDriver::eNone:
-      return false;
-      break;
-  }
-
-  // create the virtual screen
-  m_video.reset(new VirtualScreen(mainWindow, *this, options));
-  return true;
-}
-
 void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 {
-  cerr << "Opening window at " << dec << m_info->m_video.m_screenWidth << "x" << m_info->m_video.m_screenHeight << endl;
-
   // create main window with out best guess at the size
   mainWindow.Open(2, m_info->m_video.m_screenWidth, m_info->m_video.m_screenHeight);
 
-  cerr << "Opening virtual screen" << endl;
-
   // get the emulator to create the font, and any other video options
   OpenVideo(mainWindow, options);
-
-  cerr << "Getting font size" << endl;
 
   // calculate the correct size given the final font and the required rows and columns
   int finalWidth  = m_info->m_video.m_screenCols * m_info->m_video.m_fontWidth;
@@ -172,6 +150,27 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 */
   }
 }
+
+bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
+{
+  // create the virtual screen
+  m_video.reset(new VirtualScreen(mainWindow, *this, options));
+
+  // initialise the video driver, if we can
+  switch (m_info->m_video.m_type) {
+    case EmulatorInfo::VideoDriver::eExplicit:
+      break;
+    case EmulatorInfo::VideoDriver::eDG640:
+      InitializeDG640();
+      break;
+    case EmulatorInfo::VideoDriver::eNone:
+      return false;
+      break;
+  }
+
+  return true;
+}
+
 
 void Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
 {

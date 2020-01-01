@@ -12,8 +12,6 @@ class BINBUG_2650 : public S2650Emulator
 
     virtual void WriteMemory(register uint16_t addr, register uint8_t val) override;
     virtual uint8_t ReadMemory(register uint16_t addr) override;
-
-    virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
 };
 
 #endif // SYSTEM_2650_H

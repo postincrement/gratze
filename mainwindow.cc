@@ -55,6 +55,8 @@ bool MainWindow::Open(int scale, int screenWidth, int screenHeight)
   int height = screenAreaHeight;
   int width  = screenAreaWidth + m_panelWidth; 
 
+  cerr << "info: screen area is " << dec << screenAreaWidth << "x" << screenAreaHeight << endl;
+
   if (m_window == nullptr) {
     m_window = SDL_CreateWindow(m_title.c_str(), 
                                 SDL_WINDOWPOS_CENTERED, 
@@ -70,8 +72,6 @@ bool MainWindow::Open(int scale, int screenWidth, int screenHeight)
 
   // create renderer
   m_renderer = SDL_CreateRenderer(m_window, -1, 0);
-
-  cout << "renderer created" << endl;
 
   SDL_Color bg = { 0, 0, 0 };
   SDL_SetRenderDrawColor(m_renderer, bg.r, bg.g, bg.b, 255);

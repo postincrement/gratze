@@ -22,6 +22,8 @@ static struct EmulatorInfo g_emulatorInfo
     EmulatorInfo::VideoDriver::eExplicit,
 
     2,                              // video memory size in k
+    MODEL1_VIDEO_START_ADDR,
+
     MODEL3_SCREEN_WIDTH_CHARS,      // screen char cols (X)
     MODEL3_SCREEN_HEIGHT_CHARS,     // screen char rows (Y)
 

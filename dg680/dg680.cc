@@ -8,7 +8,16 @@
 
 using namespace std;
 
-extern unsigned char g_dgos680_1_4ROM[2048];
+#define   DG680_ROM_START_ADDR    0xd000
+#define   DG680_ROM_END_ADDR      0xd7ff
+
+#define   DG680_RAM_START_ADDR    0xd800
+#define   DG680_RAM_END_ADDR      0xdfff
+
+#define   DG680_VIDEO_START_ADDR  0xf000
+#define   DG680_VIDEO_END_ADDR    0xf7ff
+
+extern unsigned char g_dgos680_1_4ROM[DG680_ROM_END_ADDR - DG680_ROM_START_ADDR + 1];
 
 static EmulatorInfo g_emulatorInfo = 
 {
@@ -19,7 +28,7 @@ static EmulatorInfo g_emulatorInfo =
   4,                              // nominal CPU clock speed
   DG680_ROM_START_ADDR,           // address to start when reset
 
-  DG640_VIDEO_DRIVER,
+  DG640_VIDEO_DRIVER(DG680_VIDEO_START_ADDR),
 
   DEFINE_ROM(DG680_ROM_START_ADDR, g_dgos680_1_4ROM),
 
@@ -39,16 +48,6 @@ bool DG680_Emulator::Open(const Options & options)
   return Z80Emulator::Open(options);
 }
 
-bool DG680_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
-{
-  if (!Z80Emulator::OpenVideo(mainWindow,  options) || !m_video)
-    return false;
-
-  InitializeDG640();
-
-  return true;
-}
-
 void DG680_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
 {
   if (addr < m_ramSize_bytes) {
@@ -61,8 +60,8 @@ void DG680_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
     return;
   }
 
-  if ((addr >= DG640_VIDEO_START_ADDR) && (addr <= DG640_VIDEO_END_ADDR)) {
-    unsigned offset = addr - DG640_VIDEO_START_ADDR;  
+  if ((addr >= DG680_VIDEO_START_ADDR) && (addr <= DG680_VIDEO_END_ADDR)) {
+    unsigned offset = addr - DG680_VIDEO_START_ADDR;  
     if (m_videoRAM[offset] != val) {
       m_videoRAM[offset] = val;
       WriteVideoChar(offset, val);
@@ -91,8 +90,8 @@ uint8_t DG680_Emulator::ReadMemory(register uint16_t addr)
     return m_dgosRAM[addr - DG680_RAM_START_ADDR];
   }
 
-  if ((addr >= DG640_VIDEO_START_ADDR) && (addr <= DG640_VIDEO_END_ADDR)) {
-    return m_videoRAM[addr - DG640_VIDEO_START_ADDR];
+  if ((addr >= DG680_VIDEO_START_ADDR) && (addr <= DG680_VIDEO_END_ADDR)) {
+    return m_videoRAM[addr - DG680_VIDEO_START_ADDR];
   }
 
   cerr << "error: no read handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;

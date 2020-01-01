@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
   int videoTest = 1;
 
   if (videoTest) {
-    for (int i = 0; i < emulator->GetInfo().m_video.m_memorySize_k * 1024; ++i) {
+    for (int i = 0; i < emulator->GetInfo().m_video.m_screenCols * emulator->GetInfo().m_video.m_screenRows; ++i) {
       emulator->m_video->WriteChar(i, i & 0xff);
     }
     auto now = std::chrono::system_clock::now();

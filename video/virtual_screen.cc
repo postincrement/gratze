@@ -18,6 +18,7 @@ VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const
   : m_mainWindow(mainWindow)
 {
   // clear video memory
+  cout << "info: video memory size is " << emulator.GetInfo().m_video.m_memorySize_k << "k" << endl;
   m_memory.resize(emulator.GetInfo().m_video.m_memorySize_k * 1024);
   memset(&m_memory[0], 0x20, m_memory.size());
   m_offsMask = m_memory.size() - 1;
@@ -53,8 +54,10 @@ void VirtualScreen::SetColors(const SDL_Color & fg, const SDL_Color & bg)
 bool VirtualScreen::SetFont(Font * font)
 {
   m_font.reset(font);
-  if (!m_font || !m_font->Open(m_mainWindow.GetRenderer(), m_fgColour, m_bgColour))
+  if (!m_font || !m_font->Open(m_mainWindow.GetRenderer(), m_fgColour, m_bgColour)) {
+    cerr << "error: could not create font" << endl;
     return false;
+  }
 
   cout << "info: virtual screen font is " << m_font->GetWidth() << " x " << m_font->GetHeight() << endl;
 }

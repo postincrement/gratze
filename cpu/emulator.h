@@ -29,6 +29,8 @@ struct EmulatorInfo
     VideoDriver m_type;
 
     int       m_memorySize_k;   // video memory size, in k
+    uint16_t  m_addr;           // video memory address
+
     int       m_screenCols;     // screen char cols (X)
     int       m_screenRows;     // screen char rows (Y)
 
@@ -64,7 +66,7 @@ struct EmulatorInfo
   int       m_maxRamSize_K;              // max RAM size, in k
 };
 
-#define   DEFINE_ROM(addr, data) {  addr, sizeof(data), data }
+#define   DEFINE_ROM(addr, data) {  addr, sizeof(data) / 1024, data }
 
 #define   NO_ROM()               { 0x0000, 0, NULL }  
 

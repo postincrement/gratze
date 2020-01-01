@@ -84,7 +84,7 @@ void Model1_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
 uint8_t Model1_Emulator::ReadMemory(register uint16_t addr)
 {
   if (addr <= m_romSize_bytes) {
-    return m_rom[addr - MODEL1_ROM_START_ADDR];
+    return m_rom[addr];
   }
 
   if (addr >= MODEL1_RAM_START_ADDR) {
@@ -138,6 +138,8 @@ static struct EmulatorInfo g_level1EmulatorInfo
     EmulatorInfo::VideoDriver::eExplicit,
 
     1,                              // video memory size in k
+    MODEL1_VIDEO_START_ADDR,
+
     MODEL1_SCREEN_WIDTH_CHARS,      // screen char cols (X)
     MODEL1_SCREEN_HEIGHT_CHARS,     // screen char rows (Y)
 
@@ -177,6 +179,8 @@ static struct EmulatorInfo g_levelEmulatorInfo =
   {
     EmulatorInfo::VideoDriver::eExplicit,
     1,                              // video memory size in k
+    MODEL1_VIDEO_START_ADDR,
+
     MODEL1_SCREEN_WIDTH_CHARS,      // screen char cols (X)
     MODEL1_SCREEN_HEIGHT_CHARS,     // screen char rows (Y)
 

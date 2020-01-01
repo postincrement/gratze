@@ -1,6 +1,10 @@
+#include <iostream>
+
 #include "cpu/emulator.h"
 #include "video/virtual_screen.h"
 #include "dg640.h"
+
+using namespace std;
 
 extern unsigned char g_dg640Char_ROM[1024];
 
