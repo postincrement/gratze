@@ -31,8 +31,8 @@ class VirtualScreen
     void Update(bool hasChanged = false);
 
     bool SetFont(Font * font);
-
-    void GetFontSizePixels(int & x, int & y);
+    bool SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg);
+    void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
 
     virtual void WriteChar(int offs, uint8_t ch);
     virtual uint8_t ReadChar(int offs) const;

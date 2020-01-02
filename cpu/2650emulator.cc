@@ -65,7 +65,7 @@ S2650Emulator::S2650Emulator(EmulatorInfo * info)
 bool S2650Emulator::Start(int addr)
 {
   if (addr < 0)
-    addr = m_info->m_resetAddr;
+    addr = m_info->m_cpu.m_resetAddr;
 
   cout << "resetting 2650 to " << hex << addr << endl;
   Reset(addr);

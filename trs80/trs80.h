@@ -70,8 +70,8 @@ class TRS80Emulator : public Z80Emulator
     virtual uint8_t InZ80(register uint16_t port) override;
     virtual void OutZ80(register uint16_t port, register uint8_t value) override;
 
-    virtual void OnKeyDown(SDL_Keysym & keysym) override;
-    virtual void OnKeyUp(SDL_Keysym & keysym) override;
+    virtual void OnKeyDown(const SDL_Keysym & keysym) override;
+    virtual void OnKeyUp(const SDL_Keysym & keysym) override;
 
     virtual bool Poll() override;
 
@@ -104,15 +104,15 @@ class TRS80Emulator : public Z80Emulator
     void WriteFx(register uint16_t, register uint8_t val);
     uint8_t ReadFx(register uint16_t);
 
-  protected:  
-    void CreateFontData(const Options & options, int width, int height, uint8_t * fontData);
+    static void CreatePixelFont(const Options & options, const EmulatorInfo::FontInfo & fontInfo, std::vector<uint8_t> & fontData);
 
+  protected:  
     uint8_t m_kbData[8];
     uint8_t m_shiftDown;
     std::vector<uint8_t> m_data;
 
     bool m_fdcEnabled;
-    bool m_fdcPending;
+    int m_fdcPending;
     uint8_t m_drvSel;
     std::unique_ptr<WD_FDC> m_fdc;
 

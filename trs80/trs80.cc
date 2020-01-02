@@ -51,7 +51,7 @@ bool TRS80Emulator::Open(const Options &options)
 {
   m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
-  m_fdcPending = false;
+  m_fdcPending = 0;
 
   m_cassetteMotor    = false;
   m_cassetteTrigger  = false;
@@ -80,39 +80,32 @@ bool TRS80Emulator::Start(int addr)
   return Z80Emulator::Start(addr);
 }
 
-void TRS80Emulator::CreateFontData(const Options & options, int width, int height, uint8_t * fontData)
+void TRS80Emulator::CreatePixelFont(const Options & options, const EmulatorInfo::FontInfo & fontInfo, std::vector<uint8_t> & fontData)
 {
-  if (!options.m_font.empty()) {
-    m_video->SetFont(new TTFFont(options.m_font, 256));
-  }
-  else {  
+  // set alpha numeric
+  fontData.resize(fontInfo.m_height * 256);
+  memcpy(&fontData[0], fontInfo.m_fontData, 128 * fontInfo.m_height);
 
-    // set alpha numeric
-    m_fontData.resize(height * 256);
-    memcpy(&m_fontData[0], fontData, 128 * height);
+  // set graphics
+  uint8_t maskRight = (1 << (fontInfo.m_width / 2)) - 1;
+  uint8_t maskLeft  = maskRight << (fontInfo.m_width / 2);
 
-    // set graphics
-    uint8_t maskRight = (1 << (width / 2)) - 1;
-    uint8_t maskLeft  = maskRight << (width / 2);
-
-    for (uint8_t i = 0; i < 64; ++i) {
-      uint8_t * dst = &m_fontData[(128 + i) * height];
-      uint8_t val = i;
-      for (int y = 0; y < 3; ++y) {
-        *dst = 0;
-        if (val & 1)
-          *dst |= maskRight;
-        if (val & 2)
-          *dst |= maskLeft;
-        for (int z = 1; z < height / 3; ++z)
-          dst[z] = dst[0];  
-        dst += height / 3;
-        val = val >> 2;  
-      }
+  for (uint8_t i = 0; i < 64; ++i) {
+    uint8_t * dst = &fontData[(128 + i) * fontInfo.m_height];
+    uint8_t val = i;
+    for (int y = 0; y < 3; ++y) {
+      *dst = 0;
+      if (val & 1)
+        *dst |= maskRight;
+      if (val & 2)
+        *dst |= maskLeft;
+      for (int z = 1; z < fontInfo.m_height / 3; ++z)
+        dst[z] = dst[0];  
+      dst += fontInfo.m_height / 3;
+      val = val >> 2;  
     }
-    memcpy(&m_fontData[(128 + 64) * height], &m_fontData[128 * height], 64 * height);
-    m_video->SetFont(new PixelFont(256, width, height, &m_fontData[0]));
   }
+  memcpy(&fontData[(128 + 64) * fontInfo.m_height], &fontData[128 * fontInfo.m_height], 64 * fontInfo.m_height);
 }
 
 bool TRS80Emulator::Poll()
@@ -298,7 +291,7 @@ static uint8_t g_symToCode[KB_SYM_COUNT][2][2] = {
     {{0x06, 0x02}, {0x06, 0x02}} // 0x84 = 0x40000053    clear
 };
 
-void TRS80Emulator::OnKeyDown(SDL_Keysym &keysym)
+void TRS80Emulator::OnKeyDown(const SDL_Keysym & keysym)
 {
   if (keysym.sym == REBOOT_SYM)
     Reset();
@@ -318,19 +311,20 @@ void TRS80Emulator::OnKeyDown(SDL_Keysym &keysym)
     m_shiftDown &= ~4;
     m_kbData[7] |= 1;
   }
+
   else if (keysym.sym == SDLK_RSHIFT)
   {
     m_shiftDown |= 2;
     m_shiftDown &= ~4;
     m_kbData[7] |= 1;
   }
+
   else
   {
     int32_t sym = (keysym.sym >= EXTENDED_SYM_START) ? (keysym.sym + 0x80 - EXTENDED_SYM_START) : keysym.sym;
     int mod = m_shiftDown ? 1 : 0;
-    if (sym >= KB_SYM_COUNT)
-    {
-      cerr << "warning: unknown keyboard sym code 0x" << hex << keysym.sym << endl;
+    if (sym >= KB_SYM_COUNT) {
+      Z80Emulator::OnKeyDown(keysym);
     }
     else
     {
@@ -367,7 +361,7 @@ void TRS80Emulator::OnKeyDown(SDL_Keysym &keysym)
   }
 }
 
-void TRS80Emulator::OnKeyUp(SDL_Keysym &keysym)
+void TRS80Emulator::OnKeyUp(const SDL_Keysym & keysym)
 {
   if (m_shiftDown & 4)
   {
@@ -389,11 +383,12 @@ void TRS80Emulator::OnKeyUp(SDL_Keysym &keysym)
   {
     int mod = m_shiftDown ? 1 : 0;
     int32_t sym = (keysym.sym >= EXTENDED_SYM_START) ? (keysym.sym + 0x80 - EXTENDED_SYM_START) : keysym.sym;
-    if (sym < KB_SYM_COUNT)
-    {
+    if (sym < KB_SYM_COUNT) {
       const uint8_t *scanInfo = g_symToCode[sym][mod];
       m_kbData[scanInfo[0] & 7] &= !scanInfo[1];
     }
+    else 
+      Z80Emulator::OnKeyUp(keysym);
   }
 }
 
@@ -452,7 +447,7 @@ bool TRS80Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
 void TRS80Emulator::FDCInterrupt()
 {
   cerr << "FDC: interrupt" << endl;
-  m_fdcPending = true;
+  m_fdcPending = 3;
   Interrupt();
 }
 
@@ -476,8 +471,7 @@ uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
   if (!m_fdcEnabled)
     return ReadNull(addr);
 
-  if (addr == 0x37ec)
-    m_fdcPending = false;
+  m_fdcPending &= 2;
 
   return m_fdc->Read(addr);
 }
@@ -526,6 +520,7 @@ uint8_t TRS80Emulator::ReadInterrupt(uint16_t addr)
   //cerr << "INTERRUPT CLEAR" << endl;
 
   if (m_fdcPending) {
+    m_fdcPending &= 1;
     value |= 0x40;
   }
 

@@ -9,7 +9,6 @@ class Model3_Emulator : public Model1_Emulator
   public:
     Model3_Emulator();
     
-    virtual bool OpenVideo(MainWindow & mainWindow, const Options & options) override;
     virtual void WriteMemory(register uint16_t addr, register uint8_t val) override;
     virtual uint8_t ReadMemory(register uint16_t addr) override;
 };

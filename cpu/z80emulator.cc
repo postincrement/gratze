@@ -22,7 +22,7 @@ Z80Emulator::Z80Emulator(EmulatorInfo * info)
 bool Z80Emulator::Start(int addr)
 {
   if (addr < 0)
-    addr = m_info->m_resetAddr;
+    addr = m_info->m_cpu.m_resetAddr;
 
   cout << "resetting Z80 to " << hex << addr << endl;
   Reset(addr);

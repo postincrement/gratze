@@ -15,15 +15,15 @@ static unsigned char reverse(unsigned char b) {
    return b;
 }
 
-void Emulator::InitializeDG640()
+void CreateDG640PixelData(const Options & options, const EmulatorInfo::FontInfo & fontInfo, std::vector<uint8_t> & fontData)
 {
   // set the base font
-  m_fontData.resize(DG640_FONT_HEIGHT * 256);
-  memcpy(&m_fontData[0], g_dg640Char_ROM, 128 * DG640_FONT_HEIGHT);
+  fontData.resize(DG640_FONT_HEIGHT * 256);
+  memcpy(&fontData[0], g_dg640Char_ROM, 128 * DG640_FONT_HEIGHT);
 
   // reverse bits
   {
-    uint8_t * ptr = &m_fontData[0];
+    uint8_t * ptr = &fontData[0];
     for (int i = 0; i < 128*DG640_FONT_HEIGHT; ++i) {
       *ptr = reverse(*ptr);
       ++ptr;
@@ -32,11 +32,9 @@ void Emulator::InitializeDG640()
 
   // create inverted chars
   {
-    uint8_t * src = &m_fontData[0];
-    uint8_t * dst = &m_fontData[128 * DG640_FONT_HEIGHT];
+    uint8_t * src = &fontData[0];
+    uint8_t * dst = &fontData[128 * DG640_FONT_HEIGHT];
     for (int i = 0; i < 128*DG640_FONT_HEIGHT; ++i)
       *dst++ = *src++ ^ 0xff;
   }
-
-  m_video->SetFont(new PixelFont(256, DG640_FONT_WIDTH, DG640_FONT_HEIGHT, &m_fontData[0]));
 }

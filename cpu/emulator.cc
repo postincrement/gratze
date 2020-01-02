@@ -50,7 +50,7 @@ bool Emulator::Open(const Options & options)
   }
 
   // set target CPU speed
-  m_targetCPUClock_Hz = m_info->m_cpuCLockSpeed_MHz * 1000000.0;
+  m_targetCPUClock_Hz = m_info->m_cpu.m_clockSpeed_MHz * 1000000.0;
   m_actualCPUClock_Hz = m_targetCPUClock_Hz;
 
   return true;
@@ -119,8 +119,8 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
   OpenVideo(mainWindow, options);
 
   // calculate the correct size given the final font and the required rows and columns
-  int finalWidth  = m_info->m_video.m_screenCols * m_info->m_video.m_fontWidth;
-  int finalHeight = m_info->m_video.m_screenRows * m_info->m_video.m_fontHeight;
+  int finalWidth  = m_info->m_video.m_screenCols * m_info->m_video.m_font.m_width;
+  int finalHeight = m_info->m_video.m_screenRows * m_info->m_video.m_font.m_height;
 
   double hScale = 1.0;
   double vScale = 1.0;
@@ -158,19 +158,19 @@ bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 
   // initialise the video driver, if we can
   switch (m_info->m_video.m_type) {
-    case EmulatorInfo::VideoDriver::eExplicit:
-      break;
-    case EmulatorInfo::VideoDriver::eDG640:
-      InitializeDG640();
+    case EmulatorInfo::VideoDriver::eMemoryMapped:
+      if (m_info->m_video.m_font.m_creator != NULL) {
+        (*m_info->m_video.m_font.m_creator)(options, m_info->m_video.m_font, m_fontData);
+        m_video->SetFont(new PixelFont(m_info->m_video.m_font.m_count, m_info->m_video.m_font.m_width, m_info->m_video.m_font.m_height, &m_fontData[0]));
+      }
+      m_videoOffset = 0;
       break;
     case EmulatorInfo::VideoDriver::eNone:
       return false;
-      break;
   }
 
   return true;
 }
-
 
 void Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
 {
@@ -178,13 +178,37 @@ void Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
     m_video->WriteChar(offset, ch);
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-
-void Emulator::OnKeyDown(SDL_Keysym &keysym)
+int Emulator::GetVideoOffset()
 {
+  return m_videoOffset;
 }
 
-void Emulator::OnKeyUp(SDL_Keysym &keysym)
+void Emulator::ChangeVideoColour()
+{
+  SDL_Color newFg;
+  SDL_Color newBg;
+
+  m_video->GetFontColour(newFg, newBg);
+
+  newFg.r ^= 0xff;
+  newFg.b ^= 0xff;
+
+  m_video->SetFontColour(newFg, newBg);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+void Emulator::OnKeyDown(const SDL_Keysym &keysym)
+{
+  if (keysym.sym == SDLK_F9) {
+    ChangeVideoColour();
+  }
+  else {
+    cerr << "warning: unknown keyboard sym code 0x" << hex << keysym.sym << endl;
+  }
+}
+
+void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 {
 }
 

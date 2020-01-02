@@ -24,17 +24,6 @@ bool Model1_Emulator::Open(const Options & options)
   return TRS80Emulator::Open(options);
 }
 
-bool Model1_Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
-{
-  if (!Z80Emulator::OpenVideo(mainWindow,  options) || !m_video)
-    return false;
-
-  // set the font
-  CreateFontData(options, MODEL1_FONT_WIDTH, MODEL1_FONT_HEIGHT, g_trs80CharSets_128[1][0]);
-
-  return true;
-}
-
 void Model1_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
 {
   if (addr >= MODEL1_RAM_START_ADDR) {
@@ -131,31 +120,17 @@ static struct EmulatorInfo g_level1EmulatorInfo
   "Model 1 L1",                   // short name
   "TRS-80 Model 1, Level 1",      // long name
 
-  MODEL1_CLOCK_SPEED,             // nominal CPU clock speed
-  0x0000,                         // address to start when reset
-
-  {
-    EmulatorInfo::VideoDriver::eExplicit,
-
-    1,                              // video memory size in k
-    MODEL1_VIDEO_START_ADDR,
-
-    MODEL1_SCREEN_WIDTH_CHARS,      // screen char cols (X)
-    MODEL1_SCREEN_HEIGHT_CHARS,     // screen char rows (Y)
-
-    MODEL1_SCREEN_WIDTH_PIXELS,     // screen width in pixels (X)
-    MODEL1_SCREEN_HEIGHT_PIXELS,    // screen height in pixels (Y)
-
-    MODEL1_FONT_WIDTH,              // nominal font width in pixels (X)
-    MODEL1_FONT_HEIGHT              // nominal font height in pixels (X)
-  },
-
-  DEFINE_ROM(0x0000, g_model1Level1ROM),
-  
-  4,                              // default RAM size, in k
-  4,                              // min RAM size, in k
-  16,                             // max RAM size, in k
-
+  INFO_CPU(MODEL1_CLOCK_SPEED, 0x0000),
+  INFO_VIDEO_NONE(),
+  #if 0
+  INFO_VIDEO_MEMORY_MAPPED(1, MODEL1_VIDEO_START_ADDR, \
+                           MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
+                           MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
+                           256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),
+#endif
+  INFO_ROM_NONE(),
+  //INFO_ROM(0x0000, g_model1Level1ROM),
+  //INFO_RAM(4, 4, 16)
 };
 
 Model1Level1_Emulator::Model1Level1_Emulator()
@@ -173,29 +148,15 @@ static struct EmulatorInfo g_levelEmulatorInfo =
   "Model 1 L2",                   // short name
   "TRS-80 Model 1, Level 2",      // long name
 
-  MODEL1_CLOCK_SPEED,             // nominal CPU clock speed
-  0x0000,                         // address to start when reset
+  INFO_CPU(MODEL1_CLOCK_SPEED, 0x0000),
 
-  {
-    EmulatorInfo::VideoDriver::eExplicit,
-    1,                              // video memory size in k
-    MODEL1_VIDEO_START_ADDR,
+  INFO_VIDEO_MEMORY_MAPPED(1, MODEL1_VIDEO_START_ADDR, \
+                           MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
+                           MODEL1_FONT_WIDTH, MODEL1_FONT_HEIGHT, \
+                           256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),
 
-    MODEL1_SCREEN_WIDTH_CHARS,      // screen char cols (X)
-    MODEL1_SCREEN_HEIGHT_CHARS,     // screen char rows (Y)
-
-    MODEL1_SCREEN_WIDTH_PIXELS,     // screen width in pixels (X)
-    MODEL1_SCREEN_HEIGHT_PIXELS,    // screen height in pixels (Y)
-
-    MODEL1_FONT_WIDTH,              // nominal font width in pixels (X)
-    MODEL1_FONT_HEIGHT              // nominal font height in pixels (X)
-  },
-
-  DEFINE_ROM(0x0000, g_model1Level2ROM),
-  
-  4,                              // default RAM size, in k
-  4,                              // min RAM size, in k
-  48                              // max RAM size, in k
+  INFO_ROM(0x0000, g_model1Level2ROM),
+  INFO_RAM(48, 4, 48)
 };
 
 Model1Level2_Emulator::Model1Level2_Emulator()

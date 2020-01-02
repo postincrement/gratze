@@ -43,35 +43,42 @@ VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const
 VirtualScreen::~VirtualScreen()
 {}
 
-void VirtualScreen::SetColors(const SDL_Color & fg, const SDL_Color & bg)
+/*
+void VirtualScreen::SetColours(const SDL_Color & fg, const SDL_Color & bg)
 {
   m_fgColour = fg;
   m_bgColour = bg;
 
   Refresh();
 }
+*/
 
 bool VirtualScreen::SetFont(Font * font)
 {
   m_font.reset(font);
+  if (!SetFontColour(m_fgColour, m_bgColour))
+    return false;
+
+  cout << "info: virtual screen font is " << m_font->GetWidth() << " x " << m_font->GetHeight() << endl;
+  return true;
+}
+
+bool VirtualScreen::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
+{
+  m_fgColour = fg;
+  m_bgColour = bg;
   if (!m_font || !m_font->Open(m_mainWindow.GetRenderer(), m_fgColour, m_bgColour)) {
     cerr << "error: could not create font" << endl;
     return false;
   }
-
-  cout << "info: virtual screen font is " << m_font->GetWidth() << " x " << m_font->GetHeight() << endl;
+  Refresh();
+  return true;
 }
 
-void VirtualScreen::GetFontSizePixels(int & x, int & y)
+void VirtualScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
 {
-  if (!m_font) {
-    x = 0;
-    y = 0;
-  }
-  else {
-    x = m_font->GetWidth();
-    y = m_font->GetHeight();
-  }
+  fg = m_fgColour;
+  bg = m_bgColour;
 }
 
 void VirtualScreen::WriteChar(int offs, uint8_t ch)
@@ -113,7 +120,7 @@ int VirtualScreen::GetFontChar(int offs)
 void VirtualScreen::Refresh()
 {
   for (int offs = 0; offs < (m_width * m_height); ++offs)
-    RenderChar(offs++);
+    RenderChar(offs);
 }
 
 void VirtualScreen::Update(bool hasChanged)

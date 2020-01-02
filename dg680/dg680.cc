@@ -25,16 +25,10 @@ static EmulatorInfo g_emulatorInfo =
   "DG-680",                       // short name
   "DG-680 with DGOS",             // long name
 
-  4,                              // nominal CPU clock speed
-  DG680_ROM_START_ADDR,           // address to start when reset
-
+  INFO_CPU(4, DG680_ROM_START_ADDR),
   DG640_VIDEO_DRIVER(DG680_VIDEO_START_ADDR),
-
-  DEFINE_ROM(DG680_ROM_START_ADDR, g_dgos680_1_4ROM),
-
-  48,                             // default RAM size, in k
-  8,                              // min RAM size, in k
-  DG680_ROM_START_ADDR / 1024,    // max RAM size, in k
+  INFO_ROM(DG680_ROM_START_ADDR, g_dgos680_1_4ROM),
+  INFO_RAM(48, 8, DG680_ROM_START_ADDR / 1024)
 };
 
 

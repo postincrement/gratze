@@ -17,11 +17,27 @@ class Font;
 
 struct EmulatorInfo
 {
+  struct CPUInfo 
+  {
+    double    m_clockSpeed_MHz;  // nominal CPU clock speed
+    uint16_t  m_resetAddr;          // address to start when reset
+  };
+
+#define INFO_CPU(speed, addr) { speed, addr }
+
   enum class VideoDriver
   {
     eNone,
-    eExplicit,
-    eDG640
+    eMemoryMapped
+  };
+
+  struct FontInfo
+  {
+    int  m_count;                       // number of chars in font
+    int  m_width;                   // nominal font width in pixels (X)
+    int  m_height;                  // nominal font height in pixels (X)
+    uint8_t * m_fontData;               // base font data
+    void (* m_creator)(const Options & options, const EmulatorInfo::FontInfo & fontInfo, std::vector<uint8_t> & fontData);
   };
 
   struct VideoDriverInfo 
@@ -37,9 +53,16 @@ struct EmulatorInfo
     int       m_screenWidth;    // screen width in pixels (X)
     int       m_screenHeight;   // screen height in pixels (Y)
 
-    int       m_fontWidth;      // nominal font width in pixels (X)
-    int       m_fontHeight;     // nominal font height in pixels (X)
+    FontInfo  m_font;
   };
+
+#define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
+#define INFO_VIDEO_NONE() { EmulatorInfo::VideoDriver::eNone } //, 0, 0, 0, 0, 0, 0, { 0, 0, 0, NULL, NULL } }
+#define INFO_VIDEO_MEMORY_MAPPED(k, addr, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
+  { \
+    EmulatorInfo::VideoDriver::eMemoryMapped, k, addr, cols, rows, cols*fontWid, rows*fontHgt, \
+    INFO_FONT(count, fontWid, fontHgt, fontData, fontCreator) \
+  }
 
   struct ROMInfo 
   {
@@ -48,27 +71,33 @@ struct EmulatorInfo
     uint8_t * m_data;
   };
 
+#define   INFO_ROM(addr, data) { addr, sizeof(data) / 1024, data }
+#define   INFO_ROM_NONE()      {  }  
+
+  struct RAMInfo 
+  {
+    int m_size_K;                 // default RAM size, in k
+    int m_minSize_K;              // min RAM size, in k
+    int m_maxSize_K;              // max RAM size, in k
+  };
+
+#define INFO_RAM(size, min, max) { size, min, max }  
+
+  /////////////////////////////////////////////////
+  //
   // devices initialise from here
+  //
 
   const char * m_option;   // command line option
   const char * m_name;     // short name
   const char * m_title;    // long name
 
-  double    m_cpuCLockSpeed_MHz;         // nominal CPU clock speed
-  uint16_t  m_resetAddr;                 // address to start when reset
-
+  CPUInfo         m_cpu;
   VideoDriverInfo m_video;
-
-  ROMInfo m_rom;
-
-  int       m_ramSize_K;                 // default RAM size, in k
-  int       m_minRamSize_K;              // min RAM size, in k
-  int       m_maxRamSize_K;              // max RAM size, in k
+  ROMInfo         m_rom;
+  RAMInfo         m_ram;
 };
 
-#define   DEFINE_ROM(addr, data) {  addr, sizeof(data) / 1024, data }
-
-#define   NO_ROM()               { 0x0000, 0, NULL }  
 
 class Emulator
 {
@@ -110,8 +139,8 @@ class Emulator
     virtual uint16_t ReadMemoryWord(uint16_t addr) = 0;
 
     // keyboard functions
-    virtual void OnKeyDown(SDL_Keysym & keysym);
-    virtual void OnKeyUp(SDL_Keysym & keysym);
+    virtual void OnKeyDown(const SDL_Keysym & keysym);
+    virtual void OnKeyUp(const SDL_Keysym & keysym);
 
     // RAM functions
     virtual bool SetRAMSize_k(int len);  
@@ -123,7 +152,8 @@ class Emulator
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options);
     virtual void CreateScreen(MainWindow & mainWindow, const Options & options);
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
-    virtual void InitializeDG640();
+    virtual int GetVideoOffset();
+    virtual void ChangeVideoColour();
 
     // Floppy/hard drive functions
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
@@ -145,6 +175,7 @@ class Emulator
     std::vector<uint8_t> m_ram;
     int m_ramSize_bytes;
     int m_ramMask;
+    int m_videoOffset;
 
     double m_targetCPUClock_Hz;
     double m_actualCPUClock_Hz;

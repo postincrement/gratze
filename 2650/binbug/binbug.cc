@@ -25,16 +25,10 @@ static EmulatorInfo g_emulatorInfo =
   "BINBUG",                       // short name
   "Signetics 2650 with BINBUG",   // long name
 
-  1,                              // nominal CPU clock speed
-  0x0000,                         // address to start when reset
-
+  INFO_CPU(1, 0x0000),
   DG640_VIDEO_DRIVER(BINBUG_VIDEO_START_ADDR),
-  
-  DEFINE_ROM(0x0000, g_rom_binbug6_1ROM),
-
-  4,                                // default RAM size, in k
-  1,                                // min RAM size, in k
-  32 - 1 - DG640_VIDEO_RAM_SIZE_K,  // max RAM size, in k
+  INFO_ROM(0x0000, g_rom_binbug6_1ROM),
+  INFO_RAM(4, 1, 32 - 1 - DG640_VIDEO_RAM_SIZE_K)
 };
 
 BINBUG_2650::BINBUG_2650()

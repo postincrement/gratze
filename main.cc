@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
     emulator->SetRAMSize_k(options.m_ramSize_k);
   }
   else {
-    emulator->SetRAMSize_k(emulator->GetInfo().m_ramSize_K);
+    emulator->SetRAMSize_k(emulator->GetInfo().m_ram.m_size_K);
   }
 
   cout << "info: RAM size set to " << dec << emulator->GetRAMSize_k() << "k" << endl;
@@ -260,9 +260,9 @@ int main(int argc, char *argv[])
   }
 
   MainWindow mainWindow;
-  bool hasVideo = emulator->GetInfo().m_video.m_memorySize_k > 0;
+  bool hasMemoryMappedVideo = emulator->GetInfo().m_video.m_type == EmulatorInfo::VideoDriver::eMemoryMapped;
 
-  if (hasVideo) {
+  if (hasMemoryMappedVideo) {
 
     // initlialize SDL 
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 
   int videoTest = 1;
 
-  if (videoTest) {
+  if (hasMemoryMappedVideo && videoTest) {
     for (int i = 0; i < emulator->GetInfo().m_video.m_screenCols * emulator->GetInfo().m_video.m_screenRows; ++i) {
       emulator->m_video->WriteChar(i, i & 0xff);
     }
