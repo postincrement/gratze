@@ -25,61 +25,20 @@ static EmulatorInfo g_emulatorInfo =
   "BINBUG",                       // short name
   "Signetics 2650 with BINBUG",   // long name
 
-  INFO_CPU(1, 0x0000),
-  DG640_VIDEO_DRIVER(BINBUG_VIDEO_START_ADDR),
-  INFO_ROM(0x0000, g_rom_binbug6_1ROM),
-  INFO_RAM(4, 1, 32 - 1 - DG640_VIDEO_RAM_SIZE_K)
+  {
+    INFO_CPU(1, 0x0000),
+    INFO_ROM(0x0000, g_rom_binbug6_1ROM),
+
+    INFO_MAIN_RAM(BINBUG_RAM_START_ADDR, 16, 1, 32 - 1 - DG640_VIDEO_RAM_SIZE_K),
+    INFO_RAM(BINBUG_RAM_START_ADDR, BINBUG_RAM_END_ADDR),
+
+    DG640_VIDEO_DRIVER(BINBUG_VIDEO_START_ADDR),
+
+    INFO_END()
+  }
 };
 
 BINBUG_2650::BINBUG_2650()
   : S2650Emulator(&g_emulatorInfo)
 {
-}
-
-bool BINBUG_2650::Open(const Options & options)
-{
-  return S2650Emulator::Open(options);
-}
-
-void BINBUG_2650::WriteMemory(register uint16_t addr, register uint8_t val)
-{
-  if ((addr >= BINBUG_RAM_START_ADDR) && (addr <= BINBUG_RAM_END_ADDR)) {
-    m_ram[addr & m_ramMask] = val;
-    return;
-  }
-
-  if ((addr >= BINBUG_VIDEO_START_ADDR) && (addr <= BINBUG_VIDEO_END_ADDR)) {
-    unsigned offset = addr - BINBUG_VIDEO_START_ADDR;  
-    if (m_videoRAM[offset] != val) {
-      m_videoRAM[offset] = val;
-      WriteVideoChar(offset, val);
-    }
-    return;
-  }
-
-/*
-  if ((addr >= DG680_ROM_START_ADDR) && (addr <= DG680_ROM_END_ADDR)) {
-    return;
-  }
-*/
-
-  cerr << "error: no write handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
-}
-
-uint8_t BINBUG_2650::ReadMemory(register uint16_t addr)
-{
-  if ((addr >= BINBUG_START_ADDR) && (addr <= BINBUG_END_ADDR)) {
-    return m_rom[addr - BINBUG_START_ADDR];
-  }
-
-  if ((addr >= BINBUG_RAM_START_ADDR) && (addr <= BINBUG_RAM_END_ADDR)) {
-    return m_ram[addr & m_ramMask];
-  }
-
-  if ((addr >= BINBUG_VIDEO_START_ADDR) && (addr <= BINBUG_VIDEO_END_ADDR)) {
-    return m_videoRAM[addr - BINBUG_VIDEO_START_ADDR];
-  }
-
-  cerr << "error: no read handler for 0x" << setw(4) << setfill('0') << hex << addr << endl;
-  return 0;
 }

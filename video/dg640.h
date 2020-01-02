@@ -12,10 +12,10 @@
 #define   DG640_SCREEN_WIDTH_PIXELS     (DG640_SCREEN_WIDTH_CHARS * DG640_FONT_WIDTH)
 #define   DG640_SCREEN_HEIGHT_PIXELS    (DG640_SCREEN_HEIGHT_CHARS * DG640_FONT_HEIGHT)
 
-extern void CreateDG640PixelData(const Options & options, const EmulatorInfo::FontInfo & fontInfo, std::vector<uint8_t> & fontData);
+extern void CreateDG640PixelData(const Options & options, const Emulator::FontInfo & fontInfo, std::vector<uint8_t> & fontData);
 
 #define DG640_VIDEO_DRIVER(addr) \
-  INFO_VIDEO_MEMORY_MAPPED(DG640_VIDEO_RAM_SIZE_K, addr, \
+  INFO_VIDEO_MEMORY_MAPPED(addr, addr + DG640_VIDEO_RAM_SIZE_K * 1024 - 1, \
                            DG640_SCREEN_WIDTH_CHARS, \
                            DG640_SCREEN_HEIGHT_CHARS, \
                            DG640_FONT_WIDTH,  \

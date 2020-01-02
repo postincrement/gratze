@@ -1,6 +1,7 @@
 #include <functional>
 #include <iostream>
 #include <iomanip>
+#include <memory.h>
 
 #include "config.h"
 #include "trs80.h"
@@ -80,7 +81,7 @@ bool TRS80Emulator::Start(int addr)
   return Z80Emulator::Start(addr);
 }
 
-void TRS80Emulator::CreatePixelFont(const Options & options, const EmulatorInfo::FontInfo & fontInfo, std::vector<uint8_t> & fontData)
+void TRS80Emulator::CreatePixelFont(const Options & options, const Emulator::FontInfo & fontInfo, std::vector<uint8_t> & fontData)
 {
   // set alpha numeric
   fontData.resize(fontInfo.m_height * 256);
@@ -394,22 +395,26 @@ void TRS80Emulator::OnKeyUp(const SDL_Keysym & keysym)
 
 /////////////////////////////////////////////////////////////
 
-typedef uint8_t (TRS80Emulator::*ReadMemoryFn)(uint16_t);
-typedef void (TRS80Emulator::*WriteMemoryFn)(uint16_t, uint8_t);
-
-/////////////////////////////////////////////////////////////
-
 uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
 {
+  cout << "reading keyboard from address " << hex << addr << endl;
   uint16_t mask = 1;
   uint8_t value = 0x00;
-  for (int i = 0; i < 8; ++i)
-  {
+  for (int i = 0; i < 8; ++i) {
     if (addr & mask)
       value |= m_kbData[i];
     mask = mask << 1;
   }
   return value;
+}
+
+void TRS80Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
+{
+  if (m_video) {
+    if (ch < 0x20)
+      ch += 0x20;
+    m_video->WriteChar(offset, ch);
+  }
 }
 
 /////////////////////////////////////////////////////////////
@@ -695,100 +700,3 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
 
 /////////////////////////////////////////////////////////////
 
-static WriteMemoryFn g_trs80WriteFx[16] = {
-    &TRS80Emulator::WriteNull, // 0x00 to 0x0f
-    &TRS80Emulator::WriteNull, // 0x10 to 0x1f
-    &TRS80Emulator::WriteNull, // 0x20 to 0x2f
-    &TRS80Emulator::WriteNull, // 0x30 to 0x3f
-    &TRS80Emulator::WriteNull, // 0x40 to 0x4f
-    &TRS80Emulator::WriteNull, // 0x50 to 0x5f
-    &TRS80Emulator::WriteNull, // 0x60 to 0x6f
-    &TRS80Emulator::WriteNull, // 0x70 to 0x7f
-    &TRS80Emulator::WriteNull, // 0x80 to 0x8f
-    &TRS80Emulator::WriteNull, // 0x90 to 0x9f
-    &TRS80Emulator::WriteNull, // 0xa0 to 0xaf
-    &TRS80Emulator::WriteNull, // 0xb0 to 0xbf
-    &TRS80Emulator::WriteNull, // 0xc0 to 0xcf
-    &TRS80Emulator::WriteNull, // 0xd0 to 0xdf
-    &TRS80Emulator::WriteNull, // 0xe0 to 0xef
-    &TRS80Emulator::WriteFF    // 0xf0 to 0xff
-};
-
-static ReadMemoryFn g_trs80ReadFx[16] = {
-    &TRS80Emulator::ReadNull, // 0x00 to 0x0f
-    &TRS80Emulator::ReadNull, // 0x10 to 0x1f
-    &TRS80Emulator::ReadNull, // 0x20 to 0x2f
-    &TRS80Emulator::ReadNull, // 0x30 to 0x3f
-    &TRS80Emulator::ReadNull, // 0x40 to 0x4f
-    &TRS80Emulator::ReadNull, // 0x50 to 0x5f
-    &TRS80Emulator::ReadNull, // 0x60 to 0x6f
-    &TRS80Emulator::ReadNull, // 0x70 to 0x7f
-    &TRS80Emulator::ReadNull, // 0x80 to 0x8f
-    &TRS80Emulator::ReadNull, // 0x90 to 0x9f
-    &TRS80Emulator::ReadNull, // 0xa0 to 0xaf
-    &TRS80Emulator::ReadNull, // 0xb0 to 0xbf
-    &TRS80Emulator::ReadNull, // 0xc0 to 0xcf
-    &TRS80Emulator::ReadNull, // 0xd0 to 0xdf
-    &TRS80Emulator::ReadNull, // 0xe0 to 0xef
-    &TRS80Emulator::ReadFF    // 0xf0 to 0xff
-};
-
-void TRS80Emulator::WriteFx(register uint16_t port, register uint8_t val)
-{
-  std::invoke(g_trs80WriteFx[port & 0x000f], *this, port, val);
-}
-
-uint8_t TRS80Emulator::ReadFx(register uint16_t port)
-{
-  return std::invoke(g_trs80ReadFx[port & 0x000f], *this, port);
-}
-
-/////////////////////////////////////////////////////////////
-
-static WriteMemoryFn g_trs80WritePort[16] = {
-    &TRS80Emulator::WriteNull, // 0x00 to 0x0f
-    &TRS80Emulator::WriteNull, // 0x10 to 0x1f
-    &TRS80Emulator::WriteNull, // 0x20 to 0x2f
-    &TRS80Emulator::WriteNull, // 0x30 to 0x3f
-    &TRS80Emulator::WriteNull, // 0x40 to 0x4f
-    &TRS80Emulator::WriteNull, // 0x50 to 0x5f
-    &TRS80Emulator::WriteNull, // 0x60 to 0x6f
-    &TRS80Emulator::WriteNull, // 0x70 to 0x7f
-    &TRS80Emulator::WriteNull, // 0x80 to 0x8f
-    &TRS80Emulator::WriteNull, // 0x90 to 0x9f
-    &TRS80Emulator::WriteNull, // 0xa0 to 0xaf
-    &TRS80Emulator::WriteNull, // 0xb0 to 0xbf
-    &TRS80Emulator::WriteNull, // 0xc0 to 0xcf
-    &TRS80Emulator::WriteNull, // 0xd0 to 0xdf
-    &TRS80Emulator::WriteNull, // 0xe0 to 0xef
-    &TRS80Emulator::WriteFx    // 0xf0 to 0xff
-};
-
-static ReadMemoryFn g_trs80ReadPort[16] = {
-    &TRS80Emulator::ReadNull, // 0x00 to 0x0f
-    &TRS80Emulator::ReadNull, // 0x10 to 0x1f
-    &TRS80Emulator::ReadNull, // 0x20 to 0x2f
-    &TRS80Emulator::ReadNull, // 0x30 to 0x3f
-    &TRS80Emulator::ReadNull, // 0x40 to 0x4f
-    &TRS80Emulator::ReadNull, // 0x50 to 0x5f
-    &TRS80Emulator::ReadNull, // 0x60 to 0x6f
-    &TRS80Emulator::ReadNull, // 0x70 to 0x7f
-    &TRS80Emulator::ReadNull, // 0x80 to 0x8f
-    &TRS80Emulator::ReadNull, // 0x90 to 0x9f
-    &TRS80Emulator::ReadNull, // 0xa0 to 0xaf
-    &TRS80Emulator::ReadNull, // 0xb0 to 0xbf
-    &TRS80Emulator::ReadNull, // 0xc0 to 0xcf
-    &TRS80Emulator::ReadNull, // 0xd0 to 0xdf
-    &TRS80Emulator::ReadNull, // 0xe0 to 0xef
-    &TRS80Emulator::ReadFx    // 0xf0 to 0xff
-};
-
-void TRS80Emulator::OutZ80(register uint16_t port, register uint8_t val)
-{
-  std::invoke(g_trs80WritePort[(port & 0x0f0) >> 4], *this, port, val);
-}
-
-uint8_t TRS80Emulator::InZ80(register uint16_t port)
-{
-  return std::invoke(g_trs80ReadPort[(port & 0x0f0) >> 4], *this, port);
-}

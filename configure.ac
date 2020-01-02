@@ -53,11 +53,6 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_CXX
 AC_PROG_CC
 
-#CXX = i686-w64-mingw32-g++
-#CC  = i686-w64-mingw32-gcc
-#CXXFLAGS += -I$(SDL_DIR)/include -I$(NFD_DIR)/src/include -std=c++17 -Wno-register -g -DEXECZ80 
-#CFLAGS += -g -DLSB_FIRST -DDEBUG -DEXECZ80 
-
 ##########################################################
 #
 # settings based on architecture
@@ -68,6 +63,7 @@ NFD_INCLUDE_DIR="$NFD_DIR/src/include"
 NFD_BUILD_ENV="CC=$CXX CXX=$CXX"
 NFD_CXXFLAGS="-I$NFD_INCLUDE_DIR"
 
+AC_SUBST(MING_ENABLED)
 AC_SUBST(MING_ARCH)
 AC_SUBST(MING_SDL_BUILD_TYPE)
 
@@ -76,11 +72,11 @@ AC_SUBST(NFD_BUILD_DIR)
 AC_SUBST(NFD_BUILD_TYPE)
 AC_SUBST(NFD_LIB_DIR)
 AC_SUBST(NFD_LIB_NAME)
-
-AC_CHECK_FILE([$NFD_INCLUDE_DIR/nfd.h], [], AC_MSG_ERROR([cannot find nfd.h]))
+AC_SUBST(MINGW_ENABLED)
 
 case "$target" in
         *-mingw32)
+                MINGW_ENABLED=1
                 NFD_BUILD_DIR=gmake_windows
                 NFD_LIBS="-l:nfd.lib -lole32 -luuid" 
                 NFD_LIB_NAME=nfd.lib
@@ -89,17 +85,25 @@ case "$target" in
                 MING_LDLIBS="-static-libgcc -static-libstdc++ -lmingw32" 
                 ;;
 
-        *-linux-*,*)
+        *-linux-*)
                 NFD_BUILD_DIR=gmake_linux
+                NFD_LIBS="-lnfd" 
                 NFD_LIB_NAME=libnfd.a
 
                 PKG_CHECK_MODULES([SDL], [sdl2],
                         [AC_DEFINE([HAVE_SDL], [1], [Define if SDL library available])],
                         [AC_MSG_ERROR([SDL2 required. Install libsdl2-dev])])
-                PKG_CHECK_MODULES([SDL_ttf], [sdl2_ttf],
+                PKG_CHECK_MODULES([SDL_ttf], [SDL2_ttf],
                         [AC_DEFINE([HAVE_SDL_TTF], [1], [Define if SDL-ttf library available])],
                         [AC_MSG_ERROR([SDL2 TTF required. Install libsdl2-ttf-dev])])
-                SDL_LIBS=`pkg-config --libs sdl2 sdl2-ttf`
+                PKG_CHECK_MODULES([FREETYPE], [freetype2],
+                        [AC_DEFINE([HAVE_FREETYPE], [1], [Define if freetype library available])],
+                        [AC_MSG_ERROR([FreeType required. Install libfreetype6-dev])])
+                PKG_CHECK_MODULES([FREETYPE], [gtk+-3.0],
+                        [AC_DEFINE([HAVE_GTK], [1], [Define if GTK library available])],
+                        [AC_MSG_ERROR([GTK+ 3.0 required. Install libgtk-3-0-dev])])
+                SDL_INC=`pkg-config --cflags-only-I sdl2 gtk+-3.0 SDL2_ttf freetype2 sdl2`
+                SDL_LIBS=`pkg-config --libs gtk+-3.0 SDL2_ttf freetype2 sdl2`
                 ;;
 esac
 
@@ -159,8 +163,8 @@ MFZ_CFLAGS="-DEXECZ80 -DLSB_FIRST"
 #
 #  construct final flags
 #
-CFLAGS="$MFZ_CFLAGS"
-CXXFLAGS="$MFZ_CFLAGS $NFD_CXXFLAGS -std=c++17 -Wno-register"
+CFLAGS="$SDL_INC $MFZ_CFLAGS -g"
+CXXFLAGS="$SDL_INC $MFZ_CFLAGS $NFD_CXXFLAGS -std=c++17 -Wno-register -g"
 LDFLAGS="$MING_LDFLAGS $NFD_LDFLAGS"
 LDLIBS="$NFD_LIBS $GTK_LIBS $MING_LDLIBS $SDL_LIBS"
 

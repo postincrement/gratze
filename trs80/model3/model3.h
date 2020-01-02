@@ -8,9 +8,6 @@ class Model3_Emulator : public Model1_Emulator
 {
   public:
     Model3_Emulator();
-    
-    virtual void WriteMemory(register uint16_t addr, register uint8_t val) override;
-    virtual uint8_t ReadMemory(register uint16_t addr) override;
 };
 
 #endif // MODEL3_H_

@@ -7,7 +7,7 @@
 #include <memory>
 #include <chrono>
 
-#include <SDL2/SDL.h> 
+#include <SDL.h> 
 
 #include "options.h"
 #include "video/font.h"

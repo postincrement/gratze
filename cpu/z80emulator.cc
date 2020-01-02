@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <unistd.h>
-
+#include <memory.h>
 
 #include "cpu/z80emulator.h"
 
@@ -22,7 +22,7 @@ Z80Emulator::Z80Emulator(EmulatorInfo * info)
 bool Z80Emulator::Start(int addr)
 {
   if (addr < 0)
-    addr = m_info->m_cpu.m_resetAddr;
+    addr = GetCPUInfo()->m_resetAddr;
 
   cout << "resetting Z80 to " << hex << addr << endl;
   Reset(addr);
@@ -153,20 +153,11 @@ extern "C"
 
   void OutZ80(register word Port, register byte Value)
   {
-    Z80Emulator::g_z80Instance->OutZ80(Port, Value);
+    Z80Emulator::g_z80Instance->WritePort(Port, Value);
   }
 
   byte InZ80(register word Port)
   {
-    return Z80Emulator::g_z80Instance->InZ80(Port);
+    return Z80Emulator::g_z80Instance->ReadPort(Port);
   }
 };
-
-void Z80Emulator::OutZ80(register uint16_t Port, register uint8_t Value)
-{
-}
-
-uint8_t Z80Emulator::InZ80(register uint16_t Port)
-{
-  return 0xff;
-}

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory.h>
 
 #include "cpu/emulator.h"
 #include "video/virtual_screen.h"
@@ -15,7 +16,7 @@ static unsigned char reverse(unsigned char b) {
    return b;
 }
 
-void CreateDG640PixelData(const Options & options, const EmulatorInfo::FontInfo & fontInfo, std::vector<uint8_t> & fontData)
+void CreateDG640PixelData(const Options & options, const Emulator::FontInfo & fontInfo, std::vector<uint8_t> & fontData)
 {
   // set the base font
   fontData.resize(DG640_FONT_HEIGHT * 256);

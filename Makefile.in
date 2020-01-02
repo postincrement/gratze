@@ -1,16 +1,46 @@
 
-CC=@CC@
-CXX=@CXX@
-CXXFLAGS=@CXXFLAGS@
-CFLAGS=@CFLAGS@
-LDFLAGS=@LDFLAGS@ 
-LDLIBS=@LDLIBS@
 
 LINK.o = $(LINK.cc)
 OBJDIR = ./obj
 DEPDIR = ./.deps
 
+APP = gratze
+
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
+
+MINGW_ENABLED=@MINGW_ENABLED@
+
+ifneq ($(MINGW_ENABLED),)
+
+MING_ARCH=@MING_ARCH@
+MING_SDL_BUILD_TYPE=@MING_SDL_BUILD_TYPE@
+
+SDL_VERSION=2.0.10
+SDL_TTF_VERSION=2.0.15
+
+SDL_BASE=SDL2-$(SDL_VERSION)
+SDL_TGZ=SDL2-devel-$(SDL_VERSION)-mingw.tar.gz
+SDL_URL=https://www.libsdl.org/release/$(SDL_TGZ)
+SDL_TARGETS=SDL2.dll
+
+SDL_DIR=$(SDL_BASE)/$(MING_ARCH)-w64-mingw32
+SDL_TARGET_SRC=$(addprefix $(SDL_DIR)/bin/,$(SDL_TARGETS))
+
+
+SDL_TTF_BASE=SDL2_ttf-$(SDL_TTF_VERSION)
+SDL_TTF_TGZ=SDL2_ttf-devel-$(SDL_TTF_VERSION)-mingw.tar.gz
+SDL_TTF_URL=https://www.libsdl.org/projects/SDL_ttf/release/$(SDL_TTF_TGZ)
+SDL_TTF_TARGETS=SDL2_ttf.dll libfreetype-6.dll zlib1.dll
+
+SDL_TTF_DIR=$(SDL_TTF_BASE)/$(MING_ARCH)-w64-mingw32
+SDL_TTF_TARGET_SRC=$(addprefix $(SDL_TTF_DIR)/bin/,$(SDL_TTF_TARGETS))  
+
+SDL_INC=-I$(SDL_DIR)/include/SDL2 -I$(SDL_TTF_DIR)/include/SDL2
+SDL_LDFLAGS=-L$(SDL_DIR)/lib -L$(SDL_TTF_DIR)/lib
+
+endif # MING_ENABLED
+
+INC_DIRS = -I.
 
 NFD_BUILD_TYPE=@NFD_BUILD_TYPE@
 NFD_BUILD_ENV=@NFD_BUILD_ENV@
@@ -18,7 +48,29 @@ NFD_BUILD_DIR=@NFD_BUILD_DIR@
 NFD_LIB_DIR=@NFD_LIB_DIR@
 NFD_LIB=$(NFD_LIB_DIR)/@NFD_LIB_NAME@
 
-APP = gratze
+CC=@CC@
+CXX=@CXX@
+
+CXXFLAGS := @CXXFLAGS@ $(DEPFLAGS) $(INC_DIRS) $(SDL_INC)
+CFLAGS   := @CFLAGS@   $(DEPFLAGS) $(INC_DIRS) $(SDL_INC) -DDEBUG  # DEBUG symbol needed for mf80 debug
+
+LDFLAGS=$(SDL_LDFLAGS) @LDFLAGS@ 
+LDLIBS=@LDLIBS@
+
+COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+
+OUTPUT_OPTION = -o $(OBJDIR)/$*.o
+
+%.o : %.c 
+$(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+				
+%.o : %.cc
+$(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+all:	$(APP)
 
 ################################################################################################	
 
@@ -50,33 +102,13 @@ SRCS_C  = trs80/model1/rom_level1.c \
 					dg680/rom_dgos1_4.c \
 					2650/binbug/rom_binbug_6_1ROM.c
 
+FILENAMES	:= $(notdir $(basename $(SRCS_C) $(SRCS_CC)))
+OBJS	    := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
+DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
+
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))
 
-INC_DIRS = -I.
-
-CXXFLAGS := $(CXXFLAGS) $(INC_DIRS)
-CFLAGS   := $(DEPFLAGS) $(CFLAGS) $(INC_DIRS) -DDEBUG  # DEBUG symbol needed for mf80 debug
-
-FILENAMES	:= $(notdir $(basename $(SRCS_C) $(SRCS_CC)))
-OBJS	    := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
-
-DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
-
-COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
-COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
-
-OUTPUT_OPTION = -o $(OBJDIR)/$*.o
-
-%.o : %.c 
-$(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
-				
-%.o : %.cc
-$(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
-	$(COMPILE.cc) $(OUTPUT_OPTION) $<
-
-all:	$(APP)
 
 $(APP):	$(OBJS)
 
@@ -98,28 +130,13 @@ include $(wildcard $(DEPFILES))
 #   MingW libraries
 #
 
-MING_ARCH=@MING_ARCH@
-
-MING_SDL_BUILD_TYPE=@MING_SDL_BUILD_TYPE@
-
-ifneq ($(MING_ARCH),)
-
-SDL_VERSION=2.0.10
-SDL_TTF_VERSION=2.0.15
+ifneq ($(MINGW_ENABLED),)
 
 #
 # MingW SDL
 #
 
 # Original URL https://www.libsdl.org/release/SDL2-devel-2.0.10-mingw.tar.gz
-
-SDL_BASE=SDL2-$(SDL_VERSION)
-SDL_TGZ=SDL2-devel-$(SDL_VERSION)-mingw.tar.gz
-SDL_URL=https://www.libsdl.org/release/$(SDL_TGZ)
-SDL_TARGETS=SDL2.dll
-
-SDL_DIR=$(SDL_BASE)/$(MING_ARCH)-w64-mingw32
-SDL_TARGET_SRC=$(addprefix $(SDL_DIR)/bin/,$(SDL_TARGETS))  
 
 .PHONY: sdl
 sdl: $(SDL_TARGETS)
@@ -140,14 +157,6 @@ $(SDL_TGZ) :
 #
 
 # Original URL https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.15-mingw.tar.gz
-
-SDL_TTF_BASE=SDL2_ttf-$(SDL_TTF_VERSION)
-SDL_TTF_TGZ=SDL2_ttf-devel-$(SDL_TTF_VERSION)-mingw.tar.gz
-SDL_TTF_URL=https://www.libsdl.org/projects/SDL_ttf/release/$(SDL_TTF_TGZ)
-SDL_TTF_TARGETS=SDL2_ttf.dll libfreetype-6.dll zlib1.dll
-
-SDL_TTF_DIR=$(SDL_TTF_BASE)/$(MING_ARCH)-w64-mingw32
-SDL_TTF_TARGET_SRC=$(addprefix $(SDL_TTF_DIR)/bin/,$(SDL_TTF_TARGETS))  
 
 .PHONY: ttf
 ttf: $(SDL_TTF_TARGETS)
@@ -171,20 +180,20 @@ clean_sdl:
 
 ################################################################################################	
 
-LDFLAGS  :=$(LDFLAGS)  -L$(SDL_DIR)/lib     -L$(SDL_TTF_DIR)/lib
-CFLAGS   :=$(CFLAGS)   -I$(SDL_DIR)/include -I$(SDL_DIR)/include/SDL2 -I$(SDL_TTF_DIR)/include -I$(SDL_TTF_DIR)/include/SDL2
-CXXFLAGS :=$(CXXFLAGS) -I$(SDL_DIR)/include -I$(SDL_DIR)/include/SDL2 -I$(SDL_TTF_DIR)/include -I$(SDL_TTF_DIR)/include/SDL2
-
 else
 
 sdl:		# configure uses packages on other platforms
 
-endif
+ttf:		# configure uses packages on other platforms
+
+endif # ($(MINGW_ENABLED),)
 
 ################################################################################################	
 #
 #  Native file dialogs
 #
+
+.PHONY : nfd
 
 $(NFD_LIB): nfd
 
@@ -195,7 +204,7 @@ clean_nfd:
 
 nfd: 
 	if test \! -d nativefiledialog ; then \
-		git clone https://github.com/postincrement/nativefiledialog.git \
+		git clone https://github.com/postincrement/nativefiledialog.git ; \
 	  cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
 		$(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean && make config=$(NFD_BUILD_TYPE) nfd" ; \
 	else \
@@ -207,6 +216,8 @@ nfd:
 #
 #  SDLFontCache
 #
+
+$(OBJDIR)/SDL_FontCache.o : ./SDL_FontCache/SDL_FontCache.c
 
 ./SDL_FontCache/SDL_FontCache.c : ./SDL_FontCache
 

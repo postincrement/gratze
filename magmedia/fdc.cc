@@ -74,7 +74,7 @@ static WD_FDC::CommandInfo g_commands[] = {
   { 0xfe, 0xe4, "readTrack",  3, 0 },
   { 0xff, 0xf4, "writeTrack", 3, 0 },
 
-  { 0xf0, 0xd0, "forceInt",   4, WD_FDC::ForceIntCommand }
+  { 0xf0, 0xd0, "forceInt",   4, &WD_FDC::ForceIntCommand }
 };
 
 ///////////////////////////////////////////////////////////

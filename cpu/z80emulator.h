@@ -20,12 +20,6 @@ class Z80Emulator : public Emulator
     virtual bool Start(int addr = -1) override;
     virtual bool Run(int cycles = 1000)  override;
 
-    //virtual uint8_t ReadMemory(uint16_t) override;
-    //virtual void WriteMemory(uint16_t, uint8_t data) override;
-
-    virtual uint8_t InZ80(register uint16_t Port);
-    virtual void OutZ80(register uint16_t Port, register uint8_t Value);
-
     virtual void NMI() override;
     virtual void Interrupt(uint16_t vector = 0) override;
     virtual void Reset(uint16_t addr = 0) override;

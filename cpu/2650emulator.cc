@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <unistd.h>
+#include <memory.h>
 
 #include "cpu/2650emulator.h"
 
@@ -65,7 +66,7 @@ S2650Emulator::S2650Emulator(EmulatorInfo * info)
 bool S2650Emulator::Start(int addr)
 {
   if (addr < 0)
-    addr = m_info->m_cpu.m_resetAddr;
+    addr = GetCPUInfo()->m_resetAddr;
 
   cout << "resetting 2650 to " << hex << addr << endl;
   Reset(addr);

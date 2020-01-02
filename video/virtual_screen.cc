@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <unistd.h>
+#include <memory.h>
 
 #include "SDL_FontCache/SDL_FontCache.h"
 
@@ -18,15 +19,17 @@ VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const
   : m_mainWindow(mainWindow)
 {
   // clear video memory
-  cout << "info: video memory size is " << emulator.GetInfo().m_video.m_memorySize_k << "k" << endl;
-  m_memory.resize(emulator.GetInfo().m_video.m_memorySize_k * 1024);
+  const Emulator::VideoDriverInfo * m_info = emulator.GetVideoInfo();
+  int size_bytes = m_info->m_endAddr - m_info->m_startAddr + 1;
+  cout << "info: video memory size is " << (size_bytes / 1024) << "k" << endl;
+  m_memory.resize(size_bytes);
   memset(&m_memory[0], 0x20, m_memory.size());
   m_offsMask = m_memory.size() - 1;
 
-  m_cols   = emulator.GetInfo().m_video.m_screenCols;
-  m_rows   = emulator.GetInfo().m_video.m_screenRows;
-  m_width  = emulator.GetInfo().m_video.m_screenWidth;
-  m_height = emulator.GetInfo().m_video.m_screenHeight;
+  m_cols   = m_info->m_screenCols;
+  m_rows   = m_info->m_screenRows;
+  m_width  = m_info->m_screenWidth;
+  m_height = m_info->m_screenHeight;
 
   m_start = 0;
 

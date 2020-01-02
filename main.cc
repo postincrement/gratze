@@ -1,4 +1,4 @@
-#include <SDL2/SDL.h> 
+#include <SDL.h> 
 
 #include <stdio.h>
 #include <unistd.h>
@@ -240,14 +240,20 @@ int main(int argc, char *argv[])
 
   cout << "info: running " << emulator->GetInfo().m_name << endl;
 
-  if (options.m_ramSize_k >= 0) {
-    emulator->SetRAMSize_k(options.m_ramSize_k);
+  const Emulator::RAMInfo * ram = emulator->GetMainRAMInfo();
+  if (ram == nullptr) {
+    cerr << "warning: emulator has no RAM defined" << endl;
   }
   else {
-    emulator->SetRAMSize_k(emulator->GetInfo().m_ram.m_size_K);
+    int ramSize_k = ((ram->m_endAddr - ram->m_startAddr) + 1) / 1024; 
+    if (options.m_ramSize_k >= 0) {
+      emulator->SetRAMSize_k(options.m_ramSize_k);
+    }
+    else {
+      emulator->SetRAMSize_k(ramSize_k);
+   }
+    cout << "info: RAM size set to " << dec << ramSize_k << "k" << endl;
   }
-
-  cout << "info: RAM size set to " << dec << emulator->GetRAMSize_k() << "k" << endl;
 
   // load ROM
   //if (!ReadROMFromFile(options.m_romFn, m_rom))
@@ -260,35 +266,36 @@ int main(int argc, char *argv[])
   }
 
   MainWindow mainWindow;
-  bool hasMemoryMappedVideo = emulator->GetInfo().m_video.m_type == EmulatorInfo::VideoDriver::eMemoryMapped;
-
-  if (hasMemoryMappedVideo) {
-
-    // initlialize SDL 
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
-      printf("error initializing SDL: %s\n", SDL_GetError()); 
-      return -1;
-    }
-
-    cerr << "Creating screen" << endl;
-
-    emulator->CreateScreen(mainWindow, options);
+  bool hasMemoryMappedVideo = false;
+  const Emulator::VideoDriverInfo * videoInfo = emulator->GetVideoInfo();
+  if (videoInfo == nullptr) {
+    cerr << "error: emulator has no video device defined" << endl;
+    return -1;
   }
+  else if (videoInfo->m_type != Emulator::VideoDriver::eMemoryMapped) {
+    cerr << "error: emulators without memory mapped video not yet supported" << endl;
+    return -1;
+  }
+
+  // initlialize SDL 
+  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
+    printf("error initializing SDL: %s\n", SDL_GetError()); 
+    return -1;
+  }
+
+  cerr << "Creating screen" << endl;
+
+  emulator->CreateScreen(mainWindow, options);
 
   if (!emulator->Start()) {
     cerr << "error: cannot start emulator" << endl;
     return -1;
   }
 
-  if (emulator->GetInfo().m_video.m_memorySize_k == 0) {
-    cerr << "error: non-video emulators not yet supported" << endl;
-    return -1;
-  }
-
   int videoTest = 1;
 
-  if (hasMemoryMappedVideo && videoTest) {
-    for (int i = 0; i < emulator->GetInfo().m_video.m_screenCols * emulator->GetInfo().m_video.m_screenRows; ++i) {
+  if (videoTest) {
+    for (int i = 0; i < videoInfo->m_screenCols * videoInfo->m_screenRows; ++i) {
       emulator->m_video->WriteChar(i, i & 0xff);
     }
     auto now = std::chrono::system_clock::now();
