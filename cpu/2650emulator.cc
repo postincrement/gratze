@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <memory.h>
 
+#include "misc.h"
 #include "cpu/2650emulator.h"
 
 using namespace std;
@@ -68,7 +69,7 @@ bool S2650Emulator::Start(int addr)
   if (addr < 0)
     addr = GetCPUInfo()->m_resetAddr;
 
-  cout << "resetting 2650 to " << hex << addr << endl;
+  cout << "resetting 2650 to " << HEXFORMAT0x4(addr) << endl;
   Reset(addr);
   return true;
 }
@@ -130,13 +131,13 @@ void S2650Emulator::WritePortD(unsigned char data)
 
 unsigned char S2650Emulator::ReadPort(unsigned char port)
 {
-  cout << "2650: unknown read from port 0x" << hex << (int)port << endl;
+  cout << "2650: unknown read from port " << HEXFORMAT0x2(port) << endl;
   return 0x00;
 }
 
 void S2650Emulator::WritePort(unsigned char port, unsigned char data)
 {
-  cout << "2650: unknown write to port 0x" << hex << (int)port << endl;
+  cout << "2650: unknown write to port " << HEXFORMAT0x2(port) << endl;
 }
 
 
@@ -156,11 +157,11 @@ void S2650Emulator::DumpStackInternal(const std::vector<uint16_t> & stack)
 {
   /*
   cerr << "----------" << endl;
-  cerr << "PC : 0x" << setw(4) << setfill('0') << hex << m_cpu.PC.W << endl;
-  cerr << "SP : 0x" << setw(4) << setfill('0') << hex << m_cpu.SP.W << endl;
+  cerr << "PC : " << HEXFORMAT0x4(m_cpu.PC.W) << endl;
+  cerr << "SP : " << HEXFORMAT0x4(m_cpu.SP.W) << endl;
   int i = 0;
   for (auto & r : stack) {
-    cerr << "STACK + " << dec << setw(2) << i << " : 0x" << setw(4) << setfill('0') << hex << r << endl;
+    cerr << "STACK + " << dec << setw(2) << i << " : " << HEXFORMAT0x2(r) << endl;
     i += 2; 
   }
   */

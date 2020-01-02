@@ -10,8 +10,8 @@ class Model1_Emulator : public TRS80Emulator
 
     virtual bool Open(const Options & options) override;
 
-    uint8_t ReadIOMemory(int id, uint16_t addr) override;
-    void WriteIOMemory(int id, uint16_t addr, uint8_t val) override;
+    virtual uint8_t ReadIOMemory(int id, uint16_t addr) override;
+    virtual void WriteIOMemory(int id, uint16_t addr, uint8_t val) override;
 
   protected:
     bool m_withEI;    

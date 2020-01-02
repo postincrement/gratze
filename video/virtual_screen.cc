@@ -6,6 +6,7 @@
 
 #include "SDL_FontCache/SDL_FontCache.h"
 
+#include "misc.h"
 #include "config.h"
 #include "virtual_screen.h"
 #include "mainwindow.h"
@@ -21,10 +22,10 @@ VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const
   // clear video memory
   const Emulator::VideoDriverInfo * m_info = emulator.GetVideoInfo();
   int size_bytes = m_info->m_endAddr - m_info->m_startAddr + 1;
-  cout << "info: video memory size is " << (size_bytes / 1024) << "k" << endl;
   m_memory.resize(size_bytes);
   memset(&m_memory[0], 0x20, m_memory.size());
   m_offsMask = m_memory.size() - 1;
+  cout << "info: video memory size is " << size_bytes << " bytes, mask is " << HEXFORMAT0x4(m_offsMask) << endl;
 
   m_cols   = m_info->m_screenCols;
   m_rows   = m_info->m_screenRows;
@@ -84,15 +85,15 @@ void VirtualScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
   bg = m_bgColour;
 }
 
-void VirtualScreen::WriteChar(int offs, uint8_t ch)
+void VirtualScreen::Write(int offs, uint8_t ch)
 {
-  if (ch != ReadChar(offs)) {
+  if (ch != Read(offs)) {
     m_memory[offs & m_offsMask] = ch;
     RenderChar(offs);
   }
 }
 
-uint8_t VirtualScreen::ReadChar(int offs) const
+uint8_t VirtualScreen::Read(int offs) const
 {
   return m_memory[offs & m_offsMask];
 }
@@ -117,7 +118,7 @@ void VirtualScreen::RenderChar(int offs)
 
 int VirtualScreen::GetFontChar(int offs)
 {
-  return ReadChar(offs);
+  return Read(offs);
 }
 
 void VirtualScreen::Refresh()

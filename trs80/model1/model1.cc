@@ -1,7 +1,9 @@
-#include "model1.h"
-
 #include <iostream>
 #include <iomanip>
+
+#include "misc.h"
+#include "model1.h"
+
 
 using namespace std;
 
@@ -27,6 +29,7 @@ bool Model1_Emulator::Open(const Options & options)
 void Model1_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 {
   int reg = addr & 0x000f;
+/*
   if (reg >= 0xc)  
     WriteFDC(addr, val);
   else if (reg == 1)
@@ -34,7 +37,8 @@ void Model1_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
   else if (reg == 8)  
     WritePrinter(addr, val);
   else  
-    WriteLog(addr, val);
+  */
+  cerr << "TRS WRITE MEM IO " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
 
 uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
@@ -42,6 +46,7 @@ uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
   if (id == 2)
     return ReadKeyboard(addr);
     
+/*
   int reg = addr & 0x000f;
   if (reg >= 0xc)  
     return ReadFDC(addr);
@@ -51,8 +56,10 @@ uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
     return ReadDrvSel(addr);
   else if (reg == 8)  
     return ReadPrinter(addr);
+*/
 
-  return ReadLog(addr);
+  cerr << "TRS READ MEM IO " << HEXFORMAT0x4(addr)<< endl;
+  return 0;
 }
 
 /////////////////////////////////////////////////////////////
@@ -79,7 +86,7 @@ static struct EmulatorInfo g_level1EmulatorInfo =
                              MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
                              256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),
 
-    INFO_MEM_IO_WRITE(MODEL1_KB_START_ADDR, 0x400, 2),
+    INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 
     INFO_END()
   }
@@ -114,7 +121,7 @@ static struct EmulatorInfo g_levelEmulatorInfo =
                               MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
                               256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),
 
-    INFO_MEM_IO_WRITE(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
+    INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 
     INFO_END()                  
   }

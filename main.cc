@@ -188,6 +188,18 @@ bool ParseOptions(int argc, char *argv[], Options & options)
             optIndex++;
           }
 
+          // enable/disable EI
+          else if (enableOpt == "readdebug") {
+            options.m_readDebug = on;
+            optIndex++;
+          }
+
+          // enable/disable EI
+          else if (enableOpt == "writedebug") {
+            options.m_writeDebug = on;
+            optIndex++;
+          }
+
           // unknown option
           else {
             enableOpt.clear();
@@ -296,7 +308,7 @@ int main(int argc, char *argv[])
 
   if (videoTest) {
     for (int i = 0; i < videoInfo->m_screenCols * videoInfo->m_screenRows; ++i) {
-      emulator->m_video->WriteChar(i, i & 0xff);
+      emulator->m_video->Write(i, i & 0xff);
     }
     auto now = std::chrono::system_clock::now();
     auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);

@@ -4,6 +4,7 @@
 #include <memory.h>
 
 #include "config.h"
+#include "misc.h"
 #include "trs80.h"
 
 #include "model1/model1.h"
@@ -332,7 +333,7 @@ void TRS80Emulator::OnKeyDown(const SDL_Keysym & keysym)
       const uint8_t *scanInfo = g_symToCode[sym][mod];
       if ((scanInfo[0] == 0x00) && (scanInfo[1] == 0))
       {
-        cerr << "warning: unmapped keyboard sym code 0x" << hex << keysym.sym << endl;
+        cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(keysym.sym) << endl;
       }
 
       // handle codes that need to be unshifted
@@ -397,7 +398,6 @@ void TRS80Emulator::OnKeyUp(const SDL_Keysym & keysym)
 
 uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
 {
-  cout << "reading keyboard from address " << hex << addr << endl;
   uint16_t mask = 1;
   uint8_t value = 0x00;
   for (int i = 0; i < 8; ++i) {
@@ -412,8 +412,8 @@ void TRS80Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
 {
   if (m_video) {
     if (ch < 0x20)
-      ch += 0x20;
-    m_video->WriteChar(offset, ch);
+      ch += 0x40;
+    m_video->Write(offset, ch);
   }
 }
 
@@ -421,7 +421,7 @@ void TRS80Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
 
 void TRS80Emulator::WritePrinter(uint16_t addr, uint8_t val)
 {
-  cerr << "PRINTER: " << val << setw(2) << hex << std::setfill('0') << (int)val << ' ' << (isgraph(val) ? (char)val : '.') << endl;
+  cerr << "PRINTER: " << HEXFORMAT0x2(val) << ' ' << (isgraph(val) ? (char)val : '.') << endl;
 }
 
 uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
@@ -432,7 +432,7 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
   // *FAULT         = 0x10
 
   uint8_t val = 0x30;
-  cerr << "PRINTER READ: " << setw(2) << hex << std::setfill('0') << (int)val << endl;
+  cerr << "PRINTER READ: " << HEXFORMAT0x2(val) << endl;
 
   return val;
 }
@@ -585,7 +585,7 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
   int cassOut = (val & 0x3);
   if (cassOn) {
 
-    //cerr << "CASS: write data " << hex << cassOut << ' ' << m_cassetteTrigger << endl;
+    //cerr << "CASS: write data " << HEXFORMAT0x2(cassOut) << ' ' << m_cassetteTrigger << endl;
 
     // open for writing if this is the first time
     if (m_cassetteTrigger && (cassOut != 0)) {
@@ -665,7 +665,7 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
        */
       //DumpStack(5);
       uint8_t data = m_cassette->ReadByte();
-      //cerr << "CASS: Read sync " << hex << setfill('0') << (int)data << endl;
+      //cerr << "CASS: Read sync " << HEXFORMAT0x2(data) << endl;
       WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0 
       //if (data == 0xa5)
       //  SetTrace(true);
@@ -684,7 +684,7 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
       uint8_t data;
       if (ReadMemory(sp + 3) == 1) {
         data = m_cassette->ReadByte();
-        //cerr << "CASS: Read data " << hex << setfill('0') << (int)data << endl;
+        //cerr << "CASS: Read data " << HEXFORMAT0x2(data) << endl;
       }
       WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0 
       //SetTrace(true);

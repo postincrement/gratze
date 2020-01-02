@@ -25,6 +25,9 @@ struct Options
   std::string m_font;
   unsigned m_fontSize = -1;
 
+  bool m_readDebug = false;
+  bool m_writeDebug = false;
+
   // set breakpoint (not used yet)
   int m_breakpoint = -1;
 };

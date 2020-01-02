@@ -73,7 +73,7 @@ class Emulator
       uint8_t * m_data;
     };
 
-  #define INFO_ROM(addr, data) { Emulator::BlockType::eROM, { .m_rom={ addr, addr + sizeof(data), data } } }
+  #define INFO_ROM(addr, data) { Emulator::BlockType::eROM, { .m_rom={ addr, addr + sizeof(data) - 1, data } } }
 
     /////////////////////////////////////////////
     //
@@ -190,7 +190,7 @@ class Emulator
 
     struct WriteMemoryBlockInfo 
     {
-      int m_type = 0;
+      BlockType m_type = BlockType::eEnd;
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
       uint8_t * m_memory = nullptr; 
@@ -201,7 +201,7 @@ class Emulator
 
     struct ReadMemoryBlockInfo 
     {
-      int m_type = 0;
+      BlockType m_type = BlockType::eEnd;
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
       const uint8_t * m_memory = nullptr;    // may point to write memory 
@@ -212,7 +212,7 @@ class Emulator
 
     struct WriteIOPortBlockInfo 
     {
-      int m_type = 0;
+      BlockType m_type = BlockType::eEnd;
       uint16_t m_startPort = 0;
       uint16_t m_endPort = 0;
       IOPortWriteFunction m_function = nullptr;
@@ -221,7 +221,7 @@ class Emulator
 
     struct ReadIOPortBlockInfo 
     {
-      int m_type = 0;
+      BlockType m_type = BlockType::eEnd;
       uint16_t m_startPort = 0;
       uint16_t m_endPort = 0;
       IOPortReadFunction m_function = nullptr;
@@ -272,6 +272,13 @@ class Emulator
     virtual uint8_t ReadIOMemory(int id, uint16_t);
     virtual void WriteIOMemory(int id, uint16_t, uint8_t data);
 
+    virtual uint8_t DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t addr);
+    virtual void DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
+
+    
+    virtual uint8_t DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr);
+    virtual void DebugWriteIOMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
+
     virtual uint8_t ReadNull(uint16_t);
     virtual void WriteNull(uint16_t, uint8_t);
 
@@ -297,6 +304,7 @@ class Emulator
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options);
     virtual void CreateScreen(MainWindow & mainWindow, const Options & options);
     virtual void WriteToMemoryMappedVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
+    virtual uint8_t ReadFromMemoryMappedVideo(const ReadMemoryBlockInfo & info, uint16_t addr);
     virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
     virtual int GetVideoOffset();
     virtual void ChangeVideoColour();
@@ -334,6 +342,9 @@ class Emulator
 
     long long m_cycleCounter;
     std::chrono::system_clock::time_point m_cpuDelayTimer;
+
+    bool m_debugWriteMemory;
+    bool m_debugReadMemory;
 };
 
 struct EmulatorInfo

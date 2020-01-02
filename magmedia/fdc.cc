@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "misc.h"
+
 using namespace std;
 
 #define   DISK_SPEED_5_INCH_RPM     300.0
@@ -205,7 +207,7 @@ void WD_FDC::WriteCmdReg(int8_t command)
 
   CommandInfo * info = GetCommand(command);
   if (info == nullptr) {
-    cerr << "FDC: unknown command " << hex << setw(2) << setfill('0') << ((int)command & 0xff) << endl;
+    cerr << "FDC: unknown command " << HEXFORMAT0x2(command) << endl;
     return;
   }
 
@@ -214,7 +216,7 @@ void WD_FDC::WriteCmdReg(int8_t command)
     return;
   }
 
-  cerr << "FDC: command " << hex << setw(2) << setfill('0') << ((int)command & 0xff) << " " << info->m_name << endl;
+  cerr << "FDC: command " << HEXFORMAT0x2(command) << " " << info->m_name << endl;
 
   switch (info->m_type) {
 
@@ -412,7 +414,7 @@ int WD_FDC::ReadCommand(uint8_t cmd)
       m_setInterrupt = true;
     }
     else {
-      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ", len = " << (int)bufferLen << ", density = " << (int)info.m_density << ", DAM 0x" << hex << setw(2) << setfill('0') << (int)info.m_dam << endl;
+      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ", len = " << (int)bufferLen << ", density = " << (int)info.m_density << ", DAM " << HEXFORMAT0x2(info.m_dam) << endl;
       m_bufferPtr = 0;
       m_bufferLen = bufferLen;
       m_reading   = true;
@@ -421,8 +423,8 @@ int WD_FDC::ReadCommand(uint8_t cmd)
         int i;
         for (i = 0; i < bufferLen; ++i) {
           if ((i % 16) == 0)
-            cout << setw(4) << setfill('0') << hex << i << "  ";
-          cout << ' ' << setw(2) << setfill('0') << hex << (int)m_buffer[i];
+            cout << HEXFORMAT0x4(i) << "  ";
+          cout << ' ' << HEXFORMAT2(m_buffer[i]);
           if ((i % 16) == 15)
             cout << endl;
         }
@@ -467,7 +469,7 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
     if (m_currentCommand < 0)
       cerr << "FDC: force int on busy with no command" << endl;
     else  
-      cerr << "FDC: force int on busy with command " << hex << setw(2) << setfill('0') << ((int)m_currentCommand & 0xff) << endl;
+      cerr << "FDC: force int on busy with command " << HEXFORMAT0x2(m_currentCommand) << endl;
     if (cmd & COMMAND_FORCE_INT_NR2R)
       UpdateInterrupt(true);
   }
@@ -507,7 +509,7 @@ void WD_FDC::Write(uint16_t addr, uint8_t value)
       break;
   }
   if (!title.empty())
-    cerr << "FDC SET " << title << ": 0x" << setw(2) << hex << std::setfill('0') << (int)value << endl;
+    cerr << "FDC SET " << title << ": " << HEXFORMAT0x2(value) << endl;
 }
 
 uint8_t WD_FDC::Read(uint16_t addr)
@@ -750,7 +752,7 @@ void VirtualDriveFile::ReadJV3(off_t len, std::stringstream & formatError)
           break;
       }
       if (dam == 0x00) {
-        cerr << "error: unknown DAM code 0x" << setw(2) << setfill('0') << dam << endl;
+        cerr << "error: unknown DAM code " << HEXFORMAT0x2(dam) << endl;
       }
       else {
         m_trackCount = std::max(m_trackCount, (int)track);

@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <memory.h>
 
+#include "misc.h"
 #include "cpu/z80emulator.h"
 
 using namespace std;
@@ -24,7 +25,7 @@ bool Z80Emulator::Start(int addr)
   if (addr < 0)
     addr = GetCPUInfo()->m_resetAddr;
 
-  cout << "resetting Z80 to " << hex << addr << endl;
+  cout << "resetting Z80 to " << HEXFORMAT0x4(addr) << endl;
   Reset(addr);
   return true;
 }
@@ -117,11 +118,11 @@ void Z80Emulator::GetStack(std::vector<uint16_t> & stack)
 void Z80Emulator::DumpStackInternal(const std::vector<uint16_t> & stack)
 {
   cerr << "----------" << endl;
-  cerr << "PC : 0x" << setw(4) << setfill('0') << hex << m_cpu.PC.W << endl;
-  cerr << "SP : 0x" << setw(4) << setfill('0') << hex << m_cpu.SP.W << endl;
+  cerr << "PC : " << HEXFORMAT0x4(m_cpu.PC.W) << endl;
+  cerr << "SP : " << HEXFORMAT0x4(m_cpu.SP.W) << endl;
   int i = 0;
   for (auto & r : stack) {
-    cerr << "STACK + " << dec << setw(2) << i << " : 0x" << setw(4) << setfill('0') << hex << r << endl;
+    cerr << "STACK + " << dec << setw(2) << i << " :" << HEXFORMAT0x4(r) << endl;
     i += 2; 
   }
 }
