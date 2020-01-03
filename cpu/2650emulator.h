@@ -16,7 +16,7 @@ class S2650Emulator : public Emulator
 
     virtual void NMI() override;
     virtual void Interrupt(uint16_t vector = 0) override;
-    virtual void Reset(uint16_t addr = 0) override;
+    virtual void Reset(int addr = -1) override;
     virtual uint16_t ReadMemoryWord(uint16_t addr) override;
 
     virtual void GetStack(std::vector<uint16_t> & stack) override;

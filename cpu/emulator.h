@@ -236,7 +236,7 @@ class Emulator
 
     virtual void NMI() = 0;
     virtual void Interrupt(uint16_t vector = 0) = 0;
-    virtual void Reset(uint16_t addr = 0) = 0;
+    virtual void Reset(int addr = -1) = 0;
 
     virtual void DumpStack(int count);
     virtual void DumpStack(const std::vector<uint16_t> & stack);

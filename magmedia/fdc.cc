@@ -173,6 +173,8 @@ bool WD_FDC::IsCurrentDriveAvailable() const
 
 /////////////////////////////////////////////////////////////////////////////////////
 
+#define HASH_STS(side, track, sector)     (sector + (side << 8) + (track << 16))
+
 WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd)
 {
   WD_FDC::CommandInfo * info = g_commands;
@@ -216,15 +218,17 @@ void WD_FDC::WriteCmdReg(int8_t command)
     return;
   }
 
-  cerr << "FDC: command " << HEXFORMAT0x2(command) << " " << info->m_name << endl;
+  cerr << "FDC: command " << HEXFORMAT0x2(command) << " " << info->m_name << " is type " << (int)info->m_type << endl;
 
   switch (info->m_type) {
 
     case 1:  // TYPE I
       m_setInterrupt   = false;
-      m_status         = STATUS_BUSY;
+      // all type I commands finish immediately - no BUSY required
+      //m_status         = STATUS_BUSY;
       m_currentCommand = -1;
       std::invoke(info->m_function, this, command);
+      break;
 
     case 2:  // TYPE II
       m_setInterrupt   = false;
@@ -279,8 +283,8 @@ uint8_t WD_FDC::ReadDataReg()
     else {
       cerr << "FDC: read ended" << endl;
       m_currentCommand = -1;
-      m_status &= m_statusMask;
-      m_reading = 0;
+      m_status &= m_statusMask;  // resets STATUS_BUSY
+      m_reading = false;
       UpdateInterrupt(true);
       break;
     }
@@ -410,11 +414,11 @@ int WD_FDC::ReadCommand(uint8_t cmd)
     int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
       cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
-      m_status = STATUS_RECORDNOTFOUND;
+      m_status = STATUS_RECORDNOTFOUND;  // resets STATUS_BUSY
       m_setInterrupt = true;
     }
     else {
-      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ", len = " << (int)bufferLen << ", density = " << (int)info.m_density << ", DAM " << HEXFORMAT0x2(info.m_dam) << endl;
+      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
       m_bufferPtr = 0;
       m_bufferLen = bufferLen;
       m_reading   = true;
@@ -447,7 +451,7 @@ int WD_FDC::ReadCommand(uint8_t cmd)
           m_status |= 0x00;
           break; 
       }
-      m_statusMask = STATUS_DAM_MASK;
+      m_statusMask = STATUS_DAM_MASK;   // reset STATUS_BUSY
     }
   }
 }
@@ -466,10 +470,15 @@ int WD_FDC::ReadCommand(uint8_t cmd)
 int WD_FDC::ForceIntCommand(uint8_t cmd)
 {
   if (m_status & STATUS_BUSY) {
+    m_bufferLen = 0;
+    m_bufferPtr = 0;
+    m_reading = false;
+    m_status &= !STATUS_BUSY;
     if (m_currentCommand < 0)
       cerr << "FDC: force int on busy with no command" << endl;
-    else  
+    else { 
       cerr << "FDC: force int on busy with command " << HEXFORMAT0x2(m_currentCommand) << endl;
+    }
     if (cmd & COMMAND_FORCE_INT_NR2R)
       UpdateInterrupt(true);
   }
@@ -477,7 +486,6 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
     cerr << "FDC: force int not busy with no command" << endl;
     SetTypeIStatus();
   }
-  m_status &= !STATUS_BUSY;
 }
 
 
@@ -656,7 +664,7 @@ bool VirtualDriveFile::Open(const std::string & name, bool readOnly)
     return false;
   }
 
-  cerr << "info: file '" << name << "' is len " << len << " bytes = " << (int)m_trackCount+1 << " tracks" << endl;
+  cerr << "info: file '" << name << "' is len " << len << " bytes = " << (int)m_trackCount << " tracks" << endl;
 
   return true;
 }
@@ -666,7 +674,7 @@ void VirtualDriveFile::ReadJV1(off_t len, std::stringstream & formatError)
   m_trackCount    = (len / (SD_SECTOR_COUNT * SD_SECTOR_SIZE));
 
   if (len != (SD_SECTOR_COUNT * SD_SECTOR_SIZE * m_trackCount)) {
-    formatError << "file length " << len << " is not compatible";
+    formatError << "file length " << len << " is not compatible with tracks of " << SD_SECTOR_COUNT << " x " << SD_SECTOR_SIZE << " bytes" << endl;
     return;
   }
 
@@ -756,7 +764,7 @@ void VirtualDriveFile::ReadJV3(off_t len, std::stringstream & formatError)
       }
       else {
         m_trackCount = std::max(m_trackCount, (int)track);
-        m_sectorMap.emplace(sector + (side << 8) + (track << 16), SectorInfo(offs, sectorSize, dam, density));
+        m_sectorMap.emplace(HASH_STS(0, track, sector), SectorInfo(offs, sectorSize, dam, density));
       }
     }
 
@@ -778,13 +786,16 @@ bool VirtualDriveFile::Mount(bool readonly)
 int VirtualDriveFile::ReadSector(int track, int sector, SectorInfo & info, uint8_t * data, int len)
 {
   int side = 0;
-  auto r = m_sectorMap.find((sector + 1) + (side << 8) + (track << 16));
+  auto r = m_sectorMap.find(HASH_STS(side, track, sector+1));
   if (r == m_sectorMap.end()) {
     cerr << "error: request for unknown sector " << dec << sector << " and track " << track << endl;
     return -1;
   }
 
   info = r->second;  
+
+  cout << "FDC: seek side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
+
   if (lseek(m_fd, info.m_offset, SEEK_SET) < 0) {
     cerr << "error: cannot seek for sector " << dec << sector << " and track " << track << endl;
     return -1;

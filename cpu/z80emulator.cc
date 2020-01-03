@@ -32,8 +32,11 @@ bool Z80Emulator::Start(int addr)
   return true;
 }
 
-void Z80Emulator::Reset(uint16_t addr)
+void Z80Emulator::Reset(int addr)
 {
+  if (addr < 0)
+    addr = GetCPUInfo()->m_resetAddr;
+    
   ResetZ80(&m_cpu);
   m_cpu.PC.W       = addr;
   m_cpu.TrapBadOps = 1;

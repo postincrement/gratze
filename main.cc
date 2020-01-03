@@ -53,6 +53,8 @@ bool ParseOptions(int argc, char *argv[], Options & options)
       option = arg.substr(2);
     }
 
+    cout << "matching " << option << endl;
+
     // select ROM file
     if ((option == "rom") || (option == "r")) {
       if (++optIndex >= argc) {
@@ -246,7 +248,7 @@ int main(int argc, char *argv[])
 
   Options options;
 
-  if (!ParseOptions(argc, argv, options) < 0) {
+  if (!ParseOptions(argc, argv, options)) {
     return -1;
   }
 

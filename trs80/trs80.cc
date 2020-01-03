@@ -36,7 +36,6 @@ using namespace std;
 
 #define RESET_SYM   SDLK_F1
 #define TRACE_SYM   SDLK_F2
-#define REBOOT_SYM  SDLK_F12
 
 #define EXTENDED_SYM_START 0x4000004f
 
@@ -75,16 +74,16 @@ bool TRS80Emulator::Open(const Options &options)
   return Emulator::Open(options);
 }
 
-bool TRS80Emulator::Start(int addr)
+void TRS80Emulator::Reset(int addr)
 {
   // clear keyboard
   memset(m_kbData, 0x00, sizeof(m_kbData));
   m_shiftDown = 0;
 
   // init floppy drive 
-  InitFDC();
+  InitFDC();  
 
-  return Z80Emulator::Start(addr);
+  return Z80Emulator::Reset(addr);
 }
 
 void TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
@@ -299,10 +298,7 @@ static uint8_t g_symToCode[KB_SYM_COUNT][2][2] = {
 
 void TRS80Emulator::OnKeyDown(const SDL_Keysym & keysym)
 {
-  if (keysym.sym == REBOOT_SYM)
-    Reset();
-
-  else if (keysym.sym == RESET_SYM)
+  if (keysym.sym == RESET_SYM)
     NMI();
 
   else if (keysym.sym == TRACE_SYM)
@@ -519,9 +515,10 @@ uint8_t TRS80Emulator::ReadInterrupt(uint16_t addr)
   uint8_t value = 0x00;
   //cerr << "INTERRUPT CLEAR" << endl;
 
-  if (m_fdcPending) {
+  if (m_fdcPending != 0) {
     m_fdcPending &= 1;
     value |= 0x40;
+    //SetTrace(1);
   }
 
   if (m_rtcPending) {

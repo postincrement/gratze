@@ -15,6 +15,9 @@
 
 using namespace std;
 
+#define REBOOT_SYM  SDLK_F12
+
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 Emulator::Emulator(EmulatorInfo * info)
@@ -77,7 +80,6 @@ int Emulator::GetRAMSize_k() const
 {
   return m_ram.size() / 1024;
 }
-
 
 double Emulator::GetActualCPUSpeed_Hz() const
 {
@@ -200,6 +202,9 @@ void Emulator::OnKeyDown(const SDL_Keysym &keysym)
   }
   else if (keysym.sym == SDLK_F10) {
     MemoryDump();
+  }
+  else if (keysym.sym == REBOOT_SYM) {
+    Reset();
   }
   else {
     cerr << "warning: unknown keyboard sym code" << HEXFORMAT0x2(keysym.sym) << endl;

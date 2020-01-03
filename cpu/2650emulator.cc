@@ -74,8 +74,11 @@ bool S2650Emulator::Start(int addr)
   return true;
 }
 
-void S2650Emulator::Reset(uint16_t addr)
+void S2650Emulator::Reset(int addr)
 {
+  if (addr < 0)
+    addr = GetCPUInfo()->m_resetAddr;
+    
   m_cpu->registers.ap = addr;
 
   m_cycleCounter = 0;

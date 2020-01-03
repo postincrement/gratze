@@ -73,7 +73,7 @@ class TRS80Emulator : public Z80Emulator
 
     // overrides from Emulator
     virtual bool Open(const Options & options) override;
-    virtual bool Start(int addr = -1) override;
+    virtual void Reset(int addr = -1) override;
 
     virtual uint8_t ReadNull(uint16_t) override;
 
