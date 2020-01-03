@@ -64,11 +64,13 @@ OUTPUT_OPTION = -o $(OBJDIR)/$*.o
 
 %.o : %.c 
 $(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
-	$(COMPILE.c) $(OUTPUT_OPTION) $<
+	@echo "(CC) $<" 
+	@$(COMPILE.c) $(OUTPUT_OPTION) $<
 				
 %.o : %.cc
 $(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
-	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+	@echo "(CXX) $<" 
+	@$(COMPILE.cc) $(OUTPUT_OPTION) $<
 
 all:	$(APP)
 

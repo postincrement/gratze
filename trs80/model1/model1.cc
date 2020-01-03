@@ -29,7 +29,7 @@ bool Model1_Emulator::Open(const Options & options)
 void Model1_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 {
   int reg = addr & 0x000f;
-/*
+
   if (reg >= 0xc)  
     WriteFDC(addr, val);
   else if (reg == 1)
@@ -37,8 +37,7 @@ void Model1_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
   else if (reg == 8)  
     WritePrinter(addr, val);
   else  
-  */
-  cerr << "TRS WRITE MEM IO " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
+    cerr << "TRS WRITE MEM IO " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
 
 uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
@@ -46,7 +45,6 @@ uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
   if (id == 2)
     return ReadKeyboard(addr);
     
-/*
   int reg = addr & 0x000f;
   if (reg >= 0xc)  
     return ReadFDC(addr);
@@ -56,7 +54,6 @@ uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
     return ReadDrvSel(addr);
   else if (reg == 8)  
     return ReadPrinter(addr);
-*/
 
   cerr << "TRS READ MEM IO " << HEXFORMAT0x4(addr)<< endl;
   return 0;
@@ -110,8 +107,8 @@ static struct EmulatorInfo g_levelEmulatorInfo =
   {
     INFO_CPU(MODEL1_CLOCK_SPEED, 0x0000),
 
-    INFO_MEM_IO_READ(0x37e0, 0x37ef, 1),
-    INFO_MEM_IO_WRITE(0x37e0,0x37ef, 1),
+    //INFO_MEM_IO_READ(0x37e0, 0x37ef, 1),
+    //INFO_MEM_IO_WRITE(0x37e0,0x37ef, 1),
 
     INFO_ROM(0x0000, g_model1Level2ROM),
     INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 48, 4, 48),

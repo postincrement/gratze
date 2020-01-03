@@ -30,6 +30,7 @@ MingW
 Various I/O Ports
 -----------------
   http://www.trs-80.com/wordpress/zaps-patches-pokes-tips/ports-and-i-o-devices/
+  http://interbutt.com/mess/super80/
 
 Disk Formats
 ------------

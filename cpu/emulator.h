@@ -195,6 +195,7 @@ class Emulator
       uint16_t m_endAddr = 0;
       uint8_t * m_memory = nullptr; 
       std::vector<uint8_t> m_storage;
+      MemoryWriteFunction m_realFunction = nullptr;
       MemoryWriteFunction m_function = nullptr;
       int m_id;
     };
@@ -206,6 +207,7 @@ class Emulator
       uint16_t m_endAddr = 0;
       const uint8_t * m_memory = nullptr;    // may point to write memory 
       std::vector<uint8_t> m_storage;
+      MemoryReadFunction m_realFunction = nullptr;
       MemoryReadFunction m_function = nullptr;
       int m_id;
     };
@@ -343,8 +345,8 @@ class Emulator
     long long m_cycleCounter;
     std::chrono::system_clock::time_point m_cpuDelayTimer;
 
-    bool m_debugWriteMemory;
-    bool m_debugReadMemory;
+    bool m_debugWriteMemory = false;
+    bool m_debugReadMemory = false;
 };
 
 struct EmulatorInfo

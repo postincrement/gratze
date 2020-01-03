@@ -219,6 +219,9 @@ void Emulator::OnKeyDown(const SDL_Keysym &keysym)
   if (keysym.sym == SDLK_F9) {
     ChangeVideoColour();
   }
+  else if (keysym.sym == SDLK_F10) {
+    ChangeVideoColour();
+  }
   else {
     cerr << "warning: unknown keyboard sym code" << HEXFORMAT0x2(keysym.sym) << endl;
   }
@@ -327,9 +330,10 @@ void Emulator::CompileMemoryBlocks()
         exit(-1);
       }
       ReadMemoryBlockInfo readInfo;
-      readInfo.m_type      = block->m_type;
-      readInfo.m_startAddr = info.m_startAddr;
-      readInfo.m_endAddr   = info.m_endAddr;
+      readInfo.m_type         = block->m_type;
+      readInfo.m_startAddr    = info.m_startAddr;
+      readInfo.m_endAddr      = info.m_endAddr;
+      readInfo.m_realFunction = &Emulator::ReadIOMemoryInternal;
       if (m_debugReadMemory) {
         readInfo.m_function  = &Emulator::DebugReadIOMemory;
       }
@@ -348,9 +352,10 @@ void Emulator::CompileMemoryBlocks()
         exit(-1);
       }
       WriteMemoryBlockInfo writeInfo;
-      writeInfo.m_type      = block->m_type;
-      writeInfo.m_startAddr = info.m_startAddr;
-      writeInfo.m_endAddr   = info.m_endAddr;
+      writeInfo.m_type         = block->m_type;
+      writeInfo.m_startAddr    = info.m_startAddr;
+      writeInfo.m_endAddr      = info.m_endAddr;
+      writeInfo.m_realFunction = &Emulator::WriteIOMemoryInternal;
       if (m_debugWriteMemory) {
         writeInfo.m_function  = &Emulator::DebugWriteIOMemory;
       }
@@ -374,7 +379,8 @@ void Emulator::CompileMemoryBlocks()
         writeInfo.m_type      = block->m_type;
         writeInfo.m_startAddr = info.m_startAddr;
         writeInfo.m_endAddr   = info.m_endAddr;
-        writeInfo.m_function  = &Emulator::WriteToMemoryMappedVideo;
+        writeInfo.m_realFunction = &Emulator::WriteToMemoryMappedVideo;
+        writeInfo.m_function     = &Emulator::WriteToMemoryMappedVideo;
         m_writeMemoryBlocks.push_back(writeInfo);
       }
       {
@@ -382,7 +388,8 @@ void Emulator::CompileMemoryBlocks()
         readInfo.m_type      = block->m_type;
         readInfo.m_startAddr = info.m_startAddr;
         readInfo.m_endAddr   = info.m_endAddr;
-        readInfo.m_function  = &Emulator::ReadFromMemoryMappedVideo;
+        readInfo.m_realFunction = &Emulator::ReadFromMemoryMappedVideo;
+        readInfo.m_function     = &Emulator::ReadFromMemoryMappedVideo;
         m_readMemoryBlocks.push_back(readInfo);
       }
     }
@@ -402,7 +409,7 @@ uint8_t Emulator::ReadMemory(uint16_t addr)
   ReadMemoryBlockInfo * ptr = &m_readMemoryBlocks[0];
   for (int i = 0; i < m_readMemoryBlocks.size(); ++i) {
     if (addr >= ptr->m_startAddr && addr <= ptr->m_endAddr) {
-      if (ptr->m_function != NULL)
+      if (ptr->m_function != nullptr)
         return std::invoke(ptr->m_function, *this, *ptr, addr);
       return ptr->m_memory[addr - ptr->m_startAddr];
     }
@@ -419,7 +426,7 @@ void Emulator::WriteMemory(uint16_t addr, uint8_t data)
   WriteMemoryBlockInfo * ptr = &m_writeMemoryBlocks[0];
   for (int i = 0; i < m_writeMemoryBlocks.size(); ++i) {
     if (addr >= ptr->m_startAddr && addr <= ptr->m_endAddr) {
-      if (ptr->m_function != NULL) {
+      if (ptr->m_function != nullptr) {
         std::invoke(ptr->m_function, *this, *ptr, addr, data);
         return;
       }
@@ -433,39 +440,49 @@ void Emulator::WriteMemory(uint16_t addr, uint8_t data)
 
 uint8_t Emulator::DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t addr)
 {
-  cout << "debug: reading memory " << HEXFORMAT0x4(addr) << endl;
-  uint8_t val = info.m_memory[addr - info.m_startAddr];
-  return val;
+  if (info.m_realFunction != nullptr) {
+    cout << "debug: reading via fn from " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
+    return std::invoke(info.m_realFunction, *this, info, addr);
+  }
+  cout << "debug: reading from " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
+  return info.m_memory[addr - info.m_startAddr];
 }
 
 void Emulator::DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
 {
-  cout << "debug: writing memory " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(data) << endl;
+  if (info.m_realFunction != nullptr) {
+    cout << "debug: writing via fn to " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
+    std::invoke(info.m_realFunction, *this, info, addr, data);
+    return;
+  }
+  cout << "debug: writing to " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
   info.m_memory[addr - info.m_startAddr] = data;
 }
 
 uint8_t Emulator::DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr)
 {
   cout << "debug: reading IO memory " << HEXFORMAT0x4(addr) << endl;
-  uint8_t val = ReadIOMemoryInternal(info, addr);
-  return val;
+  if (info.m_realFunction != nullptr) {
+    return std::invoke(info.m_realFunction, *this, info, addr);
+  }
+  return 0x00;
 }
 
 void Emulator::DebugWriteIOMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
 {
   cout << "debug: writing IO memory " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(data) << endl;
-  WriteIOMemoryInternal(info, addr, data);
+  if (info.m_realFunction != nullptr) {
+    std::invoke(info.m_realFunction, *this, info, addr, data);
+  }
 }
 
 uint8_t Emulator::ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr)
 {
-  //cout << "READ IO MEM " << HEXFORMAT0x4(addr) << endl;
   return ReadIOMemory(info.m_id, addr);
 }
 
 void Emulator::WriteIOMemoryInternal(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
 {
-  //cout << "WRITE IO MEM " << HEXFORMAT0x4(addr) << endl;
   WriteIOMemory(info.m_id, addr, data);
 }
 
