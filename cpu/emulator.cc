@@ -62,7 +62,7 @@ bool Emulator::Open(const Options & options)
   m_debugWriteMemory = false; //options.m_writeDebug;
   m_debugReadMemory  = false; //options.m_writeDebug;
 
-  CompileMemoryBlocks();
+  CompileConfigBlocks();
 
   return true;
 }
@@ -195,6 +195,7 @@ void Emulator::ChangeVideoColour()
 
 /////////////////////////////////////////////////////////////////////////////////////
 
+
 void Emulator::OnKeyDown(const SDL_Keysym &keysym)
 {
   if (keysym.sym == SDLK_F9) {
@@ -250,20 +251,18 @@ const Config::RAM * Emulator::GetMainRAMInfo() const
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-void Emulator::CompileMemoryBlocks()
+void Emulator::CompileConfigBlocks()
 {
   m_readMemoryBlocks.clear();
   m_writeMemoryBlocks.clear();
-
-  cout << "memory read debug start " << m_debugReadMemory << endl;
+  m_readIOPortBlocks.clear();
+  m_writeIOPortBlocks.clear();
 
   const Config::Block * block = m_info->m_blocks;
   for (int i = 0; i < MAX_INFO_BLOCKS; ++i) {
 
     if (block->m_type == Config::Type::eEnd)
       break;
-
-    cout << "memory read debug " << m_debugReadMemory << endl;
 
     // add RAM
     if ((block->m_type == Config::Type::eRAM) || (block->m_type == Config::Type::eMainRAM)) {
@@ -384,6 +383,39 @@ void Emulator::CompileMemoryBlocks()
         m_readMemoryBlocks.push_back(readInfo);
       }
     }
+
+    // add read block
+    if ((block->m_type == Config::Type::eIOPortRead) || (block->m_type == Config::Type::eIOPortRW)) {
+      const Config::IOPort & info = block->m_info.m_ioPort;
+      if (info.m_startPort > info.m_endPort) {
+        cerr << "error: read IO port has end port" << HEXFORMAT0x2(info.m_startPort) << " < start address " << HEXFORMAT0x2(info.m_startPort) << endl;
+        exit(-1);
+      }
+      ReadIOPortBlockInfo readInfo;
+      readInfo.m_type      = block->m_type;
+      readInfo.m_startPort = info.m_startPort;
+      readInfo.m_endPort   = info.m_endPort;
+      readInfo.m_function  = &Emulator::ReadIOPort;
+      readInfo.m_id        = info.m_id; 
+      m_readIOPortBlocks.push_back(readInfo);
+    }
+
+    // add write block
+    if ((block->m_type == Config::Type::eIOPortWrite) || (block->m_type == Config::Type::eIOPortRW)) {
+      const Config::IOPort & info = block->m_info.m_ioPort;
+      if (info.m_startPort > info.m_endPort) {
+        cerr << "error: write IO port has end port" << HEXFORMAT0x2(info.m_startPort) << " < start address " << HEXFORMAT0x2(info.m_startPort) << endl;
+        exit(-1);
+      }
+      WriteIOPortBlockInfo writeInfo;
+      writeInfo.m_type      = block->m_type;
+      writeInfo.m_startPort = info.m_startPort;
+      writeInfo.m_endPort   = info.m_endPort;
+      writeInfo.m_function   = &Emulator::WriteIOPort;
+      writeInfo.m_id        = info.m_id; 
+      m_writeIOPortBlocks.push_back(writeInfo);
+    }
+
     ++block;
   }
 
@@ -392,6 +424,13 @@ void Emulator::CompileMemoryBlocks()
   }
   for (auto & r : m_readMemoryBlocks) {
     cout << "READ  " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type <<  " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
+  }
+
+  for (auto & r : m_writeIOPortBlocks) {
+    cout << "WRITE IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << " " << (void *)r.m_function << endl;
+  }
+  for (auto & r : m_readIOPortBlocks) {
+    cout << "READ IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type <<  " " << (void *)r.m_function << endl;
   }
 }
 
@@ -488,19 +527,40 @@ void Emulator::WriteIOMemory(int, uint16_t, uint8_t data)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-void Emulator::CompileIOPortBlocks()
+uint8_t Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t)
 {
-  m_readIOPortBlocks.clear();
-  m_writeIOPortBlocks.clear();
+  return 0x00;
 }
 
+void Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
+{
+}
 
-void Emulator::WritePort(register uint16_t port, register uint8_t value)
-{}
+void Emulator::WritePort(register uint16_t port, register uint8_t data)
+{
+  int8_t shortPort = port & 0xff;
+  for (auto & r : m_writeIOPortBlocks) {
+    if ((shortPort < r.m_startPort) || (shortPort > r.m_endPort))
+      continue;
+    if (r.m_function != nullptr) {
+      std::invoke(r.m_function, *this, r, shortPort, data);
+      return;
+    }
+  }
+  WriteIoPortLog(port, data);
+}
 
 uint8_t Emulator::ReadPort(register uint16_t port)
 {
-  return 0xff;  
+  int8_t shortPort = port & 0xff;
+  for (auto & r : m_readIOPortBlocks) {
+    if ((shortPort < r.m_startPort) || (shortPort > r.m_endPort))
+      continue;
+    if (r.m_function != nullptr) {
+      return std::invoke(r.m_function, *this, r, shortPort);
+    }
+  }
+  ReadIOPortLog(port);
 }
 
 uint8_t Emulator::ReadNull(uint16_t)
@@ -521,6 +581,17 @@ uint8_t Emulator::ReadLog(uint16_t addr)
 void Emulator::WriteLog(uint16_t addr, uint8_t val)
 {
   cerr << "WRITE " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
+}
+
+uint8_t Emulator::ReadIOPortLog(uint16_t addr)
+{
+  cerr << "READ IO PORT " << HEXFORMAT0x2(addr) << endl;
+  return 0x00;
+}
+
+void Emulator::WriteIoPortLog(uint16_t addr, uint8_t val)
+{
+  cerr << "WRITE IO PORT " << HEXFORMAT0x2(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

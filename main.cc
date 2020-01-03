@@ -308,6 +308,9 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+  // get ASCII codes in the keysyms
+  //SDL_EnableUNICODE(1);
+
   cerr << "Creating screen" << endl;
 
   emulator->CreateScreen(mainWindow, options);

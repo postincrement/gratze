@@ -33,6 +33,9 @@ enum class Type
   eROM,
   eMemIORead,
   eMemIOWrite,
+  eIOPortRead,
+  eIOPortWrite,
+  eIOPortRW,
   eVideo
 };
 
@@ -131,7 +134,7 @@ class Emulator
     typedef uint8_t (Emulator:: * MemoryReadFunction)(const ReadMemoryBlockInfo & info, uint16_t addr);   
 
     typedef void (Emulator:: * IOPortWriteFunction)(const WriteIOPortBlockInfo & info, uint16_t addr, uint8_t data);   
-    typedef uint8_t (Emulator:: * IOPortReadFunction)(const WriteIOPortBlockInfo & info, uint16_t addr);   
+    typedef uint8_t (Emulator:: * IOPortReadFunction)(const ReadIOPortBlockInfo & info, uint16_t addr);   
     
 #define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
 
@@ -144,6 +147,7 @@ class Emulator
 #define INFO_MEM_IO_WRITE(start, end, id)   { Config::Type::eMemIOWrite,  { .m_memIO={ start, end, id } } }
 #define INFO_IO_PORT_READ(start, end, id)   { Config::Type::eIOPortRead,  { .m_ioPort={ start, end, id } } }
 #define INFO_IO_PORT_WRITE(start, end, id)  { Config::Type::eIOPortWrite, { .m_ioPort={ start, end, id } } }
+#define INFO_IO_PORT_RW(start, end, id)     { Config::Type::eIOPortRW,    { .m_ioPort={ start, end, id } } }
 
 #define INFO_VIDEO_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
     { Config::Type::eVideo, { .m_video={ \
@@ -244,9 +248,9 @@ class Emulator
     virtual void GetStack(std::vector<uint16_t> & stack) = 0;
     virtual void SetTrace(bool v) = 0;
 
-    // memory functions
-    void CompileMemoryBlocks();
+    void CompileConfigBlocks();
 
+    // memory functions
     virtual uint8_t ReadMemory(uint16_t);
     virtual void WriteMemory(uint16_t, uint8_t data);
 
@@ -268,10 +272,14 @@ class Emulator
     virtual uint16_t ReadMemoryWord(uint16_t addr) = 0;
 
     // IO port functions
-    virtual void CompileIOPortBlocks();
-
     virtual void WritePort(register uint16_t port, register uint8_t value);
     virtual uint8_t ReadPort(register uint16_t port);
+
+    virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t);
+    virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data);
+
+    virtual uint8_t ReadIOPortLog(uint16_t addr);
+    virtual void WriteIoPortLog(uint16_t addr, uint8_t val);
 
     // keyboard functions
     virtual void OnKeyDown(const SDL_Keysym & keysym);
