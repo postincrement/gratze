@@ -199,7 +199,7 @@ void Emulator::OnKeyDown(const SDL_Keysym &keysym)
     ChangeVideoColour();
   }
   else if (keysym.sym == SDLK_F10) {
-    ChangeVideoColour();
+    MemoryDump();
   }
   else {
     cerr << "warning: unknown keyboard sym code" << HEXFORMAT0x2(keysym.sym) << endl;
@@ -293,7 +293,6 @@ void Emulator::CompileMemoryBlocks()
     // add ROM
     else if (block->m_type == Config::Type::eROM) {
       const Config::ROM & info = block->m_info.m_rom;
-        cout << "adding ROM debug" << endl;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: ROM block has end address " << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
@@ -393,31 +392,27 @@ void Emulator::CompileMemoryBlocks()
 
 uint8_t Emulator::ReadMemory(uint16_t addr)
 {
-  ReadMemoryBlockInfo * ptr = &m_readMemoryBlocks[0];
-  for (int i = 0; i < m_readMemoryBlocks.size(); ++i) {
-    if (addr >= ptr->m_startAddr && addr <= ptr->m_endAddr) {
-      if (ptr->m_function != nullptr)
-        return std::invoke(ptr->m_function, *this, *ptr, addr);
-      return ptr->m_memory[addr - ptr->m_startAddr];
-    }
-    ++ptr;
+  for (auto & r : m_readMemoryBlocks) {
+    if ((addr < r.m_startAddr) || (addr > r.m_endAddr))
+      continue;
+    if (r.m_function != nullptr)
+      return std::invoke(r.m_function, *this, r, addr);
+    return r.m_memory[addr - r.m_startAddr];
   }
   return ReadLog(addr);
 }
 
 void Emulator::WriteMemory(uint16_t addr, uint8_t data)
 {
-  WriteMemoryBlockInfo * ptr = &m_writeMemoryBlocks[0];
-  for (int i = 0; i < m_writeMemoryBlocks.size(); ++i) {
-    if (addr >= ptr->m_startAddr && addr <= ptr->m_endAddr) {
-      if (ptr->m_function != nullptr) {
-        std::invoke(ptr->m_function, *this, *ptr, addr, data);
-        return;
-      }
-      ptr->m_memory[addr - ptr->m_startAddr] = data;
+  for (auto & r : m_writeMemoryBlocks) {
+    if ((addr < r.m_startAddr) || (addr > r.m_endAddr))
+      continue;
+    if (r.m_function != nullptr) {
+      std::invoke(r.m_function, *this, r, addr, data);
       return;
     }
-    ++ptr;
+    r.m_memory[addr - r.m_startAddr] = data;
+    return;
   }
   WriteLog(addr, data);
 }

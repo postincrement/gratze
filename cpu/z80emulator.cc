@@ -6,6 +6,8 @@
 #include "misc.h"
 #include "cpu/z80emulator.h"
 
+#include <fstream>
+
 using namespace std;
 
 Z80Emulator::Z80Emulator(EmulatorInfo * info)
@@ -129,6 +131,66 @@ void Z80Emulator::DumpStackInternal(const std::vector<uint16_t> & stack)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
+void Z80Emulator::MemoryDump()
+{
+  uint16_t addr;
+  std::vector<uint8_t> dump; 
+  dump.resize(0x10000);
+  memset(&dump[0], 0, dump.size());
+  
+  for (auto & r : m_readMemoryBlocks) {
+    if (r.m_memory != nullptr) {
+      memcpy(&dump[r.m_startAddr], r.m_memory, r.m_endAddr - r.m_startAddr + 1);
+    }
+    else {
+    }
+  }
+
+  std::string basename("z80_dump");
+
+  {
+    std::string filename(basename + ".txt");
+    ofstream file(filename);
+    if (!file.is_open()) {
+      cerr << "error: could not open " << filename << endl;
+    }
+    else {
+      file << "PC = " << HEXFORMAT0x4(m_cpu.PC.W) << endl << endl;
+
+      int cols = 32;
+      int p = 0;
+      while (p < dump.size()) {
+        file << HEXFORMAT0x4(p) << "  ";
+        int len = std::min((int)dump.size(), cols);
+        int i;
+        for (i = 0; i < len; ++i)
+          file << " " << HEXFORMAT2(dump[p + i]);
+        while (i < cols)
+          file << "   ";  
+        file << "   ";
+        for (i = 0; i < len; ++i)
+          file << (isgraph(dump[p + i]) ? (char)dump[p + i] : '.');
+        file << endl;  
+        p += len;
+      }
+    }
+    cout << "memory dumped to " << filename << endl;
+  }
+
+  {
+    std::string filename(basename + ".bin");
+    ofstream file(filename, ios::out | ios::trunc | ios::binary);
+    if (!file.is_open()) {
+      cerr << "error: could not open " << filename << endl;
+    }
+    else {
+      file.write((char *)&dump[0], dump.size());
+    }
+    cout << "memory dumped to " << filename << endl;
+  }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
 
 Z80Emulator * Z80Emulator::g_z80Instance = NULL;
 

@@ -290,6 +290,7 @@ class Emulator
     // Floppy/hard drive functions
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
 
+    virtual void MemoryDump() = 0;;
     std::vector<uint8_t> m_videoRAM;
     std::unique_ptr<VirtualScreen> m_video;
 

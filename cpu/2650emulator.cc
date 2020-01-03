@@ -167,6 +167,12 @@ void S2650Emulator::DumpStackInternal(const std::vector<uint16_t> & stack)
   */
 }
 
+
+void S2650Emulator::MemoryDump()
+{}
+
+
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 

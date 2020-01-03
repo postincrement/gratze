@@ -108,8 +108,8 @@ static struct EmulatorInfo g_levelEmulatorInfo =
   {
     INFO_CPU(MODEL1_CLOCK_SPEED, 0x0000),
 
-    //INFO_MEM_IO_READ(0x37e0, 0x37ef, 1),
-    //INFO_MEM_IO_WRITE(0x37e0,0x37ef, 1),
+    INFO_MEM_IO_READ(0x37e0, 0x37ef, 1),
+    INFO_MEM_IO_WRITE(0x37e0,0x37ef, 1),
 
     INFO_ROM(0x0000, g_model1Level2ROM),
     INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 48, 4, 48),

@@ -28,6 +28,8 @@ class Z80Emulator : public Emulator
     virtual void GetStack(std::vector<uint16_t> & stack) override;
     virtual void SetTrace(bool v) override;
 
+    virtual void MemoryDump() override;
+
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;
     Z80 m_cpu;

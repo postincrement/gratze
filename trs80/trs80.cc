@@ -120,10 +120,9 @@ bool TRS80Emulator::Poll()
   auto now = std::chrono::system_clock::now();
   if (now > m_rtcTimer) {
     if (!m_rtcPending) {
-      //cerr << "RTC INTERRUPT" << endl;
       m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
       m_rtcPending = true;
-      //Interrupt();
+      Interrupt();
     }
   }
 

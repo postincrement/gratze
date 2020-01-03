@@ -29,6 +29,8 @@ class S2650Emulator : public Emulator
     virtual unsigned char ReadPort(unsigned char port);
     virtual void WritePort(unsigned char port, unsigned char data);
 
+    virtual void MemoryDump() override;
+
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;
 
