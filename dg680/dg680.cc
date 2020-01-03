@@ -39,6 +39,10 @@ static EmulatorInfo g_emulatorInfo =
   }
 };
 
+void DG680_Emulator::Init()
+{  
+  VirtualScreen::AddType<DG640>("dg640");
+}
 
 DG680_Emulator::DG680_Emulator()
   : Z80Emulator(&g_emulatorInfo)

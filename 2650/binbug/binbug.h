@@ -6,6 +6,7 @@
 class BINBUG_2650 : public S2650Emulator
 {
   public:
+    void Init();
     BINBUG_2650();
 };
 

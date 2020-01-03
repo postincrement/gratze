@@ -10,7 +10,7 @@ class Factory
 
     struct Worker 
     {
-      virtual Abstract * CreateInstance() = 0;
+      virtual Abstract * CreateInstance(Args ... args) = 0;
     };
 
     typedef std::map<KeyType, Worker *> WorkerMap;
@@ -18,8 +18,8 @@ class Factory
     template <class Concrete>
     struct ConcreteWorker : public Worker
     {
-      Abstract * CreateInstance() override
-      { return new Concrete(); }
+      Abstract * CreateInstance(Args ... args) override
+      { return new Concrete(args...); }
     };
 
     template <class Concrete>
@@ -32,6 +32,11 @@ class Factory
       if (r == m_workers.end())
         return NULL;
       return r->second->CreateInstance(args...);
+    }
+
+    bool HasKey(const std::string & key) const
+    {
+      return m_workers.count(key) != 0;
     }
 
     size_t GetKeys(std::vector<KeyType> & keys)

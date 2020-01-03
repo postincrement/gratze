@@ -49,6 +49,11 @@ TRS80Emulator::TRS80Emulator(EmulatorInfo * info)
   m_fdcEnabled = false;
 }
 
+void TRS80Emulator::Init()
+{  
+  VirtualScreen::AddType<TRS80Video>("trs80");
+}
+
 bool TRS80Emulator::Open(const Options &options)
 {
   m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
@@ -82,7 +87,7 @@ bool TRS80Emulator::Start(int addr)
   return Z80Emulator::Start(addr);
 }
 
-void TRS80Emulator::CreatePixelFont(const Options & options, const Emulator::FontInfo & fontInfo, std::vector<uint8_t> & fontData)
+void TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
   // set alpha numeric
   fontData.resize(fontInfo.m_height * 256);
@@ -408,15 +413,6 @@ uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
   return value;
 }
 
-void TRS80Emulator::WriteVideoChar(unsigned int offset, uint8_t ch)
-{
-  if (m_video) {
-    if (ch < 0x20)
-      ch += 0x40;
-    m_video->Write(offset, ch);
-  }
-}
-
 /////////////////////////////////////////////////////////////
 
 void TRS80Emulator::WritePrinter(uint16_t addr, uint8_t val)
@@ -699,4 +695,20 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
 }
 
 /////////////////////////////////////////////////////////////
+
+TRS80Video::TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
+  : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
+{
+}
+
+void TRS80Video::WriteMemory(int offs, uint8_t ch)
+{
+  if (ch < 0x20)
+    ch += 0x40;
+  SingleColourMemoryMappedVideo::WriteMemory(offs, ch);
+}
+
+
+
+
 

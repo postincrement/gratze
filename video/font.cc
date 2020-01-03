@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "misc.h"
 #include "config.h"
 #include "virtual_screen.h"
 #include "mainwindow.h"
@@ -33,54 +34,57 @@ PixelFont::PixelFont(int charCount, int width, int height, uint8_t * data)
   m_height = height;
 }
 
-bool PixelFont::Open(SDL_Renderer * m_renderer, const SDL_Color & fg, const SDL_Color & bg)
+bool PixelFont::Open(SDL_Renderer * renderer)
 {
-  // create the raw surface
-  SDL_Surface * surface = SDL_CreateRGBSurfaceWithFormat(0, m_width, m_height * m_charCount, 0, SDL_PIXELFORMAT_RGB24);
-  if (surface == NULL) {
-    SDL_Log("SDL_CreateRGBSurfaceWithFormat() for font failed: %s", SDL_GetError());
+  m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_width, m_height * m_charCount);
+  if (m_texture == nullptr) {
+    cerr << "error: cannot create font texture" << endl;
     return false;
   }
 
-  // lock the surface
-  SDL_LockSurface(surface);
+  cout << "info: creating font with " << dec << m_charCount << " chars" << endl;;
 
-  // copy pixel data to the with the correct colours
+  std::vector<uint32_t> pixels;
+  pixels.resize(m_width * m_height * m_charCount);
+
+  // copy pixel data to the surface with the correct colours
   for (int i = 0; i < m_charCount; ++i) {
     uint8_t * srcPixels = m_data + (i * m_height);
     for (int y = 0; y < m_height; ++y) {
-      uint8_t * dstPixels = (uint8_t *)surface->pixels + ((i * m_height) + y) * surface->pitch;
+      uint32_t * dstPixels = &pixels[m_width * ((i * m_height) + y)];
       unsigned mask = 1;
       for (int x = 0; x < m_width; ++x) {
         if (*srcPixels & mask) {
-          dstPixels[0] = fg.r; 
-          dstPixels[1] = fg.g; 
-          dstPixels[2] = fg.b; 
+          *dstPixels = 0xffffffff;
         }
         else {
-          dstPixels[0] = bg.r; 
-          dstPixels[1] = bg.g; 
-          dstPixels[2] = bg.b; 
+          *dstPixels = 0x00000000;
         }  
-        dstPixels += 3;
+        dstPixels++;
         mask = mask << 1;
       }
       ++srcPixels;
     }
   }
 
-  SDL_UnlockSurface(surface);
-
   // create texture
-  m_texture = SDL_CreateTextureFromSurface(m_renderer, surface);
-  SDL_FreeSurface(surface);
+  if (SDL_UpdateTexture(m_texture, NULL, &pixels[0], m_width * sizeof(uint32_t)) != 0) {
+    cerr << "error: cannot create font texture - " << SDL_GetError() << endl;
+    return false;
+  }
+
+  cout << "info: font texture created" << endl;
 
   return true;
 }
 
-void PixelFont::RenderChar(int ch, SDL_Renderer * renderer, const SDL_Rect & dstRect)
+void PixelFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
   SDL_Rect srcRect = { 0, ch * GetHeight(), GetWidth(), GetHeight() };
+  SDL_SetTextureColorMod(m_texture, 255, 255, 255);
+  SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
+  SDL_RenderFillRect(renderer, &dstRect);
+  SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b);
   SDL_RenderCopy(renderer, m_texture, &srcRect, &dstRect);
 }
 
@@ -99,17 +103,15 @@ TTFFont::~TTFFont()
     FC_FreeFont(m_font);
 }
 
-bool TTFFont::Open(SDL_Renderer * renderer, const SDL_Color & fg, const SDL_Color & bg)
+bool TTFFont::Open(SDL_Renderer * renderer)
 {
   if (m_font)
     FC_FreeFont(m_font);
 
   int pointSize = 20;  
 
-  m_bg = bg;  
-
   m_font = FC_CreateFont();  
-  FC_LoadFont(m_font, renderer, m_name.c_str(), pointSize, FC_MakeColor(fg.r, fg.g, fg.b, 255), TTF_STYLE_NORMAL); 
+  FC_LoadFont(m_font, renderer, m_name.c_str(), pointSize, FC_MakeColor(255, 255, 255, 255), TTF_STYLE_NORMAL); 
 
   if (!m_font) {
     cerr << "error: could not load font " << m_name << endl;
@@ -139,9 +141,9 @@ bool TTFFont::Open(SDL_Renderer * renderer, const SDL_Color & fg, const SDL_Colo
   return true;
 }
 
-void TTFFont::RenderChar(int ch, SDL_Renderer * renderer, const SDL_Rect & dstRect)
+void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  SDL_SetRenderDrawColor(renderer, m_bg.r, m_bg.g, m_bg.b, 255);
+  SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
   SDL_RenderFillRect(renderer, &dstRect);
 
   char str[2] = { (char)(ch & 0xff), 0x00 };

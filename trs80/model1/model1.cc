@@ -78,7 +78,8 @@ static struct EmulatorInfo g_level1EmulatorInfo =
 
     INFO_ROM(0x0000, g_model1Level1ROM),
     INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 4, 4, 16),
-    INFO_VIDEO_MEMORY_MAPPED(MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
+    INFO_VIDEO_MEMORY_MAPPED("trs80", \
+                             MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                              MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
                              MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
                              256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),
@@ -113,7 +114,7 @@ static struct EmulatorInfo g_levelEmulatorInfo =
     INFO_ROM(0x0000, g_model1Level2ROM),
     INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 48, 4, 48),
 
-    INFO_VIDEO_MEMORY_MAPPED(MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
+    INFO_VIDEO_MEMORY_MAPPED("trs80", MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                               MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
                               MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
                               256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),

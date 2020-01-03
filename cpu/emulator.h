@@ -7,6 +7,7 @@
 #include <SDL_keyboard.h> 
 
 #include "video/virtual_screen.h"
+#include "factory.h"
 #include "config.h"
 #include "magmedia/fdc.h"
 #include "options.h"
@@ -21,21 +22,105 @@ class Font;
 
 class EmulatorInfo;
 
+namespace Config {
+
+enum class Type
+{
+  eEnd,
+  eCPU,
+  eMainRAM,
+  eRAM,
+  eROM,
+  eMemIORead,
+  eMemIOWrite,
+  eVideo
+};
+
+
+struct Font
+{
+  int  m_count;                       // number of chars in font
+  int  m_width;                   // nominal font width in pixels (X)
+  int  m_height;                  // nominal font height in pixels (X)
+  uint8_t * m_fontData;               // base font data
+  void (* m_creator)(const Options & options, const Font & fontInfo, std::vector<uint8_t> & fontData);
+};
+
+struct Video 
+{
+  uint16_t  m_startAddr;
+  uint16_t  m_endAddr;
+
+  const char * m_name;         // key into VirtualScreen factory
+
+  int       m_screenCols;     // screen char cols (X)
+  int       m_screenRows;     // screen char rows (Y)
+
+  int       m_screenWidth;    // screen width in pixels (X)
+  int       m_screenHeight;   // screen height in pixels (Y)
+
+  Font  m_font;
+};
+
+struct CPU
+{
+  double    m_clockSpeed_MHz;  // nominal CPU clock speed
+  uint16_t  m_resetAddr;          // address to start when reset
+};
+
+struct ROM
+{
+  uint16_t  m_startAddr;
+  uint16_t  m_endAddr;
+  uint8_t * m_data;
+};
+
+struct RAM
+{
+  uint16_t m_startAddr;
+  uint16_t m_endAddr;
+  int m_minSize_K;              // min RAM size, in k
+  int m_maxSize_K;              // max RAM size, in k
+};
+
+struct MemIO
+{
+  uint16_t  m_startAddr;
+  uint16_t  m_endAddr;
+  uint16_t  m_id;
+};
+
+struct IOPort
+{
+  uint16_t  m_startPort;
+  uint16_t  m_endPort;
+  uint16_t  m_id;
+};
+
+/////////////////////////////////////////////
+//
+//  master config structure
+//
+
+struct Block {
+  Type m_type;
+
+  union {
+    CPU    m_cpu;
+    ROM    m_rom;
+    RAM    m_ram;
+    MemIO  m_memIO;
+    IOPort m_ioPort;
+    Video  m_video;
+  } m_info;
+};
+
+} // namespace Cnfig
+
+
 class Emulator
 {
   public:
-    enum class BlockType
-    {
-      eEnd,
-      eCPU,
-      eMainRAM,
-      eRAM,
-      eROM,
-      eMemIORead,
-      eMemIOWrite,
-      eVideo
-    };
-
     struct WriteMemoryBlockInfo;
     struct ReadMemoryBlockInfo;
 
@@ -48,140 +133,24 @@ class Emulator
     typedef void (Emulator:: * IOPortWriteFunction)(const WriteIOPortBlockInfo & info, uint16_t addr, uint8_t data);   
     typedef uint8_t (Emulator:: * IOPortReadFunction)(const WriteIOPortBlockInfo & info, uint16_t addr);   
     
-#define INFO_END() { Emulator::BlockType::eEnd }    
+#define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
 
-    /////////////////////////////////////////////
-    //
-    //  CPU info
-    //
+#define INFO_END()                          { Config::Type::eEnd }    
+#define INFO_CPU(speed, addr)               { Config::Type::eCPU,         { .m_cpu={ speed, addr } } }
+#define INFO_ROM(addr, data)                { Config::Type::eROM,         { .m_rom={ addr, addr + sizeof(data) - 1, data } } }
+#define INFO_MAIN_RAM(start, k, min, max)   { Config::Type::eMainRAM,     { .m_ram={ start, start + k*1024 - 1, min, max } } }
+#define INFO_RAM(start, end)                { Config::Type::eRAM,         { .m_ram={ start, end } } }
+#define INFO_MEM_IO_READ(start, end, id)    { Config::Type::eMemIORead,   { .m_memIO={ start, end, id } } }
+#define INFO_MEM_IO_WRITE(start, end, id)   { Config::Type::eMemIOWrite,  { .m_memIO={ start, end, id } } }
+#define INFO_IO_PORT_READ(start, end, id)   { Config::Type::eIOPortRead,  { .m_ioPort={ start, end, id } } }
+#define INFO_IO_PORT_WRITE(start, end, id)  { Config::Type::eIOPortWrite, { .m_ioPort={ start, end, id } } }
 
-    struct CPUInfo 
-    {
-      double    m_clockSpeed_MHz;  // nominal CPU clock speed
-      uint16_t  m_resetAddr;          // address to start when reset
-    };
-  #define INFO_CPU(speed, addr) { Emulator::BlockType::eCPU, { .m_cpu={ speed, addr } } }
-
-    /////////////////////////////////////////////
-    //
-    //  ROM block
-    //
-    struct ROMInfo 
-    {
-      uint16_t  m_startAddr;
-      uint16_t  m_endAddr;
-      uint8_t * m_data;
-    };
-
-  #define INFO_ROM(addr, data) { Emulator::BlockType::eROM, { .m_rom={ addr, addr + sizeof(data) - 1, data } } }
-
-    /////////////////////////////////////////////
-    //
-    //  RAM block
-    //
-    struct RAMInfo 
-    {
-      uint16_t m_startAddr;
-      uint16_t m_endAddr;
-      int m_minSize_K;              // min RAM size, in k
-      int m_maxSize_K;              // max RAM size, in k
-    };
-
-  #define INFO_MAIN_RAM(start, k, min, max) { Emulator::BlockType::eMainRAM, { .m_ram={ start, start + k*1024 - 1, min, max } } }
-  #define INFO_RAM(start, end)              { Emulator::BlockType::eRAM,     { .m_ram={ start, end } } }
-
-    /////////////////////////////////////////////
-    //
-    //  Memory IO block
-    //
-    struct MemIOInfo 
-    {
-      uint16_t  m_startAddr;
-      uint16_t  m_endAddr;
-      uint16_t  m_id;
-    };
-
-  #define INFO_MEM_IO_READ(start, end, id)  { Emulator::BlockType::eMemIORead,  { .m_memIO={ start, end, id } } }
-  #define INFO_MEM_IO_WRITE(start, end, id) { Emulator::BlockType::eMemIOWrite, { .m_memIO={ start, end, id } } }
-
-    /////////////////////////////////////////////
-    //
-    //  IOPort block
-    //
-    struct IOPortInfo 
-    {
-      uint16_t  m_startPort;
-      uint16_t  m_endPort;
-      uint16_t  m_id;
-    };
-
-  #define INFO_IO_PORT_READ(start, end, id)  { Emulator::BlockType::eIOPortRead,  { .m_ioPort={ start, end, id } } }
-  #define INFO_IO_PORT_WRITE(start, end, id) { Emulator::BlockType::eIOPortWrite, { .m_ioPort={ start, end, id } } }
-
-    /////////////////////////////////////////////
-    //
-    //  Video and font information block
-    //
-
-    enum class VideoDriver
-    {
-      eNone,
-      eMemoryMapped
-    };
-
-    struct FontInfo
-    {
-      int  m_count;                       // number of chars in font
-      int  m_width;                   // nominal font width in pixels (X)
-      int  m_height;                  // nominal font height in pixels (X)
-      uint8_t * m_fontData;               // base font data
-      void (* m_creator)(const Options & options, const Emulator::FontInfo & fontInfo, std::vector<uint8_t> & fontData);
-    };
-
-    struct VideoDriverInfo 
-    {
-      uint16_t  m_startAddr;
-      uint16_t  m_endAddr;
-
-      VideoDriver m_type;
-
-      int       m_screenCols;     // screen char cols (X)
-      int       m_screenRows;     // screen char rows (Y)
-
-      int       m_screenWidth;    // screen width in pixels (X)
-      int       m_screenHeight;   // screen height in pixels (Y)
-
-      FontInfo  m_font;
-    };
-
-  #define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
-  #define INFO_VIDEO_NONE() { Emulator::VideoDriver::eNone } //, 0, 0, 0, 0, 0, 0, { 0, 0, 0, NULL, NULL } }
-
-  #define INFO_VIDEO_MEMORY_MAPPED(start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
-    { Emulator::BlockType::eVideo, { .m_video={ \
-      start, end, \
-      Emulator::VideoDriver::eMemoryMapped, cols, rows, cols*fontWid, rows*fontHgt, \
+#define INFO_VIDEO_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
+    { Config::Type::eVideo, { .m_video={ \
+      start, end, name, \
+      cols, rows, cols*fontWid, rows*fontHgt, \
       INFO_FONT(count, fontWid, fontHgt, fontData, fontCreator) \
     } } }
-
-    /////////////////////////////////////////////
-    //
-    //  master config structure
-    //
-
-    struct InfoBlock {
-      BlockType m_type;
-
-      union {
-        CPUInfo    m_cpu;
-        ROMInfo    m_rom;
-        RAMInfo    m_ram;
-        MemIOInfo  m_memIO;
-        IOPortInfo m_ioPort;
-        VideoDriverInfo m_video;
-      } m_info;
-    };
-
 
     /////////////////////////////////////////////
     //
@@ -190,7 +159,9 @@ class Emulator
 
     struct WriteMemoryBlockInfo 
     {
-      BlockType m_type = BlockType::eEnd;
+      WriteMemoryBlockInfo() = default;
+      WriteMemoryBlockInfo(const WriteMemoryBlockInfo & obj) = default;
+      Config::Type m_type = Config::Type::eEnd;
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
       uint8_t * m_memory = nullptr; 
@@ -202,7 +173,9 @@ class Emulator
 
     struct ReadMemoryBlockInfo 
     {
-      BlockType m_type = BlockType::eEnd;
+      ReadMemoryBlockInfo() = default;
+      ReadMemoryBlockInfo(const ReadMemoryBlockInfo & obj) = default;
+      Config::Type m_type = Config::Type::eEnd;
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
       const uint8_t * m_memory = nullptr;    // may point to write memory 
@@ -214,7 +187,9 @@ class Emulator
 
     struct WriteIOPortBlockInfo 
     {
-      BlockType m_type = BlockType::eEnd;
+      WriteIOPortBlockInfo() = default;
+      WriteIOPortBlockInfo(const WriteIOPortBlockInfo & obj) = default;
+      Config::Type m_type = Config::Type::eEnd;
       uint16_t m_startPort = 0;
       uint16_t m_endPort = 0;
       IOPortWriteFunction m_function = nullptr;
@@ -223,7 +198,9 @@ class Emulator
 
     struct ReadIOPortBlockInfo 
     {
-      BlockType m_type = BlockType::eEnd;
+      ReadIOPortBlockInfo() = default;
+      ReadIOPortBlockInfo(const ReadIOPortBlockInfo & obj) = default;
+      Config::Type m_type = Config::Type::eEnd;
       uint16_t m_startPort = 0;
       uint16_t m_endPort = 0;
       IOPortReadFunction m_function = nullptr;
@@ -235,7 +212,9 @@ class Emulator
     //  main emulator functions
     //
 
-    Emulator(EmulatorInfo * info);
+    Emulator(EmulatorInfo * info = nullptr);
+
+    virtual void Init();
 
     virtual const EmulatorInfo & GetInfo() const;
 
@@ -243,10 +222,10 @@ class Emulator
     virtual bool Poll();
 
     // info functions
-    virtual const InfoBlock * GetInfoBlock(BlockType type) const;
-    virtual const CPUInfo * GetCPUInfo() const;
-    virtual const VideoDriverInfo * GetVideoInfo() const;
-    virtual const RAMInfo * GetMainRAMInfo() const;
+    virtual const Config::Block * GetConfigBlock(Config::Type type) const;
+    virtual const Config::CPU * GetCPUInfo() const;
+    virtual const Config::Video * GetVideoInfo() const;
+    virtual const Config::RAM * GetMainRAMInfo() const;
     virtual int GetRAMSize_k() const;
     virtual bool SetRAMSize_k(int len);  
 
@@ -277,7 +256,6 @@ class Emulator
     virtual uint8_t DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t addr);
     virtual void DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
 
-    
     virtual uint8_t DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr);
     virtual void DebugWriteIOMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
 
@@ -303,12 +281,10 @@ class Emulator
     bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);
 
     // Video functions
+    void CreateScreen(MainWindow & mainWindow, const Options & options);
     virtual bool OpenVideo(MainWindow & mainWindow, const Options & options);
-    virtual void CreateScreen(MainWindow & mainWindow, const Options & options);
-    virtual void WriteToMemoryMappedVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
-    virtual uint8_t ReadFromMemoryMappedVideo(const ReadMemoryBlockInfo & info, uint16_t addr);
-    virtual void WriteVideoChar(unsigned int offset, uint8_t ch);
-    virtual int GetVideoOffset();
+    virtual void WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
+    virtual uint8_t ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr);
     virtual void ChangeVideoColour();
 
     // Floppy/hard drive functions
@@ -330,9 +306,6 @@ class Emulator
 
     std::vector<ReadIOPortBlockInfo> m_readIOPortBlocks;
     std::vector<WriteIOPortBlockInfo> m_writeIOPortBlocks;
-
-    std::vector<uint8_t> m_fontData;
-    std::unique_ptr<Font> m_font;
 
     std::vector<uint8_t> m_ram;
     int m_ramSize_bytes;
@@ -360,7 +333,7 @@ struct EmulatorInfo
   const char * m_name;     // short name
   const char * m_title;    // long name
 
-  Emulator::InfoBlock m_blocks[20];
+  Config::Block m_blocks[20];
 };
 
 #endif // EMULATOR_H_

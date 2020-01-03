@@ -38,6 +38,11 @@ static EmulatorInfo g_emulatorInfo =
   }
 };
 
+void BINBUG_2650::Init()
+{  
+  VirtualScreen::AddType<DG640>("dg640");
+}
+
 BINBUG_2650::BINBUG_2650()
   : S2650Emulator(&g_emulatorInfo)
 {

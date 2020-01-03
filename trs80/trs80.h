@@ -5,6 +5,7 @@
 #include "cpu/z80emulator.h"
 #include "magmedia/fdc.h"
 #include "magmedia/cassette.h"
+#include "video/virtual_screen.h"
 #include "options.h"
 
 #define   MODEL1_CLOCK_SPEED      1.774
@@ -56,10 +57,19 @@
 #define   MODEL4_SCREEN_WIDTH_PIXELS     (MODEL4_SCREEN_WIDTH_CHARS*MODEL4_FONT_WIDTH)
 #define   MODEL4_SCREEN_HEIGHT_PIXELS    (MODEL4_SCREEN_HEIGHT_CHARS*MODEL4_FONT_HEIGHT)
 
+class TRS80Video : public SingleColourMemoryMappedVideo
+{
+  public:
+    TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
+    virtual void WriteMemory(int offs, uint8_t ch) override;
+};
+
 class TRS80Emulator : public Z80Emulator
 {
   public:
     TRS80Emulator(EmulatorInfo * info);
+
+    void Init() override;
 
     // overrides from Emulator
     virtual bool Open(const Options & options) override;
@@ -97,7 +107,7 @@ class TRS80Emulator : public Z80Emulator
     void WriteFx(register uint16_t, register uint8_t val);
     uint8_t ReadFx(register uint16_t);
 
-    static void CreatePixelFont(const Options & options, const Emulator::FontInfo & fontInfo, std::vector<uint8_t> & fontData);
+    static void CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
   protected:  
     uint8_t m_kbData[8];

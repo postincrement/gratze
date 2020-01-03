@@ -13,9 +13,11 @@ static struct EmulatorInfo g_emulatorInfo
 
     INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 16, 16, 48),
 
-    INFO_VIDEO_MEMORY_MAPPED(2, MODEL1_VIDEO_START_ADDR, MODEL4_SCREEN_WIDTH_CHARS, \
-                                MODEL4_SCREEN_HEIGHT_CHARS, MODEL4_FONT_WIDTH, \
-                                256, MODEL4_FONT_HEIGHT, g_trs80CharSets_256[7-4][0], TRS80Emulator::CreatePixelFont),
+    INFO_VIDEO_MEMORY_MAPPED("trs80", \
+                              MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
+                              MODEL4_SCREEN_WIDTH_CHARS, MODEL4_SCREEN_HEIGHT_CHARS, \
+                              MODEL4_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
+                              256, g_trs80CharSets_256[7-4][0], TRS80Emulator::CreatePixelFont),
     INFO_END()
   }
 };
@@ -24,14 +26,6 @@ static struct EmulatorInfo g_emulatorInfo
 Model4_Emulator::Model4_Emulator()
   : TRS80Emulator(&g_emulatorInfo)
 {
-}
-
-void Model4_Emulator::WriteMemory(register uint16_t addr, register uint8_t val)
-{}
-
-uint8_t Model4_Emulator::ReadMemory(register uint16_t addr)
-{
-  return 0;
 }
 
 

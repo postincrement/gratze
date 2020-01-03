@@ -14,120 +14,50 @@
 
 using namespace std;
 
+VirtualScreenFactory VirtualScreen::g_virtualScreenFactory;
+
 /////////////////////////////////////////////////////////////////////////////////
 
-VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options)
-  : m_mainWindow(mainWindow)
+VirtualScreen * VirtualScreen::Create(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
 {
-  // clear video memory
-  const Emulator::VideoDriverInfo * m_info = emulator.GetVideoInfo();
-  int size_bytes = m_info->m_endAddr - m_info->m_startAddr + 1;
-  m_memory.resize(size_bytes);
-  memset(&m_memory[0], 0x20, m_memory.size());
-  m_offsMask = m_memory.size() - 1;
-  cout << "info: video memory size is " << size_bytes << " bytes, mask is " << HEXFORMAT0x4(m_offsMask) << endl;
+  return g_virtualScreenFactory.CreateInstance(info.m_name, mainWindow, emulator, options, info);
+}  
 
-  m_cols   = m_info->m_screenCols;
-  m_rows   = m_info->m_screenRows;
-  m_width  = m_info->m_screenWidth;
-  m_height = m_info->m_screenHeight;
+/////////////////////////////////////////////////////////////////////////////////
 
-  m_start = 0;
-
-  m_fgColour = { 255, 255, 255 };
-  m_bgColour = {   0,   0,   0 };
-
+TextWindow::TextWindow(MainWindow & mainWindow, int rows, int cols, int width, int height)
+  : m_mainWindow(mainWindow)
+  , m_rows(rows)
+  , m_cols(cols)
+  , m_width(width)
+  , m_height(height)
+{
   m_lazyUpdates = true;
   m_dirty = true;
   m_updateTimer = std::chrono::system_clock::now();
 
-  cout << "info: virtual screen is " << m_width << " x " << m_height << endl;
+  m_visibleSize = rows * cols;
+  m_visibleMask = m_visibleSize - 1;
+  cout << "info: text window is " << m_width << " x " << m_height << " pixels, " << m_visibleSize << " chars, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 }
 
-VirtualScreen::~VirtualScreen()
-{}
-
-/*
-void VirtualScreen::SetColours(const SDL_Color & fg, const SDL_Color & bg)
-{
-  m_fgColour = fg;
-  m_bgColour = bg;
-
-  Refresh();
-}
-*/
-
-bool VirtualScreen::SetFont(Font * font)
-{
-  m_font.reset(font);
-  if (!SetFontColour(m_fgColour, m_bgColour))
-    return false;
-
-  cout << "info: virtual screen font is " << m_font->GetWidth() << " x " << m_font->GetHeight() << endl;
-  return true;
-}
-
-bool VirtualScreen::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
-{
-  m_fgColour = fg;
-  m_bgColour = bg;
-  if (!m_font || !m_font->Open(m_mainWindow.GetRenderer(), m_fgColour, m_bgColour)) {
-    cerr << "error: could not create font" << endl;
-    return false;
-  }
-  Refresh();
-  return true;
-}
-
-void VirtualScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
-{
-  fg = m_fgColour;
-  bg = m_bgColour;
-}
-
-void VirtualScreen::Write(int offs, uint8_t ch)
-{
-  if (ch != Read(offs)) {
-    m_memory[offs & m_offsMask] = ch;
-    RenderChar(offs);
-  }
-}
-
-uint8_t VirtualScreen::Read(int offs) const
-{
-  return m_memory[offs & m_offsMask];
-}
-
-void VirtualScreen::RenderChar(int offs)
+void TextWindow::RenderChar(int pos, SDL_Colour & fg, SDL_Colour & bg)
 { 
   if (m_font) {
-    offs &= m_offsMask;
-
+    pos = (pos & m_visibleMask);
     SDL_Rect dstRect;
-    int x = (offs - m_start) % m_cols;
-    int y = (offs - m_start) / m_cols;
+    int x = pos % m_cols;
+    int y = pos / m_cols;
     m_mainWindow.GetScreenCharRect(dstRect, x * m_font->GetWidth(), y * m_font->GetHeight(), 
                                                 m_font->GetWidth(),     m_font->GetHeight());
 
-    int fontChar = GetFontChar(offs);
-    m_font->RenderChar(fontChar, m_mainWindow.GetRenderer(), dstRect);
+    m_font->RenderChar(GetCharAtPos(pos), m_mainWindow.GetRenderer(), dstRect, fg, bg);
 
     Update(true);
   }
 }
 
-int VirtualScreen::GetFontChar(int offs)
-{
-  return Read(offs);
-}
-
-void VirtualScreen::Refresh()
-{
-  for (int offs = 0; offs < (m_width * m_height); ++offs)
-    RenderChar(offs);
-}
-
-void VirtualScreen::Update(bool hasChanged)
+void TextWindow::Update(bool hasChanged)
 {
   if (!m_lazyUpdates) {
     if (!hasChanged || m_dirty)
@@ -146,4 +76,106 @@ void VirtualScreen::Update(bool hasChanged)
     m_mainWindow.Update();
     m_dirty = false;
   }
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
+  : TextWindow(mainWindow, info.m_screenRows, info.m_screenCols, info.m_screenWidth, info.m_screenHeight)
+{
+}
+
+VirtualScreen::~VirtualScreen()
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
+  : VirtualScreen(mainWindow, emulator, options, info)
+  , m_offset(0)
+{
+  // create video memory
+  int size_bytes = info.m_endAddr - info.m_startAddr + 1;
+  m_memory.resize(size_bytes);
+  m_memoryMask = m_memory.size() - 1;
+
+  cout << "info: video memory size is " << size_bytes << " bytes, mask is " << HEXFORMAT0x4(m_memoryMask) << endl;
+
+  // create font
+  if (info.m_font.m_creator != NULL) {
+    (info.m_font.m_creator)(options, info.m_font, m_fontData);
+    m_font.reset(new PixelFont(info.m_font.m_count, info.m_font.m_width, info.m_font.m_height, &m_fontData[0]));
+    if (!m_font) {
+      cerr << "error: font could not be opened" << endl;
+    }
+    if (mainWindow.GetRenderer() == nullptr) {
+      cerr << "error: renderer not available" << endl;
+    }
+    else if (!m_font->Open(mainWindow.GetRenderer())) {
+      cerr << "error: font could not be opened" << endl;
+    }
+    else {
+      cout << "info: pixel font created" << endl;
+    }
+  }
+}
+
+void MemoryMappedVideo::WriteMemory(int addr, uint8_t ch)
+{
+  if ((addr >= m_memory.size()) || (m_memory[addr] == ch)) {
+    return;
+  }
+
+  m_memory[addr] = ch;
+  RefreshChar(addr);
+}
+
+uint8_t MemoryMappedVideo::ReadMemory(int addr) const
+{
+  if (addr >= m_memory.size()) {
+    return 0x00;
+  }
+
+  return m_memory[addr];
+}
+
+void MemoryMappedVideo::RefreshScreen()
+{
+  for (int offs = 0; offs < m_visibleSize; ++offs)
+    RefreshChar(offs);
+}
+
+FontChar MemoryMappedVideo::GetCharAtPos(int addr)
+{
+  return m_memory[addr & m_visibleMask];
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+SingleColourMemoryMappedVideo::SingleColourMemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
+  : MemoryMappedVideo(mainWindow, emulator, options, info)
+{
+  m_fgColour = { 0xff, 0xff, 0xff, 0xff };
+  m_bgColour = { 0, 0, 0, 0 };
+}
+
+void SingleColourMemoryMappedVideo::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
+{
+  m_fgColour = fg;
+  m_bgColour = bg;
+
+  RefreshScreen();
+}
+
+void SingleColourMemoryMappedVideo::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
+{
+  fg = m_fgColour;
+  bg = m_bgColour;
+}
+
+void SingleColourMemoryMappedVideo::RefreshChar(int pos)
+{
+  pos = pos & m_visibleMask;
+  RenderChar(pos, m_fgColour, m_bgColour);
 }

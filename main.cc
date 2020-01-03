@@ -6,6 +6,7 @@
 #include <iomanip>
 
 #include "config.h"
+#include "misc.h"
 #include "mainwindow.h"
 
 #include "trs80/model1/model1.h"
@@ -218,8 +219,7 @@ bool ParseOptions(int argc, char *argv[], Options & options)
 
 /////////////////////////////////////////////////////
 
-extern "C"
-int main(int argc, char *argv[]) 
+void Init()
 {
   g_emulatorFactory.AddConcreteClass<Model1Level2_Emulator>("m1");
   g_emulatorFactory.AddConcreteClass<Model1Level1_Emulator>("m11");
@@ -228,6 +228,21 @@ int main(int argc, char *argv[])
   g_emulatorFactory.AddConcreteClass<Model4_Emulator>("m4");
   g_emulatorFactory.AddConcreteClass<DG680_Emulator>("dg680");
   g_emulatorFactory.AddConcreteClass<BINBUG_2650>("binbug");
+
+  std::vector<std::string> keys;
+  g_emulatorFactory.GetKeys(keys);
+
+  for (auto & r : keys) {
+    std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(r));
+    emulator->Init();
+  }
+}
+
+
+extern "C"
+int main(int argc, char *argv[]) 
+{
+  Init();
 
   Options options;
 
@@ -252,7 +267,7 @@ int main(int argc, char *argv[])
 
   cout << "info: running " << emulator->GetInfo().m_name << endl;
 
-  const Emulator::RAMInfo * ram = emulator->GetMainRAMInfo();
+  const Config::RAM * ram = emulator->GetMainRAMInfo();
   if (ram == nullptr) {
     cerr << "warning: emulator has no RAM defined" << endl;
   }
@@ -279,13 +294,9 @@ int main(int argc, char *argv[])
 
   MainWindow mainWindow;
   bool hasMemoryMappedVideo = false;
-  const Emulator::VideoDriverInfo * videoInfo = emulator->GetVideoInfo();
+  const Config::Video * videoInfo = emulator->GetVideoInfo();
   if (videoInfo == nullptr) {
     cerr << "error: emulator has no video device defined" << endl;
-    return -1;
-  }
-  else if (videoInfo->m_type != Emulator::VideoDriver::eMemoryMapped) {
-    cerr << "error: emulators without memory mapped video not yet supported" << endl;
     return -1;
   }
 
@@ -308,8 +319,9 @@ int main(int argc, char *argv[])
 
   if (videoTest) {
     for (int i = 0; i < videoInfo->m_screenCols * videoInfo->m_screenRows; ++i) {
-      emulator->m_video->Write(i, i & 0xff);
+      emulator->m_video->WriteMemory(i, i & 0xff);
     }
+    emulator->m_video->Update(true);
     auto now = std::chrono::system_clock::now();
     auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);
     while (std::chrono::system_clock::now() < finish) {
@@ -340,7 +352,7 @@ int main(int argc, char *argv[])
 
     interval = std::chrono::duration<double>(now - lastSpeed).count();
     if (interval >= 1) {
-      //cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
+      cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
       lastSpeed = now;
     }
   }

@@ -8,6 +8,7 @@
 class DG680_Emulator : public Z80Emulator
 {
   public:
+    void Init();
     DG680_Emulator();
 };
 
