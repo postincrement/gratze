@@ -22,7 +22,6 @@ namespace Config {
   class Video;
 }
 
-
 using VirtualScreenFactory = Factory<VirtualScreen, std::string, MainWindow &, Emulator &, const Options &, const Config::Video &>;
 
 class TextWindow
@@ -30,12 +29,14 @@ class TextWindow
   public:
     TextWindow(MainWindow & mainWindow, int rows, int cols, int width, int height);
 
+    virtual bool Open();
+
     virtual void Update(bool hasChanged = false);
 
-    virtual void RefreshChar(int pos) = 0;
-    virtual void RenderChar(int offs, SDL_Colour & fg, SDL_Colour & bg);
+    virtual void RefreshCharAtPos(int pos) = 0;
+    virtual void RenderCharAtPos(int pos, SDL_Colour & fg, SDL_Colour & bg);
 
-    virtual FontChar GetCharAtPos(int offs) = 0;
+    virtual FontChar GetCharAtPos(int pos) = 0;
 
   protected:  
     MainWindow & m_mainWindow;
@@ -72,8 +73,8 @@ class VirtualScreen : public TextWindow
 
     static VirtualScreen * Create(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);  
 
-    virtual void WriteMemory(int offs, uint8_t ch) = 0;
-    virtual uint8_t ReadMemory(int offs) const = 0;
+    virtual void WriteMemoryAtPos(int pos, uint8_t ch) = 0;
+    virtual uint8_t ReadMemoryAtPos(int pos) const = 0;
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const = 0;
@@ -90,16 +91,18 @@ class MemoryMappedVideo : public VirtualScreen
     MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
     ~MemoryMappedVideo();
 
-    virtual void WriteMemory(int offs, uint8_t ch);
-    virtual uint8_t ReadMemory(int offs) const;
+    virtual bool Open() override;
+
+    virtual void WriteMemoryAtPos(int pos, uint8_t ch);
+    virtual uint8_t ReadMemoryAtPos(int pos) const;
 
     virtual void RefreshScreen();
 
-    virtual FontChar GetCharAtPos(int offs) override;
+    virtual FontChar GetCharAtPos(int pos) override;
 
   protected:  
-    static VirtualScreenFactory g_virtualScreenFactory;
-
+    Config::Font m_fontConfig;
+    Options m_options;
     std::vector<uint8_t> m_fontData;
     std::vector<uint8_t> m_memory;
     int m_offset;  
@@ -116,7 +119,7 @@ class SingleColourMemoryMappedVideo : public MemoryMappedVideo
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg);
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
-    virtual void RefreshChar(int pos);
+    virtual void RefreshCharAtPos(int pos);
 
   protected:  
     SDL_Color m_bgColour;

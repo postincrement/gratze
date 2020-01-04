@@ -110,9 +110,3 @@ void MainWindow::Update()
   SDL_RenderPresent(m_renderer);
 }
 
-
-//void Emulator::DrawText(int x, int y, const char * text)
-//{
-//  m_video->DrawText(x, y, text);
-//}
-

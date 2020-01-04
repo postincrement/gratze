@@ -13,6 +13,7 @@
 #include "trs80/model3/model3.h"
 #include "trs80/model4/model4.h"
 #include "dg680/dg680.h"
+#include "super80/super80.h"
 #include "2650/binbug/binbug.h"
 
 #include "factory.h"
@@ -230,6 +231,7 @@ void Init()
   g_emulatorFactory.AddConcreteClass<Model4_Emulator>("m4");
   g_emulatorFactory.AddConcreteClass<DG680_Emulator>("dg680");
   g_emulatorFactory.AddConcreteClass<BINBUG_2650>("binbug");
+  g_emulatorFactory.AddConcreteClass<Super80_Emulator>("super80");
 
   std::vector<std::string> keys;
   g_emulatorFactory.GetKeys(keys);
@@ -324,7 +326,7 @@ int main(int argc, char *argv[])
 
   if (videoTest) {
     for (int i = 0; i < videoInfo->m_screenCols * videoInfo->m_screenRows; ++i) {
-      emulator->m_video->WriteMemory(i, i & 0xff);
+      emulator->m_video->WriteMemoryAtPos(i, i & 0xff);
     }
     emulator->m_video->Update(true);
     auto now = std::chrono::system_clock::now();

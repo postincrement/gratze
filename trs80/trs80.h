@@ -61,7 +61,7 @@ class TRS80Video : public SingleColourMemoryMappedVideo
 {
   public:
     TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
-    virtual void WriteMemory(int offs, uint8_t ch) override;
+    virtual void WriteMemoryAtPos(int pos, uint8_t ch) override;
 };
 
 class TRS80Emulator : public Z80Emulator
@@ -79,6 +79,9 @@ class TRS80Emulator : public Z80Emulator
 
     virtual void OnKeyDown(const SDL_Keysym & keysym) override;
     virtual void OnKeyUp(const SDL_Keysym & keysym) override;
+
+    virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
+    virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
     virtual bool Poll() override;
 
@@ -107,7 +110,7 @@ class TRS80Emulator : public Z80Emulator
     void WriteFx(register uint16_t, register uint8_t val);
     uint8_t ReadFx(register uint16_t);
 
-    static void CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
+    static bool CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
   protected:  
     uint8_t m_kbData[8];

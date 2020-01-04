@@ -26,12 +26,12 @@ int Font::GetHeight() const
 
 /////////////////////////////////////////////////////////////////////////////
 
-PixelFont::PixelFont(int charCount, int width, int height, uint8_t * data)
-  : Font(charCount)
+PixelFont::PixelFont(const Config::Font & config, uint8_t * data)
+  : Font(config.m_count)
   , m_data(data)
 {
-  m_width  = width;
-  m_height = height;
+  m_width  = config.m_width;
+  m_height = config.m_height;
 }
 
 bool PixelFont::Open(SDL_Renderer * renderer)
@@ -52,7 +52,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
     uint8_t * srcPixels = m_data + (i * m_height);
     for (int y = 0; y < m_height; ++y) {
       uint32_t * dstPixels = &pixels[m_width * ((i * m_height) + y)];
-      unsigned mask = 1;
+      unsigned mask = 1 << (m_width - 1);
       for (int x = 0; x < m_width; ++x) {
         if (*srcPixels & mask) {
           *dstPixels = 0xffffffff;
@@ -61,7 +61,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
           *dstPixels = 0x00000000;
         }  
         dstPixels++;
-        mask = mask << 1;
+        mask = mask >> 1;
       }
       ++srcPixels;
     }

@@ -15,6 +15,7 @@
 
 using namespace std;
 
+#define TRACE_SYM   SDLK_F2
 #define REBOOT_SYM  SDLK_F12
 
 
@@ -101,7 +102,23 @@ bool Emulator::Poll()
 
       case SDL_KEYDOWN:
         if (event.key.repeat == 0) {
-          OnKeyDown(event.key.keysym);
+          if (event.key.keysym.sym == TRACE_SYM)
+            SetTrace(true);
+
+          if (event.key.keysym.sym == TRACE_SYM + 1)
+            SetTrace(false);
+
+          if (event.key.keysym.sym == SDLK_F9) {
+            ChangeVideoColour();
+          }
+          else if (event.key.keysym.sym == SDLK_F10) {
+            MemoryDump();
+          }
+          else if (event.key.keysym.sym == REBOOT_SYM) {
+            Reset();
+          }
+          else
+            OnKeyDown(event.key.keysym);
         }
         break;
 
@@ -166,18 +183,32 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
   const Config::Video & info = *GetVideoInfo();
-  m_video.reset(VirtualScreen::Create(mainWindow, *this, options, info));
-  return m_video.get() != nullptr;
+  VirtualScreen * screen = VirtualScreen::Create(mainWindow, *this, options, info);
+  if (screen == nullptr) {
+    cerr << "error: could not instantiate screen type" << endl;
+    return false;
+  }
+  m_video.reset(screen);
+
+  return m_video->Open();
 }
 
 void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
 {
-  m_video->WriteMemory(addr - info.m_startAddr, data);
+  if (addr > info.m_endAddr)
+    cerr << "warning: bad video write" << endl;
+  else  
+    m_video->WriteMemoryAtPos(addr - info.m_startAddr, data);
 }
 
 uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr)
 {
-  return m_video->ReadMemory(addr - info.m_startAddr);
+  if (addr > info.m_endAddr) {
+    cerr << "warning: bad video read" << endl;
+    return 0x00;
+  }
+  else  
+    return m_video->ReadMemoryAtPos(addr - info.m_startAddr);
 }
 
 void Emulator::ChangeVideoColour()
@@ -198,16 +229,7 @@ void Emulator::ChangeVideoColour()
 
 void Emulator::OnKeyDown(const SDL_Keysym &keysym)
 {
-  if (keysym.sym == SDLK_F9) {
-    ChangeVideoColour();
-  }
-  else if (keysym.sym == SDLK_F10) {
-    MemoryDump();
-  }
-  else if (keysym.sym == REBOOT_SYM) {
-    Reset();
-  }
-  else {
+ {
     cerr << "warning: unknown keyboard sym code" << HEXFORMAT0x2(keysym.sym) << endl;
   }
 }
@@ -228,25 +250,27 @@ const Config::Block * Emulator::GetConfigBlock(Config::Type type) const
       return block;
     ++block;  
   }
-  return NULL;
+  return nullptr;
 }
 
 const Config::CPU * Emulator::GetCPUInfo() const
 {
   const Config::Block * info = GetConfigBlock(Config::Type::eCPU);
-  return (info == NULL) ? NULL : &info->m_info.m_cpu;
+  return (info == nullptr) ? nullptr : &info->m_info.m_cpu;
 }
 
 const Config::Video * Emulator::GetVideoInfo() const
 {
   const Config::Block * info = GetConfigBlock(Config::Type::eVideo);
-  return (info == NULL) ? NULL : &info->m_info.m_video;
+  if (info == nullptr)
+    info = GetConfigBlock(Config::Type::eVideoExternal);
+  return (info == nullptr) ? nullptr : &info->m_info.m_video;
 }
 
 const Config::RAM * Emulator::GetMainRAMInfo() const
 {
   const Config::Block * info = GetConfigBlock(Config::Type::eMainRAM);
-  return (info == NULL) ? NULL : &info->m_info.m_ram;
+  return (info == nullptr) ? nullptr : &info->m_info.m_ram;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -437,11 +461,11 @@ void Emulator::CompileConfigBlocks()
 uint8_t Emulator::ReadMemory(uint16_t addr)
 {
   for (auto & r : m_readMemoryBlocks) {
-    if ((addr < r.m_startAddr) || (addr > r.m_endAddr))
-      continue;
-    if (r.m_function != nullptr)
-      return std::invoke(r.m_function, *this, r, addr);
-    return r.m_memory[addr - r.m_startAddr];
+    if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
+      if (r.m_function != nullptr)
+        return std::invoke(r.m_function, *this, r, addr);
+      return r.m_memory[addr - r.m_startAddr];
+    }
   }
   return ReadLog(addr);
 }
@@ -449,14 +473,14 @@ uint8_t Emulator::ReadMemory(uint16_t addr)
 void Emulator::WriteMemory(uint16_t addr, uint8_t data)
 {
   for (auto & r : m_writeMemoryBlocks) {
-    if ((addr < r.m_startAddr) || (addr > r.m_endAddr))
-      continue;
-    if (r.m_function != nullptr) {
-      std::invoke(r.m_function, *this, r, addr, data);
+    if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
+      if (r.m_function != nullptr) {
+        std::invoke(r.m_function, *this, r, addr, data);
+        return;
+      }
+      r.m_memory[addr - r.m_startAddr] = data;
       return;
     }
-    r.m_memory[addr - r.m_startAddr] = data;
-    return;
   }
   WriteLog(addr, data);
 }
@@ -538,12 +562,14 @@ void Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uin
 
 void Emulator::WritePort(register uint16_t port, register uint8_t data)
 {
-  int8_t shortPort = port & 0xff;
+  uint8_t shortPort = port & 0xff;
   for (auto & r : m_writeIOPortBlocks) {
-    if ((shortPort < r.m_startPort) || (shortPort > r.m_endPort))
+    if (shortPort < r.m_startPort)
       continue;
-    if (r.m_function != nullptr) {
-      std::invoke(r.m_function, *this, r, shortPort, data);
+    if (shortPort <= r.m_endPort) {
+      if (r.m_function != nullptr) {
+        std::invoke(r.m_function, *this, r, shortPort, data);
+     }
       return;
     }
   }
@@ -552,12 +578,14 @@ void Emulator::WritePort(register uint16_t port, register uint8_t data)
 
 uint8_t Emulator::ReadPort(register uint16_t port)
 {
-  int8_t shortPort = port & 0xff;
+  uint8_t shortPort = port & 0xff;
   for (auto & r : m_readIOPortBlocks) {
-    if ((shortPort < r.m_startPort) || (shortPort > r.m_endPort))
+    if (shortPort < r.m_startPort)
       continue;
-    if (r.m_function != nullptr) {
-      return std::invoke(r.m_function, *this, r, shortPort);
+    if (shortPort <= r.m_endPort) {
+      if (r.m_function != nullptr) {
+        return std::invoke(r.m_function, *this, r, shortPort);
+      }
     }
   }
   ReadIOPortLog(port);

@@ -54,7 +54,7 @@ CXX=@CXX@
 CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) $(SDL_INC)
 CFLAGS   := @CFLAGS@   $(INC_DIRS) $(SDL_INC) -DDEBUG  # DEBUG symbol needed for mf80 debug
 
-LDFLAGS=$(SDL_LDFLAGS) @LDFLAGS@ 
+LDFLAGS=$(SDL_LDFLAGS) @LDFLAGS@ -g
 LDLIBS=@LDLIBS@
 
 COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
@@ -87,11 +87,13 @@ SRCS_CC = main.cc \
 					cpu/z80emulator.cc \
 					cpu/2650emulator.cc \
 					cpu/cpu_2650.cc \
+					devices/z80pio.cc \
 					trs80/trs80.cc \
 					trs80/model1/model1.cc \
 					trs80/model3/model3.cc \
 					trs80/model4/model4.cc \
 					dg680/dg680.cc \
+					super80/super80.cc \
 					2650/binbug/binbug.cc \
 
 SRCS_C  = trs80/model1/rom_level1.c \
@@ -101,7 +103,9 @@ SRCS_C  = trs80/model1/rom_level1.c \
   				cpu/mfz80/Z80.c \
 					cpu/mfz80/Debug.c \
 					video/rom_dg640_font.c \
+					video/rom_2513_font.c \
 					dg680/rom_dgos1_4.c \
+					super80/rom_super80.c \
 					2650/binbug/rom_binbug_6_1ROM.c
 
 FILENAMES	:= $(notdir $(basename $(SRCS_C) $(SRCS_CC)))

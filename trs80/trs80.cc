@@ -35,7 +35,6 @@ using namespace std;
 #define RTC_INTERVAL_MS 40
 
 #define RESET_SYM   SDLK_F1
-#define TRACE_SYM   SDLK_F2
 
 #define EXTENDED_SYM_START 0x4000004f
 
@@ -86,11 +85,21 @@ void TRS80Emulator::Reset(int addr)
   return Z80Emulator::Reset(addr);
 }
 
-void TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
+static unsigned char reverse(unsigned char b) {
+   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+
+bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
   // set alpha numeric
   fontData.resize(fontInfo.m_height * 256);
   memcpy(&fontData[0], fontInfo.m_fontData, 128 * fontInfo.m_height);
+
+  // font data is reversed. No idea why
+  for (auto & r : fontData) r = (reverse(r) >> (8 - fontInfo.m_width));
 
   // set graphics
   uint8_t maskRight = (1 << (fontInfo.m_width / 2)) - 1;
@@ -112,6 +121,7 @@ void TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font 
     }
   }
   memcpy(&fontData[(128 + 64) * fontInfo.m_height], &fontData[128 * fontInfo.m_height], 64 * fontInfo.m_height);
+  return true;
 }
 
 bool TRS80Emulator::Poll()
@@ -300,12 +310,6 @@ void TRS80Emulator::OnKeyDown(const SDL_Keysym & keysym)
 {
   if (keysym.sym == RESET_SYM)
     NMI();
-
-  else if (keysym.sym == TRACE_SYM)
-    SetTrace(true);
-
-  else if (keysym.sym == TRACE_SYM + 1)
-    SetTrace(false);
 
   else if (keysym.sym == SDLK_LSHIFT)
   {
@@ -537,6 +541,26 @@ extern "C" {
 
 /////////////////////////////////////////////////////////////
 
+uint8_t TRS80Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
+{
+  switch (info.m_id) {
+    case 1:
+      return ReadFF(port & 0xff);
+  }
+  cerr << "trs80: read port " << HEXFORMAT0x2(port) << endl;
+  return 0x00;
+}
+
+void TRS80Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
+{
+  switch (info.m_id) {
+    case 1:
+      return WriteFF(port & 0xff, data);
+  }
+  cerr << "trs680: write port " << HEXFORMAT0x2(port) << " " << HEXFORMAT0x2(data) << endl;
+}
+
+
 void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
 {
   // detect changes in cassette motor
@@ -697,11 +721,11 @@ TRS80Video::TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Optio
 {
 }
 
-void TRS80Video::WriteMemory(int offs, uint8_t ch)
+void TRS80Video::WriteMemoryAtPos(int pos, uint8_t ch)
 {
   if (ch < 0x20)
     ch += 0x40;
-  SingleColourMemoryMappedVideo::WriteMemory(offs, ch);
+  SingleColourMemoryMappedVideo::WriteMemoryAtPos(pos, ch);
 }
 
 

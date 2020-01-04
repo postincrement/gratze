@@ -121,6 +121,8 @@ static struct EmulatorInfo g_levelEmulatorInfo =
 
     INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 
+    INFO_IO_PORT_RW(0xff, 0xff, 1),
+
     INFO_END()                  
   }
 };
@@ -129,3 +131,4 @@ Model1Level2_Emulator::Model1Level2_Emulator()
   : Model1_Emulator(&g_levelEmulatorInfo)
 {
 }
+

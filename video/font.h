@@ -2,6 +2,7 @@
 #define FONT_H_
 
 #include "SDL_FontCache/SDL_FontCache.h"
+#include "cpu/emuconfig.h"
 
 typedef uint16_t FontChar;
 
@@ -24,7 +25,7 @@ class Font
 class PixelFont : public Font
 {
   public:
-    PixelFont(int charCount, int width, int height, uint8_t * data);
+    PixelFont(const Config::Font & contfig, uint8_t * data);
     virtual bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 

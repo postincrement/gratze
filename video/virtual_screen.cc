@@ -41,7 +41,12 @@ TextWindow::TextWindow(MainWindow & mainWindow, int rows, int cols, int width, i
   cout << "info: text window is " << m_width << " x " << m_height << " pixels, " << m_visibleSize << " chars, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 }
 
-void TextWindow::RenderChar(int pos, SDL_Colour & fg, SDL_Colour & bg)
+bool TextWindow::Open()
+{
+  return true;
+}
+
+void TextWindow::RenderCharAtPos(int pos, SDL_Colour & fg, SDL_Colour & bg)
 { 
   if (m_font) {
     pos = (pos & m_visibleMask);
@@ -94,6 +99,8 @@ VirtualScreen::~VirtualScreen()
 MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : VirtualScreen(mainWindow, emulator, options, info)
   , m_offset(0)
+  , m_fontConfig(info.m_font)
+  , m_options(options)
 {
   // create video memory
   int size_bytes = info.m_endAddr - info.m_startAddr + 1;
@@ -101,49 +108,68 @@ MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulato
   m_memoryMask = m_memory.size() - 1;
 
   cout << "info: video memory size is " << size_bytes << " bytes, mask is " << HEXFORMAT0x4(m_memoryMask) << endl;
-
-  // create font
-  if (info.m_font.m_creator != NULL) {
-    (info.m_font.m_creator)(options, info.m_font, m_fontData);
-    m_font.reset(new PixelFont(info.m_font.m_count, info.m_font.m_width, info.m_font.m_height, &m_fontData[0]));
-    if (!m_font) {
-      cerr << "error: font could not be opened" << endl;
-    }
-    if (mainWindow.GetRenderer() == nullptr) {
-      cerr << "error: renderer not available" << endl;
-    }
-    else if (!m_font->Open(mainWindow.GetRenderer())) {
-      cerr << "error: font could not be opened" << endl;
-    }
-    else {
-      cout << "info: pixel font created" << endl;
-    }
-  }
 }
 
-void MemoryMappedVideo::WriteMemory(int addr, uint8_t ch)
+bool MemoryMappedVideo::Open()
 {
-  if ((addr >= m_memory.size()) || (m_memory[addr] == ch)) {
+  // create font
+  if (m_fontConfig.m_creator != NULL) {
+    if (!(m_fontConfig.m_creator)(m_options, m_fontConfig, m_fontData)) {
+      cerr << "error: font creator returned error" << endl;
+      return false;
+    }
+  }
+  else if (m_fontConfig.m_fontData != NULL) {
+    m_fontData.resize(m_fontConfig.m_count * m_fontConfig.m_height * ((m_fontConfig.m_width + 7) / 8));
+    memcpy(&m_fontData[0], m_fontConfig.m_fontData, m_fontData.size());
+  }
+  else {
+    cerr << "error: video definition has no font data" << endl;
+    return false;
+  }
+
+  m_font.reset(new PixelFont(m_fontConfig, &m_fontData[0]));
+  if (!m_font) {
+    cerr << "error: font could not be opened" << endl;
+    return false;
+  }
+  if (m_mainWindow.GetRenderer() == nullptr) {
+    cerr << "error: renderer not available" << endl;
+    return false;
+  }
+  else if (!m_font->Open(m_mainWindow.GetRenderer())) {
+    cerr << "error: font could not be opened" << endl;
+    return false;
+  }
+
+  cout << "info: pixel font created" << endl;
+
+  return VirtualScreen::Open();
+}
+
+void MemoryMappedVideo::WriteMemoryAtPos(int pos, uint8_t ch)
+{
+  if ((pos >= m_memory.size()) || (m_memory[pos] == ch)) {
     return;
   }
 
-  m_memory[addr] = ch;
-  RefreshChar(addr);
+  m_memory[pos] = ch;
+  RefreshCharAtPos(pos);
 }
 
-uint8_t MemoryMappedVideo::ReadMemory(int addr) const
+uint8_t MemoryMappedVideo::ReadMemoryAtPos(int pos) const
 {
-  if (addr >= m_memory.size()) {
+  if (pos >= m_memory.size()) {
     return 0x00;
   }
 
-  return m_memory[addr];
+  return m_memory[pos];
 }
 
 void MemoryMappedVideo::RefreshScreen()
 {
-  for (int offs = 0; offs < m_visibleSize; ++offs)
-    RefreshChar(offs);
+  for (int pos = 0; pos < m_visibleSize; ++pos)
+    RefreshCharAtPos(pos);
 }
 
 FontChar MemoryMappedVideo::GetCharAtPos(int addr)
@@ -174,8 +200,8 @@ void SingleColourMemoryMappedVideo::GetFontColour(SDL_Colour & fg, SDL_Colour & 
   bg = m_bgColour;
 }
 
-void SingleColourMemoryMappedVideo::RefreshChar(int pos)
+void SingleColourMemoryMappedVideo::RefreshCharAtPos(int pos)
 {
   pos = pos & m_visibleMask;
-  RenderChar(pos, m_fgColour, m_bgColour);
+  RenderCharAtPos(pos, m_fgColour, m_bgColour);
 }

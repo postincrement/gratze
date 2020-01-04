@@ -10,13 +10,6 @@ using namespace std;
 
 extern unsigned char g_dg640Char_ROM[1024];
 
-static unsigned char reverse(unsigned char b) {
-   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-   return b;
-}
-
 DG640::DG640(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
 {
@@ -24,20 +17,11 @@ DG640::DG640(MainWindow & mainWindow, Emulator & emulator, const Options & optio
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
 }
 
-void DG640::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
+bool DG640::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
   // set the base font
   fontData.resize(DG640_FONT_HEIGHT * 256);
   memcpy(&fontData[0], g_dg640Char_ROM, 128 * DG640_FONT_HEIGHT);
-
-  // reverse bits
-  {
-    uint8_t * ptr = &fontData[0];
-    for (int i = 0; i < 128*DG640_FONT_HEIGHT; ++i) {
-      *ptr = reverse(*ptr);
-      ++ptr;
-    }
-  }
 
   // create inverted chars
   {
@@ -46,20 +30,22 @@ void DG640::CreatePixelFont(const Options & options, const Config::Font & fontIn
     for (int i = 0; i < 128*DG640_FONT_HEIGHT; ++i)
       *dst++ = *src++ ^ 0xff;
   }
+
+  return true;
 }
 
-void DG640::WriteMemory(int addr, uint8_t ch)
+void DG640::WriteMemoryAtPos(int pos, uint8_t ch)
 {
-  if ((addr >= m_memory.size()) || (m_memory[addr] == ch)) {
+  if ((pos >= m_memory.size()) || (m_memory[pos] == ch)) {
     return;
   }
 
-  m_memory[addr] = ch;
+  m_memory[pos] = ch;
 
-  if (addr >= 0x400) {
+  if (pos >= 0x400) {
     if ((ch & 0xf)!= 0)
-      cout << "dg640: video attribute set at " << HEXFORMAT0x4(addr) << " to " << HEXFORMAT0x2(ch) << endl;
+      cout << "dg640: video attribute set at " << HEXFORMAT0x4(pos) << " to " << HEXFORMAT0x2(ch) << endl;
   }
 
-  RefreshChar(addr);
+  RefreshCharAtPos(pos);
 }
