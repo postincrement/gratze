@@ -168,6 +168,9 @@ uint8_t Z80PIO::Port::ReadData()
   if (m_readHandler)
     m_data = m_readHandler();
 
+  //if (m_data != 0xff)
+  //  cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " data = " << HEXFORMAT0x2(m_data) << endl;
+
   return m_data;
 }
 

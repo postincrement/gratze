@@ -229,13 +229,12 @@ void Emulator::ChangeVideoColour()
 
 void Emulator::OnKeyDown(const SDL_Keysym &keysym)
 {
- {
-    cerr << "warning: unknown keyboard sym code" << HEXFORMAT0x2(keysym.sym) << endl;
-  }
+  cerr << "warning: emulator got key down sym code" << HEXFORMAT0x2(keysym.sym) << endl;
 }
 
 void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 {
+  cerr << "warning: emulator got key up sym code" << HEXFORMAT0x2(keysym.sym) << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

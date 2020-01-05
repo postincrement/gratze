@@ -73,7 +73,7 @@ INFO_VIDEO_MEMORY_MAPPED("super80", 0xf000, 0xf1ff, \
 //////////////////////////////////////////////////////////////////////////////////
 
 const char * keys[8*8] = {
-  "@", "H", "P",   "X", "1",      "9",          "?",       "REP",
+  "@", "H", "P",   "X", "1",      "9",          " ",       "REP",
   "A", "I", "Q",   "Y", "2",      ":",  "Backspace",     "Shift",
   "B", "J", "R",   "Z", "3",      ";",        "Tab",          0 ,
   "C", "K", "S",   "[", "4",      ",",         "LF",   "Control",
@@ -176,7 +176,6 @@ void Super80_Emulator::Reset(int addr)
   using namespace std::placeholders;
 
   m_pio.SetInterruptHandler(std::bind(&Super80_Emulator::OnPIOInterrupt, this, _1));
-
   m_pio.SetReadHandler(1, std::bind(&Super80_Emulator::OnReadKeyboard, this));
 }
 
@@ -187,9 +186,14 @@ void Super80_Emulator::OnPIOInterrupt(uint8_t vector)
 
 uint8_t Super80_Emulator::OnReadKeyboard()
 {
-  return m_kbScanner.Read(m_pio.GetData(1));
-}
+  uint8_t kbIn  = m_pio.GetData(0) ^ 0xff;
+  uint8_t kbOut = m_kbScanner.Read(kbIn);
 
+  //if ((kbIn != 0x00) && (kbOut != 0x00))
+  //  cout << "kb: read in " << HEXFORMAT0x2(kbIn) << " returned " << HEXFORMAT0x2(kbOut) << endl;
+
+  return kbOut ^ 0xff;
+}
 
 void Super80_Emulator::OnKeyDown(const SDL_Keysym & keysym)
 {

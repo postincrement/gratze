@@ -64,110 +64,61 @@ uint8_t KeyboardScanner::Read(uint16_t rowMask)
     mask = mask << 1;
   }
 
-  value ^= 0xff;
-
-  if (value != 0xff)
-    cout << "kb: read with rowmask " << HEXFORMAT0x2(rowMask) << " = " << HEXFORMAT0x2(value) << endl;
+  //if (value != 0x00)
+  //  cout << "kb: read with rowmask " << HEXFORMAT0x2(rowMask) << " = " << HEXFORMAT0x2(value) << endl;
 
   return value;
 }
 
 void KeyboardScanner::OnKeyDown(const SDL_Keysym & keysym)
 {
-/*
-  if (keysym.sym == SDLK_LSHIFT)
-  {
-    m_shiftDown |= 1;
-    m_shiftDown &= ~4;
-    m_kbData[7] |= 1;
-  }
+  uint16_t sym = keysym.sym;
 
-  else if (keysym.sym == SDLK_RSHIFT)
-  {
-    m_shiftDown |= 2;
-    m_shiftDown &= ~4;
-    m_kbData[7] |= 1;
-  }
+  if ((sym >= 'A') && (sym <= 'Z'))
+    sym = tolower(sym);
 
-  else
-*/  
-  {
-    uint16_t sym = keysym.sym;
+  cerr << "key down " << sym << endl;
 
-    if ((sym >= 'A') && (sym <= 'Z'))
-      sym = tolower(sym);
-
-    KeyRowColMap::iterator r = m_keys[0].find(sym);
-    if (r == m_keys[0].end()) {
-      cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(sym) << " from " << m_keys[0].size() << endl;
-      return;
-    }
-  
-    KeyRowColInfo & rowCol = r->second;
-    m_kbData[rowCol.m_row] |= (1 << rowCol.m_col);
+  KeyRowColMap::iterator r = m_keys[0].find(sym);
+  if (r == m_keys[0].end()) {
+    cerr << "warning: unmapped keyboard down sym code " << HEXFORMAT0x2(sym) << " from " << m_keys[0].size() << endl;
     return;
   }
 
-/*
-     int32_t sym = (keysym.sym >= EXTENDED_SYM_START) ? (keysym.sym + 0x80 - EXTENDED_SYM_START) : keysym.sym;
-     int mod = m_shiftDown ? 1 : 0;
-     if (sym >= KB_SYM_COUNT) {
-      Z80Emulator::OnKeyDown(keysym);
-    }
-    else
-    {
-      const uint8_t *scanInfo = g_symToCode[sym][mod];
-      if ((scanInfo[0] == 0x00) && (scanInfo[1] == 0))
-      {
-        cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(keysym.sym) << endl;
-      }
+  KeyRowColInfo & rowCol = r->second;
+  uint8_t value = m_kbData[rowCol.m_row];
 
-      // handle codes that need to be unshifted
-      else if (scanInfo[0] & 0x80)
-      {
-        memset(m_kbData, 0x00, sizeof(m_kbData));
-        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
-        m_shiftDown = 0;
-      }
+  if (value != 0x00)
+    cout << "kb: sym " << HEXFORMAT0x2(sym) << " down set row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
+    
+  m_kbData[rowCol.m_row] = value | (1 << rowCol.m_col);
 
-      // handle codes that need to be shifted
-      else if (scanInfo[0] & 0x40)
-      {
-        memset(m_kbData, 0x00, sizeof(m_kbData));
-        m_kbData[7] |= 1;
-        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
-        m_shiftDown = 4;
-      }
-
-      // handle codes that have the correct shift sense
-      else
-      {
-        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
-        m_shiftDown &= ~4;
-      }
-    }
-  }
-*/
+  return;
 }
 
 void KeyboardScanner::OnKeyUp(const SDL_Keysym & keysym)
 {
-  {
-    uint16_t sym = keysym.sym;
+  uint16_t sym = keysym.sym;
 
-    if ((sym >= 'A') && (sym <= 'Z'))
-      sym = tolower(sym);
+  if ((sym >= 'A') && (sym <= 'Z'))
+    sym = tolower(sym);
 
-    KeyRowColMap::iterator r = m_keys[0].find(sym);
-    if (r == m_keys[0].end()) {
-      cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(sym) << endl;
-      return;
-    }
-  
-    KeyRowColInfo & rowCol = r->second;
-    m_kbData[rowCol.m_row] &= (1 << rowCol.m_col);
+  cerr << "key up " << sym << endl;
+
+  KeyRowColMap::iterator r = m_keys[0].find(sym);
+  if (r == m_keys[0].end()) {
+    cerr << "warning: unmapped keyboard up sym code " << HEXFORMAT0x2(sym) << endl;
     return;
   }
+
+  KeyRowColInfo & rowCol = r->second;
+  uint8_t value = m_kbData[rowCol.m_row];
+
+  if (value != 0x00)
+    cout << "kb: sym " << HEXFORMAT0x2(sym) << " up reset row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
+    
+  m_kbData[rowCol.m_row] &= !value;
+  return;
 }
 
 #if 0
