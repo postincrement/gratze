@@ -9,12 +9,6 @@
 
 #include "model1/model1.h"
 
-extern "C"
-{
-#include "model1/trs_chars.c"
-};
-
-
 /*
   Port FF write
   -------------
@@ -85,22 +79,8 @@ void TRS80Emulator::Reset(int addr)
   return Z80Emulator::Reset(addr);
 }
 
-static unsigned char reverse(unsigned char b) {
-   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-   return b;
-}
-
 bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
-  // set alpha numeric
-  fontData.resize(fontInfo.m_height * 256);
-  memcpy(&fontData[0], fontInfo.m_fontData, 128 * fontInfo.m_height);
-
-  // font data is reversed. No idea why
-  for (auto & r : fontData) r = (reverse(r) >> (8 - fontInfo.m_width));
-
   // set graphics
   uint8_t maskRight = (1 << (fontInfo.m_width / 2)) - 1;
   uint8_t maskLeft  = maskRight << (fontInfo.m_width / 2);

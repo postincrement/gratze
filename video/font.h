@@ -3,6 +3,7 @@
 
 #include "SDL_FontCache/SDL_FontCache.h"
 #include "cpu/emuconfig.h"
+#include "chargenrom.h"
 
 typedef uint16_t FontChar;
 

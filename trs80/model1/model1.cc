@@ -4,10 +4,7 @@
 #include "misc.h"
 #include "model1.h"
 
-
 using namespace std;
-
-extern uint8_t g_trs80CharSets_128[][128][MODEL1_FONT_HEIGHT];
 
 Model1_Emulator::Model1_Emulator(EmulatorInfo * info)
   : TRS80Emulator(info)
@@ -82,7 +79,7 @@ static struct EmulatorInfo g_level1EmulatorInfo =
                              MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                              MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
                              MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
-                             256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),
+                             256, &g_charGen_MotorolaMCM6674, TRS80Emulator::CreatePixelFont),
 
     INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 
@@ -117,7 +114,7 @@ static struct EmulatorInfo g_levelEmulatorInfo =
     INFO_VIDEO_MEMORY_MAPPED("trs80", MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                               MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
                               MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
-                              256, g_trs80CharSets_128[1][0], TRS80Emulator::CreatePixelFont),
+                              256, &g_charGen_MotorolaMCM6674, TRS80Emulator::CreatePixelFont),
 
     INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 

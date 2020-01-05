@@ -5,6 +5,8 @@
 
 #include "super80.h"
 #include "video/virtual_screen.h"
+#include "video/chargen_2513.h"
+
 #include "misc.h"
 
 using namespace std;
@@ -52,7 +54,7 @@ static EmulatorInfo g_emulatorInfo =
 INFO_VIDEO_MEMORY_MAPPED("super80", 0xf000, 0xf1ff, \
                          SUPER80_VIDEO_COLS, SUPER80_VIDEO_ROWS, \
                          SUPER80_FONT_WIDTH, SUPER80_FONT_HEIGHT, \
-                         64, g_2513ROM, nullptr),
+                         64, &g_charGen_Signetics2513, nullptr),
 
     INFO_IO_PORT_RW(0xf8, 0xfb, 1),    // PIO
     INFO_IO_PORT_RW(0xf1, 0xf1, 2),    // video page

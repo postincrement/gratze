@@ -96,6 +96,62 @@ VirtualScreen::~VirtualScreen()
 
 /////////////////////////////////////////////////////////////////////////////////
 
+static unsigned char reverse(unsigned char b) {
+   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+
+static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vector<uint8_t> & fontData)
+{
+  if (config.m_charGen == nullptr) {
+    cerr << "error: no character generator found" << endl;
+    return false;
+  }
+
+  CharacterGeneratorROM & charGen = *config.m_charGen;
+
+  if (config.m_width < charGen.m_width) {
+    cerr << "error: font width " << (int)config.m_width << " cannot be less than charactr generator width " << (int)charGen.m_width << endl;
+    return false;
+  }
+
+  if (config.m_height < charGen.m_height) {
+    cerr << "error: font height " << (int)config.m_height << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
+    return false;
+  }
+
+  if (charGen.m_stride < charGen.m_height) {
+    cerr << "error: chargen stride " << (int)charGen.m_stride << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
+    return false;
+  }
+
+  if (charGen.m_width > 8) {
+    cerr << "error: character generators > 8 pixels wide not supported" << endl;
+    return false;
+  }
+
+  fontData.resize(config.m_count * config.m_height * ((config.m_width + 7) / 8));
+
+  int shiftBits = config.m_width - charGen.m_width;
+
+  for (int c = 0; c < charGen.m_count; ++c) {
+    const uint8_t * src = charGen.m_data + c * charGen.m_stride;
+    uint8_t * dst = &fontData[c * config.m_height];
+
+    for (int y = 0; y < charGen.m_height; ++y) {
+      *dst++ = charGen.m_reverse ? 
+                    reverse(*src++) >> (8 - charGen.m_width - shiftBits) :
+                    *src++ << shiftBits
+                    ;
+    }
+  }
+
+  return true;
+}
+
+
 MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : VirtualScreen(mainWindow, emulator, options, info)
   , m_offset(0)
@@ -112,20 +168,18 @@ MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulato
 
 bool MemoryMappedVideo::Open()
 {
-  // create font
+  // unpack pixel data
+  if (m_fontConfig.m_charGen != NULL) {
+    if (!UnpackCharacterGeneratorFont(m_fontConfig, m_fontData))
+      return false;
+  }
+
+  // do extra steps if required
   if (m_fontConfig.m_creator != NULL) {
     if (!(m_fontConfig.m_creator)(m_options, m_fontConfig, m_fontData)) {
       cerr << "error: font creator returned error" << endl;
       return false;
     }
-  }
-  else if (m_fontConfig.m_fontData != NULL) {
-    m_fontData.resize(m_fontConfig.m_count * m_fontConfig.m_height * ((m_fontConfig.m_width + 7) / 8));
-    memcpy(&m_fontData[0], m_fontConfig.m_fontData, m_fontData.size());
-  }
-  else {
-    cerr << "error: video definition has no font data" << endl;
-    return false;
   }
 
   m_font.reset(new PixelFont(m_fontConfig, &m_fontData[0]));
@@ -133,11 +187,13 @@ bool MemoryMappedVideo::Open()
     cerr << "error: font could not be opened" << endl;
     return false;
   }
+
   if (m_mainWindow.GetRenderer() == nullptr) {
     cerr << "error: renderer not available" << endl;
     return false;
   }
-  else if (!m_font->Open(m_mainWindow.GetRenderer())) {
+
+  if (!m_font->Open(m_mainWindow.GetRenderer())) {
     cerr << "error: font could not be opened" << endl;
     return false;
   }

@@ -2,12 +2,11 @@
 #include <iomanip>
 
 #include "model3.h"
+#include "chargen_model3.h"
 
 using namespace std;
 
 extern uint8_t g_model3ROM[14336];  
-
-extern uint8_t g_trs80CharSets_256[][256][MODEL3_FONT_HEIGHT];
 
 static struct EmulatorInfo g_emulatorInfo
 
@@ -26,7 +25,7 @@ static struct EmulatorInfo g_emulatorInfo
                               MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                               MODEL3_SCREEN_WIDTH_CHARS, MODEL3_SCREEN_HEIGHT_CHARS, \
                               MODEL3_FONT_WIDTH, MODEL3_FONT_HEIGHT, \
-                              256, g_trs80CharSets_256[7-4][0], TRS80Emulator::CreatePixelFont),
+                              256, &g_charGen_Model3, TRS80Emulator::CreatePixelFont),
     INFO_END()                  
   }
 };

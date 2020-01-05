@@ -19,10 +19,6 @@ DG640::DG640(MainWindow & mainWindow, Emulator & emulator, const Options & optio
 
 bool DG640::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
-  // set the base font
-  fontData.resize(DG640_FONT_HEIGHT * 256);
-  memcpy(&fontData[0], g_dg640Char_ROM, 128 * DG640_FONT_HEIGHT);
-
   // create inverted chars
   {
     uint8_t * src = &fontData[0];

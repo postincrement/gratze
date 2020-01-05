@@ -2,6 +2,7 @@
 #define DG640_H_
 
 #include "virtual_screen.h"
+#include "chargen_mcm6574.h"
 
 #define   DG640_VIDEO_RAM_SIZE_K        2
 
@@ -21,7 +22,9 @@ extern void CreateDG640PixelData(const Options & options, const Config::Font & f
                            addr, addr + DG640_VIDEO_RAM_SIZE_K * 1024 - 1, \
                            DG640_SCREEN_WIDTH_CHARS, DG640_SCREEN_HEIGHT_CHARS, \
                            DG640_FONT_WIDTH, DG640_FONT_HEIGHT, \
-                           256, NULL, &DG640::CreatePixelFont)
+                           256, \
+                           &g_charGen_MotorolaMCM6574, \
+                           &DG640::CreatePixelFont)
 
 
 class DG640 : public SingleColourMemoryMappedVideo

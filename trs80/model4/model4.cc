@@ -1,6 +1,5 @@
 #include "model4.h"
-
-extern uint8_t g_trs80CharSets_256[][256][MODEL3_FONT_HEIGHT];
+#include "trs80/model3/chargen_model3.h"
 
 static struct EmulatorInfo g_emulatorInfo
 {
@@ -17,7 +16,7 @@ static struct EmulatorInfo g_emulatorInfo
                               MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                               MODEL4_SCREEN_WIDTH_CHARS, MODEL4_SCREEN_HEIGHT_CHARS, \
                               MODEL4_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
-                              256, g_trs80CharSets_256[7-4][0], TRS80Emulator::CreatePixelFont),
+                              256, &g_charGen_Model3, TRS80Emulator::CreatePixelFont),
     INFO_END()
   }
 };

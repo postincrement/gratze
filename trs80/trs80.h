@@ -6,6 +6,7 @@
 #include "magmedia/fdc.h"
 #include "magmedia/cassette.h"
 #include "video/virtual_screen.h"
+#include "video/chargen_mcm6674.h"
 #include "options.h"
 
 #define   MODEL1_CLOCK_SPEED      1.774
