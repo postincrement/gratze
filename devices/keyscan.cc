@@ -1,3 +1,183 @@
+#include <iostream>
+#include <map>
+#include <SDL_keyboard.h> 
+
+#include <strings.h>
+#include <string.h>
+
+#include "misc.h"
+#include "keyscan.h"
+
+using namespace std;
+
+void KeyboardScanner::Compile(const ScanLayout & scanLayout)
+{
+  for (auto & r : m_keys)
+    r.clear();
+
+  m_rows = scanLayout.m_rows;
+  m_cols = scanLayout.m_cols;
+
+  m_kbData.resize(((m_cols + 7) / 8) * m_rows);
+  Compile(m_rows, m_cols, scanLayout.m_keyCodes, m_keys[0]);
+}
+
+void KeyboardScanner::Compile(int rowCount, int colCount, const char ** keyCodeMap, KeyRowColMap & keyRowCols)
+{
+  for (int row = 0; row < rowCount; ++row) {
+    for (int col = 0; col < colCount; ++col) {
+      const char * code = *keyCodeMap++;
+      if (code == 0) {
+        continue;
+      }
+
+      // convert our keycode to SDL_Keycode
+      SDL_Keycode keyCode = SDL_GetKeyFromName(code);
+      if (keyCode != SDLK_UNKNOWN) {
+        cout << "info: mapped keycode '" << code << "' " << HEXFORMAT0x2(keyCode) << " to col " << (int)col << ", row " << (int)row << endl;
+        keyRowCols[keyCode] = KeyRowColInfo(row, col);
+      }
+      else if (strcasecmp(code, "shift")) {
+        m_shiftKey = KeyRowColInfo(row, col);
+      }
+      else {
+        cerr << "error: unknown keycode name '" << code << "'" << endl;
+      }
+    }
+  }
+}
+
+bool KeyboardScanner::Open()
+{
+  memset(&m_kbData[0], 0, m_kbData.size());
+  return true;
+}
+
+
+uint8_t KeyboardScanner::Read(uint16_t rowMask)
+{
+  uint16_t mask = 1;
+  uint8_t value = 0x00;
+  for (int i = 0; i < m_rows; ++i) {
+    if (rowMask & mask)
+      value |= m_kbData[i];
+    mask = mask << 1;
+  }
+
+  value ^= 0xff;
+
+  if (value != 0xff)
+    cout << "kb: read with rowmask " << HEXFORMAT0x2(rowMask) << " = " << HEXFORMAT0x2(value) << endl;
+
+  return value;
+}
+
+void KeyboardScanner::OnKeyDown(const SDL_Keysym & keysym)
+{
+/*
+  if (keysym.sym == SDLK_LSHIFT)
+  {
+    m_shiftDown |= 1;
+    m_shiftDown &= ~4;
+    m_kbData[7] |= 1;
+  }
+
+  else if (keysym.sym == SDLK_RSHIFT)
+  {
+    m_shiftDown |= 2;
+    m_shiftDown &= ~4;
+    m_kbData[7] |= 1;
+  }
+
+  else
+*/  
+  {
+    uint16_t sym = keysym.sym;
+
+    if ((sym >= 'A') && (sym <= 'Z'))
+      sym = tolower(sym);
+
+    KeyRowColMap::iterator r = m_keys[0].find(sym);
+    if (r == m_keys[0].end()) {
+      cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(sym) << " from " << m_keys[0].size() << endl;
+      return;
+    }
+  
+    KeyRowColInfo & rowCol = r->second;
+    m_kbData[rowCol.m_row] |= (1 << rowCol.m_col);
+    return;
+  }
+
+/*
+     int32_t sym = (keysym.sym >= EXTENDED_SYM_START) ? (keysym.sym + 0x80 - EXTENDED_SYM_START) : keysym.sym;
+     int mod = m_shiftDown ? 1 : 0;
+     if (sym >= KB_SYM_COUNT) {
+      Z80Emulator::OnKeyDown(keysym);
+    }
+    else
+    {
+      const uint8_t *scanInfo = g_symToCode[sym][mod];
+      if ((scanInfo[0] == 0x00) && (scanInfo[1] == 0))
+      {
+        cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(keysym.sym) << endl;
+      }
+
+      // handle codes that need to be unshifted
+      else if (scanInfo[0] & 0x80)
+      {
+        memset(m_kbData, 0x00, sizeof(m_kbData));
+        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
+        m_shiftDown = 0;
+      }
+
+      // handle codes that need to be shifted
+      else if (scanInfo[0] & 0x40)
+      {
+        memset(m_kbData, 0x00, sizeof(m_kbData));
+        m_kbData[7] |= 1;
+        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
+        m_shiftDown = 4;
+      }
+
+      // handle codes that have the correct shift sense
+      else
+      {
+        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
+        m_shiftDown &= ~4;
+      }
+    }
+  }
+*/
+}
+
+void KeyboardScanner::OnKeyUp(const SDL_Keysym & keysym)
+{
+  {
+    uint16_t sym = keysym.sym;
+
+    if ((sym >= 'A') && (sym <= 'Z'))
+      sym = tolower(sym);
+
+    KeyRowColMap::iterator r = m_keys[0].find(sym);
+    if (r == m_keys[0].end()) {
+      cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(sym) << endl;
+      return;
+    }
+  
+    KeyRowColInfo & rowCol = r->second;
+    m_kbData[rowCol.m_row] &= (1 << rowCol.m_col);
+    return;
+  }
+}
+
+#if 0
+  // convert non-shifed keys
+  m_keys.clear();
+  m_shiftedKeys.clear();
+  m_shiftedKeys.clear();
+
+  //
+}
 
 #define KB_SYM_COUNT 0x85
 
@@ -269,3 +449,5 @@ uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
   }
   return value;
 }
+
+#endif

@@ -15,6 +15,12 @@ void Z80PIO::Reset()
   m_ports[1].Reset();
 }
 
+void Z80PIO::SetReadHandler(int port, std::function<uint8_t ()> handler)
+{ m_ports[port & 1].m_readHandler = handler; }
+
+void Z80PIO::SetInterruptHandler(std::function<void (uint8_t)> handler)
+{ m_interruptHandler = handler; }
+
 uint8_t Z80PIO::Read(uint8_t reg)
 {
   switch (reg & 3) {
@@ -47,11 +53,21 @@ void Z80PIO::Write(uint8_t reg, uint8_t data)
   }
 }
 
-void Z80PIO::ReceiveData(int portNum, uint8_t data)
+uint8_t Z80PIO::GetData(int portNum) const
+{
+  return m_ports[portNum & 1].GetData();
+}
+
+
+void Z80PIO::SetData(int portNum, uint8_t data)
 {
   Port & port = m_ports[portNum & 1];
   cerr << "z80pio: port " << ((portNum == 0) ? 'A' : 'B') << " received " << HEXFORMAT0x2(data) << endl;
-  if (port.ReceiveData(data) && port.m_ie && m_interruptHandler)
+
+  port.SetData(data);
+
+  // send interrupt of required
+  if (port.m_ie && m_interruptHandler)
     m_interruptHandler(port.m_vector);
 }
 
@@ -70,6 +86,11 @@ void Z80PIO::Port::Reset()
   m_mode  = 0;
   m_mode3 = 0;
   m_intMask = 0;
+}
+
+void Z80PIO::Port::WriteData(uint8_t data)
+{
+  m_data = data;
 }
 
 void Z80PIO::Port::WriteControl(uint8_t data)
@@ -127,15 +148,14 @@ void Z80PIO::Port::WriteControl(uint8_t data)
   }
 }
 
-bool Z80PIO::Port::ReceiveData(uint8_t data)
+void Z80PIO::Port::SetData(uint8_t data)
 {
   m_data = data;
-  return m_ie;
 }
 
-void Z80PIO::Port::WriteData(uint8_t data)
+uint8_t Z80PIO::Port::GetData() const
 {
-  m_data = data;
+  return m_data;
 }
 
 uint8_t Z80PIO::Port::ReadControl()
@@ -145,6 +165,9 @@ uint8_t Z80PIO::Port::ReadControl()
 
 uint8_t Z80PIO::Port::ReadData()
 {
+  if (m_readHandler)
+    m_data = m_readHandler();
+
   return m_data;
 }
 

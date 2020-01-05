@@ -80,6 +80,7 @@ SRCS_CC = main.cc \
 					mainwindow.cc \
 	  			magmedia/fdc.cc \
 					magmedia/cassette.cc \
+					devices/keyscan.cc \
 					video/virtual_screen.cc \
 					video/font.cc \
 					video/dg640.cc \

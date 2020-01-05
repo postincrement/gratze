@@ -12,10 +12,11 @@ class Z80PIO
     virtual uint8_t Read(uint8_t reg);
     virtual void Write(uint8_t reg, uint8_t data);
 
-    virtual void ReceiveData(int port, uint8_t data);
+    virtual void SetData(int port, uint8_t data);
+    virtual uint8_t GetData(int port) const;
 
-    void SetInterruptHandler(std::function<void (uint8_t)> handler)
-    { m_interruptHandler = handler; }
+    void SetInterruptHandler(std::function<void (uint8_t)> handler);
+    void SetReadHandler(int port, std::function<uint8_t ()> handler);
 
     struct Port
     {
@@ -28,7 +29,8 @@ class Z80PIO
       uint8_t ReadControl();
       uint8_t ReadData();
 
-      bool ReceiveData(uint8_t data);
+      void SetData(uint8_t data);
+      uint8_t GetData() const;
 
       int m_port;
       int m_state;
@@ -39,6 +41,8 @@ class Z80PIO
       uint8_t m_vector = 0;
       uint8_t m_intMask = 0;
       uint8_t m_control = 0;
+      
+      std::function<uint8_t ()> m_readHandler;
     };
 
   protected:

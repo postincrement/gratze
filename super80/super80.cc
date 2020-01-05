@@ -6,6 +6,7 @@
 #include "super80.h"
 #include "video/virtual_screen.h"
 #include "video/chargen_2513.h"
+#include "devices/keyscan.h"
 
 #include "misc.h"
 
@@ -71,6 +72,49 @@ INFO_VIDEO_MEMORY_MAPPED("super80", 0xf000, 0xf1ff, \
 
 //////////////////////////////////////////////////////////////////////////////////
 
+const char * keys[8*8] = {
+  "@", "H", "P",   "X", "1",      "9",          "?",       "REP",
+  "A", "I", "Q",   "Y", "2",      ":",  "Backspace",     "Shift",
+  "B", "J", "R",   "Z", "3",      ";",        "Tab",          0 ,
+  "C", "K", "S",   "[", "4",      ",",         "LF",   "Control",
+  "D", "L", "T",  "\\", "5",  "Break",     "Return",          0 ,
+  "E", "M", "U",   "]", "6",      ".",     "Escape",          0 ,
+  "F", "N", "V",   "^", "7",      "/",     "Delete",          0 ,
+  "G", "O", "W",   "-", "8",      "0",     "Insert",          0 
+};
+
+const char * shiftedKeys[8*8] = {
+  "@", "H", "P",   "X", "1",   "9",   "?", "REP",
+  "A", "I", "Q",   "Y", "2",   ":",  "BS", "SHF",
+  "B", "J", "R",   "Z", "3",   ";", "TAB",    0 ,
+  "C", "K", "S",   "[", "4",   ",",  "LF", "CTL",
+  "D", "L", "T",  "\\", "5",  "BRK", "RET",   0 ,
+  "E", "M", "U",   "]", "6",    ".", "ESC",   0 ,
+  "F", "N", "V",   "^", "7",    "/", "DEL",   0 ,
+  "G", "O", "W",   "-", "8",    "0", "INS",   0 
+};
+
+const char * ctlKeys[8*8] = {
+  "@", ","  "P",   "X", "1",   "9",   "?", "REP",
+  "A", "I", "Q",   "Y", "2",   ":",  "BS", "SHF",
+  "B", "J", "R",   "Z", "3",   ";", "TAB",    0 ,
+  "C", "K", "S",   "[", "4",   ",",  "LF", "CTL",
+  "D", "L", "T",  "\\", "5",  "BRK", "RET",   0 ,
+  "E", "M", "U",   "]", "6",    ".", "ESC",   0 ,
+  "F", "N", "V",   "^", "7",    "/", "DEL",   0 ,
+  "G", "O", "W",   "-", "8",    "0", "INS",   0 
+};
+
+static KeyboardScanner::ScanLayout g_super80Keys = {
+  8, 8,
+  keys,
+  shiftedKeys,
+  ctlKeys
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////
+
 class Super80Video : public SingleColourMemoryMappedVideo
 {
   public:
@@ -114,6 +158,7 @@ Super80_Emulator::Super80_Emulator()
   // 0xd  = screen full of @                               JUMPER B
   // 0xe  = monitor?                                       JUMPER A   
   m_options = 0xe;
+  m_kbScanner.Compile(g_super80Keys);
 }
 
 void Super80_Emulator::Init()
@@ -126,24 +171,34 @@ void Super80_Emulator::Reset(int addr)
   Z80Emulator::Reset(addr);
   SetVideoPage(0);
   m_pio.Reset();
-  m_pio.ReceiveData(1, 0xff); // keyboard has pull ups
+  m_pio.SetData(1, 0xff); // keyboard has pull ups
 
   using namespace std::placeholders;
-  m_pio.SetInterruptHandler(std::bind(&Super80_Emulator::OnPIOInterrupt, this, _1));
-}
 
+  m_pio.SetInterruptHandler(std::bind(&Super80_Emulator::OnPIOInterrupt, this, _1));
+
+  m_pio.SetReadHandler(1, std::bind(&Super80_Emulator::OnReadKeyboard, this));
+}
 
 void Super80_Emulator::OnPIOInterrupt(uint8_t vector)
 {
   Interrupt(vector);
 }
 
+uint8_t Super80_Emulator::OnReadKeyboard()
+{
+  return m_kbScanner.Read(m_pio.GetData(1));
+}
+
+
 void Super80_Emulator::OnKeyDown(const SDL_Keysym & keysym)
 {
-  //if ((keysym.sym < 0x80) && (keysym.sym > 0)) {
-  //  m_pio.ReceiveData(0, keysym.sym);
-  //}
-  return Z80Emulator::OnKeyDown(keysym);
+  m_kbScanner.OnKeyDown(keysym);
+}
+
+void Super80_Emulator::OnKeyUp(const SDL_Keysym & keysym)
+{
+  m_kbScanner.OnKeyUp(keysym);
 }
 
 uint8_t Super80_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)

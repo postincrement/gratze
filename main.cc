@@ -359,7 +359,7 @@ int main(int argc, char *argv[])
 
     interval = std::chrono::duration<double>(now - lastSpeed).count();
     if (interval >= 1) {
-      cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
+      //cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
       lastSpeed = now;
     }
   }

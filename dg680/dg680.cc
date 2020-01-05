@@ -77,7 +77,7 @@ void DG680_Emulator::OnPIOInterrupt(uint8_t vector)
 void DG680_Emulator::OnKeyDown(const SDL_Keysym & keysym)
 {
   if ((keysym.sym < 0x80) && (keysym.sym > 0)) {
-    m_pio.ReceiveData(0, toupper((char)keysym.sym));
+    m_pio.SetData(0, toupper((char)keysym.sym));
   }
 }
 
