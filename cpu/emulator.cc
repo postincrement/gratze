@@ -141,8 +141,28 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 {
   const Config::Video * video = GetVideoInfo();
 
+  // calculate the pixel dimensions of the screen
+  // if aspect
+  if (video->m_aspectRatio <= 0) {
+
+  }
+  else {
+
+  }
+
   // create main window with out best guess at the size
   mainWindow.Open(2, video->m_screenWidth, video->m_screenHeight);
+
+    const Config::Video & info = *GetVideoInfo();
+  VirtualScreen * screen = VirtualScreen::Create(mainWindow, *this, options, info);
+  if (screen == nullptr) {
+    cerr << "error: could not instantiate screen type" << endl;
+    return false;
+  }
+  m_video.reset(screen);
+
+  return m_video->Open();
+
 
   // get the emulator to create the font, and any other video options
   OpenVideo(mainWindow, options);
@@ -182,15 +202,6 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 
 bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
 {
-  const Config::Video & info = *GetVideoInfo();
-  VirtualScreen * screen = VirtualScreen::Create(mainWindow, *this, options, info);
-  if (screen == nullptr) {
-    cerr << "error: could not instantiate screen type" << endl;
-    return false;
-  }
-  m_video.reset(screen);
-
-  return m_video->Open();
 }
 
 void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)

@@ -25,6 +25,7 @@ class Font;
 #define INFO_IO_PORT_READ(start, end, id)   { Config::Type::eIOPortRead,  { .m_ioPort={ start, end, id } } }
 #define INFO_IO_PORT_WRITE(start, end, id)  { Config::Type::eIOPortWrite, { .m_ioPort={ start, end, id } } }
 #define INFO_IO_PORT_RW(start, end, id)     { Config::Type::eIOPortRW,    { .m_ioPort={ start, end, id } } }
+#define INFO_SCREEN(freq, ratio)            { Config::Type::eScreen,      { .m_screen={ freq, ratio    } } }
 
 #define INFO_VIDEO_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
     { Config::Type::eVideo, { .m_video={ \
@@ -57,7 +58,8 @@ enum class Type
   eIOPortWrite,
   eIOPortRW,
   eVideo,
-  eVideoExternal
+  eVideoExternal,
+  eScreen
 };
 
 struct Font
@@ -83,6 +85,12 @@ struct Video
   int       m_screenHeight;   // screen height in pixels (Y)
 
   Font  m_font;
+};
+
+struct Monitor 
+{
+  double m_pixelFrequency_MHz;
+  double m_aspectRatio;
 };
 
 struct CPU
