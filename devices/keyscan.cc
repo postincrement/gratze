@@ -34,7 +34,7 @@ void KeyboardScanner::Compile(int rowCount, int colCount, const char ** keyCodeM
       // convert our keycode to SDL_Keycode
       SDL_Keycode keyCode = SDL_GetKeyFromName(code);
       if (keyCode != SDLK_UNKNOWN) {
-        cout << "info: mapped keycode '" << code << "' " << HEXFORMAT0x2(keyCode) << " to col " << (int)col << ", row " << (int)row << endl;
+        //cout << "info: mapped keycode '" << code << "' " << HEXFORMAT0x2(keyCode) << " to col " << (int)col << ", row " << (int)row << endl;
         keyRowCols[keyCode] = KeyRowColInfo(row, col);
       }
       else if (strcasecmp(code, "shift")) {

@@ -17,7 +17,7 @@ class MainWindow
     MainWindow();
     ~MainWindow();
 
-    bool Open(int scale, int screenWidth, int screenHeight);
+    bool Open(int width, int height);
 
     SDL_Renderer * GetRenderer();
 
@@ -26,14 +26,9 @@ class MainWindow
     void GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h);
 
   protected:
-    int m_scale;
     int m_screenHeight;
     int m_screenWidth;
     int m_panelWidth;
-    int m_left;
-    int m_right;
-    int m_top;
-    int m_bottom;
 
     std::string m_title;
 

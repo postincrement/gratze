@@ -7,12 +7,10 @@ class MainWindow;
 class VirtualScreen;
 class Font;
 
-
-#define MAX_INFO_BLOCKS   20
+#define MAX_INFO_BLOCKS   40
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-    
 #define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
 
 #define INFO_END()                          { Config::Type::eEnd }    
@@ -25,7 +23,7 @@ class Font;
 #define INFO_IO_PORT_READ(start, end, id)   { Config::Type::eIOPortRead,  { .m_ioPort={ start, end, id } } }
 #define INFO_IO_PORT_WRITE(start, end, id)  { Config::Type::eIOPortWrite, { .m_ioPort={ start, end, id } } }
 #define INFO_IO_PORT_RW(start, end, id)     { Config::Type::eIOPortRW,    { .m_ioPort={ start, end, id } } }
-#define INFO_SCREEN(freq, ratio)            { Config::Type::eScreen,      { .m_screen={ freq, ratio    } } }
+#define INFO_MONITOR(freq, h, v, fmt)       { Config::Type::eMonitor,     { .m_monitor={ freq, h, v, Config::VideoStandard::fmt, 6.7, 5.0 } } }
 
 #define INFO_VIDEO_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
     { Config::Type::eVideo, { .m_video={ \
@@ -59,7 +57,7 @@ enum class Type
   eIOPortRW,
   eVideo,
   eVideoExternal,
-  eScreen
+  eMonitor
 };
 
 struct Font
@@ -87,10 +85,21 @@ struct Video
   Font  m_font;
 };
 
+enum class VideoStandard
+{
+  eNone,
+  ePAL,
+  eNTSC
+};
+
 struct Monitor 
 {
   double m_pixelFrequency_MHz;
-  double m_aspectRatio;
+  double m_hScale;
+  double m_vScale;
+  VideoStandard m_std;
+  double m_hOverScan_percent = 6.7;   // title safe
+  double m_vOverScan_percent = 5.0;   // title safe
 };
 
 struct CPU
@@ -137,12 +146,13 @@ struct Block {
   Type m_type;
 
   union {
-    CPU    m_cpu;
-    ROM    m_rom;
-    RAM    m_ram;
-    MemIO  m_memIO;
-    IOPort m_ioPort;
-    Video  m_video;
+    CPU     m_cpu;
+    ROM     m_rom;
+    RAM     m_ram;
+    MemIO   m_memIO;
+    IOPort  m_ioPort;
+    Video   m_video;
+    Monitor m_monitor;
   } m_info;
 };
 

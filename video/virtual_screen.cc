@@ -18,9 +18,13 @@ VirtualScreenFactory VirtualScreen::g_virtualScreenFactory;
 
 /////////////////////////////////////////////////////////////////////////////////
 
-VirtualScreen * VirtualScreen::Create(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
+VirtualScreen * VirtualScreen::Create(MainWindow & mainWindow, 
+                                        Emulator & emulator, 
+                                   const Options & options, 
+                             const Config::Video & info)
 {
-  return g_virtualScreenFactory.CreateInstance(info.m_name, mainWindow, emulator, options, info);
+  VirtualScreen * screen = g_virtualScreenFactory.CreateInstance(info.m_name, mainWindow, emulator, options, info);
+  return screen;
 }  
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -53,9 +57,13 @@ void TextWindow::RenderCharAtPos(int pos, SDL_Colour & fg, SDL_Colour & bg)
     SDL_Rect dstRect;
     int x = pos % m_cols;
     int y = pos / m_cols;
-    m_mainWindow.GetScreenCharRect(dstRect, x * m_font->GetWidth(), y * m_font->GetHeight(), 
-                                                m_font->GetWidth(),     m_font->GetHeight());
+    m_mainWindow.GetScreenCharRect(dstRect, 
+                          m_left + x * m_font->GetWidth(), 
+                          m_top + y * m_font->GetHeight(), 
+                          m_font->GetWidth(),
+                          m_font->GetHeight());
 
+    SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale, m_vscale);    
     m_font->RenderChar(GetCharAtPos(pos), m_mainWindow.GetRenderer(), dstRect, fg, bg);
 
     Update(true);
@@ -88,6 +96,20 @@ void TextWindow::Update(bool hasChanged)
 VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : TextWindow(mainWindow, info.m_screenRows, info.m_screenCols, info.m_screenWidth, info.m_screenHeight)
 {
+  m_hscale = 1.0;
+  m_vscale = 1.0;
+}
+
+void VirtualScreen::SetScale(double hscale, double vscale)
+{
+  m_hscale = hscale;
+  m_vscale = vscale;
+}
+
+void VirtualScreen::SetOffset(int left, int top)
+{
+  m_left = left;
+  m_top  = top;
 }
 
 VirtualScreen::~VirtualScreen()

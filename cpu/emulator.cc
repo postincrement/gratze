@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <functional>
+#include <math.h>
 
 #include "misc.h"
 #include "config.h"
@@ -137,67 +138,179 @@ bool Emulator::Poll()
 
 /////////////////////////////////////////////////////////////////////////////////////
 
+bool CloseToInteger(double val)
+{
+  return fabs((val + .4) - trunc(val)) <= 0.1;
+}
+
 void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 {
   const Config::Video * video = GetVideoInfo();
 
-  // calculate the pixel dimensions of the screen
-  // if aspect
-  if (video->m_aspectRatio <= 0) {
+  const Config::Block * block = GetConfigBlock(Config::Type::eMonitor);
+  const Config::Monitor * monitor = (block == nullptr) ? nullptr : &block->m_info.m_monitor;
 
+  int monitorW, monitorH;       // monitor resolution in pixels
+  int videoW, videoH;           // pixels generations by emulator
+  int top = 0;
+  int left = 0;                // border top and left
+  int fieldMult = 1;
+  std::string standardName;
+  int overscanX;
+  int overscanY;
+  double hratio;
+  double vratio;
+
+  // get the scale
+  if ((monitor == nullptr) || (monitor->m_std == Config::VideoStandard::eNone)) {
+    cerr << "error: must have monitor declaration" << endl;
+    exit(-1);
   }
   else {
 
+    int totalLines;
+    double frameRate;
+    double activeHTime_us;
+
+    switch (monitor->m_std) {
+      case Config::VideoStandard::eNone:
+        cerr << "info: monitor has no video standard definined" << endl;
+        exit(-1);
+      case Config::VideoStandard::ePAL:
+        standardName   = "PAL";
+        totalLines     = 625;
+        monitorH       = 576;
+        frameRate      = 25.0;
+        activeHTime_us = 52.0;
+        hratio         = 4.0;
+        vratio         = 3.0;
+        break;
+      case Config::VideoStandard::eNTSC:
+        standardName   = "NTSC";
+        totalLines     = 525;
+        monitorH       = 488;
+        frameRate      = 30.0;
+        activeHTime_us = 52.6;
+        hratio         = 4.0;
+        vratio         = 3.0;
+        break;
+    }
+
+    // display monitor information
+    monitorW = monitor->m_pixelFrequency_MHz * activeHTime_us;
+    cout << "info: " << standardName 
+         << " monitor at " << monitor->m_pixelFrequency_MHz << " MHz"
+         << " is " << monitorW << "x" << monitorH << endl;
+
+    // remove overscan
+    overscanX = monitorW * 2 * monitor->m_hOverScan_percent / 100.0;
+    overscanY = monitorH * 2 * monitor->m_vOverScan_percent / 100.0;
+    cout << "info: overscan is " << overscanX << ", " << overscanY << endl;
+
+    // display video output pixels
+    videoW = video->m_screenWidth;
+    videoH = video->m_screenHeight;
   }
 
-  // create main window with out best guess at the size
-  mainWindow.Open(2, video->m_screenWidth, video->m_screenHeight);
+  int vdup = 2;
 
-    const Config::Video & info = *GetVideoInfo();
-  VirtualScreen * screen = VirtualScreen::Create(mainWindow, *this, options, info);
+  cout << "info: raw video output is " << videoW << "x" << videoH*vdup << endl;
+
+  // get size of screen
+  SDL_DisplayMode mode;
+  SDL_GetDesktopDisplayMode(0, &mode);
+  cout << "info: screen is " << mode.w << "x" << mode.h << endl;
+
+  // calculate relative pixel sizes scaling X or Y
+  int ratio = 1;
+  int hscale;
+  int vscale;
+  bool found = false;
+  while (((ratio * videoW) <= mode.w) && ((ratio * videoH*vdup) <= mode.h)) {
+
+    // see if vertical scale can be integer
+    {
+      int w = 1.0 * ratio * (videoH * vdup) * hratio / vratio;
+      int hs = trunc(w / videoW);
+      if (hs >= 0) {
+        cout << "info: trying vscale=" << ratio 
+                                << " - " << hs << ":" << ratio 
+                                << " gives " << hs * videoW << "x" << ratio * videoH 
+                                << " compared to " << w << "x" << ratio * videoH << endl;
+        if (CloseToInteger(w / videoW)) {
+          hscale = hs;
+          vscale = ratio;
+          cout << "info: good" << endl;
+          found = true;
+        }
+      }
+    }
+
+    // see if horizontal scale can be integer
+    {
+      int h = 1.0 * ratio * videoW * vratio / hratio;
+      int vs = trunc(h / videoW);
+      if (vs > 0) {
+        cout << "info: trying hscale=" << ratio
+                                << " - " << ratio << ":" << vs 
+                                << " gives " << ratio * videoW << "x" << vs * videoH 
+                                << " compared to " << ratio * videoH << "x" << h << endl;
+        if (CloseToInteger(h / (vdup * videoH))) {
+          hscale = ratio;
+          vscale = vs;
+          cout << "info: good" << endl;
+          found = true;
+        }
+      }
+    }
+
+    ratio++;
+  }
+
+  if (found) {
+    cout << "info: found approximate scale " << hscale << ":" << vscale << endl;
+  }
+  else {
+    hscale = trunc(mode.w * 3 / 4 / videoW);
+    vscale = trunc(mode.h * 3 / 4 / videoH);
+    cout << "info: using pixel scale " << hscale << ":" << vscale << endl;
+  }
+
+/*
+  monitorW -= overscanX;
+  monitorH -= overscanY;
+  cout << "info: " << standardName 
+       << " monitor less overscan is " << monitorW << "x" << monitorH << endl;
+
+  left = (monitorW - videoW) / 2;
+  if (left < 0)
+    left = 0;
+  top  = (monitorH - videoH*vdup) / 2 / vdup;
+  if (top < 0)
+    top = 0;
+  cout << "info: left = " << left << ", top = " << top << endl;
+
+  cout << "scale is " << hscale << "x" << vscale << endl;
+*/
+
+  // calculate monitor scale
+  int width  = videoW * hscale;
+  int height = videoH * vscale;
+
+  // create main window 
+  mainWindow.Open(width, height);
+
+  VirtualScreen * screen = VirtualScreen::Create(mainWindow, *this, options, *video);
   if (screen == nullptr) {
     cerr << "error: could not instantiate screen type" << endl;
-    return false;
+    return; // false;
   }
+
+  screen->SetScale(hscale, vscale);
+  screen->SetOffset(left, top);
+
   m_video.reset(screen);
-
-  return m_video->Open();
-
-
-  // get the emulator to create the font, and any other video options
-  OpenVideo(mainWindow, options);
-
-  // calculate the correct size given the final font and the required rows and columns
-  int finalWidth  = video->m_screenCols * video->m_font.m_width;
-  int finalHeight = video->m_screenRows * video->m_font.m_height;
-
-  double hScale = 1.0;
-  double vScale = 1.0;
-
-  bool changed = false;
-
-  if (finalWidth != video->m_screenWidth) {
-    hScale = finalWidth * 1.0 / video->m_screenWidth;
-    changed = true;
-  }
-  if (finalHeight != video->m_screenHeight) {
-    vScale = finalHeight * 1.0 / video->m_screenHeight;
-    changed = true;
-  }
-
-  if (changed) {
-    cout << "info: screen resize from " << dec << video->m_screenWidth << "x" << video->m_screenHeight << " to " <<  finalWidth << "x" << finalHeight << endl; 
-    //mainWindow.SetFinalSizePixels(finalWidth, finalHeight)
-    mainWindow.Open(2, finalWidth, finalHeight);
-
-    // get the emulator to create the font, and any other video options
-    OpenVideo(mainWindow, options);
-/*
-    SDL_RenderSetScale(SDL_Renderer* renderer,
-                       float         scaleX,
-                       float         scaleY)
-*/
-  }
+  m_video->Open();
 }
 
 bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)

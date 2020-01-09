@@ -24,7 +24,10 @@ extern void CreateDG640PixelData(const Options & options, const Config::Font & f
                            DG640_FONT_WIDTH, DG640_FONT_HEIGHT, \
                            256, \
                            &g_charGen_MotorolaMCM6574, \
-                           &DG640::CreatePixelFont)
+                           &DG640::CreatePixelFont), \
+  INFO_MONITOR(12.0, 4.0, 3.0, ePAL)
+
+                         
 
 
 class DG640 : public SingleColourMemoryMappedVideo

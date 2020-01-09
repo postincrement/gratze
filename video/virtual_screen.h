@@ -47,6 +47,12 @@ class TextWindow
     int m_width;
     int m_height;
 
+    double m_hscale = 1;
+    double m_vscale = 1;
+
+    int m_left = 0;
+    int m_top = 0;
+
     int m_visibleSize = 0;
     int m_visibleMask = 0;
 
@@ -63,6 +69,9 @@ class VirtualScreen : public TextWindow
   public:
     VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
     ~VirtualScreen();
+
+    virtual void SetScale(double hscale, double vscale);
+    virtual void SetOffset(int left, int top);
 
     template<class Type>
     static void AddType(const std::string & name)

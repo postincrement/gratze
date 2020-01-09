@@ -116,6 +116,8 @@ static struct EmulatorInfo g_levelEmulatorInfo =
                               MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
                               256, &g_charGen_MotorolaMCM6674, TRS80Emulator::CreatePixelFont),
 
+    INFO_MONITOR(10.6445, 4.0, 3.0, ePAL),        
+
     INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 
     INFO_IO_PORT_RW(0xff, 0xff, 1),

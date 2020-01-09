@@ -57,6 +57,8 @@ INFO_VIDEO_MEMORY_MAPPED("super80", 0xf000, 0xf1ff, \
                          SUPER80_FONT_WIDTH, SUPER80_FONT_HEIGHT, \
                          64, &g_charGen_Signetics2513, nullptr),
 
+    INFO_MONITOR(6.0, 4.0, 3.0, ePAL),        
+
     INFO_IO_PORT_RW(0xf8, 0xfb, 1),    // PIO
     INFO_IO_PORT_RW(0xf1, 0xf1, 2),    // video page
     INFO_IO_PORT_RW(0xf2, 0xf2, 3),    // input
