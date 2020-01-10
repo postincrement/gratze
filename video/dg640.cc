@@ -13,12 +13,21 @@ extern unsigned char g_dg640Char_ROM[1024];
 DG640::DG640(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
 {
+  if (m_memory.size() != DG640_VIDEO_RAM_SIZE_K * 1024) {
+    cerr << "error: DG640 memory is wrong size - " << m_memory.size() << " instead of " << DG640_VIDEO_RAM_SIZE_K * 1024 << endl;
+    exit(-1);
+  }
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
 }
 
 bool DG640::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
+  if (fontData.size() != (DG640_FONT_HEIGHT*256)) {
+    cerr << "error: DG640 font data is wrong size - " << fontData.size() << " instead of " << DG640_FONT_HEIGHT*256 << endl;
+    exit(1);
+  }
+
   // create inverted chars
   {
     uint8_t * src = &fontData[0];

@@ -134,7 +134,7 @@ void S2650Emulator::WritePortD(unsigned char data)
 
 unsigned char S2650Emulator::ReadPort(unsigned char port)
 {
-  cout << "2650: unknown read from port " << HEXFORMAT0x2(port) << endl;
+  //cout << "2650: unknown read from port " << HEXFORMAT0x2(port) << endl;
   return 0x00;
 }
 

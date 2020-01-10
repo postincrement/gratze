@@ -188,6 +188,9 @@ MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulato
   cout << "info: video memory size is " << size_bytes << " bytes, mask is " << HEXFORMAT0x4(m_memoryMask) << endl;
 }
 
+MemoryMappedVideo::~MemoryMappedVideo()
+{}
+
 bool MemoryMappedVideo::Open()
 {
   // unpack pixel data

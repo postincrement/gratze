@@ -42,7 +42,6 @@ class Emulator
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
       uint8_t * m_memory = nullptr; 
-      std::vector<uint8_t> m_storage;
       MemoryWriteFunction m_realFunction = nullptr;
       MemoryWriteFunction m_function = nullptr;
       int m_id;
@@ -56,7 +55,6 @@ class Emulator
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
       const uint8_t * m_memory = nullptr;    // may point to write memory 
-      std::vector<uint8_t> m_storage;
       MemoryReadFunction m_realFunction = nullptr;
       MemoryReadFunction m_function = nullptr;
       int m_id;

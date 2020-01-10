@@ -271,8 +271,8 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     cout << "info: found approximate scale " << hscale << ":" << vscale << endl;
   }
   else {
-    hscale = trunc(mode.w * 3 / 4 / videoW);
-    vscale = trunc(mode.h * 3 / 4 / videoH);
+    hscale = std::min(trunc(mode.w * 3 / 4 / videoW), trunc(mode.h * 3 / 4 / videoH));
+    vscale = hscale;
     cout << "info: using pixel scale " << hscale << ":" << vscale << endl;
   }
 
@@ -418,22 +418,25 @@ void Emulator::CompileConfigBlocks()
         cerr << "error: RAM block has end address" << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
       }
-      WriteMemoryBlockInfo writeInfo;
-      writeInfo.m_type      = block->m_type;
-      writeInfo.m_startAddr = info.m_startAddr;
-      writeInfo.m_endAddr   = info.m_endAddr;
-      writeInfo.m_storage.resize(writeInfo.m_endAddr - writeInfo.m_startAddr + 1);
-      writeInfo.m_memory    = &writeInfo.m_storage[0];
-      if (m_debugWriteMemory) {
-        writeInfo.m_function  = &Emulator::DebugWriteMemory;
+      uint8_t * memory;
+      {
+        WriteMemoryBlockInfo writeInfo;
+        writeInfo.m_type      = block->m_type;
+        writeInfo.m_startAddr = info.m_startAddr;
+        writeInfo.m_endAddr   = info.m_endAddr;
+        memory = (uint8_t *)malloc(writeInfo.m_endAddr - writeInfo.m_startAddr + 1);
+        writeInfo.m_memory = memory;
+        if (m_debugWriteMemory) {
+          writeInfo.m_function  = &Emulator::DebugWriteMemory;
+        }
+        m_writeMemoryBlocks.push_back(writeInfo);
       }
-      m_writeMemoryBlocks.push_back(writeInfo);
       {
         ReadMemoryBlockInfo readInfo;
         readInfo.m_type      = block->m_type;
-        readInfo.m_startAddr = writeInfo.m_startAddr;
-        readInfo.m_endAddr   = writeInfo.m_endAddr;
-        readInfo.m_memory    = writeInfo.m_memory;
+        readInfo.m_startAddr = info.m_startAddr;
+        readInfo.m_endAddr   = info.m_endAddr;
+        readInfo.m_memory    = memory;
         if (m_debugReadMemory) {
           readInfo.m_function  = &Emulator::DebugReadMemory;
         }
@@ -584,10 +587,19 @@ void Emulator::CompileConfigBlocks()
 uint8_t Emulator::ReadMemory(uint16_t addr)
 {
   for (auto & r : m_readMemoryBlocks) {
+    if ((int)r.m_type == 0) {
+      cerr << "error: bad block type " << endl;
+      return 0x00;
+    }
     if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
       if (r.m_function != nullptr)
         return std::invoke(r.m_function, *this, r, addr);
-      return r.m_memory[addr - r.m_startAddr];
+      if (r.m_memory == nullptr) {
+        cerr << "cerr: read from address " << HEXFORMAT0x4(addr) << " with null memory" << endl;
+        return 0x00;
+      }
+      else  
+        return r.m_memory[addr - r.m_startAddr];
     }
   }
   return ReadLog(addr);
@@ -596,12 +608,19 @@ uint8_t Emulator::ReadMemory(uint16_t addr)
 void Emulator::WriteMemory(uint16_t addr, uint8_t data)
 {
   for (auto & r : m_writeMemoryBlocks) {
+    if ((int)r.m_type == 0) {
+      cerr << "error: bad block type " << endl;
+      return;
+    }
     if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
       if (r.m_function != nullptr) {
         std::invoke(r.m_function, *this, r, addr, data);
         return;
       }
-      r.m_memory[addr - r.m_startAddr] = data;
+      if (r.m_memory == nullptr)
+        cerr << "cerr: write to address " << HEXFORMAT0x4(addr) << " with null memory" << endl;
+      else  
+        r.m_memory[addr - r.m_startAddr] = data;
       return;
     }
   }

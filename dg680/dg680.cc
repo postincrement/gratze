@@ -36,8 +36,8 @@ static EmulatorInfo g_emulatorInfo =
     INFO_MAIN_RAM(0x0000, 48, 8, DG680_ROM_START_ADDR / 1024),
     INFO_RAM(DG680_RAM_START_ADDR, DG680_RAM_END_ADDR),
 
-    INFO_IO_PORT_RW(0x00, 0x03, 1),    // PIO
-    INFO_IO_PORT_RW(0x04, 0x07, 2),    // CTC
+    INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
+    INFO_IO_PORT_RW(0x04, 0x07, 2),      // CTC
 
     INFO_IO_PORT_RW(0x08, 0x08, 3),      // SWP
 
