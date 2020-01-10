@@ -140,8 +140,85 @@ bool Emulator::Poll()
 
 bool CloseToInteger(double val)
 {
-  return fabs((val + .4) - trunc(val)) <= 0.1;
+  return fabs(val - trunc(val)) <= 0.1;
 }
+
+static bool FindScreenScale(int & hscale, int & vscale, double hratio, double vratio, int videoW, int videoH, int monitorW, int monitorH)
+{
+  double pixeRatioWtoH = (1.0 * videoW / monitorW * hratio) / (1.0 * videoH / monitorH * vratio);
+
+  cout << "info: screen pixel ratio is 1:" << FIXEDFORMAT3(pixeRatioWtoH) << endl;
+
+  // get size of screen
+  SDL_DisplayMode mode;
+  SDL_GetDesktopDisplayMode(0, &mode);
+  cout << "info: screen is " << mode.w << "x" << mode.h << endl;
+
+  // calculate relative pixel sizes scaling X or Y
+  bool found = false;
+  {
+    int ratio = 1;
+
+    while (!found && ((ratio * videoW) <= mode.w) && ((ratio * videoH) <= mode.h)) {
+
+      // see if horizontal scale can be integer
+      {
+        int newW         = ratio * videoW;
+        int newH         = trunc(1.0 * newW * vratio / hratio);
+        double newVscale = 1.0 *  newH / videoH;
+        if (newVscale >= 1) {
+          cout << "info: trying " << ratio << ":" << (int)trunc(newVscale) 
+                                  << " gives " << newW << "x" << newH 
+                                  << " compared to " << ratio * videoW << "x" << (int)trunc(newVscale) * videoH << endl;
+          if (CloseToInteger(newVscale)) {
+            hscale = ratio;
+            vscale = trunc(newVscale);
+            cout << "info: good" << endl;
+            found = true;
+          }
+        }
+      }
+
+      // see if vertical scale can be integer
+      {
+        int newH         = ratio * videoH;
+        int newW         = trunc(1.0 * newH * hratio / vratio);
+        double newHscale = 1.0 *  newW / videoW;
+        if (newHscale >= 1) {
+          cout << "info: trying " << (int)trunc(newHscale) << ":" << ratio 
+                                  << " gives " << newW << "x" << newH 
+                                  << " compared to " << (int)trunc(newHscale) * videoW << "x" << ratio * videoH << endl;
+          if (CloseToInteger(newHscale)) {
+            hscale = trunc(newHscale);
+            vscale = ratio;
+            cout << "info: good" << endl;
+            found = true;
+          }
+        }
+      }
+
+      ratio++;
+    }
+  }
+
+  if (found) {
+    cout << "info: found approximate scale " << hscale << ":" << vscale << endl;
+  }
+
+  return found;
+}
+
+struct ScreenRatioInfo
+{
+  ScreenRatioInfo(int i, int j)
+    : m_i(i)
+    , m_j(j)
+  {}
+  int m_i;
+  int m_j;
+};
+
+typedef std::multimap<double, ScreenRatioInfo> ResolutionMap;
 
 void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 {
@@ -152,8 +229,8 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 
   int monitorW, monitorH;       // monitor resolution in pixels
   int videoW, videoH;           // pixels generations by emulator
-  int top = 0;
-  int left = 0;                // border top and left
+  int top = 10;
+  int left = 10;                // border top and left
   int fieldMult = 1;
   std::string standardName;
   int overscanX;
@@ -214,88 +291,94 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 
   int vdup = 2;
 
-  cout << "info: raw video output is " << videoW << "x" << videoH*vdup << endl;
-
   // get size of screen
   SDL_DisplayMode mode;
   SDL_GetDesktopDisplayMode(0, &mode);
   cout << "info: screen is " << mode.w << "x" << mode.h << endl;
 
+  /*
+    need to find integers i and j where:
+
+        monitorW * i        hratio
+        ------------   =   
+        monitorH * j        vratio
+
+    and 
+         monitorW * i < screenWidth
+         monitorH * j < screenHeight
+
+  */
+
   // calculate relative pixel sizes scaling X or Y
-  int ratio = 1;
-  int hscale;
-  int vscale;
   bool found = false;
-  while (((ratio * videoW) <= mode.w) && ((ratio * videoH*vdup) <= mode.h)) {
+  int ratio = 1;
+  int i, j;
 
-    // see if vertical scale can be integer
-    {
-      int w = 1.0 * ratio * (videoH * vdup) * hratio / vratio;
-      int hs = trunc(w / videoW);
-      if (hs >= 0) {
-        cout << "info: trying vscale=" << ratio 
-                                << " - " << hs << ":" << ratio 
-                                << " gives " << hs * videoW << "x" << ratio * videoH 
-                                << " compared to " << w << "x" << ratio * videoH << endl;
-        if (CloseToInteger(w / videoW)) {
-          hscale = hs;
-          vscale = ratio;
-          cout << "info: good" << endl;
-          found = true;
-        }
-      }
+  ResolutionMap resolutions;
+
+  double allowedScreenRatio = 3.0 / 4.0;
+
+  while (!found && (
+              ((monitorW * ratio) <= (allowedScreenRatio * mode.w)) 
+           || ((monitorH * ratio) <= (allowedScreenRatio * mode.h))
+           )) {
+
+    // try i = ratio
+    double i_f = ratio;
+    double j_f = (1.0 * monitorW * i_f * vratio) / (hratio * monitorH);
+
+    if (
+        (j_f >= 1.0) && (
+          ((monitorW * i_f) <= (allowedScreenRatio * mode.w))
+           && ((monitorH * j_f) <= (allowedScreenRatio * mode.h))
+        )
+      ) {
+      double r = fabs(j_f - round(j_f));
+      resolutions.insert(ResolutionMap::value_type(r, ScreenRatioInfo(ratio, (int)trunc(j_f)))); 
+      cout << "info: i=" << ratio << " => j=" << FIXEDFORMAT3(j_f) << " (" << r << ")";
+      cout << endl;
     }
 
-    // see if horizontal scale can be integer
-    {
-      int h = 1.0 * ratio * videoW * vratio / hratio;
-      int vs = trunc(h / videoW);
-      if (vs > 0) {
-        cout << "info: trying hscale=" << ratio
-                                << " - " << ratio << ":" << vs 
-                                << " gives " << ratio * videoW << "x" << vs * videoH 
-                                << " compared to " << ratio * videoH << "x" << h << endl;
-        if (CloseToInteger(h / (vdup * videoH))) {
-          hscale = ratio;
-          vscale = vs;
-          cout << "info: good" << endl;
-          found = true;
-        }
-      }
+    // try j = ratio
+    j_f = ratio;
+    i_f = (1.0 * monitorH * j_f * hratio) / (vratio * monitorW);
+    if (
+        (i_f >= 1.0) && (
+           ((monitorW * i_f) <= (allowedScreenRatio * mode.w))
+            && ((monitorH * j_f) <= (allowedScreenRatio * mode.h))
+        )
+      ) {
+      double r = fabs(i_f - round(i_f));
+      resolutions.insert(ResolutionMap::value_type(r, ScreenRatioInfo((int)trunc(i_f), ratio))); 
+      cout << "info: j=" << ratio << " => i=" << FIXEDFORMAT3(i_f) << " (" << r << ")";
+      cout << endl;
     }
-
     ratio++;
   }
 
-  if (found) {
-    cout << "info: found approximate scale " << hscale << ":" << vscale << endl;
+  if (resolutions.size() == 0) {
+    i = 1; //std::min(trunc(mode.w * 3 / 4 / videoW), trunc(mode.h * 3 / 4 / videoH));
+    j = 1;
+    cout << "info: no good scale found - using screen resolution" << endl;
   }
   else {
-    hscale = std::min(trunc(mode.w * 3 / 4 / videoW), trunc(mode.h * 3 / 4 / videoH));
-    vscale = hscale;
-    cout << "info: using pixel scale " << hscale << ":" << vscale << endl;
+    ScreenRatioInfo & info = resolutions.begin()->second;
+    i = info.m_i;
+    j = info.m_j;
   }
 
-/*
-  monitorW -= overscanX;
-  monitorH -= overscanY;
-  cout << "info: " << standardName 
-       << " monitor less overscan is " << monitorW << "x" << monitorH << endl;
+  cout << "info: using pixel scale " << i << ":" << j << endl;
 
-  left = (monitorW - videoW) / 2;
-  if (left < 0)
-    left = 0;
-  top  = (monitorH - videoH*vdup) / 2 / vdup;
-  if (top < 0)
-    top = 0;
-  cout << "info: left = " << left << ", top = " << top << endl;
+  cout << "info: raw video output is " << videoW << "x" << videoH * vdup;
+  if (vdup > 0) {
+    cout << " (" << vdup << " fields)";
+    videoH *= vdup;
+  }
+  cout << endl;
 
-  cout << "scale is " << hscale << "x" << vscale << endl;
-*/
-
-  // calculate monitor scale
-  int width  = videoW * hscale;
-  int height = videoH * vscale;
+  // calculate window size
+  int width  = (left * 2 + videoW) * i;
+  int height = (top * 2 * vdup + videoH) * j;
 
   // create main window 
   mainWindow.Open(width, height);
@@ -306,7 +389,7 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     return; // false;
   }
 
-  screen->SetScale(hscale, vscale);
+  screen->SetScale(i, j * vdup);
   screen->SetOffset(left, top);
 
   m_video.reset(screen);

@@ -13,4 +13,7 @@
 #define   HEXFORMAT0x4(val) "0x" << HEXFORMAT4(val)
 #define   HEXFORMAT0x8(val) "0x" << HEXFORMAT8(val)
 
+#define   FIXEDFORMAT(prec, val)      std::fixed << std::setprecision(prec) << (val)
+#define   FIXEDFORMAT3(val)           FIXEDFORMAT(3,val)
+
 #endif // MISC_H_
