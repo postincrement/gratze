@@ -436,12 +436,12 @@ void Emulator::ChangeVideoColour()
 
 void Emulator::OnKeyDown(const SDL_Keysym &keysym)
 {
-  cerr << "warning: emulator got key down sym code" << HEXFORMAT0x2(keysym.sym) << endl;
+  cerr << "warning: emulator got key down sym code " << HEXFORMAT0x2(keysym.sym) << endl;
 }
 
 void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 {
-  cerr << "warning: emulator got key up sym code" << HEXFORMAT0x2(keysym.sym) << endl;
+  cerr << "warning: emulator got key up sym code " << HEXFORMAT0x2(keysym.sym) << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -670,19 +670,10 @@ void Emulator::CompileConfigBlocks()
 uint8_t Emulator::ReadMemory(uint16_t addr)
 {
   for (auto & r : m_readMemoryBlocks) {
-    if ((int)r.m_type == 0) {
-      cerr << "error: bad block type " << endl;
-      return 0x00;
-    }
     if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
       if (r.m_function != nullptr)
         return std::invoke(r.m_function, *this, r, addr);
-      if (r.m_memory == nullptr) {
-        cerr << "cerr: read from address " << HEXFORMAT0x4(addr) << " with null memory" << endl;
-        return 0x00;
-      }
-      else  
-        return r.m_memory[addr - r.m_startAddr];
+      return r.m_memory[addr - r.m_startAddr];
     }
   }
   return ReadLog(addr);
@@ -691,19 +682,12 @@ uint8_t Emulator::ReadMemory(uint16_t addr)
 void Emulator::WriteMemory(uint16_t addr, uint8_t data)
 {
   for (auto & r : m_writeMemoryBlocks) {
-    if ((int)r.m_type == 0) {
-      cerr << "error: bad block type " << endl;
-      return;
-    }
     if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
       if (r.m_function != nullptr) {
         std::invoke(r.m_function, *this, r, addr, data);
         return;
       }
-      if (r.m_memory == nullptr)
-        cerr << "cerr: write to address " << HEXFORMAT0x4(addr) << " with null memory" << endl;
-      else  
-        r.m_memory[addr - r.m_startAddr] = data;
+      r.m_memory[addr - r.m_startAddr] = data;
       return;
     }
   }
@@ -886,6 +870,70 @@ void Emulator::DumpStack(int count)
 bool Emulator::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
 {
   return false;
+}
+
+std::string Emulator::DumpRegs() const
+{
+  return "";
+}
+
+void Emulator::MemoryDump() const
+{
+  uint16_t addr;
+  std::vector<uint8_t> dump; 
+  dump.resize(GetMemorySize());
+  memset(&dump[0], 0, dump.size());
+  
+  for (auto & r : m_readMemoryBlocks) {
+    if (r.m_memory != nullptr) {
+      memcpy(&dump[r.m_startAddr], r.m_memory, r.m_endAddr - r.m_startAddr + 1);
+    }
+    else {
+    }
+  }
+
+  std::string basename(GetName() + "_dump");
+
+  {
+    std::string filename(basename + ".txt");
+    ofstream file(filename);
+    if (!file.is_open()) {
+      cerr << "error: could not open " << filename << endl;
+    }
+    else {
+      file << DumpRegs();
+
+      int cols = 32;
+      int p = 0;
+      while (p < dump.size()) {
+        file << HEXFORMAT0x4(p) << "  ";
+        int len = std::min((int)dump.size(), cols);
+        int i;
+        for (i = 0; i < len; ++i)
+          file << " " << HEXFORMAT2(dump[p + i]);
+        while (i < cols)
+          file << "   ";  
+        file << "   ";
+        for (i = 0; i < len; ++i)
+          file << (isgraph(dump[p + i]) ? (char)dump[p + i] : '.');
+        file << endl;  
+        p += len;
+      }
+    }
+    cout << "memory dumped to " << filename << endl;
+  }
+
+  {
+    std::string filename(basename + ".bin");
+    ofstream file(filename, ios::out | ios::trunc | ios::binary);
+    if (!file.is_open()) {
+      cerr << "error: could not open " << filename << endl;
+    }
+    else {
+      file.write((char *)&dump[0], dump.size());
+    }
+    cout << "memory dumped to " << filename << endl;
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

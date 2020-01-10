@@ -32,7 +32,6 @@ uint8_t Z80PIO::Read(uint8_t reg)
       return m_ports[1].ReadData();
     case 3:
       return m_ports[1].ReadControl();
-      break;
   }
 }
 
@@ -50,6 +49,7 @@ void Z80PIO::Write(uint8_t reg, uint8_t data)
       break;
     case 3:
       m_ports[1].WriteControl(data);
+      break;
   }
 }
 
@@ -71,6 +71,7 @@ void Z80PIO::SetData(int portNum, uint8_t data)
     m_interruptHandler(port.m_vector);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Z80PIO::Port::Port(int port)
   : m_port(port)

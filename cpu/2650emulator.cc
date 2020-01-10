@@ -64,6 +64,16 @@ S2650Emulator::S2650Emulator(EmulatorInfo * info)
   m_cpu.reset(new Our2650(*this));
 }
 
+int S2650Emulator::GetMemorySize() const
+{
+  return 0x8000;
+}
+
+std::string S2650Emulator::GetName() const
+{
+  return "2650";
+}
+
 bool S2650Emulator::Start(int addr)
 {
   if (addr < 0)
@@ -132,17 +142,18 @@ void S2650Emulator::WritePortD(unsigned char data)
   cout << "2650: unknown write to port D" << endl;
 }
 
+/*
 unsigned char S2650Emulator::ReadPort(unsigned char port)
 {
-  //cout << "2650: unknown read from port " << HEXFORMAT0x2(port) << endl;
+  cout << "2650: unknown read from extended port " << HEXFORMAT0x2(port) << endl;
   return 0x00;
 }
 
 void S2650Emulator::WritePort(unsigned char port, unsigned char data)
 {
-  cout << "2650: unknown write to port " << HEXFORMAT0x2(port) << endl;
+  cout << "2650: unknown write to extended port " << HEXFORMAT0x2(port) << endl;
 }
-
+*/
 
 void S2650Emulator::GetStack(std::vector<uint16_t> & stack)
 {
@@ -169,11 +180,6 @@ void S2650Emulator::DumpStackInternal(const std::vector<uint16_t> & stack)
   }
   */
 }
-
-
-void S2650Emulator::MemoryDump()
-{}
-
 
 
 /////////////////////////////////////////////////////////////////////////////////////

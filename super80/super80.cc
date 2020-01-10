@@ -51,8 +51,8 @@ static EmulatorInfo g_emulatorInfo =
     INFO_MAIN_RAM(SUPER80_RAM_START_ADDR, 48, 8, SUPER80_ROM_U26_START_ADDR / 1024),
 
 
-//    INFO_VIDEO_EXTERNAL("super80", SUPER80_VIDEO_CHARS, 
-INFO_VIDEO_MEMORY_MAPPED("super80", 0xf000, 0xf1ff, \
+    //INFO_VIDEO_MEMORY_MAPPED("super80", 0xf000, 0xf1ff,
+    INFO_VIDEO_EXTERNAL("super80", SUPER80_VIDEO_CHARS, \
                          SUPER80_VIDEO_COLS, SUPER80_VIDEO_ROWS, \
                          SUPER80_FONT_WIDTH, SUPER80_FONT_HEIGHT, \
                          64, &g_charGen_Signetics2513, nullptr),

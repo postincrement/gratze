@@ -48,8 +48,9 @@ void DG640::WriteMemoryAtPos(int pos, uint8_t ch)
   m_memory[pos] = ch;
 
   if (pos >= 0x400) {
-    if ((ch & 0xf)!= 0)
-      cout << "dg640: video attribute set at " << HEXFORMAT0x4(pos) << " to " << HEXFORMAT0x2(ch) << endl;
+    if ((ch & 0xf)!= 0) {
+      //cout << "dg640: video attribute set at " << HEXFORMAT0x4(pos) << " to " << HEXFORMAT0x2(ch) << endl;
+    }
   }
 
   RefreshCharAtPos(pos);

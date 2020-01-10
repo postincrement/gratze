@@ -119,6 +119,10 @@ class Emulator
     virtual void GetStack(std::vector<uint16_t> & stack) = 0;
     virtual void SetTrace(bool v) = 0;
 
+    virtual int GetMemorySize() const = 0;
+    virtual std::string GetName() const = 0;
+    virtual std::string DumpRegs() const;
+
     void CompileConfigBlocks();
 
     // memory functions
@@ -169,7 +173,7 @@ class Emulator
     // Floppy/hard drive functions
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
 
-    virtual void MemoryDump() = 0;
+    virtual void MemoryDump() const;
     std::unique_ptr<VirtualScreen> m_video;
 
   protected:  
