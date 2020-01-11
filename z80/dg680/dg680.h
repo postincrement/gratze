@@ -5,6 +5,7 @@
 #include "z80/z80emulator.h"
 #include "src/options.h"
 #include "devices/z80pio.h"
+#include "devices/keypar.h"
 
 class DG680_Emulator : public Z80Emulator
 {
@@ -20,9 +21,8 @@ class DG680_Emulator : public Z80Emulator
 
     void OnPIOInterrupt(uint8_t vector);
 
-    void OnKeyDown(const SDL_Keysym & keysym);
-
   protected:  
+    ParallelKeyboard m_keyboard;
     Z80PIO m_pio;
 };
 

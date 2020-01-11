@@ -5,6 +5,7 @@
 #include "z80/z80emulator.h"
 #include "devices/fdc.h"
 #include "devices/cassette.h"
+#include "devices/keyscan.h"
 #include "video/virtual_screen.h"
 #include "video/chargen_mcm6674.h"
 #include "src/options.h"
@@ -82,9 +83,6 @@ class TRS80Emulator : public Z80Emulator
 
     virtual uint8_t ReadNull(uint16_t) override;
 
-    virtual void OnKeyDown(const SDL_Keysym & keysym) override;
-    virtual void OnKeyUp(const SDL_Keysym & keysym) override;
-
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
@@ -118,9 +116,7 @@ class TRS80Emulator : public Z80Emulator
     static bool CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
   protected:  
-    uint8_t m_kbData[8];
-    uint8_t m_shiftDown;
-    std::vector<uint8_t> m_data;
+    KeyboardScanner m_keyboard;
 
     bool m_fdcEnabled;
     int m_fdcPending;

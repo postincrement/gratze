@@ -12,6 +12,7 @@
 #include "src/emuconfig.h"
 #include "video/virtual_screen.h"
 #include "devices/fdc.h"
+#include "devices/keyboard.h"
 
 class Emulator
 {
@@ -176,6 +177,8 @@ class Emulator
     virtual void MemoryDump() const;
     std::unique_ptr<VirtualScreen> m_video;
 
+    void SetKeyboard(VirtualKeyboard * keyboard);
+
   protected:  
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
 
@@ -202,6 +205,9 @@ class Emulator
 
     bool m_debugWriteMemory = false;
     bool m_debugReadMemory = false;
+
+  private:
+    VirtualKeyboard * m_keyboardDriver = nullptr;
 };
 
 struct EmulatorInfo

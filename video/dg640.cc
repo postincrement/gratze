@@ -104,7 +104,7 @@ void DG640::WriteMemoryAtAddress(int addr, uint8_t data)
 
 uint8_t DG640::ReadMemoryAtAddress(int addr) const
 {
-  if ((addr >= m_memory.size()) || (m_memory[addr] == data)) {
+  if (addr >= m_memory.size()) {
     return 0xff;
   }
 

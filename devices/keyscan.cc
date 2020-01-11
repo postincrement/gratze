@@ -10,38 +10,100 @@
 
 using namespace std;
 
+void KeyboardScanner::Reset()
+{
+  m_shiftStatus = 0;
+}
+
 void KeyboardScanner::Compile(const ScanLayout & scanLayout)
 {
-  for (auto & r : m_keys)
-    r.clear();
+  m_keys.clear();
 
   m_rows = scanLayout.m_rows;
   m_cols = scanLayout.m_cols;
 
   m_kbData.resize(((m_cols + 7) / 8) * m_rows);
-  Compile(m_rows, m_cols, scanLayout.m_keyCodes, m_keys[0]);
+  Compile(m_rows, m_cols, scanLayout.m_keyCodes,        false);
+  Compile(m_rows, m_cols, scanLayout.m_shiftedKeyCodes, true);
 }
 
-void KeyboardScanner::Compile(int rowCount, int colCount, const char ** keyCodeMap, KeyRowColMap & keyRowCols)
+static struct VirtualKeyMap {
+  char m_key;
+  SDL_Keycode m_code;
+} const g_virtualKeys[] = {
+  { '~',  SDLK_BACKQUOTE },
+  { '!',  SDLK_1 },
+  { '@',  SDLK_2 },
+  { '#',  SDLK_3 },
+  { '$',  SDLK_4 },
+  { '%',  SDLK_5 },
+  { '^',  SDLK_6 },
+  { '&',  SDLK_7 },
+  { '*',  SDLK_8 },
+  { '(',  SDLK_9 },
+  { ')',  SDLK_0 },
+  { '_',  SDLK_MINUS },
+  { '+',  SDLK_EQUALS },
+  { '{',  SDLK_LEFTBRACKET },
+  { '}',  SDLK_RIGHTBRACKET },
+  { '|',  SDLK_BACKSLASH },
+  { ':',  SDLK_SEMICOLON },
+  { '"',  SDLK_QUOTE },
+  { '<',  SDLK_COMMA },
+  { '>',  SDLK_PERIOD },
+  { '?',  SDLK_SLASH }
+};
+
+void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCodeMap, bool shifted)
 {
   for (int row = 0; row < rowCount; ++row) {
     for (int col = 0; col < colCount; ++col) {
-      const char * code = *keyCodeMap++;
-      if (code == 0) {
+      const ScanCode * code = keyCodeMap++;
+      if (code->m_name == 0) {
         continue;
       }
-
-      // convert our keycode to SDL_Keycode
-      SDL_Keycode keyCode = SDL_GetKeyFromName(code);
-      if (keyCode != SDLK_UNKNOWN) {
-        //cout << "info: mapped keycode '" << code << "' " << HEXFORMAT0x2(keyCode) << " to col " << (int)col << ", row " << (int)row << endl;
-        keyRowCols[keyCode] = KeyRowColInfo(row, col);
+      if (strcasecmp(code->m_name, "shift") == 0) {
+        if (!shifted) {
+          //cerr << "kb: shift key is " << col << "," << row << endl;
+          m_shiftKey = KeyRowColInfo(row, col, false, false);
+        }
       }
-      else if (strcasecmp(code, "shift")) {
-        m_shiftKey = KeyRowColInfo(row, col);
+      else if (strcasecmp(code->m_name, "control") == 0) {
+        if (!shifted) {
+          m_controlKey = KeyRowColInfo(row, col, false, false);
+        }
+      }
+      else if (strcasecmp(code->m_name, "capslock") == 0) {
+        if (!shifted) {
+          m_capsLockKey = KeyRowColInfo(row, col, false, false);
+        }
       }
       else {
-        cerr << "error: unknown keycode name '" << code << "'" << endl;
+        bool found = false;
+
+        // check for shifted "virtual" keys
+        if (strlen(code->m_name) == 1) {
+          for (int i = 0; i < sizeof(g_virtualKeys) / sizeof(g_virtualKeys[0]); ++i) {
+            if (g_virtualKeys[i].m_key == code->m_name[0]) {
+              const char * keyName = SDL_GetKeyName(g_virtualKeys[i].m_code);
+              m_keys.insert(KeyRowColMap::value_type(g_virtualKeys[i].m_code, KeyRowColInfo(row, col, true, shifted)));
+              //cout << "kb: mapped virtual '" << code->m_name << "' to name '" << keyName << "' = " << HEXFORMAT0x8(g_virtualKeys[i].m_code) << " + shift" << endl;
+              found = true;
+            }
+          }
+        }
+
+        if (!found) {
+          // convert our keycode to SDL_Keycode
+          SDL_Keycode keyCode = SDL_GetKeyFromName(code->m_name);
+          if (keyCode != SDLK_UNKNOWN) {
+            m_keys.insert(KeyRowColMap::value_type(keyCode, KeyRowColInfo(row, col, false, shifted)));
+            //cout << "kb: mapped '" << code->m_name << "' to " << HEXFORMAT0x8(keyCode) << endl;
+          }
+          else {
+            cerr << "error: unknown keycode name '" << code->m_name << "'" << endl;
+          }
+        }
       }
     }
   }
@@ -52,7 +114,6 @@ bool KeyboardScanner::Open()
   memset(&m_kbData[0], 0, m_kbData.size());
   return true;
 }
-
 
 uint8_t KeyboardScanner::Read(uint16_t rowMask)
 {
@@ -70,335 +131,141 @@ uint8_t KeyboardScanner::Read(uint16_t rowMask)
   return value;
 }
 
-void KeyboardScanner::OnKeyDown(const SDL_Keysym & keysym)
+template<typename Type>
+void MaskDown(bool down, Type mask, Type & val)
 {
-  uint16_t sym = keysym.sym;
+  if (down)
+    val |= mask;
+  else
+    val &= !mask;  
+}
 
-  if ((sym >= 'A') && (sym <= 'Z'))
-    sym = tolower(sym);
 
-  cerr << "key down " << sym << endl;
+void KeyboardScanner::ActivateKey(const KeyRowColInfo & rowCol, bool down)
+{
+  if (rowCol.m_row < 0)
+    return;
 
-  KeyRowColMap::iterator r = m_keys[0].find(sym);
-  if (r == m_keys[0].end()) {
-    cerr << "warning: unmapped keyboard down sym code " << HEXFORMAT0x2(sym) << " from " << m_keys[0].size() << endl;
+  uint8_t value = m_kbData[rowCol.m_row];
+
+  MaskDown<uint8_t>(down, 1 << rowCol.m_col, m_kbData[rowCol.m_row]);
+
+  //if (down)
+  //  cout << "kb: activating row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
+}
+
+void KeyboardScanner::KeyAction(const SDL_Keysym & keysym, bool down)
+{
+  // handle modifiers
+  switch (keysym.sym) {
+    case SDLK_LSHIFT:
+      if (down) {
+        m_shiftStatus |= 1;
+        m_shiftStatus &= ~4;
+      }
+      else {
+        m_shiftStatus &= !1;
+      }
+      //cerr << "kb: shift key " << (down ? "down" : "up") << endl;
+      ActivateKey(m_shiftKey, down);
+      return;
+
+    case SDLK_RSHIFT:
+      if (down) {
+        m_shiftStatus |= 2;
+        m_shiftStatus &= ~4;
+      }
+      else {
+        m_shiftStatus &= !2;
+        m_kbData[7] &= !1;
+      }
+      ActivateKey(m_shiftKey, down);
+      return;
+
+    case SDLK_LCTRL:
+    case SDLK_RCTRL:
+      ActivateKey(m_controlKey, down);
+      return;
+
+    case SDLK_CAPSLOCK:
+      ActivateKey(m_capsLockKey, down);
+      return;
+  }
+
+  SDL_Keycode ascii = keysym.sym;
+
+  bool shiftDown = (m_shiftStatus != 0);
+
+/*
+  bool makeUpper = (m_defaultUpper != shiftDown);
+
+  if (islower(sym)) {
+    sym = makeUpper ? toupper(sym) : tolower(sym);
+    if (keysym.mod & KMOD_CTRL)
+      sym = toupper(sym) - 0x40;
+  }
+*/
+
+  int count = m_keys.count(ascii);
+  if ((count == 0) && islower(ascii)) {
+    ascii = toupper(ascii);
+    count = m_keys.count(ascii);
+  }
+  if (count == 0) {
+    cerr << "warning: unmapped keyboard " << (down ? "down" : "up") << " code " << HEXFORMAT0x8(keysym.sym) << endl;
+    return;
+  }
+  //cerr << "info: found " << count << " entries for " << HEXFORMAT0x8(keysym.sym) << endl;
+
+  KeyRowColMap::iterator r = m_keys.find(ascii);
+  int i;
+  for (i = 0; i < count; ++i) {
+    //cout << "kb: rec " << i << " has shift status " << r->second.m_shiftSource << " " <<  r->second.m_shiftOut << endl;
+    if (r->second.m_shiftSource == ((m_shiftStatus & 3) != 0))
+      break;
+    ++r;  
+  }
+  if (i >= count) {
+    //cerr << "warning: mapped keyboard " << (down ? "down" : "up") << " code " << HEXFORMAT0x8(keysym.sym) << " with unmatched shift state " << ((shiftDown ? "down" : "up")) << endl;
     return;
   }
 
+  // if shift status 
   KeyRowColInfo & rowCol = r->second;
-  uint8_t value = m_kbData[rowCol.m_row];
 
-  if (value != 0x00)
-    cout << "kb: sym " << HEXFORMAT0x2(sym) << " down set row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
-    
-  m_kbData[rowCol.m_row] = value | (1 << rowCol.m_col);
+  if (down) {
+    // activate keys with the correct shift sense
+    if (shiftDown == rowCol.m_shiftOut) {
+      //cerr << "kb: no virtual shift change" << endl;
+      m_shiftStatus &= ~4;
+    }
 
-  return;
+    // activate keys that need to be shifted
+    else if (rowCol.m_shiftOut) {
+      //cerr << "kb: virtual shift key down" << endl;
+      memset(&m_kbData[0], 0x00, sizeof(m_kbData));
+      ActivateKey(m_shiftKey, true);
+      m_shiftStatus = 4;
+    }
+
+    // acivate keys that need to be unshifted
+    else {
+      //cerr << "kb: virtual shift key up" << endl;
+      memset(&m_kbData[0], 0x00, sizeof(m_kbData));
+      ActivateKey(m_shiftKey, false);
+      m_shiftStatus = 0;
+    }
+  }
+
+  ActivateKey(rowCol, down);
+}
+
+void KeyboardScanner::OnKeyDown(const SDL_Keysym & keysym)
+{
+  KeyAction(keysym, true);
 }
 
 void KeyboardScanner::OnKeyUp(const SDL_Keysym & keysym)
 {
-  uint16_t sym = keysym.sym;
-
-  if ((sym >= 'A') && (sym <= 'Z'))
-    sym = tolower(sym);
-
-  cerr << "key up " << sym << endl;
-
-  KeyRowColMap::iterator r = m_keys[0].find(sym);
-  if (r == m_keys[0].end()) {
-    cerr << "warning: unmapped keyboard up sym code " << HEXFORMAT0x2(sym) << endl;
-    return;
-  }
-
-  KeyRowColInfo & rowCol = r->second;
-  uint8_t value = m_kbData[rowCol.m_row];
-
-  if (value != 0x00)
-    cout << "kb: sym " << HEXFORMAT0x2(sym) << " up reset row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
-    
-  m_kbData[rowCol.m_row] &= !value;
-  return;
+  KeyAction(keysym, false);
 }
-
-#if 0
-  // convert non-shifed keys
-  m_keys.clear();
-  m_shiftedKeys.clear();
-  m_shiftedKeys.clear();
-
-  //
-}
-
-#define KB_SYM_COUNT 0x85
-
-// 0x80 = unshift to get code
-// 0x40 = shift to get code
-
-static uint8_t g_symToCode[KB_SYM_COUNT][2][2] = {
-
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x00
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x01
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x02
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x03
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x04
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x05
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x06
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x07
-
-    {{0x06, 0x20}, {0x06, 0x20}}, // 0x08 - BS
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x09 - TAB
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x0a
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x0b
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x0c
-    {{0x06, 0x01}, {0x00, 0x00}}, // 0x0d - Enter
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x0e
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x0f
-
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x10
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x11
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x12
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x13
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x14
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x15
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x16
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x17
-
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x18
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x19
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x1a
-    {{0x06, 0x04}, {0x06, 0x04}}, // 0x1b  ESC = break
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x1c
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x1d
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x1e
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x1f
-
-    {{0x06, 0x80}, {0x60, 0x80}}, // 0x20 - space
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x21
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x22
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x23
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x24
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x25
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x26
-    {{0x00, 0x00}, {0x04, 0x04}}, // 0x27    ()  "
-
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x28
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x29
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x2a
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x2b
-    {{0x05, 0x10}, {0x50, 0x10}}, // 0x2c    , <
-    {{0x05, 0x20}, {0x00, 0x00}}, // 0x2d    -
-    {{0x05, 0x40}, {0x40, 0x40}}, // 0x2e    . >
-    {{0x05, 0x80}, {0x05, 0x80}}, // 0x2f    / ?
-
-    {{0x04, 0x01}, {0x05, 0x02}}, // 0x30   0  )
-    {{0x04, 0x02}, {0x04, 0x02}}, // 0x31   1  !
-    {{0x04, 0x04}, {0x80, 0x01}}, // 0x32   2  @
-    {{0x04, 0x08}, {0x04, 0x08}}, // 0x33   3  #
-    {{0x04, 0x10}, {0x04, 0x10}}, // 0x34   4  $
-    {{0x04, 0x20}, {0x04, 0x20}}, // 0x35   5  %
-    {{0x04, 0x40}, {0x00, 0x00}}, // 0x36   6
-    {{0x04, 0x80}, {0x04, 0x40}}, // 0x37   7  &
-
-    {{0x05, 0x01}, {0x05, 0x04}}, // 0x38   8  *
-    {{0x05, 0x02}, {0x05, 0x01}}, // 0x39   9  ()
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x3a
-    {{0x05, 0x08}, {0x85, 0x04}}, // 0x3b   ;  :
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x3c
-    {{0x45, 0x20}, {0x45, 0x08}}, // 0x3d   =  +
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x3e
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x3f
-
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x40   @
-    {{0x00, 0x02}, {0x00, 0x00}}, // 0x41   a
-    {{0x00, 0x04}, {0x00, 0x00}}, // 0x42   b
-    {{0x00, 0x08}, {0x00, 0x00}}, // 0x43   c
-    {{0x00, 0x10}, {0x00, 0x00}}, // 0x44   d
-    {{0x00, 0x20}, {0x00, 0x00}}, // 0x45   e
-    {{0x00, 0x40}, {0x00, 0x00}}, // 0x46   f
-    {{0x00, 0x80}, {0x00, 0x00}}, // 0x47   g
-
-    {{0x01, 0x01}, {0x00, 0x00}}, // 0x48   h
-    {{0x01, 0x02}, {0x00, 0x00}}, // 0x49   i
-    {{0x01, 0x04}, {0x00, 0x00}}, // 0x4a   j
-    {{0x01, 0x08}, {0x00, 0x00}}, // 0x4b   k
-    {{0x01, 0x10}, {0x00, 0x00}}, // 0x4c   l
-    {{0x01, 0x20}, {0x00, 0x00}}, // 0x4d   m
-    {{0x01, 0x40}, {0x00, 0x00}}, // 0x4e   n
-    {{0x01, 0x80}, {0x00, 0x00}}, // 0x4f   o
-
-    {{0x02, 0x01}, {0x00, 0x00}}, // 0x50   p
-    {{0x02, 0x02}, {0x00, 0x00}}, // 0x51   q
-    {{0x02, 0x04}, {0x00, 0x00}}, // 0x52   r
-    {{0x02, 0x08}, {0x00, 0x00}}, // 0x53   s
-    {{0x02, 0x10}, {0x00, 0x00}}, // 0x54   t
-    {{0x02, 0x20}, {0x00, 0x00}}, // 0x55   u
-    {{0x02, 0x40}, {0x00, 0x00}}, // 0x56   v
-    {{0x02, 0x80}, {0x00, 0x00}}, // 0x57   w
-
-    {{0x03, 0x01}, {0x30, 0x01}}, // 0x58   x
-    {{0x03, 0x02}, {0x30, 0x02}}, // 0x59   y
-    {{0x03, 0x04}, {0x30, 0x04}}, // 0x5a   z
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x5b
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x5c
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x5d
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x5e
-    {{0x00, 0x00}, {0x00, 0x00}}, // 0x5f
-
-    {{0x06, 0x02}, {0x06, 0x02}}, // 0x60   ' = clear
-    {{0x00, 0x02}, {0x00, 0x00}}, // 0x61   a
-    {{0x00, 0x04}, {0x00, 0x00}}, // 0x62   b
-    {{0x00, 0x08}, {0x00, 0x00}}, // 0x63   c
-    {{0x00, 0x10}, {0x00, 0x00}}, // 0x64   d
-    {{0x00, 0x20}, {0x00, 0x00}}, // 0x65   e
-    {{0x00, 0x40}, {0x00, 0x00}}, // 0x66   f
-    {{0x00, 0x80}, {0x00, 0x00}}, // 0x67   g
-
-    {{0x01, 0x01}, {0x00, 0x00}}, // 0x68   h
-    {{0x01, 0x02}, {0x00, 0x00}}, // 0x69   i
-    {{0x01, 0x04}, {0x00, 0x00}}, // 0x6a   j
-    {{0x01, 0x08}, {0x00, 0x00}}, // 0x6b   k
-    {{0x01, 0x10}, {0x00, 0x00}}, // 0x6c   l
-    {{0x01, 0x20}, {0x00, 0x00}}, // 0x6d   m
-    {{0x01, 0x40}, {0x00, 0x00}}, // 0x6e   n
-    {{0x01, 0x80}, {0x00, 0x00}}, // 0x6f   o
-
-    {{0x02, 0x01}, {0x00, 0x00}}, // 0x70   p
-    {{0x02, 0x02}, {0x00, 0x00}}, // 0x71   q
-    {{0x02, 0x04}, {0x00, 0x00}}, // 0x72   r
-    {{0x02, 0x08}, {0x00, 0x00}}, // 0x73   s
-    {{0x02, 0x10}, {0x00, 0x00}}, // 0x74   t
-    {{0x02, 0x20}, {0x00, 0x00}}, // 0x75   u
-    {{0x02, 0x40}, {0x00, 0x00}}, // 0x76   v
-    {{0x02, 0x80}, {0x00, 0x00}}, // 0x77   w
-
-    {{0x03, 0x01}, {0x30, 0x01}}, // 0x78   x
-    {{0x03, 0x02}, {0x30, 0x02}}, // 0x79   y
-    {{0x03, 0x04}, {0x30, 0x04}}, // 0x7a   z
-    {{0x04, 0x00}, {0x00, 0x00}}, // 0x7b
-    {{0x04, 0x00}, {0x00, 0x00}}, // 0x7c
-    {{0x04, 0x00}, {0x00, 0x00}}, // 0x7d
-    {{0x04, 0x00}, {0x00, 0x00}}, // 0x7e
-    {{0x04, 0x00}, {0x00, 0x00}}, // 0x7f
-
-    {{0x06, 0x40}, {0x06, 0x40}}, // 0x80 = 0x4000004f    right arrow
-    {{0x06, 0x20}, {0x06, 0x20}}, // 0x81 = 0x40000050    left arrow
-    {{0x06, 0x10}, {0x06, 0x10}}, // 0x82 = 0x40000051    down arrow
-    {{0x06, 0x08}, {0x06, 0x08}}, // 0x83 = 0x40000052    up arrow
-
-    {{0x06, 0x02}, {0x06, 0x02}} // 0x84 = 0x40000053    clear
-};
-
-class KeyboardScanner
-{
-  public:
-
-}
-
-void TRS80Emulator::OnKeyDown(const SDL_Keysym & keysym)
-{
-  if (keysym.sym == RESET_SYM)
-    NMI();
-
-  else if (keysym.sym == SDLK_LSHIFT)
-  {
-    m_shiftDown |= 1;
-    m_shiftDown &= ~4;
-    m_kbData[7] |= 1;
-  }
-
-  else if (keysym.sym == SDLK_RSHIFT)
-  {
-    m_shiftDown |= 2;
-    m_shiftDown &= ~4;
-    m_kbData[7] |= 1;
-  }
-
-  else
-  {
-    int32_t sym = (keysym.sym >= EXTENDED_SYM_START) ? (keysym.sym + 0x80 - EXTENDED_SYM_START) : keysym.sym;
-    int mod = m_shiftDown ? 1 : 0;
-    if (sym >= KB_SYM_COUNT) {
-      Z80Emulator::OnKeyDown(keysym);
-    }
-    else
-    {
-      const uint8_t *scanInfo = g_symToCode[sym][mod];
-      if ((scanInfo[0] == 0x00) && (scanInfo[1] == 0))
-      {
-        cerr << "warning: unmapped keyboard sym code " << HEXFORMAT0x2(keysym.sym) << endl;
-      }
-
-      // handle codes that need to be unshifted
-      else if (scanInfo[0] & 0x80)
-      {
-        memset(m_kbData, 0x00, sizeof(m_kbData));
-        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
-        m_shiftDown = 0;
-      }
-
-      // handle codes that need to be shifted
-      else if (scanInfo[0] & 0x40)
-      {
-        memset(m_kbData, 0x00, sizeof(m_kbData));
-        m_kbData[7] |= 1;
-        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
-        m_shiftDown = 4;
-      }
-
-      // handle codes that have the correct shift sense
-      else
-      {
-        m_kbData[scanInfo[0] & 7] |= scanInfo[1];
-        m_shiftDown &= ~4;
-      }
-    }
-  }
-}
-
-void TRS80Emulator::OnKeyUp(const SDL_Keysym & keysym)
-{
-  if (m_shiftDown & 4)
-  {
-    memset(m_kbData, 0x00, sizeof(m_kbData));
-    m_shiftDown &= 0;
-  }
-
-  if (keysym.sym == SDLK_LSHIFT)
-  {
-    m_shiftDown &= !1;
-    m_kbData[7] &= !1;
-  }
-  else if (keysym.sym == SDLK_RSHIFT)
-  {
-    m_shiftDown &= !2;
-    m_kbData[7] &= !1;
-  }
-  else
-  {
-    int mod = m_shiftDown ? 1 : 0;
-    int32_t sym = (keysym.sym >= EXTENDED_SYM_START) ? (keysym.sym + 0x80 - EXTENDED_SYM_START) : keysym.sym;
-    if (sym < KB_SYM_COUNT) {
-      const uint8_t *scanInfo = g_symToCode[sym][mod];
-      m_kbData[scanInfo[0] & 7] &= !scanInfo[1];
-    }
-    else 
-      Z80Emulator::OnKeyUp(keysym);
-  }
-}
-
-/////////////////////////////////////////////////////////////
-
-uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
-{
-  uint16_t mask = 1;
-  uint8_t value = 0x00;
-  for (int i = 0; i < 8; ++i) {
-    if (addr & mask)
-      value |= m_kbData[i];
-    mask = mask << 1;
-  }
-  return value;
-}
-
-#endif

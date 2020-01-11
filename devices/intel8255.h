@@ -3,12 +3,14 @@
 
 #include <cstdint>
 
-class Intel8255
+#include "devices/device.h"
+
+class Intel8255 : public VirtualDevice
 {
   public:
     Intel8255();
 
-    void Reset();
+    virtual void Reset() override;
 
     virtual uint8_t Read(uint8_t reg);
     virtual void Write(uint8_t reg, uint8_t data);

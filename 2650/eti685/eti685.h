@@ -3,6 +3,7 @@
 
 #include "2650/2650emulator.h"
 #include "devices/intel8255.h"
+#include "devices/keypar.h"
 
 class ETI685 : public S2650Emulator
 {
@@ -12,14 +13,15 @@ class ETI685 : public S2650Emulator
 
     virtual void Reset(int addr) override;
 
-    virtual void OnKeyDown(const SDL_Keysym & keysym) override;
+    virtual void SetKeyboardData(uint8_t data);
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data) override;
 
   protected:
-    uint8_t m_keyboardData;
+    ParallelKeyboard m_keyboard;
     Intel8255 m_ppi;
+    uint8_t m_keyboardData;
 };
 
 #endif // ETI_685_H_

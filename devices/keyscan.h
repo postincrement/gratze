@@ -5,58 +5,71 @@
 #include <map>
 #include <vector>
 
-#include <SDL.h>
+#include "devices/keyboard.h"
 
-class KeyboardScanner
+class KeyboardScanner : public VirtualKeyboard
 {
   public:
+    struct ScanCode {
+      const char * m_name = 0;
+      uint16_t m_mod = 0;
+    };
     struct ScanLayout 
     {
       int m_cols;
       int m_rows;
 
-      const char ** m_keyCodes;
-      const char ** m_shiftedKeyCodes;
-      const char ** m_ctrlKeyCodes;
+      const ScanCode * m_keyCodes;
+      const ScanCode * m_shiftedKeyCodes;
+      const ScanCode * m_ctrlKeyCodes;
     };
 
     struct KeyRowColInfo
     {
       KeyRowColInfo() = default;
-      KeyRowColInfo(int row, int col)
+      KeyRowColInfo(int row, int col, bool shiftSource, bool shiftOut)
         : m_row(row)
         , m_col(col)
+        , m_shiftSource(shiftSource)
+        , m_shiftOut(shiftOut)
         { }  
       int m_row = -1;
       int m_col = -1;
-      int m_shifted = 0;
+      bool m_shiftSource = false;
+      bool m_shiftOut = false;
     };
 
-    typedef std::map<uint16_t, KeyRowColInfo> KeyRowColMap;
+    typedef std::multimap<SDL_Keycode, KeyRowColInfo> KeyRowColMap;
 
     bool Open();
+
+    virtual void Reset() override;
 
     uint8_t Read(uint16_t rowMask);
 
     void Compile(const ScanLayout & scanLayout);
-    void Compile(int row, int cols, const char ** keyCodes, KeyRowColMap & keyRowCols);
+    void Compile(int row, int cols, const ScanCode * keyCodes, bool shifted);
 
-    void OnKeyDown(const SDL_Keysym & keysym);
-    void OnKeyUp(const SDL_Keysym & keysym);
+    void KeyAction(const SDL_Keysym & keysym, bool down);
+    void ActivateKey(const KeyRowColInfo & rowCol, bool down);
+
+    virtual void OnKeyDown(const SDL_Keysym & keysym) override;
+    virtual void OnKeyUp(const SDL_Keysym & keysym) override;
 
   public:
-    KeyRowColInfo m_shiftKey;
     std::vector<uint8_t> m_kbData;
 
     int m_rows = -1;
     int m_cols = -1;
   
-    uint8_t m_shiftDown;
+    KeyRowColInfo m_shiftKey;
+    KeyRowColInfo m_controlKey;
+    KeyRowColInfo m_capsLockKey;
 
-    // 0 = keys
-    // 1 - shifted keys
-    // 2 = ctrl keys
-    std::array<KeyRowColMap, 3> m_keys;
+    bool m_defaultUpper = true;
+    uint8_t m_shiftStatus;
+
+    KeyRowColMap m_keys;
 };
 
 #endif // KEYSCAN_H_

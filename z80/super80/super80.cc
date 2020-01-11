@@ -74,44 +74,32 @@ static EmulatorInfo g_emulatorInfo =
 
 //////////////////////////////////////////////////////////////////////////////////
 
-const char * keys[8*8] = {
-  "@", "H", "P",   "X", "1",      "9",          " ",       "REP",
-  "A", "I", "Q",   "Y", "2",      ":",  "Backspace",     "Shift",
-  "B", "J", "R",   "Z", "3",      ";",        "Tab",          0 ,
-  "C", "K", "S",   "[", "4",      ",",         "LF",   "Control",
-  "D", "L", "T",  "\\", "5",  "Break",     "Return",          0 ,
-  "E", "M", "U",   "]", "6",      ".",     "Escape",          0 ,
-  "F", "N", "V",   "^", "7",      "/",     "Delete",          0 ,
-  "G", "O", "W",   "-", "8",      "0",     "Insert",          0 
+const KeyboardScanner::ScanCode keys[8*8] = {
+  { "@" }, { "H" }, { "P" },  {  "X" }, { "1"},  {     "9" } ,  {         " " } , {     "REP" } ,
+  { "A" }, { "I" }, { "Q" },  {  "Y" }, { "2"},  {     ":" } ,  { "Backspace" } , {   "Shift" } ,
+  { "B" }, { "J" }, { "R" },  {  "Z" }, { "3"},  {     ";" } ,  {       "Tab" } , {        0  } ,
+  { "C" }, { "K" }, { "S" },  {  "[" }, { "4"},  {     "," } ,  {        "LF" } , { "Control" } ,
+  { "D" }, { "L" }, { "T" },  { "\\" }, { "5"},  { "Break" } ,  {    "Return" } , {        0  } ,
+  { "E" }, { "M" }, { "U" },  {  "]" }, { "6"},  {     "." } ,  {    "Escape" } , {        0  } ,
+  { "F" }, { "N" }, { "V" },  {  "^" }, { "7"},  {     "/" } ,  {    "Delete" } , {        0  } ,
+  { "G" }, { "O" }, { "W" },  {  "-" }, { "8"},  {     "0" } ,  {    "Insert" } , {        0  } 
 };
 
-const char * shiftedKeys[8*8] = {
-  "@", "h", "p",   "x", "1",      "9",          " ",      "REP" ,
-  "a", "i", "q",   "y", "2",      ":",  "Backspace",     "Shift",
-  "b", "j", "r",   "z", "3",      ";",        "Tab",          0 ,
-  "c", "k", "s",   "[", "4",      ",",         "LF",   "Control",
-  "d", "l", "t",  "\\", "5",    "BRK",     "Return",          0 ,
-  "e", "m", "u",   "]", "6",      ".",     "Escape",          0 ,
-  "f", "n", "v",   "^", "7",      "/",     "Delete",          0 ,
-  "g", "o", "w",   "-", "8",      "0",      "Insert",         0 
-};
-
-const char * ctlKeys[8*8] = {
-  "@", "h", "p",   "x", "1",      "9",          " ",      "REP" ,
-  "a", "i", "q",   "y", "2",      ":",  "Backspace",     "Shift",
-  "b", "j", "r",   "z", "3",      ";",        "Tab",          0 ,
-  "c", "k", "s",   "[", "4",      ",",         "LF",   "Control",
-  "d", "l", "t",  "\\", "5",    "BRK",     "Return",          0 ,
-  "e", "m", "u",   "]", "6",      ".",     "Escape",          0 ,
-  "f", "n", "v",   "^", "7",      "/",     "Delete",          0 ,
-  "g", "o", "w",   "-", "8",      "0",      "Insert",         0 
+const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
+  { "`" }, { "h" }, { "p" },  {  "x" }, {  "!"},  {     ")" } ,  {         " " } , {     "REP" } ,
+  { "a" }, { "i" }, { "q" },  {  "y" }, { "\""},  {     "*" } ,  { "Backspace" } , {   "Shift" } ,
+  { "b" }, { "j" }, { "r" },  {  "z" }, {  "#"},  {     "+" } ,  {       "Tab" } , {        0  } ,
+  { "c" }, { "k" }, { "s" },  {  "{" }, {  "$"},  {     "<" } ,  {        "LF" } , { "Control" } ,
+  { "d" }, { "l" }, { "t" },  { "\\" }, {  "%"},  { "Break" } ,  {    "Return" } , {        0  } ,
+  { "e" }, { "m" }, { "u" },  {  "}" }, {  "&"},  {     ">" } ,  {    "Escape" } , {        0  } ,
+  { "f" }, { "n" }, { "v" },  {  "~" }, {  "'"},  {     "/" } ,  {    "Delete" } , {        0  } ,
+  { "g" }, { "o" }, { "w" },  {  "=" }, {  "("},  {     "0" } ,  {    "Insert" } , {        0  } 
 };
 
 static KeyboardScanner::ScanLayout g_super80Keys = {
   8, 8,
   keys,
-  shiftedKeys,
-  ctlKeys
+  shiftedkeys
 };
 
 
@@ -162,7 +150,16 @@ Super80_Emulator::Super80_Emulator()
   // 0xd  = screen full of @                               JUMPER B
   // 0xe  = monitor?                                       JUMPER A   
   m_options = 0xe;
-  m_kbScanner.Compile(g_super80Keys);
+  SetKeyboard(&m_keyboard);
+  m_keyboard.Compile(g_super80Keys);
+
+  using namespace std::placeholders;
+
+  // set PIO interrupt handler
+  m_pio.SetInterruptHandler(std::bind(&Super80_Emulator::Interrupt, this, _1));
+
+  // set read handler for keyboard
+  m_pio.SetReadHandler(1, std::bind(&Super80_Emulator::OnReadKeyboard, this));  
 }
 
 void Super80_Emulator::Init()
@@ -176,37 +173,17 @@ void Super80_Emulator::Reset(int addr)
   SetVideoPage(0);
   m_pio.Reset();
   m_pio.SetData(1, 0xff); // keyboard has pull ups
-
-  using namespace std::placeholders;
-
-  m_pio.SetInterruptHandler(std::bind(&Super80_Emulator::OnPIOInterrupt, this, _1));
-  m_pio.SetReadHandler(1, std::bind(&Super80_Emulator::OnReadKeyboard, this));
-}
-
-void Super80_Emulator::OnPIOInterrupt(uint8_t vector)
-{
-  Interrupt(vector);
 }
 
 uint8_t Super80_Emulator::OnReadKeyboard()
 {
   uint8_t kbIn  = m_pio.GetData(0) ^ 0xff;
-  uint8_t kbOut = m_kbScanner.Read(kbIn);
+  uint8_t kbOut = m_keyboard.Read(kbIn);
 
   //if ((kbIn != 0x00) && (kbOut != 0x00))
   //  cout << "kb: read in " << HEXFORMAT0x2(kbIn) << " returned " << HEXFORMAT0x2(kbOut) << endl;
 
   return kbOut ^ 0xff;
-}
-
-void Super80_Emulator::OnKeyDown(const SDL_Keysym & keysym)
-{
-  m_kbScanner.OnKeyDown(keysym);
-}
-
-void Super80_Emulator::OnKeyUp(const SDL_Keysym & keysym)
-{
-  m_kbScanner.OnKeyUp(keysym);
 }
 
 uint8_t Super80_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)

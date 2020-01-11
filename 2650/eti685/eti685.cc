@@ -54,6 +54,13 @@ void ETI685::Init()
 ETI685::ETI685()
   : S2650Emulator(&g_emulatorInfo)
 {
+  SetKeyboard(&m_keyboard);
+
+  // set keyboard handler
+  using namespace std::placeholders;
+  m_keyboard.SetHandler(true, std::bind(&ETI685::SetKeyboardData, this, _1));
+
+
 }
 
 void ETI685::Reset(int addr)
@@ -62,31 +69,27 @@ void ETI685::Reset(int addr)
   m_ppi.Reset();
 
   // make sure sense is not set
-  m_cpu->registers.psu |= (1 << 7);  
-  m_keyboardData = 0x00;
+  m_cpu->registers.psu |= (1 << 7);
+  SetKeyboardData(0x00);
 
   // indicate use of parallel keyboard
   m_ppi.SetData(2, 1 << 6); // bit 6 = 0 
+
 }
 
-void ETI685::OnKeyDown(const SDL_Keysym & keysym)
+void ETI685::SetKeyboardData(uint8_t data)
 {
-  if ((keysym.sym < 0x80) && (keysym.sym > 0)) {
-    m_keyboardData = toupper((char)keysym.sym);
-    cout << "binbug: keyboard set to " << HEXFORMAT0x2(m_keyboardData) << endl;
-  }
+  m_keyboardData = data;
 }
 
 uint8_t ETI685::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
 {
   switch (info.m_id) {
     case 1:
-      //cout << "binbug: keyboard reset" << endl;
       return m_keyboardData;
     case 2:
       {
         uint8_t data = m_ppi.Read(port);  
-        //cout << "binbug: PPI read " << HEXFORMAT0x2(port) << " of " << HEXFORMAT0x2(data) << endl;
         return data;
       }
   }
@@ -98,11 +101,9 @@ void ETI685::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8
 {
   switch (info.m_id) {
     case 1:
-      //cout << "binbug: keyboard read" << endl;
-      m_keyboardData = 0x00;
+      SetKeyboardData(0x00);
       return;
     case 2:
-      //cout << "binbug: PPI write " << HEXFORMAT0x2(port) << " - " << HEXFORMAT0x2(data) << endl;
       m_ppi.Write(port, data);
       return;  
   }

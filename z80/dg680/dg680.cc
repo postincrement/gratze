@@ -54,6 +54,13 @@ static EmulatorInfo g_emulatorInfo =
 DG680_Emulator::DG680_Emulator()
   : Z80Emulator(&g_emulatorInfo)
 {
+  SetKeyboard(&m_keyboard);
+
+  using namespace std::placeholders;
+  m_pio.SetInterruptHandler(std::bind(&DG680_Emulator::OnPIOInterrupt, this, _1));
+
+  using namespace std::placeholders;
+  m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
 }
 
 void DG680_Emulator::Init()
@@ -65,20 +72,11 @@ void DG680_Emulator::Reset(int addr)
 {
   Z80Emulator::Reset(addr);
   m_pio.Reset();
-  using namespace std::placeholders;
-  m_pio.SetInterruptHandler(std::bind(&DG680_Emulator::OnPIOInterrupt, this, _1));
 }
 
 void DG680_Emulator::OnPIOInterrupt(uint8_t vector)
 {
   Interrupt(vector);
-}
-
-void DG680_Emulator::OnKeyDown(const SDL_Keysym & keysym)
-{
-  if ((keysym.sym < 0x80) && (keysym.sym > 0)) {
-    m_pio.SetData(0, toupper((char)keysym.sym));
-  }
 }
 
 uint8_t DG680_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)

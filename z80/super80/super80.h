@@ -19,11 +19,7 @@ class Super80_Emulator : public Z80Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
-    void OnPIOInterrupt(uint8_t vector);
     uint8_t OnReadKeyboard();
-
-    void OnKeyDown(const SDL_Keysym & keysym);
-    void OnKeyUp(const SDL_Keysym & keysym);
 
     void SetVideoPage(uint8_t value);
     void CopyToVideo();
@@ -32,7 +28,7 @@ class Super80_Emulator : public Z80Emulator
 
   protected:  
     Z80PIO m_pio;
-    KeyboardScanner m_kbScanner;
+    KeyboardScanner m_keyboard;
 
     uint16_t m_videoPage;
     uint16_t m_videoStartAddr;

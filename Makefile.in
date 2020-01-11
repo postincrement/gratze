@@ -82,6 +82,7 @@ SRCS_CC = src/main.cc \
   devices/fdc.cc \
 	devices/cassette.cc \
 	devices/keyscan.cc \
+	devices/keypar.cc \
 	devices/z80pio.cc \
 	devices/intel8255.cc \
 	video/virtual_screen.cc \

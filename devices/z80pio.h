@@ -3,11 +3,14 @@
 
 #include <functional>
 
-class Z80PIO
+#include "devices/device.h"
+
+class Z80PIO  : public VirtualDevice
 {
   public:
     Z80PIO();
-    void Reset();
+
+    virtual void Reset() override;
 
     virtual uint8_t Read(uint8_t reg);
     virtual void Write(uint8_t reg, uint8_t data);

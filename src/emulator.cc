@@ -118,14 +118,23 @@ bool Emulator::Poll()
           else if (event.key.keysym.sym == REBOOT_SYM) {
             Reset();
           }
-          else
+          else if (m_keyboardDriver != nullptr) {
+            m_keyboardDriver->OnKeyDown(event.key.keysym);
+          }
+          else {
             OnKeyDown(event.key.keysym);
+          }
         }
         break;
 
       case SDL_KEYUP:
-        if (event.key.repeat == 0)
-          OnKeyUp(event.key.keysym);
+        if (event.key.repeat == 0) {
+          if (m_keyboardDriver != nullptr)
+            m_keyboardDriver->OnKeyUp(event.key.keysym);
+          else {
+            OnKeyUp(event.key.keysym);
+          }
+        }
         break;
 
       default:
@@ -134,6 +143,13 @@ bool Emulator::Poll()
   }
 
   return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+void Emulator::SetKeyboard(VirtualKeyboard * kb)
+{
+  m_keyboardDriver = kb;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
