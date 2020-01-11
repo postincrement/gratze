@@ -41,17 +41,18 @@ bool DG640::CreatePixelFont(const Options & options, const Config::Font & fontIn
 
 void DG640::WriteMemoryAtAddress(int addr, uint8_t ch)
 {
-  if ((pos >= m_memory.size()) || (m_memory[addr] == ch)) {
+  if ((addr >= m_memory.size()) || (m_memory[addr] == ch)) {
     return;
   }
 
   m_memory[addr] = ch;
 
-  if (pos >= 0x400) {
+  if (addr >= 0x400) {
     if ((ch & 0xf)!= 0) {
-      //cout << "dg640: video attribute set at " << HEXFORMAT0x4(pos) << " to " << HEXFORMAT0x2(ch) << endl;
+      //cout << "dg640: video attribute set at " << HEXFORMAT0x4(addr) << " to " << HEXFORMAT0x2(ch) << endl;
     }
   }
-
-  RenderCharAtAddress(addr);
+  else {
+    RenderCharAtAddress(addr);
+  }
 }

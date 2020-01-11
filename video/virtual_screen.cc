@@ -18,17 +18,6 @@ VirtualScreenFactory VirtualScreen::g_virtualScreenFactory;
 
 /////////////////////////////////////////////////////////////////////////////////
 
-VirtualScreen * VirtualScreen::Create(MainWindow & mainWindow, 
-                                        Emulator & emulator, 
-                                   const Options & options, 
-                             const Config::Video & info)
-{
-  VirtualScreen * screen = g_virtualScreenFactory.CreateInstance(info.m_name, mainWindow, emulator, options, info);
-  return screen;
-}  
-
-/////////////////////////////////////////////////////////////////////////////////
-
 TextWindow::TextWindow(MainWindow & mainWindow, int rows, int cols, int width, int height)
   : m_mainWindow(mainWindow)
   , m_rows(rows)
@@ -56,18 +45,18 @@ void TextWindow::SetColScale(int scale)
   m_colScale = scale;
 }
 
-void TextWindow::RenderCharAtPos(int pos, SDL_Colour & fg, SDL_Colour & bg)
+void TextWindow::RenderCharAtPos(int x, int y)
 { 
   if (m_font) {
-    pos = (pos & m_visibleMask);
     SDL_Rect dstRect;
-    int x = pos % (m_cols / m_colScale);
-    int y = pos / m_cols;
     m_mainWindow.GetScreenCharRect(dstRect, 
                           m_left + (x * m_font->GetWidth() * m_colScale), 
                           m_top + y * m_font->GetHeight(), 
                           m_font->GetWidth() * m_colScale,
                           m_font->GetHeight());
+
+    SDL_Colour fg, bg;
+    GetColourAtPos(x, y, fg, bg);
 
     SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale, m_vscale);    
     m_font->RenderChar(GetCharAtPos(x, y), m_mainWindow.GetRenderer(), dstRect, fg, bg);
@@ -97,7 +86,23 @@ void TextWindow::Update(bool hasChanged)
   }
 }
 
+void TextWindow::RefreshScreen()
+{
+  for (int y = 0; y < m_rows; ++y)
+    for (int x = 0; x < m_cols / m_colScale; x++)
+      RenderCharAtPos(x, y);
+}
+
 /////////////////////////////////////////////////////////////////////////////////
+
+VirtualScreen * VirtualScreen::Create(MainWindow & mainWindow, 
+                                        Emulator & emulator, 
+                                   const Options & options, 
+                             const Config::Video & info)
+{
+  VirtualScreen * screen = g_virtualScreenFactory.CreateInstance(info.m_name, mainWindow, emulator, options, info);
+  return screen;
+}  
 
 VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : TextWindow(mainWindow, info.m_screenRows, info.m_screenCols, info.m_screenWidth, info.m_screenHeight)
@@ -118,11 +123,23 @@ void VirtualScreen::SetOffset(int left, int top)
   m_top  = top;
 }
 
-void VirtualScreen::RefreshScreen()
+FontChar VirtualScreen::GetCharAtPos(int x, int y)
 {
-  for (int y = 0; y < m_rows; ++y)
-    for (int x = 0; x < m_cols / m_hscale ; ++x)
-      RefreshCharAtPos(x, y);
+  int addr = MapPosToAddress(x, y);
+  return GetCharAtAddress(addr);
+}
+
+void VirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
+{
+  int addr = MapPosToAddress(x, y);
+  return GetColourAtAddress(addr, fg, bg);
+}
+
+void VirtualScreen::RenderCharAtAddress(int addr)
+{
+  int x, y;
+  if (MapAddressToPos(x, y, addr))
+    RenderCharAtPos(x, y);
 }
 
 VirtualScreen::~VirtualScreen()
@@ -186,6 +203,7 @@ static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vecto
   return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////
 
 MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : VirtualScreen(mainWindow, emulator, options, info)
@@ -204,9 +222,32 @@ MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulato
 MemoryMappedVideo::~MemoryMappedVideo()
 {}
 
+
 bool MemoryMappedVideo::Open()
 {
   return SetFont(m_fontConfig);
+}
+
+int MemoryMappedVideo::MapPosToAddress(int x, int y)
+{
+  return y * m_cols + (x * m_colScale);
+}
+
+bool MemoryMappedVideo::MapAddressToPos(int & x, int & y, int addr)
+{
+  if (addr >= m_visibleSize)
+    return false;
+
+  x = addr % m_cols;
+  if (m_colScale != 1) {
+    if ((x % m_colScale) != 0)
+      return false;
+    x /= m_colScale;  
+  }
+
+  y = addr / m_cols;
+
+  return true;
 }
 
 bool MemoryMappedVideo::SetFont(const Config::Font & font)
@@ -249,6 +290,15 @@ bool MemoryMappedVideo::SetFont(const Config::Font & font)
   return VirtualScreen::Open();
 }
 
+FontChar MemoryMappedVideo::GetCharAtAddress(int addr) const
+{
+  if (addr >= m_memory.size()) {
+    return 0x00;
+  }
+
+  return m_memory[addr];
+}
+
 void MemoryMappedVideo::WriteMemoryAtAddress(int addr, uint8_t ch)
 {
   if ((addr >= m_memory.size()) || (m_memory[addr] == ch)) {
@@ -266,20 +316,6 @@ uint8_t MemoryMappedVideo::ReadMemoryAtAddress(int addr) const
   }
 
   return m_memory[addr];
-}
-
-FontChar MemoryMappedVideo::GetCharAtPos(int x, int y)
-{
-  int pos = y * m_cols + x;
-  return m_memory[pos & m_visibleMask];
-}
-
-void MemoryMappedVideo::RenderCharAtAddress(int addr)
-{
-  addr = addr & m_visibleMask;
-  int col = addr % m_cols;
-  int row = addr / m_cols;
-  RenderCharAtPos(col, row, m_fgColour, m_bgColour);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -305,8 +341,8 @@ void SingleColourMemoryMappedVideo::GetFontColour(SDL_Colour & fg, SDL_Colour & 
   bg = m_bgColour;
 }
 
-void SingleColourMemoryMappedVideo::RenderCharAtAddress(int addr)
+void SingleColourMemoryMappedVideo::GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg)
 {
-  MemoryMappedVideo::RenderCharAtAddress(addr, m_fgColour, m_bgColour);
+  return GetFontColour(fg, bg);  
 }
 

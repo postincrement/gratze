@@ -727,9 +727,3 @@ void TRS80Video::WriteMemoryAtAddress(int addr, uint8_t ch)
     
   SingleColourMemoryMappedVideo::WriteMemoryAtAddress(addr, ch);
 }
-
-FontChar TRS80Video::GetCharAtPos(int x, int y)
-{
-  int pos = (y * m_cols) + (x * (m_32Col ? 2 : 1));
-  return m_memory[pos & m_visibleMask];
-}

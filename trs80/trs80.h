@@ -64,7 +64,6 @@ class TRS80Video : public SingleColourMemoryMappedVideo
     TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
     virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
     void Set32Col(bool val);
-    virtual FontChar GetCharAtPos(int x, int y) override;
 
   protected:
     bool m_32Col;  

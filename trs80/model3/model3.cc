@@ -21,6 +21,8 @@ static struct EmulatorInfo g_emulatorInfo
     INFO_ROM(0x0000, g_model3ROM),
     INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 16, 16, 48),
 
+    INFO_MONITOR(10.6445, 4.0, 3.0, ePAL),        
+
     INFO_VIDEO_MEMORY_MAPPED("trs80", \
                               MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                               MODEL3_SCREEN_WIDTH_CHARS, MODEL3_SCREEN_HEIGHT_CHARS, \

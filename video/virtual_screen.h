@@ -33,10 +33,13 @@ class TextWindow
 
     virtual void Update(bool hasChanged = false);
 
-    virtual void RefreshCharAtPos(int x, int y) = 0;
-    virtual void RenderCharAtPos(int addr, SDL_Colour & fg, SDL_Colour & bg);
+    virtual void RefreshScreen();
+
+    virtual void RenderCharAtPos(int x, int y);
 
     virtual FontChar GetCharAtPos(int x, int y) = 0;
+    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) = 0;
+
     virtual void SetColScale(int scale);
 
   protected:  
@@ -51,7 +54,7 @@ class TextWindow
     double m_hscale = 1;
     double m_vscale = 1;
 
-    int m_colScale;
+    int m_colScale = 1;
 
     int m_left = 0;
     int m_top = 0;
@@ -73,6 +76,7 @@ class VirtualScreen : public TextWindow
     VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
     ~VirtualScreen();
 
+    // new functions
     virtual void SetScale(double hscale, double vscale);
     virtual void SetOffset(int left, int top);
 
@@ -87,12 +91,22 @@ class VirtualScreen : public TextWindow
 
     virtual void WriteMemoryAtAddress(int addr, uint8_t ch) = 0;
     virtual uint8_t ReadMemoryAtAddress(int addr) const = 0;
-    virtual void RenderCharAtAddress(int addr) = 0;
 
-    virtual void RefreshScreen();
+    virtual int MapPosToAddress(int x, int y) = 0;
+    virtual bool MapAddressToPos(int & x, int & y, int addr) = 0;
+
+    virtual void GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
+    virtual FontChar GetCharAtAddress(int addr) const = 0;
+
+    virtual void RenderCharAtAddress(int addr);
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const = 0;
+
+  protected:
+    // overrides from TextWindow
+    virtual FontChar GetCharAtPos(int x, int y) override;
+    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) override;
 
   protected:  
     static VirtualScreenFactory g_virtualScreenFactory;
@@ -106,14 +120,19 @@ class MemoryMappedVideo : public VirtualScreen
     MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
     ~MemoryMappedVideo();
 
+    // overrides
+    virtual void GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
+    virtual FontChar GetCharAtAddress(int addr) const;
+
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
+    virtual uint8_t ReadMemoryAtAddress(int addr) const override;
+
+    virtual int MapPosToAddress(int x, int y) override;
+    virtual bool MapAddressToPos(int & x, int & y, int addr) override;
+
+    // new functions
     virtual bool Open() override;
-
-    virtual void WriteMemoryAtAddress(int addr, uint8_t ch);
-    virtual uint8_t ReadMemoryAtAddress(int addr) const;
-
     virtual bool SetFont(const Config::Font & font);
-
-    virtual FontChar GetCharAtPos(int x, int y) override;
 
   protected:  
     Config::Font m_fontConfig;
@@ -134,7 +153,8 @@ class SingleColourMemoryMappedVideo : public MemoryMappedVideo
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg);
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
-    virtual void RenderCharAtAddress(int addr);
+
+    virtual void GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg);
 
   protected:  
     SDL_Color m_bgColour;
