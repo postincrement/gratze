@@ -82,6 +82,8 @@ void TRS80Emulator::Reset(int addr)
 
 bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
+  // basic font data already in memory
+  
   // set graphics
   uint8_t maskRight = (1 << (fontInfo.m_width / 2)) - 1;
   uint8_t maskLeft  = maskRight << (fontInfo.m_width / 2);
@@ -95,12 +97,14 @@ bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font 
         *dst |= maskRight;
       if (val & 2)
         *dst |= maskLeft;
-      for (int z = 1; z < fontInfo.m_height / 3; ++z)
+      for (int z = 1; z < (fontInfo.m_height / 3); ++z)
         dst[z] = dst[0];  
       dst += fontInfo.m_height / 3;
       val = val >> 2;  
     }
   }
+
+  // duplicate font data
   memcpy(&fontData[(128 + 64) * fontInfo.m_height], &fontData[128 * fontInfo.m_height], 64 * fontInfo.m_height);
   return true;
 }

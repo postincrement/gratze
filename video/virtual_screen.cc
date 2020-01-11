@@ -257,8 +257,9 @@ bool MemoryMappedVideo::SetFont(const Config::Font & font)
 
   // unpack pixel data
   if (m_fontConfig.m_charGen != NULL) {
-    if (!UnpackCharacterGeneratorFont(m_fontConfig, m_fontData))
+    if (!UnpackCharacterGeneratorFont(m_fontConfig, m_fontData)) {
       return false;
+    }
   }
 
   // do extra steps if required

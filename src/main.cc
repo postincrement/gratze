@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
 
   if (videoTest) {
     for (int i = 0; i < videoInfo->m_screenCols * videoInfo->m_screenRows; ++i) {
-      emulator->m_video->WriteMemoryAtAddress(i, i & 0xff);
+      emulator->m_video->WriteMemoryAtAddress(i, i);
     }
     emulator->m_video->Update(true);
     auto now = std::chrono::system_clock::now();

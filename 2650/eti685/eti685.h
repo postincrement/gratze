@@ -2,6 +2,7 @@
 #define ETI_685_H_
 
 #include "2650/2650emulator.h"
+#include "devices/intel8255.h"
 
 class ETI685 : public S2650Emulator
 {
@@ -18,7 +19,7 @@ class ETI685 : public S2650Emulator
 
   protected:
     uint8_t m_keyboardData;
-
+    Intel8255 m_ppi;
 };
 
 #endif // ETI_685_H_
