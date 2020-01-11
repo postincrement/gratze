@@ -5,8 +5,8 @@
 #include <strings.h>
 #include <string.h>
 
-#include "misc.h"
-#include "keyscan.h"
+#include "src/misc.h"
+#include "devices/keyscan.h"
 
 using namespace std;
 

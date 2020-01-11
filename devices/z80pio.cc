@@ -1,6 +1,6 @@
-#include "misc.h"
+#include "src/misc.h"
 
-#include "z80pio.h"
+#include "devices/z80pio.h"
 
 using namespace std;
 

@@ -1,10 +1,10 @@
 #include <iostream>
 #include <memory.h>
 
-#include "misc.h"
-#include "cpu/emulator.h"
+#include "src/misc.h"
+#include "src/emulator.h"
 #include "video/virtual_screen.h"
-#include "dg640.h"
+#include "video/dg640.h"
 
 using namespace std;
 

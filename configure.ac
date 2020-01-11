@@ -18,7 +18,7 @@ AC_INIT([gratze],
 AC_PREREQ([2.68])
 
 # Safety check - list a source file that wouldn't be in other directories:
-AC_CONFIG_SRCDIR([main.cc])
+AC_CONFIG_SRCDIR([src/main.cc])
 
 # Put autotools auxiliary files in subdirectories to reduce clutter:
 AC_CONFIG_AUX_DIR([build-aux])
@@ -44,7 +44,7 @@ AC_SUBST(LDFLAGS)
 #
 # add header files
 #
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_HEADERS([src/config.h])
 
 ##########################################################
 #

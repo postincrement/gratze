@@ -9,8 +9,8 @@
 
 #include <SDL.h> 
 
-#include "factory.h"
-#include "options.h"
+#include "src/factory.h"
+#include "src/options.h"
 #include "video/font.h"
 
 class MainWindow;

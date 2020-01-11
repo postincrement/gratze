@@ -2,7 +2,7 @@
 #define FONT_H_
 
 #include "SDL_FontCache/SDL_FontCache.h"
-#include "cpu/emuconfig.h"
+#include "src/emuconfig.h"
 #include "chargenrom.h"
 
 typedef uint16_t FontChar;

@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "misc.h"
-#include "config.h"
-#include "virtual_screen.h"
-#include "mainwindow.h"
+#include "src/misc.h"
+#include "src/config.h"
+#include "video/virtual_screen.h"
+#include "src/mainwindow.h"
 #include "SDL_FontCache/SDL_FontCache.h"
 
 using namespace std;
