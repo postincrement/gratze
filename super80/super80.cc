@@ -86,25 +86,25 @@ const char * keys[8*8] = {
 };
 
 const char * shiftedKeys[8*8] = {
-  "@", "H", "P",   "X", "1",   "9",   "?", "REP",
-  "A", "I", "Q",   "Y", "2",   ":",  "BS", "SHF",
-  "B", "J", "R",   "Z", "3",   ";", "TAB",    0 ,
-  "C", "K", "S",   "[", "4",   ",",  "LF", "CTL",
-  "D", "L", "T",  "\\", "5",  "BRK", "RET",   0 ,
-  "E", "M", "U",   "]", "6",    ".", "ESC",   0 ,
-  "F", "N", "V",   "^", "7",    "/", "DEL",   0 ,
-  "G", "O", "W",   "-", "8",    "0", "INS",   0 
+  "@", "h", "p",   "x", "1",      "9",          " ",      "REP" ,
+  "a", "i", "q",   "y", "2",      ":",  "Backspace",     "Shift",
+  "b", "j", "r",   "z", "3",      ";",        "Tab",          0 ,
+  "c", "k", "s",   "[", "4",      ",",         "LF",   "Control",
+  "d", "l", "t",  "\\", "5",    "BRK",     "Return",          0 ,
+  "e", "m", "u",   "]", "6",      ".",     "Escape",          0 ,
+  "f", "n", "v",   "^", "7",      "/",     "Delete",          0 ,
+  "g", "o", "w",   "-", "8",      "0",      "Insert",         0 
 };
 
 const char * ctlKeys[8*8] = {
-  "@", ","  "P",   "X", "1",   "9",   "?", "REP",
-  "A", "I", "Q",   "Y", "2",   ":",  "BS", "SHF",
-  "B", "J", "R",   "Z", "3",   ";", "TAB",    0 ,
-  "C", "K", "S",   "[", "4",   ",",  "LF", "CTL",
-  "D", "L", "T",  "\\", "5",  "BRK", "RET",   0 ,
-  "E", "M", "U",   "]", "6",    ".", "ESC",   0 ,
-  "F", "N", "V",   "^", "7",    "/", "DEL",   0 ,
-  "G", "O", "W",   "-", "8",    "0", "INS",   0 
+  "@", "h", "p",   "x", "1",      "9",          " ",      "REP" ,
+  "a", "i", "q",   "y", "2",      ":",  "Backspace",     "Shift",
+  "b", "j", "r",   "z", "3",      ";",        "Tab",          0 ,
+  "c", "k", "s",   "[", "4",      ",",         "LF",   "Control",
+  "d", "l", "t",  "\\", "5",    "BRK",     "Return",          0 ,
+  "e", "m", "u",   "]", "6",      ".",     "Escape",          0 ,
+  "f", "n", "v",   "^", "7",      "/",     "Delete",          0 ,
+  "g", "o", "w",   "-", "8",      "0",      "Insert",         0 
 };
 
 static KeyboardScanner::ScanLayout g_super80Keys = {
@@ -121,7 +121,7 @@ class Super80Video : public SingleColourMemoryMappedVideo
 {
   public:
     Super80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
-    virtual FontChar GetCharAtPos(int offs) override;
+    virtual FontChar GetCharAtPos(int x, int y) override;
 };
 
 Super80Video::Super80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
@@ -129,8 +129,10 @@ Super80Video::Super80Video(MainWindow & mainWindow, Emulator & emulator, const O
 {
 }
 
-FontChar Super80Video::GetCharAtPos(int pos)
+FontChar Super80Video::GetCharAtPos(int x, int y)
 {
+  int pos = y * m_cols + x;
+
   FontChar ch = m_memory[pos & m_visibleMask];
 
   // map all chars into 64 chars (0 .. 0x3f)
@@ -275,7 +277,7 @@ void Super80_Emulator::CopyToVideo()
   for (int i = 0; i < SUPER80_VIDEO_CHARS; ++i) {
     uint8_t data = ReadMemory(addr);
     //cout << "super80: copy to video from " << HEXFORMAT0x4(addr) << " to " << HEXFORMAT0x4(i) << " " << HEXFORMAT0x2(data) << endl;
-    m_video->WriteMemoryAtPos(i, data);
+    m_video->WriteMemoryAtAddress(i, data);
     addr++;
   }
 }
@@ -283,7 +285,7 @@ void Super80_Emulator::CopyToVideo()
 void Super80_Emulator::WriteMemory(uint16_t addr, uint8_t data)
 {
   if (m_videoOn && (addr >= m_videoStartAddr) && (addr <= m_videoEndAddr)) {
-    m_video->WriteMemoryAtPos(addr - m_videoStartAddr, data);
+    m_video->WriteMemoryAtAddress(addr - m_videoStartAddr, data);
     //cout << "super80: write to video at " << HEXFORMAT0x4(m_videoStartAddr) << " " << HEXFORMAT0x2(data) << endl;
   }
   Z80Emulator::WriteMemory(addr, data);  

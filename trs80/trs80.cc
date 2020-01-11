@@ -55,6 +55,7 @@ bool TRS80Emulator::Open(const Options &options)
   m_cassetteMotor    = false;
   m_cassetteTrigger  = false;
   m_cassette2        = false;
+  m_32Col            = false;
 
   cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl; 
   if (m_fdcEnabled) {
@@ -604,6 +605,14 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
       }
     }
   }
+
+  // detect changes in 32/64 columns mode
+  bool new32Col = val & 0x08;
+  if (new32Col != m_32Col) {
+    m_32Col = new32Col;
+    cout << "trs80: 32 column mode turned " << (m_32Col ? "on" : "off") << endl;
+    ((TRS80Video *)m_video.get())->Set32Col(m_32Col);
+  }
 }
 
 uint8_t TRS80Emulator::ReadFF(register uint16_t)
@@ -699,16 +708,28 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
 TRS80Video::TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
 {
+  m_32Col = false;
 }
 
-void TRS80Video::WriteMemoryAtPos(int pos, uint8_t ch)
+void TRS80Video::Set32Col(bool val)
+{ 
+  if (val != m_32Col) {
+    m_32Col = val;
+    SetColScale(m_32Col ? 2 : 1);
+    RefreshScreen();
+  }
+}
+
+void TRS80Video::WriteMemoryAtAddress(int addr, uint8_t ch)
 {
   if (ch < 0x20)
     ch += 0x40;
-  SingleColourMemoryMappedVideo::WriteMemoryAtPos(pos, ch);
+    
+  SingleColourMemoryMappedVideo::WriteMemoryAtAddress(addr, ch);
 }
 
-
-
-
-
+FontChar TRS80Video::GetCharAtPos(int x, int y)
+{
+  int pos = (y * m_cols) + (x * (m_32Col ? 2 : 1));
+  return m_memory[pos & m_visibleMask];
+}

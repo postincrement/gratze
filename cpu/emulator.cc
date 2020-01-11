@@ -405,7 +405,7 @@ void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, ui
   if (addr > info.m_endAddr)
     cerr << "warning: bad video write" << endl;
   else  
-    m_video->WriteMemoryAtPos(addr - info.m_startAddr, data);
+    m_video->WriteMemoryAtAddress(addr - info.m_startAddr, data);
 }
 
 uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr)
@@ -415,7 +415,7 @@ uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr)
     return 0x00;
   }
   else  
-    return m_video->ReadMemoryAtPos(addr - info.m_startAddr);
+    return m_video->ReadMemoryAtAddress(addr - info.m_startAddr);
 }
 
 void Emulator::ChangeVideoColour()

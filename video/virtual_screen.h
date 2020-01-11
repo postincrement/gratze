@@ -33,10 +33,11 @@ class TextWindow
 
     virtual void Update(bool hasChanged = false);
 
-    virtual void RefreshCharAtPos(int pos) = 0;
-    virtual void RenderCharAtPos(int pos, SDL_Colour & fg, SDL_Colour & bg);
+    virtual void RefreshCharAtPos(int x, int y) = 0;
+    virtual void RenderCharAtPos(int addr, SDL_Colour & fg, SDL_Colour & bg);
 
-    virtual FontChar GetCharAtPos(int pos) = 0;
+    virtual FontChar GetCharAtPos(int x, int y) = 0;
+    virtual void SetColScale(int scale);
 
   protected:  
     MainWindow & m_mainWindow;
@@ -49,6 +50,8 @@ class TextWindow
 
     double m_hscale = 1;
     double m_vscale = 1;
+
+    int m_colScale;
 
     int m_left = 0;
     int m_top = 0;
@@ -82,8 +85,11 @@ class VirtualScreen : public TextWindow
 
     static VirtualScreen * Create(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);  
 
-    virtual void WriteMemoryAtPos(int pos, uint8_t ch) = 0;
-    virtual uint8_t ReadMemoryAtPos(int pos) const = 0;
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch) = 0;
+    virtual uint8_t ReadMemoryAtAddress(int addr) const = 0;
+    virtual void RenderCharAtAddress(int addr) = 0;
+
+    virtual void RefreshScreen();
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const = 0;
@@ -102,19 +108,19 @@ class MemoryMappedVideo : public VirtualScreen
 
     virtual bool Open() override;
 
-    virtual void WriteMemoryAtPos(int pos, uint8_t ch);
-    virtual uint8_t ReadMemoryAtPos(int pos) const;
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch);
+    virtual uint8_t ReadMemoryAtAddress(int addr) const;
 
-    virtual void RefreshScreen();
+    virtual bool SetFont(const Config::Font & font);
 
-    virtual FontChar GetCharAtPos(int pos) override;
+    virtual FontChar GetCharAtPos(int x, int y) override;
 
   protected:  
     Config::Font m_fontConfig;
     Options m_options;
     std::vector<uint8_t> m_fontData;
     std::vector<uint8_t> m_memory;
-    int m_offset;  
+    int m_offset;
 
     int m_memoryMask = 0;
 };
@@ -128,7 +134,7 @@ class SingleColourMemoryMappedVideo : public MemoryMappedVideo
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg);
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
-    virtual void RefreshCharAtPos(int pos);
+    virtual void RenderCharAtAddress(int addr);
 
   protected:  
     SDL_Color m_bgColour;

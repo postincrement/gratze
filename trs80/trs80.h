@@ -62,7 +62,12 @@ class TRS80Video : public SingleColourMemoryMappedVideo
 {
   public:
     TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
-    virtual void WriteMemoryAtPos(int pos, uint8_t ch) override;
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
+    void Set32Col(bool val);
+    virtual FontChar GetCharAtPos(int x, int y) override;
+
+  protected:
+    bool m_32Col;  
 };
 
 class TRS80Emulator : public Z80Emulator
@@ -131,6 +136,8 @@ class TRS80Emulator : public Z80Emulator
     bool m_cassetteMotor;
     bool m_cassetteTrigger;
     std::unique_ptr<VirtualCassetteFile> m_cassette;
+
+    bool m_32Col;
 };
 
 #endif // TRS80_H_

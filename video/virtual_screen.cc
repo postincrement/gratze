@@ -35,6 +35,7 @@ TextWindow::TextWindow(MainWindow & mainWindow, int rows, int cols, int width, i
   , m_cols(cols)
   , m_width(width)
   , m_height(height)
+  , m_colScale(1)
 {
   m_lazyUpdates = true;
   m_dirty = true;
@@ -50,21 +51,26 @@ bool TextWindow::Open()
   return true;
 }
 
+void TextWindow::SetColScale(int scale)
+{
+  m_colScale = scale;
+}
+
 void TextWindow::RenderCharAtPos(int pos, SDL_Colour & fg, SDL_Colour & bg)
 { 
   if (m_font) {
     pos = (pos & m_visibleMask);
     SDL_Rect dstRect;
-    int x = pos % m_cols;
+    int x = pos % (m_cols / m_colScale);
     int y = pos / m_cols;
     m_mainWindow.GetScreenCharRect(dstRect, 
-                          m_left + x * m_font->GetWidth(), 
+                          m_left + (x * m_font->GetWidth() * m_colScale), 
                           m_top + y * m_font->GetHeight(), 
-                          m_font->GetWidth(),
+                          m_font->GetWidth() * m_colScale,
                           m_font->GetHeight());
 
     SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale, m_vscale);    
-    m_font->RenderChar(GetCharAtPos(pos), m_mainWindow.GetRenderer(), dstRect, fg, bg);
+    m_font->RenderChar(GetCharAtPos(x, y), m_mainWindow.GetRenderer(), dstRect, fg, bg);
 
     Update(true);
   }
@@ -110,6 +116,13 @@ void VirtualScreen::SetOffset(int left, int top)
 {
   m_left = left;
   m_top  = top;
+}
+
+void VirtualScreen::RefreshScreen()
+{
+  for (int y = 0; y < m_rows; ++y)
+    for (int x = 0; x < m_cols / m_hscale ; ++x)
+      RefreshCharAtPos(x, y);
 }
 
 VirtualScreen::~VirtualScreen()
@@ -193,6 +206,14 @@ MemoryMappedVideo::~MemoryMappedVideo()
 
 bool MemoryMappedVideo::Open()
 {
+  return SetFont(m_fontConfig);
+}
+
+bool MemoryMappedVideo::SetFont(const Config::Font & font)
+{
+  m_fontConfig = font;
+  m_font.reset();
+
   // unpack pixel data
   if (m_fontConfig.m_charGen != NULL) {
     if (!UnpackCharacterGeneratorFont(m_fontConfig, m_fontData))
@@ -223,39 +244,42 @@ bool MemoryMappedVideo::Open()
     return false;
   }
 
-  cout << "info: pixel font created" << endl;
+  cout << "info: new font set" << endl;
 
   return VirtualScreen::Open();
 }
 
-void MemoryMappedVideo::WriteMemoryAtPos(int pos, uint8_t ch)
+void MemoryMappedVideo::WriteMemoryAtAddress(int addr, uint8_t ch)
 {
-  if ((pos >= m_memory.size()) || (m_memory[pos] == ch)) {
+  if ((addr >= m_memory.size()) || (m_memory[addr] == ch)) {
     return;
   }
 
-  m_memory[pos] = ch;
-  RefreshCharAtPos(pos);
+  m_memory[addr] = ch;
+  RenderCharAtAddress(addr);
 }
 
-uint8_t MemoryMappedVideo::ReadMemoryAtPos(int pos) const
+uint8_t MemoryMappedVideo::ReadMemoryAtAddress(int addr) const
 {
-  if (pos >= m_memory.size()) {
+  if (addr >= m_memory.size()) {
     return 0x00;
   }
 
-  return m_memory[pos];
+  return m_memory[addr];
 }
 
-void MemoryMappedVideo::RefreshScreen()
+FontChar MemoryMappedVideo::GetCharAtPos(int x, int y)
 {
-  for (int pos = 0; pos < m_visibleSize; ++pos)
-    RefreshCharAtPos(pos);
+  int pos = y * m_cols + x;
+  return m_memory[pos & m_visibleMask];
 }
 
-FontChar MemoryMappedVideo::GetCharAtPos(int addr)
+void MemoryMappedVideo::RenderCharAtAddress(int addr)
 {
-  return m_memory[addr & m_visibleMask];
+  addr = addr & m_visibleMask;
+  int col = addr % m_cols;
+  int row = addr / m_cols;
+  RenderCharAtPos(col, row, m_fgColour, m_bgColour);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -281,8 +305,8 @@ void SingleColourMemoryMappedVideo::GetFontColour(SDL_Colour & fg, SDL_Colour & 
   bg = m_bgColour;
 }
 
-void SingleColourMemoryMappedVideo::RefreshCharAtPos(int pos)
+void SingleColourMemoryMappedVideo::RenderCharAtAddress(int addr)
 {
-  pos = pos & m_visibleMask;
-  RenderCharAtPos(pos, m_fgColour, m_bgColour);
+  MemoryMappedVideo::RenderCharAtAddress(addr, m_fgColour, m_bgColour);
 }
+

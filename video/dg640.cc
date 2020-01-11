@@ -39,13 +39,13 @@ bool DG640::CreatePixelFont(const Options & options, const Config::Font & fontIn
   return true;
 }
 
-void DG640::WriteMemoryAtPos(int pos, uint8_t ch)
+void DG640::WriteMemoryAtAddress(int addr, uint8_t ch)
 {
-  if ((pos >= m_memory.size()) || (m_memory[pos] == ch)) {
+  if ((pos >= m_memory.size()) || (m_memory[addr] == ch)) {
     return;
   }
 
-  m_memory[pos] = ch;
+  m_memory[addr] = ch;
 
   if (pos >= 0x400) {
     if ((ch & 0xf)!= 0) {
@@ -53,5 +53,5 @@ void DG640::WriteMemoryAtPos(int pos, uint8_t ch)
     }
   }
 
-  RefreshCharAtPos(pos);
+  RenderCharAtAddress(addr);
 }

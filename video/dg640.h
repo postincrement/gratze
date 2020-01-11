@@ -32,7 +32,7 @@ class DG640 : public SingleColourMemoryMappedVideo
   public:
     DG640(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
 
-    virtual void WriteMemoryAtPos(int pos, uint8_t ch);
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch);
 
     static bool CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 };
