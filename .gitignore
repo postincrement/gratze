@@ -21,3 +21,4 @@ SDL2_ttf-*
 z80_dump.bin
 z80_dump.txt
 z80.dump
+mhash-install/*

@@ -169,75 +169,6 @@ void Emulator::SetKeyboard(VirtualKeyboard * kb)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-bool CloseToInteger(double val)
-{
-  return fabs(val - trunc(val)) <= 0.1;
-}
-
-static bool FindScreenScale(int & hscale, int & vscale, double hratio, double vratio, int videoW, int videoH, int monitorW, int monitorH)
-{
-  double pixeRatioWtoH = (1.0 * videoW / monitorW * hratio) / (1.0 * videoH / monitorH * vratio);
-
-  cout << "info: screen pixel ratio is 1:" << FIXEDFORMAT3(pixeRatioWtoH) << endl;
-
-  // get size of screen
-  SDL_DisplayMode mode;
-  SDL_GetDesktopDisplayMode(0, &mode);
-  cout << "info: screen is " << mode.w << "x" << mode.h << endl;
-
-  // calculate relative pixel sizes scaling X or Y
-  bool found = false;
-  {
-    int ratio = 1;
-
-    while (!found && ((ratio * videoW) <= mode.w) && ((ratio * videoH) <= mode.h)) {
-
-      // see if horizontal scale can be integer
-      {
-        int newW         = ratio * videoW;
-        int newH         = trunc(1.0 * newW * vratio / hratio);
-        double newVscale = 1.0 *  newH / videoH;
-        if (newVscale >= 1) {
-          cout << "info: trying " << ratio << ":" << (int)trunc(newVscale) 
-                                  << " gives " << newW << "x" << newH 
-                                  << " compared to " << ratio * videoW << "x" << (int)trunc(newVscale) * videoH << endl;
-          if (CloseToInteger(newVscale)) {
-            hscale = ratio;
-            vscale = trunc(newVscale);
-            cout << "info: good" << endl;
-            found = true;
-          }
-        }
-      }
-
-      // see if vertical scale can be integer
-      {
-        int newH         = ratio * videoH;
-        int newW         = trunc(1.0 * newH * hratio / vratio);
-        double newHscale = 1.0 *  newW / videoW;
-        if (newHscale >= 1) {
-          cout << "info: trying " << (int)trunc(newHscale) << ":" << ratio 
-                                  << " gives " << newW << "x" << newH 
-                                  << " compared to " << (int)trunc(newHscale) * videoW << "x" << ratio * videoH << endl;
-          if (CloseToInteger(newHscale)) {
-            hscale = trunc(newHscale);
-            vscale = ratio;
-            cout << "info: good" << endl;
-            found = true;
-          }
-        }
-      }
-
-      ratio++;
-    }
-  }
-
-  if (found) {
-    cout << "info: found approximate scale " << hscale << ":" << vscale << endl;
-  }
-
-  return found;
-}
 
 struct ScreenRatioInfo
 {
@@ -420,7 +351,7 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     return; // false;
   }
 
-  screen->SetScale(i, j * vdup);
+  screen->SetScale(i * options.m_videoScale, j * vdup * options.m_videoScale);
   screen->SetOffset(left, top);
 
   m_video.reset(screen);

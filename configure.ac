@@ -99,11 +99,15 @@ case "$target" in
                 PKG_CHECK_MODULES([FREETYPE], [freetype2],
                         [AC_DEFINE([HAVE_FREETYPE], [1], [Define if freetype library available])],
                         [AC_MSG_ERROR([FreeType required. Install libfreetype6-dev])])
-                PKG_CHECK_MODULES([FREETYPE], [gtk+-3.0],
+                PKG_CHECK_MODULES([GTK2], [gtk+-3.0],
                         [AC_DEFINE([HAVE_GTK], [1], [Define if GTK library available])],
                         [AC_MSG_ERROR([GTK+ 3.0 required. Install libgtk-3-0-dev])])
                 SDL_INC=`pkg-config --cflags-only-I sdl2 gtk+-3.0 SDL2_ttf freetype2 sdl2`
                 SDL_LIBS=`pkg-config --libs gtk+-3.0 SDL2_ttf freetype2 sdl2`
+                
+                PKG_CHECK_MODULES([MHASH], [mhash],
+                        [AC_DEFINE([HAVE_MHASH], [1], [Define if libhash library available])],
+                        [AC_MSG_ERROR([libmhash required. Install libmhash-dev])])
                 ;;
 esac
 

@@ -15,15 +15,14 @@ Model1_Emulator::Model1_Emulator(const EmulatorInfo * info)
 
 bool Model1_Emulator::Open(const Options & options)
 {
-  if (!TRS80Emulator::Open(options))
-    return false;
-
+  // do before ancestor Open so drives know they can work 
   m_withEI = options.m_withEI;
-
   cout << "info: expansion interface is " << (m_withEI ? "en" : "dis") << "abled" << endl; 
-
   m_rtcEnabled = m_withEI;
   m_fdcEnabled = m_withEI;
+
+  if (!TRS80Emulator::Open(options))
+    return false;
 
   return true;
 }

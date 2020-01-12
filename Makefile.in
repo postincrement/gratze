@@ -210,6 +210,43 @@ clean_sdl:
 	rm -rf $(SDL_DIR)     $(SDL_TGZ)     $(SDL_TARGETS) \
 	       $(SDL_TTF_DIR) $(SDL_TTF_TGZ) $(SDL_TTF_TARGETS)
 
+#
+#  MingW libhash
+#
+
+MHASH_SRC_DIR= ./mhash-code
+MHASH_DIR=$(shell pwd)/mhash-install
+
+.PHONY: mhash
+
+mhash: $(MHASH_DIR)/include/mhash.h
+
+$(MHASH_DIR)/include/mhash.h: $(MHASH_SRC_DIR)/configure
+	cd $(MHASH_SRC_DIR)/lib && make install 
+	cd $(MHASH_SRC_DIR)/include && make install
+
+$(MHASH_SRC_DIR)/configure: $(MHASH_SRC_DIR) 
+	cd $(MHASH_SRC_DIR) ; CC=$(CC) LDFLAGS="" ./configure --disable-shared --prefix=$(MHASH_DIR) \
+  --disable-md5 \
+	--disable-sha1 \
+	--disable-md4 \
+	--disable-md2 \
+	--disable-tiger \
+	--disable-haval \
+	--disable-crc32 \
+	--disable-adler32 \
+	--disable-ripemd \
+	--disable-gost \
+	--disable-sha512-sha384 \
+	--disable-snefru \
+	--disable-whirlpool
+
+	#--disable-sha256-sha224  -static-libgcc LIBS="-lmingw32" 
+
+$(MHASH_SRC_DIR):
+	git clone https://git.code.sf.net/p/mhash/code mhash-code
+
+
 ################################################################################################	
 
 else

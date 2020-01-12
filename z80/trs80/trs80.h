@@ -118,21 +118,21 @@ class TRS80Emulator : public Z80Emulator
   protected:  
     KeyboardScanner m_keyboard;
 
-    bool m_fdcEnabled;
-    int m_fdcPending;
+    bool m_fdcEnabled = false;
+    int m_fdcPending = false;
     uint8_t m_drvSel;
     std::unique_ptr<WD_FDC> m_fdc;
 
-    bool m_rtcEnabled;
-    bool m_rtcPending;
+    bool m_rtcEnabled = false;
+    bool m_rtcPending = false;
     std::chrono::system_clock::time_point m_rtcTimer;
 
-    bool m_cassette2;
-    bool m_cassetteMotor;
-    bool m_cassetteTrigger;
+    bool m_cassette2 = false;
+    bool m_cassetteMotor = false;
+    bool m_cassetteTrigger = false;
     std::unique_ptr<VirtualCassetteFile> m_cassette;
 
-    bool m_32Col;
+    bool m_32Col = false;
 };
 
 #endif // TRS80_H_

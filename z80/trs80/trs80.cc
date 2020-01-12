@@ -78,16 +78,19 @@ TRS80Emulator::TRS80Emulator(const EmulatorInfo * info)
 
 bool TRS80Emulator::Open(const Options & options)
 {
+  cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl; 
+  if (m_fdcEnabled) {
+    m_fdc.reset(new WD_FD1771());
+    m_fdc->SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
+  }
+
   if (!Z80Emulator::Open(options))
     return false;
-
-  m_rtcEnabled = false;
-  m_fdcEnabled = false;
 
   SetKeyboard(&m_keyboard);
   m_keyboard.Compile(g_trs80Keys);
 
-  m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
+  m_rtcTimer   = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
   m_fdcPending = 0;
 
@@ -95,12 +98,6 @@ bool TRS80Emulator::Open(const Options & options)
   m_cassetteTrigger  = false;
   m_cassette2        = false;
   m_32Col            = false;
-
-  cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl; 
-  if (m_fdcEnabled) {
-    m_fdc.reset(new WD_FD1771());
-    m_fdc->SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
-  }
 
   cout << "info: RTC is " << (m_rtcEnabled ? "en" : "dis") << "abled" << endl; 
 
@@ -129,9 +126,9 @@ bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font 
     for (int y = 0; y < 3; ++y) {
       *dst = 0;
       if (val & 1)
-        *dst |= maskRight;
-      if (val & 2)
         *dst |= maskLeft;
+      if (val & 2)
+        *dst |= maskRight;
       for (int z = 1; z < (fontInfo.m_height / 3); ++z)
         dst[z] = dst[0];  
       dst += fontInfo.m_height / 3;
@@ -141,6 +138,7 @@ bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font 
 
   // duplicate graphics data from 0xc0 to 0xff
   memcpy(&fontData[(128 + 64) * fontInfo.m_height], &fontData[128 * fontInfo.m_height], 64 * fontInfo.m_height);
+ 
   return true;
 }
 

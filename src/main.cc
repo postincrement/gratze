@@ -141,16 +141,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  std::string error;
-  if (!args.GetValues("--drive*", options.m_driveFns, error)) {
-    cerr << "error: could not parse drive filename list - " << error << endl;
-    return -1;
-  }
-  else if (options.m_driveFns.size() > 0) {
-    cout << options.m_driveFns.size() << " drives specified" << endl;
-    options.m_withEI = true;
-  }
-
   cout << "info: using type '" << options.m_typeName << "'" << endl;  
 
   // attempt to instantiate emulator
@@ -161,6 +151,16 @@ int main(int argc, char *argv[])
   }
 
   cout << "info: running " << emulator->GetInfo().m_name << endl;
+
+  std::string error;
+  if (!args.GetValues("--drive*", options.m_driveFns, error)) {
+    cerr << "error: could not parse drive filename list - " << error << endl;
+    return -1;
+  }
+  else if (options.m_driveFns.size() > 0) {
+    cout << options.m_driveFns.size() << " drives specified" << endl;
+    options.m_withEI = true;
+  }
 
   const Config::RAM * ram = emulator->GetMainRAMInfo();
   if (ram == nullptr) {

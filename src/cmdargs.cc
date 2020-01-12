@@ -126,12 +126,12 @@ bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::
   }
 
   if (!valueNameShort.empty()) {
-    cout << "inserting " << valueNameShort << endl;
+    //cout << "inserting " << valueNameShort << endl;
     m_values.insert(ValueMap::value_type(valueNameShort, value));
   }
 
   if (!valueNameLong.empty()) {
-    cout << "inserting " << valueNameLong << endl;
+    //cout << "inserting " << valueNameLong << endl;
     m_values.insert(ValueMap::value_type(valueNameLong, value));
   }
 
@@ -146,7 +146,7 @@ int CommandLineArgs::Parse(int argc, char *argv[])
 
     std::string arg(argv[optIndex]);
 
-    cout << "parsing argument " << arg << endl;
+    //cout << "parsing argument " << arg << endl;
 
     size_t len = arg.length();
 
@@ -166,7 +166,7 @@ int CommandLineArgs::Parse(int argc, char *argv[])
     // long options
     if (option[0] == '-') {
 
-      cerr << "info: parsing long opt " << arg << endl;
+      //cerr << "info: parsing long opt " << arg << endl;
 
       // option "--" terminates parsing
       if (len == 2) {
@@ -230,7 +230,7 @@ int CommandLineArgs::Parse(int argc, char *argv[])
       continue;
     }
 
-    cerr << "info: parsing short opt " << arg << endl;
+    //cerr << "info: parsing short opt " << arg << endl;
 
     // look for matching short option(s)
     int i = 1;
@@ -277,7 +277,7 @@ int CommandLineArgs::Parse(int argc, char *argv[])
         }
       }
 
-      cout << "long short value is " << value << endl;
+      //cout << "long short value is " << value << endl;
 
       // process
       if (!ProcessArg(false, *optDef, value)) {
