@@ -187,8 +187,10 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
 
 bool TRS80Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
 {
-  if (!m_fdcEnabled || !m_fdc)
+  if (!m_fdcEnabled || !m_fdc) {
+    cerr << "error: cannot mount drives when FDC is disabled" << endl;
     return false;
+  }
 
   return m_fdc->MountDrive(driveNum, drive, readOnly);
 }

@@ -7,8 +7,6 @@ class MainWindow;
 class VirtualScreen;
 class Font;
 
-#define MAX_INFO_BLOCKS   40
-
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 #define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }

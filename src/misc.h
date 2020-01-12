@@ -16,4 +16,83 @@
 #define   FIXEDFORMAT(prec, val)      std::fixed << std::setprecision(prec) << (val)
 #define   FIXEDFORMAT3(val)           FIXEDFORMAT(3,val)
 
+#include <sstream>
+#include <array>
+#include <vector>
+#include <string>
+
+namespace ColumnFormatter 
+{
+
+template<int Cols>
+using Columns = std::array<std::vector<std::string>, Cols>;
+
+template <int Cols>
+std::string Print(const Columns<Cols> & columns, const std::array<std::string, Cols> & seps)
+{
+  std::array<int, Cols> width;
+  std::array<int, Cols> height;
+
+  int maxHeight = 0;
+  int col = 0;
+  for (auto & r : columns) {
+    height[col] = r.size();
+    maxHeight = std::max(maxHeight, height[col]);
+    width[col] = 0;
+    for (auto & s : r) {
+      width[col] = std::max((int)width[col], (int)s.length());
+    }
+    ++col;  
+  }
+
+  std::stringstream strm;
+  int row;
+  for (row = 0; row < maxHeight; ++row) {
+    for (col = 0; col < Cols; ++col) {
+      if (row < columns[col].size()) {
+        strm << seps[col];
+        strm << columns[col][row];
+        strm << std::string(width[col] - columns[col][row].length(), ' ');
+      }
+    }
+    strm << "\n";
+  }
+
+  return strm.str();
+}
+
+template <int Cols>
+std::string Print(const Columns<Cols> & columns)
+{
+  std::array<std::string, Cols> seps;
+  bool first = true;
+  for (int i = 0; i < Cols; ++i) {
+    if (i != 0)
+      seps[i] = "  ";
+  }
+  return Print<Cols>(columns, seps);
+}
+
+template <int Cols>
+std::string Print(const Columns<Cols> & columns, char sep)
+{
+  std::array<std::string, Cols> seps;
+  for (int i = 0; i < Cols; ++i) {
+    if (i != 0)
+      seps[i] = std::string(sep, 1);
+  }
+  return Print<Cols>(columns, seps);
+}
+
+template <int Cols>
+std::string Print(const Columns<Cols> & columns, char * sepStrings[Cols])
+{
+  std::array<std::string, Cols> seps;
+  for (int i = 0; i < Cols; ++i)
+    seps[i] = std::string(sepStrings[i]);
+  return Print<Cols>(columns, seps);
+}
+
+} // namespace ColumnFormatter
+
 #endif // MISC_H_

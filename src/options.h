@@ -13,10 +13,10 @@ struct Options
   std::string m_romFn;
 
   // map of disk drive information
-  std::map<int, std::string> m_driveFns;
+  std::map<unsigned, std::string> m_driveFns;
 
   // override default RAM size
-  int m_ramSize_k = -1;
+  unsigned m_ramSize_k = 0;
 
   // enable expansion interface (for Model I)
   bool m_withEI = false;

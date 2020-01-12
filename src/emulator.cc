@@ -46,8 +46,10 @@ bool Emulator::Open(const Options & options)
     VirtualDriveFile *drive = new VirtualDriveFile();
     if (!drive->Open(fn, true))
       return false;
-    if (!MountDrive(r.first, drive, true))
+    if (!MountDrive(r.first, drive, true)) {
+      cerr << "error: cannot mount drive " << r.first << " with " << r.second << endl;
       return false;
+    }
     cerr << "info: mounted '" << fn << " as drive " << r.first << endl;
   }
 
@@ -465,7 +467,7 @@ void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 const Config::Block * Emulator::GetConfigBlock(Config::Type type) const
 {
   const Config::Block * block = m_info->m_blocks;
-  for (int i = 0; i < MAX_INFO_BLOCKS; ++i) {
+  for (;;) {
     if (block->m_type == Config::Type::eEnd)
       break;
     if (block->m_type == type)
@@ -505,7 +507,7 @@ void Emulator::CompileConfigBlocks()
   m_writeIOPortBlocks.clear();
 
   const Config::Block * block = m_info->m_blocks;
-  for (int i = 0; i < MAX_INFO_BLOCKS; ++i) {
+  for (;;) {
 
     if (block->m_type == Config::Type::eEnd)
       break;

@@ -31,6 +31,8 @@ Various I/O Ports
 -----------------
   http://www.trs-80.com/wordpress/zaps-patches-pokes-tips/ports-and-i-o-devices/
   http://interbutt.com/mess/super80/
+  http://www.trailingedge.com/exidy/
+  http://www.mjbauer.biz/DREAM6800.htm
 
 Disk Formats
 ------------
@@ -84,9 +86,8 @@ LICENSES
   - Model IV F1-F4 keys
   - Model III shift keys
   - Fix disk drive interface
-  - use generic keyboard scanner
-  - DG640 extended chars
   - Fix TRS-80 chars
+  - DG640 flashing
 
 Done
 ----  
@@ -97,3 +98,5 @@ Done
   - Refactor video support
   - Refactor disk drive code
   - Use fonts for video
+  - use generic keyboard scanner
+  - DG640 graphics

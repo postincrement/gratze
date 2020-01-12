@@ -221,7 +221,7 @@ struct EmulatorInfo
   const char * m_name;     // short name
   const char * m_title;    // long name
 
-  Config::Block m_blocks[20];
+  Config::Block m_blocks[];
 };
 
 #endif // EMULATOR_H_
