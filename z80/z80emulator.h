@@ -2,17 +2,19 @@
 #ifndef Z80_EMULATOR_H_
 #define Z80_EMULATOR_H_
 
-#include "src/emulator.h"
-#include "video/virtual_screen.h"
-
 extern "C" {
 #include "z80/mfz80/Z80.h"
 };
 
+#include "src/emulator.h"
+#include "video/virtual_screen.h"
+
 class Z80Emulator : public Emulator
 {
   public:
-    Z80Emulator(EmulatorInfo * info);
+    Z80Emulator(const EmulatorInfo * info);
+
+    virtual bool Open(const Options & options) override;
 
     static Z80Emulator * g_z80Instance;
 

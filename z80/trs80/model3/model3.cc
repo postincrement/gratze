@@ -36,4 +36,7 @@ static struct EmulatorInfo g_emulatorInfo
 Model3_Emulator::Model3_Emulator()
   : Model1_Emulator(&g_emulatorInfo)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+
 }

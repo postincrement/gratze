@@ -33,8 +33,8 @@ class CommandLineArgs
       std::string m_wildcard;
 
       bool m_boolean = false;
-      int m_integer;
-      unsigned m_unsigned;
+      int m_integer = 0;
+      unsigned m_unsigned = 0;
       std::string m_string;
     };
 
@@ -47,6 +47,7 @@ class CommandLineArgs
       eUnsigned     = 'u',
       eHexOrDecimal = 'x',
       eBoolean      = 'b',
+      eIncrement    = '+'
     };
 
     typedef std::multimap<std::string, OptionValue> ValueMap;
@@ -113,7 +114,7 @@ class CommandLineArgs
     {
       int count = m_values.count(opt);
       if (count == 0)
-        return false;
+        return true;
 
       ValueMap::const_iterator r = m_values.find(opt);
       while (count > 0) {
@@ -124,7 +125,7 @@ class CommandLineArgs
         --count;
       }
 
-      return values.size() > 0;
+      return true;
     }
 
     std::string DumpValues() const;

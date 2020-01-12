@@ -48,11 +48,16 @@ NFD_BUILD_DIR=@NFD_BUILD_DIR@
 NFD_LIB_DIR=@NFD_LIB_DIR@
 NFD_LIB=$(NFD_LIB_DIR)/@NFD_LIB_NAME@
 
+MFZ_FLAGS=-DDEBUG
+
+CEREAL_DIR=./cereal
+CEREAL_INCLUDE_DIR=$(CEREAL_DIR)/include
+
 CC=@CC@
 CXX=@CXX@
 
-CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) $(SDL_INC)
-CFLAGS   := @CFLAGS@   $(INC_DIRS) $(SDL_INC) -DDEBUG  # DEBUG symbol needed for mf80 debug
+CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS) -I$(CEREAL_INCLUDE_DIR)
+CFLAGS   := @CFLAGS@   $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS)
 
 LDFLAGS=$(SDL_LDFLAGS) @LDFLAGS@ -g
 LDLIBS=@LDLIBS@
@@ -62,15 +67,28 @@ COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 
 OUTPUT_OPTION = -o $(OBJDIR)/$*.o
 
+ifeq ($(VERBOSE),1)
+
 %.o : %.c 
 $(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
-	@echo "(CC) $<" 
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+				
+%.o : %.cc
+$(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+else
+
+$(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
+	@echo "(CC) $<"
 	@$(COMPILE.c) $(OUTPUT_OPTION) $<
 				
 %.o : %.cc
 $(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
-	@echo "(CXX) $<" 
+	@echo "(CXX) $<"
 	@$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+endif
 
 all:	$(APP)
 
@@ -126,7 +144,7 @@ vpath %.cc $(sort $(dir $(SRCS_CC)))
 
 $(APP):	$(OBJS)
 
-gratze:	nfd sdl ttf $(OBJS)
+gratze:	nfd sdl ttf cereal $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 $(OBJDIR):
@@ -202,6 +220,21 @@ ttf:		# configure uses packages on other platforms
 
 endif # ($(MINGW_ENABLED),)
 
+
+################################################################################################	
+#
+#  Cereal
+#
+
+.PHONY: cereal
+
+cereal:
+	@if test \! -d cereal ; then \
+		git clone -b v1.3.0 https://github.com/USCiLab/cereal.git ; \
+	fi
+
+https://github.com/USCiLab/cereal.git
+
 ################################################################################################	
 #
 #  Native file dialogs
@@ -217,13 +250,13 @@ clean_nfd:
 	cd nativefiledialog/build/$(NFD_BUILD_DIR) && $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean"
 
 nfd: 
-	if test \! -d nativefiledialog ; then \
-		git clone https://github.com/postincrement/nativefiledialog.git ; \
+	@if test \! -d nativefiledialog ; then \
+	  git clone https://github.com/postincrement/nativefiledialog.git ; \
 	  cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
-		$(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean && make config=$(NFD_BUILD_TYPE) nfd" ; \
+	  $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean && make config=$(NFD_BUILD_TYPE) nfd" ; \
 	else \
 	  cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
-		$(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) nfd" ; \
+	  $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) nfd" ; \
 	fi
 
 ################################################################################################	

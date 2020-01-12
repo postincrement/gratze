@@ -43,6 +43,11 @@ bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::
       value.m_boolean = true;
       break;
 
+    case ArgType::eIncrement:
+      value.m_type       = OptionValue::Type::eUnsigned; 
+      value.m_unsigned++;
+      break;
+
     // string value
     case ArgType::eString:
       value.m_type    = OptionValue::Type::eString; 
@@ -201,7 +206,7 @@ int CommandLineArgs::Parse(int argc, char *argv[])
 
       // get argument, if any
       std::string value;
-      if (optDef->m_type == ' ') {
+      if ((optDef->m_type == ' ') || (optDef->m_type == '+')) {
         ++optIndex;
       }
       else {
@@ -247,7 +252,7 @@ int CommandLineArgs::Parse(int argc, char *argv[])
 
       // get argument, if any
       std::string value;
-      if (optDef->m_type == ' ') {
+      if ((optDef->m_type == ' ') || (optDef->m_type == '+')) {
         ++optIndex;
       }
       else {
@@ -303,6 +308,7 @@ std::string CommandLineArgs::Usage() const
 
       switch ((ArgType)optDef->m_type) {
         case ArgType::eNone:
+        case ArgType::eIncrement:
           break;
         case ArgType::eString:
           strm << " string";

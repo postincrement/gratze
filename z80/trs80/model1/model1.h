@@ -6,7 +6,7 @@
 class Model1_Emulator : public TRS80Emulator
 {
   public:
-    Model1_Emulator(EmulatorInfo * info);
+    Model1_Emulator(const EmulatorInfo * info);
 
     virtual bool Open(const Options & options) override;
 

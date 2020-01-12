@@ -10,9 +10,18 @@
 
 using namespace std;
 
-Z80Emulator::Z80Emulator(EmulatorInfo * info)
+Z80Emulator::Z80Emulator(const EmulatorInfo * info)
   : Emulator(info)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+}
+
+bool Z80Emulator::Open(const Options & options)
+{
+  if (!Emulator::Open(options))
+    return false;
+
   g_z80Instance = this;
 
   // initialize emulator
@@ -20,6 +29,8 @@ Z80Emulator::Z80Emulator(EmulatorInfo * info)
 
   // allow us to find ourselves
   m_cpu.User = (void *)this;
+
+  return true;
 }
 
 int Z80Emulator::GetMemorySize() const
@@ -68,7 +79,6 @@ void Z80Emulator::SetTrace(bool v)
   m_cpu.Trace = v ? 1 : 0;
 }
 
-
 bool Z80Emulator::Run(int cycles)
 {
   if (m_cpu.Trace) {
@@ -77,36 +87,43 @@ bool Z80Emulator::Run(int cycles)
   }
 
   // full speed
-#if 0  
-  m_cycleCounter += cycles - ExecZ80(&m_cpu, cycles);
-#endif  
-
-#define INC  4
-
-  while (cycles > 0) {
-
-    int done = INC - ExecZ80(&m_cpu, INC);
-    m_cycleCounter += done;
-    cycles -= done;
-
+  if (m_turbo) {
+    m_cycleCounter += cycles - ExecZ80(&m_cpu, cycles);
     if (m_cycleCounter > 100) {
       double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
-
       if (interval >= 0.001) {
         m_actualCPUClock_Hz = m_cycleCounter / interval;
-        m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
-
-        if (m_cpuDelayRepeat < 1)
-          m_cpuDelayRepeat = 1;
-
         m_cycleCounter = 0;
-
         m_cpuDelayTimer = std::chrono::system_clock::now();
       }
     }
+  }
+  else {
+#define INC  4
+    while (cycles > 0) {
 
-    for (int i = 0; i < m_cpuDelayRepeat; ++i)
-      memset(m_delayBuffer, 0, sizeof(m_delayBuffer));
+      int done = INC - ExecZ80(&m_cpu, INC);
+      m_cycleCounter += done;
+      cycles -= done;
+
+      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
+
+      if ((m_cycleCounter > 100) && (interval >= 0.001)) {
+        m_actualCPUClock_Hz = m_cycleCounter / interval;
+        m_cycleCounter = 0;
+        m_cpuDelayTimer = std::chrono::system_clock::now();
+
+        m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
+        if (m_cpuDelayRepeat < 1)
+          m_cpuDelayRepeat = 1;
+        else if (m_cpuDelayRepeat > 600)  
+          m_cpuDelayRepeat = 600;
+//        cout << "cerr : " << m_cpuDelayRepeat << endl; 
+      }
+
+      for (int i = 0; i < m_cpuDelayRepeat; ++i)
+        memset(m_delayBuffer, 0, sizeof(m_delayBuffer));
+    }
   }
 }
 

@@ -19,6 +19,7 @@
 #include "2650/eti685/eti685.h"
 
 #include "src/factory.h"
+#include "src/cereal.h"
 
 
 using namespace std;
@@ -45,7 +46,7 @@ void Init()
 
   for (auto & r : keys) {
     std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(r));
-    emulator->Init();
+    emulator->Instantiate();
   }
 }
 
@@ -56,13 +57,20 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "drive*",      's', "name of file for virtual disk drive" },
   { 'b', "breakpoint",  'x', "breakpoint address"  },
   { 'f', "font",        's', "use TTF font"},
-  { 's', "fontSize",    'u', "TTF font size" },
+  { ' ', "fontSize",    'u', "TTF font size" },
+  { 's', "scale",       'u', "Screen scale factor" },
   { ' ', "diskette",    's', "test virtual drive file"},
   { ' ', "cassette",    's', "test virtual cassette file"},
   { 't', "type",        's', "look for model" },
   { ' ', "readdebug",   'b', "turn read debugging on or off" },
   { ' ', "writedebug",  'b', "turn write debugging on or off" },
-  { ' ', "ei",          'b', "enable/disable Model 1 Expansion Interface" }
+  { ' ', "ei",          'b', "enable/disable Model 1 Expansion Interface" },
+  { 'v', "verbose",     '+', "enable verbose logging" },
+  { ' ', "videotest",   ' ', "display video test before starting" },
+  { ' ', "displaySpeed",  ' ', "display CPU speed on console"},
+  { ' ', "keyboardDebug", ' ', "display keyboard debug on console" },
+  { ' ', "turbo",         ' ', "do not throttle CPU speed"},
+  { 0, 0, 0, 0}
 };
 
 extern "C"
@@ -111,8 +119,21 @@ int main(int argc, char *argv[])
   if (!args.GetValue("-t", options.m_typeName))
     options.m_typeName = "m1";
 
-  args.GetValue("-r",    options.m_romFn);
-  args.GetValue("--ram", options.m_ramSize_k);
+  bool videoTest = false;
+  bool displayCPUSpeed = false;
+
+  args.GetValue("-r",           options.m_romFn);
+  args.GetValue("--ram",        options.m_ramSize_k);
+  args.GetValue("-s",           options.m_videoScale);
+  args.GetValue("-v",           options.m_verbose);
+  args.GetValue("--readdebug",  options.m_readDebug);
+  args.GetValue("--writedebug", options.m_writeDebug);
+  args.GetValue("--keyboardDebug", options.m_keyboardDebug);
+  args.GetValue("--turbo",         options.m_turbo);
+
+  args.GetValue("--videotest",    videoTest);
+  args.GetValue("--displaySpeed", displayCPUSpeed);
+  
 
   if (args.GetValue("-f", options.m_font)) {
     if (!args.GetValue("-s", options.m_fontSize)) {
@@ -129,12 +150,6 @@ int main(int argc, char *argv[])
     cout << options.m_driveFns.size() << " drives specified" << endl;
     options.m_withEI = true;
   }
-
-#if 0
-  { ' ', "readdebug",   'e', "turn read debugging on or off" /* options.m_readDebug */},
-  { ' ', "writedebug",  'e', "turn write debugging on or off" /* options.m_writeDebug */ },
-  { ' ', "ei",          'e', "enable/disable Model 1 Expansion Interface" /* options.m_withEI */ }
-#endif
 
   cout << "info: using type '" << options.m_typeName << "'" << endl;  
 
@@ -198,8 +213,6 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  int videoTest = 1;
-
   if (videoTest) {
     for (int i = 0; i < videoInfo->m_screenCols * videoInfo->m_screenRows; ++i) {
       emulator->m_video->WriteMemoryAtAddress(i, i);
@@ -217,6 +230,8 @@ int main(int argc, char *argv[])
   auto lastPoll  = std::chrono::system_clock::now();
   auto lastSpeed = std::chrono::system_clock::now();
 
+  cout << "entering loop" << endl;
+
   for (;;) {
     //if (emulator->m_cpu.PC.W == options.m_breakpoint)
     //  emulator->SetTrace(true);
@@ -233,10 +248,12 @@ int main(int argc, char *argv[])
       lastPoll = now;
     }
 
-    interval = std::chrono::duration<double>(now - lastSpeed).count();
-    if (interval >= 1) {
-      //cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
-      lastSpeed = now;
+    if (displayCPUSpeed) {
+      interval = std::chrono::duration<double>(now - lastSpeed).count();
+      if (interval >= 1) {
+        cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
+        lastSpeed = now;
+      }
     }
   }
 

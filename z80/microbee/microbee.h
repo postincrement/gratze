@@ -12,8 +12,9 @@ class Microbee_Emulator : public Z80Emulator
   public:
     Microbee_Emulator();
 
-    void Init();
+    void Instantiate() override;
 
+    virtual bool Open(const Options & options) override;
     virtual void Reset(int addr = -1) override;
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;

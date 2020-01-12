@@ -100,3 +100,4 @@ Done
   - Use fonts for video
   - use generic keyboard scanner
   - DG640 graphics
+  - Better command line parsing

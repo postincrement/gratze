@@ -88,13 +88,11 @@ class Emulator
     //  main emulator functions
     //
 
-    Emulator(EmulatorInfo * info = nullptr);
-
-    virtual void Init();
-
-    virtual const EmulatorInfo & GetInfo() const;
+    Emulator(const EmulatorInfo * info);
+    virtual void Instantiate();
 
     virtual bool Open(const Options & options);
+    virtual const EmulatorInfo & GetInfo() const;
     virtual bool Poll();
 
     // info functions
@@ -205,8 +203,11 @@ class Emulator
 
     bool m_debugWriteMemory = false;
     bool m_debugReadMemory = false;
+    bool m_keyboardDebug = false;
+    bool m_turbo = false;
 
   private:
+    unsigned m_verbose = 0;
     VirtualKeyboard * m_keyboardDriver = nullptr;
 };
 

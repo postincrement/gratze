@@ -25,6 +25,12 @@ void KeyboardScanner::Compile(const ScanLayout & scanLayout)
   m_kbData.resize(((m_cols + 7) / 8) * m_rows);
   Compile(m_rows, m_cols, scanLayout.m_keyCodes,        false);
   Compile(m_rows, m_cols, scanLayout.m_shiftedKeyCodes, true);
+
+  const ScanLayout::Equivalent * equivalent = scanLayout.m_equivalents;
+  while ((equivalent != nullptr) && (equivalent->m_from == nullptr)) {
+    AddEquivalent(equivalent->m_from, equivalent->m_to);
+    ++equivalent;
+  }
 }
 
 static struct VirtualKeyMap {
@@ -54,11 +60,69 @@ static struct VirtualKeyMap {
   { '?',  SDLK_SLASH }
 };
 
+bool KeyboardScanner::AddEquivalent(const std::string & fromName, const std::string & toName)
+{
+  stringstream strm;
+  strm << " for equivalent mapping from " << fromName << " to " << toName << endl;
+
+  // find the "from" name
+  SDL_Keycode fromKeycode;
+  bool fromShiftSource;
+  if (!FindKey(fromName, fromKeycode, fromShiftSource)) {
+    cerr << "error: cannot find source key " << strm.str();
+    return false;
+  }
+
+  // find the "to" name
+  SDL_Keycode toKeycode;
+  bool toShiftSource;
+  if (!FindKey(toName, toKeycode, toShiftSource)) {
+    cerr << "error: cannot find destination key " << strm.str();
+    return false;
+  }
+
+  KeyRowColMap::iterator r = m_keys.find(toKeycode);
+  if (r == m_keys.end()) {
+    cerr << "error: no row/col found for destination key " << strm.str();
+    return false;
+  }
+
+  cout << "info: mapping " << fromName << "(" HEXFORMAT0x4(fromKeycode) << ") to " << r->second.m_row << "," << r->second.m_col << endl;
+  m_keys.insert(KeyRowColMap::value_type(fromKeycode, r->second));
+
+  return true;
+}
+
+bool KeyboardScanner::FindKey(const std::string & name, SDL_Keycode & keycode, bool & shifted) const
+{
+  // check for shifted "virtual" keys
+  if (name.length() == 1) {
+    for (int i = 0; i < sizeof(g_virtualKeys) / sizeof(g_virtualKeys[0]); ++i) {
+      if (g_virtualKeys[i].m_key == name[0]) {
+        const char * keyName = SDL_GetKeyName(g_virtualKeys[i].m_code);
+        keycode = g_virtualKeys[i].m_code;
+        shifted = true;
+        return true;
+      }
+    }
+  }
+
+  // convert our keycode to SDL_Keycode
+  keycode = SDL_GetKeyFromName(name.c_str());
+  if (keycode == SDLK_UNKNOWN) {
+    return false;
+  }
+
+  shifted = false;
+  return true;
+}
+
 void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCodeMap, bool shifted)
 {
   for (int row = 0; row < rowCount; ++row) {
     for (int col = 0; col < colCount; ++col) {
       const ScanCode * code = keyCodeMap++;
+      
       if (code->m_name == 0) {
         continue;
       }
@@ -79,30 +143,15 @@ void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCo
         }
       }
       else {
-        bool found = false;
-
-        // check for shifted "virtual" keys
-        if (strlen(code->m_name) == 1) {
-          for (int i = 0; i < sizeof(g_virtualKeys) / sizeof(g_virtualKeys[0]); ++i) {
-            if (g_virtualKeys[i].m_key == code->m_name[0]) {
-              const char * keyName = SDL_GetKeyName(g_virtualKeys[i].m_code);
-              m_keys.insert(KeyRowColMap::value_type(g_virtualKeys[i].m_code, KeyRowColInfo(row, col, true, shifted)));
-              //cout << "kb: mapped virtual '" << code->m_name << "' to name '" << keyName << "' = " << HEXFORMAT0x8(g_virtualKeys[i].m_code) << " + shift" << endl;
-              found = true;
-            }
-          }
+        SDL_Keycode keycode;
+        bool shiftSource;
+        if (FindKey(code->m_name, keycode, shiftSource)) {
+          //const char * keyName = SDL_GetKeyName(g_virtualKeys[i].m_code);
+          //cout << "kb: mapped virtual '" << code->m_name << "' to name '" << keyName << "' = " << HEXFORMAT0x8(g_virtualKeys[i].m_code) << " + shift" << endl;
+          m_keys.insert(KeyRowColMap::value_type(keycode, KeyRowColInfo(row, col, shiftSource, shifted)));
         }
-
-        if (!found) {
-          // convert our keycode to SDL_Keycode
-          SDL_Keycode keyCode = SDL_GetKeyFromName(code->m_name);
-          if (keyCode != SDLK_UNKNOWN) {
-            m_keys.insert(KeyRowColMap::value_type(keyCode, KeyRowColInfo(row, col, false, shifted)));
-            //cout << "kb: mapped '" << code->m_name << "' to " << HEXFORMAT0x8(keyCode) << endl;
-          }
-          else {
-            cerr << "error: unknown keycode name '" << code->m_name << "'" << endl;
-          }
+        else {
+          cerr << "error: unknown keycode name '" << code->m_name << "'" << endl;
         }
       }
     }

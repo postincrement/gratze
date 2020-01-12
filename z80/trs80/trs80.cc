@@ -51,33 +51,42 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
   { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 } 
 };
 
-
 static KeyboardScanner::ScanLayout g_trs80Keys = {
   8, 8,
   keys,
-  shiftedkeys
+  shiftedkeys,
+  {
+    { "Backspace", "Left" },
+    { 0, 0 }
+  }
 };
 
 
 /////////////////////////////////////////////////////////////
 
-TRS80Emulator::TRS80Emulator(EmulatorInfo * info)
+void TRS80Emulator::Instantiate()
+{  
+  VirtualScreen::AddType<TRS80Video>("trs80");
+}
+
+TRS80Emulator::TRS80Emulator(const EmulatorInfo * info)
   : Z80Emulator(info)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+}
+
+bool TRS80Emulator::Open(const Options & options)
+{
+  if (!Z80Emulator::Open(options))
+    return false;
+
   m_rtcEnabled = false;
   m_fdcEnabled = false;
 
   SetKeyboard(&m_keyboard);
   m_keyboard.Compile(g_trs80Keys);
-}
 
-void TRS80Emulator::Init()
-{  
-  VirtualScreen::AddType<TRS80Video>("trs80");
-}
-
-bool TRS80Emulator::Open(const Options &options)
-{
   m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
   m_fdcPending = 0;
@@ -95,7 +104,7 @@ bool TRS80Emulator::Open(const Options &options)
 
   cout << "info: RTC is " << (m_rtcEnabled ? "en" : "dis") << "abled" << endl; 
 
-  return Emulator::Open(options);
+  return true;
 }
 
 void TRS80Emulator::Reset(int addr)
@@ -110,7 +119,7 @@ bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font 
 {
   // basic font data already in memory
   
-  // set graphics
+  // set graphics from 0x80 to 0xbf
   uint8_t maskRight = (1 << (fontInfo.m_width / 2)) - 1;
   uint8_t maskLeft  = maskRight << (fontInfo.m_width / 2);
 
@@ -130,7 +139,7 @@ bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font 
     }
   }
 
-  // duplicate font data
+  // duplicate graphics data from 0xc0 to 0xff
   memcpy(&fontData[(128 + 64) * fontInfo.m_height], &fontData[128 * fontInfo.m_height], 64 * fontInfo.m_height);
   return true;
 }

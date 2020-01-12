@@ -22,14 +22,12 @@ using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-Emulator::Emulator(EmulatorInfo * info)
+Emulator::Emulator(const EmulatorInfo * info)
   : m_info(info)
 {
-  m_debugWriteMemory = true;
-  m_debugReadMemory = true;
 }
 
-void Emulator::Init()
+void Emulator::Instantiate()
 {  
 }
 
@@ -40,6 +38,13 @@ const EmulatorInfo & Emulator::GetInfo() const
 
 bool Emulator::Open(const Options & options)
 {
+  m_verbose = options.m_verbose;
+
+  m_debugWriteMemory = options.m_writeDebug;
+  m_debugReadMemory  = options.m_readDebug;
+  m_keyboardDebug    = options.m_keyboardDebug;
+  m_turbo            = options.m_turbo;
+
   // get the drives
   for (auto &r : options.m_driveFns) {
     std::string fn(r.second);
@@ -63,8 +68,9 @@ bool Emulator::Open(const Options & options)
   m_targetCPUClock_Hz = cpu->m_clockSpeed_MHz * 1000000.0;
   m_actualCPUClock_Hz = m_targetCPUClock_Hz;
 
-  m_debugWriteMemory = false; //options.m_writeDebug;
-  m_debugReadMemory  = false; //options.m_writeDebug;
+  if (m_verbose) {
+    cout << "debug: target CPU speed is " << m_targetCPUClock_Hz << endl;
+  }
 
   CompileConfigBlocks();
 
@@ -121,6 +127,9 @@ bool Emulator::Poll()
             Reset();
           }
           else if (m_keyboardDriver != nullptr) {
+            if (m_keyboardDebug) {
+              cerr << "debug: key down " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
+            }
             m_keyboardDriver->OnKeyDown(event.key.keysym);
           }
           else {
@@ -131,8 +140,12 @@ bool Emulator::Poll()
 
       case SDL_KEYUP:
         if (event.key.repeat == 0) {
-          if (m_keyboardDriver != nullptr)
+          if (m_keyboardDriver != nullptr) {
+            if (m_keyboardDebug) {
+              cerr << "debug: key up " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
+            }
             m_keyboardDriver->OnKeyUp(event.key.keysym);
+          }
           else {
             OnKeyUp(event.key.keysym);
           }
@@ -399,7 +412,7 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
   int height = (top * 2 * vdup + videoH) * j;
 
   // create main window 
-  mainWindow.Open(width, height);
+  mainWindow.Open(width * options.m_videoScale, height * options.m_videoScale);
 
   VirtualScreen * screen = VirtualScreen::Create(mainWindow, *this, options, *video);
   if (screen == nullptr) {
@@ -450,7 +463,6 @@ void Emulator::ChangeVideoColour()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-
 
 void Emulator::OnKeyDown(const SDL_Keysym &keysym)
 {
@@ -506,6 +518,10 @@ void Emulator::CompileConfigBlocks()
   m_readIOPortBlocks.clear();
   m_writeIOPortBlocks.clear();
 
+  if (m_verbose) {
+    cout << "debug: compiling config blocks" << endl;
+  }
+
   const Config::Block * block = m_info->m_blocks;
   for (;;) {
 
@@ -518,6 +534,9 @@ void Emulator::CompileConfigBlocks()
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: RAM block has end address" << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
+      }
+      if (m_verbose) {
+        cout << "debug: RAM block" << endl;
       }
       uint8_t * memory;
       {
@@ -547,6 +566,9 @@ void Emulator::CompileConfigBlocks()
 
     // add ROM
     else if (block->m_type == Config::Type::eROM) {
+      if (m_verbose) {
+        cout << "debug: ROM block" << endl;
+      }
       const Config::ROM & info = block->m_info.m_rom;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: ROM block has end address " << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;

@@ -58,10 +58,20 @@ class Our2650 : public CPU2650
     S2650Emulator & m_emulator;
 };
 
-S2650Emulator::S2650Emulator(EmulatorInfo * info)
+S2650Emulator::S2650Emulator(const EmulatorInfo * info)
   : Emulator(info)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+}
+
+bool S2650Emulator::Open(const Options & options)
+{
+  if (!Emulator::Open(options))
+    return false;
+
   m_cpu.reset(new Our2650(*this));
+  return true;
 }
 
 int S2650Emulator::GetMemorySize() const

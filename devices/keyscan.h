@@ -16,12 +16,19 @@ class KeyboardScanner : public VirtualKeyboard
     };
     struct ScanLayout 
     {
+      struct Equivalent
+      {
+        const char * m_from;
+        const char * m_to;
+      };
+
       int m_cols;
       int m_rows;
 
       const ScanCode * m_keyCodes;
       const ScanCode * m_shiftedKeyCodes;
-      const ScanCode * m_ctrlKeyCodes;
+
+      const Equivalent m_equivalents[];
     };
 
     struct KeyRowColInfo
@@ -49,6 +56,7 @@ class KeyboardScanner : public VirtualKeyboard
 
     void Compile(const ScanLayout & scanLayout);
     void Compile(int row, int cols, const ScanCode * keyCodes, bool shifted);
+    bool AddEquivalent(const std::string & fromName, const std::string & toName);
 
     void KeyAction(const SDL_Keysym & keysym, bool down);
     void ActivateKey(const KeyRowColInfo & rowCol, bool down);
@@ -57,6 +65,8 @@ class KeyboardScanner : public VirtualKeyboard
     virtual void OnKeyUp(const SDL_Keysym & keysym) override;
 
   public:
+    bool FindKey(const std::string & name, SDL_Keycode & keycode, bool & shifted) const;
+
     std::vector<uint8_t> m_kbData;
 
     int m_rows = -1;

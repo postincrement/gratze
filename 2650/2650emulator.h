@@ -8,7 +8,9 @@
 class S2650Emulator : public Emulator
 {
   public:
-    S2650Emulator(EmulatorInfo * info);
+    S2650Emulator(const EmulatorInfo * info);
+
+    virtual bool Open(const Options & options) override;
 
     // overrides from Emulator
     virtual bool Start(int addr = -1) override;

@@ -6,13 +6,18 @@
 
 using namespace std;
 
-Model1_Emulator::Model1_Emulator(EmulatorInfo * info)
+Model1_Emulator::Model1_Emulator(const EmulatorInfo * info)
   : TRS80Emulator(info)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
 }
 
 bool Model1_Emulator::Open(const Options & options)
 {
+  if (!TRS80Emulator::Open(options))
+    return false;
+
   m_withEI = options.m_withEI;
 
   cout << "info: expansion interface is " << (m_withEI ? "en" : "dis") << "abled" << endl; 
@@ -20,7 +25,7 @@ bool Model1_Emulator::Open(const Options & options)
   m_rtcEnabled = m_withEI;
   m_fdcEnabled = m_withEI;
 
-  return TRS80Emulator::Open(options);
+  return true;
 }
 
 void Model1_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)

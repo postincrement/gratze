@@ -8,9 +8,11 @@
 class ETI685 : public S2650Emulator
 {
   public:
-    void Init();
     ETI685();
 
+    void Instantiate() override;
+
+    virtual bool Open(const Options & options) override;
     virtual void Reset(int addr) override;
 
     virtual void SetKeyboardData(uint8_t data);

@@ -73,9 +73,9 @@ class TRS80Video : public SingleColourMemoryMappedVideo
 class TRS80Emulator : public Z80Emulator
 {
   public:
-    TRS80Emulator(EmulatorInfo * info);
+    TRS80Emulator(const EmulatorInfo * info);
 
-    void Init() override;
+    void Instantiate() override;
 
     // overrides from Emulator
     virtual bool Open(const Options & options) override;

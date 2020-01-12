@@ -135,9 +135,23 @@ FontChar Super80Video::GetCharAtPos(int x, int y)
 
 //////////////////////////////////////////////////////////////////////////////////
 
+void Super80_Emulator::Instantiate()
+{  
+  VirtualScreen::AddType<Super80Video>("super80");
+}
+
 Super80_Emulator::Super80_Emulator()
   : Z80Emulator(&g_emulatorInfo)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+}
+
+bool Super80_Emulator::Open(const Options & options)
+{
+  if (!Z80Emulator::Open(options))
+    return false;
+
   m_videoPage = 0;
   m_videoStartAddr = 0;
   m_videoEndAddr   = SUPER80_VIDEO_CHARS - 1;
@@ -160,11 +174,8 @@ Super80_Emulator::Super80_Emulator()
 
   // set read handler for keyboard
   m_pio.SetReadHandler(1, std::bind(&Super80_Emulator::OnReadKeyboard, this));  
-}
 
-void Super80_Emulator::Init()
-{  
-  VirtualScreen::AddType<Super80Video>("super80");
+  return true;
 }
 
 void Super80_Emulator::Reset(int addr)

@@ -46,7 +46,7 @@ static EmulatorInfo g_emulatorInfo =
   }
 };
 
-void ETI685::Init()
+void ETI685::Instantiate()
 {  
   VirtualScreen::AddType<DG640>("dg640");
 }
@@ -54,13 +54,22 @@ void ETI685::Init()
 ETI685::ETI685()
   : S2650Emulator(&g_emulatorInfo)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+}
+
+bool ETI685::Open(const Options & options)
+{
+  if (!S2650Emulator::Open(options))
+    return false;
+
   SetKeyboard(&m_keyboard);
 
   // set keyboard handler
   using namespace std::placeholders;
   m_keyboard.SetHandler(true, std::bind(&ETI685::SetKeyboardData, this, _1));
 
-
+  return true;
 }
 
 void ETI685::Reset(int addr)

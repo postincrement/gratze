@@ -183,8 +183,16 @@ static KeyboardScanner::ScanLayout g_microbeeKeys = {
 Microbee_Emulator::Microbee_Emulator()
   : Z80Emulator(&g_emulatorInfo)
 {
-  SetKeyboard(&m_keyboard);
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+}
 
+bool Microbee_Emulator::Open(const Options & options)
+{
+  if (!Z80Emulator::Open(options))
+    return false;
+
+  SetKeyboard(&m_keyboard);
   m_keyboard.Compile(g_microbeeKeys);
 
   using namespace std::placeholders;
@@ -196,7 +204,7 @@ Microbee_Emulator::Microbee_Emulator()
   //m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
 }
 
-void Microbee_Emulator::Init()
+void Microbee_Emulator::Instantiate()
 {  
   VirtualScreen::AddType<DG640>("dg640");
 }

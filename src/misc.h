@@ -1,9 +1,10 @@
 #ifndef MISC_H_
 #define MISC_H_
 
+//////////////////////////////////////////////////////////////////////////////////////////
+
 #include <iostream>
 #include <iomanip>
-
 
 #define   HEXFORMAT2(val) std::hex << std::setw(2) << std::setfill('0') << ((unsigned int)(val) & 0xff) << std::dec
 #define   HEXFORMAT4(val) std::hex << std::setw(4) << std::setfill('0') << ((unsigned int)(val) & 0xffff) << std::dec
@@ -15,6 +16,8 @@
 
 #define   FIXEDFORMAT(prec, val)      std::fixed << std::setprecision(prec) << (val)
 #define   FIXEDFORMAT3(val)           FIXEDFORMAT(3,val)
+
+//////////////////////////////////////////////////////////////////////////////////////////
 
 #include <sstream>
 #include <array>

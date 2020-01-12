@@ -51,9 +51,23 @@ static EmulatorInfo g_emulatorInfo =
   }
 };
 
+void DG680_Emulator::Instantiate()
+{  
+  VirtualScreen::AddType<DG640>("dg640");
+}
+
 DG680_Emulator::DG680_Emulator()
   : Z80Emulator(&g_emulatorInfo)
 {
+  // don't do anything in constructor as this is created to instantiate devices using Instantiate
+  // do it Open instead
+}
+
+bool DG680_Emulator::Open(const Options & options)
+{
+  if (!Z80Emulator::Open(options))
+    return false;
+
   SetKeyboard(&m_keyboard);
 
   using namespace std::placeholders;
@@ -61,11 +75,8 @@ DG680_Emulator::DG680_Emulator()
 
   using namespace std::placeholders;
   m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
-}
 
-void DG680_Emulator::Init()
-{  
-  VirtualScreen::AddType<DG640>("dg640");
+  return true;
 }
 
 void DG680_Emulator::Reset(int addr)

@@ -4,6 +4,8 @@
 #include <map>
 #include <string>
 
+//#include "src/cereal.h"
+
 struct Options
 {
   // override default type
@@ -30,6 +32,18 @@ struct Options
 
   // set breakpoint (not used yet)
   int m_breakpoint = -1;
+
+  // scale video
+  int m_videoScale = 1;
+
+  // level of vebosity
+  unsigned m_verbose = 0;
+
+  // true if to display keyboard debugging
+  bool m_keyboardDebug = false;
+
+  // do not limit CPU speed
+  bool m_turbo = false;
 };
 
 #endif // OPTIONS_H_
