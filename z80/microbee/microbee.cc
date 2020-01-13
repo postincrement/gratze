@@ -56,14 +56,17 @@ static EmulatorInfo g_emulatorInfo =
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-class Motorola6845 : public VirtualDevice
+class Synertek6545 : public VirtualDevice
 {
   public:
-    const int m_regCount = 17;
+    const int m_regCount = 19;
 
-    Motorola6845();
+    Synertek6545();
 
     virtual void Reset() override;
+
+    virtual uint8_t GetStatus() const;
+    virtual void SetStatus(uint8_t status);
 
     virtual uint8_t Read(uint8_t reg);
     virtual void Write(uint8_t reg, uint8_t data);
@@ -71,48 +74,63 @@ class Motorola6845 : public VirtualDevice
     void SetLightPenHandler(std::function<uint16_t ()> handler);
 
   protected:
+    uint8_t m_status = 0;
     uint8_t m_regSel = 0;
     std::vector<uint8_t> m_regs;
     std::function<uint16_t ()> m_lightPenHandler = nullptr;
 };
 
-Motorola6845::Motorola6845()
+Synertek6545::Synertek6545()
 {
   m_regs.resize(m_regCount);
 }
 
-void Motorola6845::Reset()
+void Synertek6545::Reset()
 {
   m_regSel = 0;
 }
 
-void Motorola6845::SetLightPenHandler(std::function<uint16_t ()> handler)
+void Synertek6545::SetLightPenHandler(std::function<uint16_t ()> handler)
 {
   m_lightPenHandler = handler;
 }
 
-uint8_t Motorola6845::Read(uint8_t reg)
+uint8_t Synertek6545::Read(uint8_t reg)
 {
   if (reg == 0)
-    return 0x80;
+    return m_status;
 
   if (m_regSel >= m_regCount)
     return 0;
 
   // scan keyboard
+  uint8_t data = 0x00;
   if ((m_regSel == 16) || (m_regSel == 17)) {
     if (m_lightPenHandler) {
       uint16_t addr = m_lightPenHandler();
       m_regs[16] = addr >> 8;
       m_regs[17] = addr & 0xff;
     }
+    m_status &= !0x40; // set lpen register empty
+    data = m_regs[m_regSel];
+    m_regs[m_regSel] = 0x00;
     //cout << "6845: lightpen address (" << ((m_regSel == 16) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[16 << 8]) + m_regs[17]) << endl;
   } 
 
-  return m_regs[m_regSel];
+  return data;
 }
 
-void Motorola6845::Write(uint8_t reg, uint8_t data)
+uint8_t Synertek6545::GetStatus() const
+{
+  return m_status;
+}
+
+void Synertek6545::SetStatus(uint8_t v)
+{
+  m_status = v;
+}
+
+void Synertek6545::Write(uint8_t reg, uint8_t data)
 {
   if (reg == 0) {
     m_regSel = data;
@@ -143,33 +161,52 @@ void Motorola6845::Write(uint8_t reg, uint8_t data)
   //cerr << "6845: write to reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
 }
 
-static Motorola6845 m_crtc;
+static Synertek6545 m_crtc;
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 
+  /*
+             p9  000 -----@ ........ G
+            p10  001 -----H ........ O
+    MA9     p11  010 -----P ........ W 
+    MA8 --> p12  011 -----X ........ DEL
+    MA7      p7  100 -----0 ........ 7
+             p6  101 -----8 ........ /
+             p5  110 ---ESC ........ SP
+             p4  111 --CTRL ........ SHFT
+                            |||||||| 
+             p4  000 -------+|||||||  
+             p3  001 --------+||||||
+    MA6      p2  010 ---------+|||||    
+    MA5 <--  p1  011 ----------+||||
+    MA4     p15  100 -----------+|||
+            p14  101 ------------+||
+            p13  110 -------------+|
+            p12  111 --------------+
 
+  */
 
 const KeyboardScanner::ScanCode keys[8*8] = {
-  { "@" }, { "H" }, { "P" },  {  "X" },      { "1"},  {     "9" } ,  {         " " } , {     "REP" } ,
-  { "A" }, { "I" }, { "Q" },  {  "Y" },      { "2"},  {     ":" } ,  { "Backspace" } , {   "Shift" } ,
-  { "B" }, { "J" }, { "R" },  {  "Z" },      { "3"},  {     ";" } ,  {       "Tab" } , {        0  } ,
-  { "C" }, { "K" }, { "S" },  {  "[" },      { "4"},  {     "," } ,  {        "LF" } , { "Control" } ,
-  { "D" }, { "L" }, { "T" },  { "\\" },      { "5"},  { "Break" } ,  {    "Return" } , {        0  } ,
-  { "E" }, { "M" }, { "U" },  {  "]" },      { "6"},  {     "." } ,  {    "Escape" } , {        0  } ,
-  { "F" }, { "N" }, { "V" },  {  "^" },      { "7"},  {     "/" } ,  {    "Delete" } , {        0  } ,
-  { "G" }, { "O" }, { "W" },  {  "Delete" }, { "8"},  {     "0" } ,  {    "Insert" } , {        0  } 
+  { "@" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
+  { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
+  { "P" },      { "Q" },      { "R" },      { "S" },    { "T"},     { "U" } ,   { "V" } ,     { "W" } ,
+  { "X" },      { "Y" },      { "Z" },      { "{" },    { "\\" },   { "}" } ,   { "^" } ,     { "Delete" } ,
+  { "0" },      { "1" },      { "2" },      { "3" },    { "4"},     { "5" } ,   { "6" } ,     { "7" } ,
+  { "8" },      { "9" },      { ":" },      { ";" },    { ","},     { "-" } ,   { "." } ,     { "/" } ,
+  { "Return" }, { "Clear" },  { "Break" },  { "Up" },   { "Down"},  { "Left" }, { "Right" },  { " " } ,
+  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 } 
 };
 
 const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
-  { "@" }, { "H" }, { "P" },  {  "X" },      { "1"},  {     "9" } ,  {         " " } , {     "REP" } ,
-  { "A" }, { "I" }, { "Q" },  {  "Y" },      { "2"},  {     ":" } ,  { "Backspace" } , {   "Shift" } ,
-  { "B" }, { "J" }, { "R" },  {  "Z" },      { "3"},  {     ";" } ,  {       "Tab" } , {        0  } ,
-  { "C" }, { "K" }, { "S" },  {  "[" },      { "4"},  {     "," } ,  {        "LF" } , { "Control" } ,
-  { "D" }, { "L" }, { "T" },  { "\\" },      { "5"},  { "Break" } ,  {    "Return" } , {        0  } ,
-  { "E" }, { "M" }, { "U" },  {  "]" },      { "6"},  {     "." } ,  {    "Escape" } , {        0  } ,
-  { "F" }, { "N" }, { "V" },  {  "^" },      { "7"},  {     "/" } ,  {    "Delete" } , {        0  } ,
-  { "G" }, { "O" }, { "W" },  {  "Delete" }, { "8"},  {     "0" } ,  {    "Insert" } , {        0  } 
+  { "@" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
+  { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
+  { "P" },      { "Q" },      { "R" },      { "S" },    { "T"},     { "U" } ,   { "V" } ,     { "W" } ,
+  { "X" },      { "Y" },      { "Z" },      { "{" },    { "\\" },   { "}" } ,   { "^" } ,     { "Delete" } ,
+  { "0" },      { "1" },      { "2" },      { "3" },    { "4"},     { "5" } ,   { "6" } ,     { "7" } ,
+  { "8" },      { "9" },      { ":" },      { ";" },    { ","},     { "-" } ,   { "." } ,     { "/" } ,
+  { "Return" }, { "Clear" },  { "Break" },  { "Up" },   { "Down"},  { "Left" }, { "Right" },  { " " } ,
+  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 } 
 };
 
 
@@ -199,9 +236,12 @@ bool Microbee_Emulator::Open(const Options & options)
   m_pio.SetInterruptHandler(std::bind(&Microbee_Emulator::OnPIOInterrupt, this, _1));
 
   m_crtc.SetLightPenHandler(std::bind(&Microbee_Emulator::OnKeyboardScan, this));
+  m_crtc.SetStatus(0x20); // always say we are in blanking
 
   //using namespace std::placeholders;
   //m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
+
+  return true;
 }
 
 void Microbee_Emulator::Instantiate()
@@ -226,16 +266,20 @@ static int FindBitSet(uint8_t val)
   return pos;
 }
 
+  // XX -- --98 7654 ----
+
+
 uint16_t Microbee_Emulator::OnKeyboardScan()
 {
-  uint16_t newKeyboardCode = 0xffff;
+  uint16_t newKeyboardCode = 0x0400;
 
   uint8_t mask = 1;
   bool found = false;
   for (int i = 0; i < 8; ++i) {
     uint8_t out = m_keyboard.Read(i);
     if (out != 0x00) {
-      newKeyboardCode = (i << 7) + (FindBitSet(out) << 4);
+      newKeyboardCode = (i << 4) + (FindBitSet(out) << 7);
+      m_crtc.SetStatus(m_crtc.GetStatus() | 0x40); // set lpen register full
       break;
     }
     mask = mask << 1;  
