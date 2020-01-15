@@ -213,7 +213,7 @@ void KeyboardScanner::KeyAction(const SDL_Keysym & keysym, bool down)
         m_shiftStatus &= ~4;
       }
       else {
-        m_shiftStatus &= !1;
+        m_shiftStatus &= ~1;
       }
       //cerr << "kb: shift key " << (down ? "down" : "up") << endl;
       ActivateKey(m_shiftKey, down);
@@ -225,8 +225,8 @@ void KeyboardScanner::KeyAction(const SDL_Keysym & keysym, bool down)
         m_shiftStatus &= ~4;
       }
       else {
-        m_shiftStatus &= !2;
-        m_kbData[7] &= !1;
+        m_shiftStatus &= ~2;
+        m_kbData[7] &= ~1;
       }
       ActivateKey(m_shiftKey, down);
       return;

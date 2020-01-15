@@ -68,7 +68,7 @@ void Intel8255::WriteControl(uint8_t data)
     if (data & 1)
       m_ports[2].m_data |= (1 << bit);
     else
-      m_ports[2].m_data &= !(1 << bit);
+      m_ports[2].m_data &= ~(1 << bit);
   }
   else {
   }

@@ -22,7 +22,8 @@ class Microbee_Emulator : public Z80Emulator
 
     void OnPIOInterrupt(uint8_t vector);
 
-    uint16_t OnKeyboardScan();
+    bool OnKeyboardScan(bool doUpdate, uint16_t & addr);
+    bool ScanKeyboard(uint16_t & addr);
 
   protected:  
     KeyboardScanner m_keyboard;

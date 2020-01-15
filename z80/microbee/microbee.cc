@@ -59,7 +59,14 @@ static EmulatorInfo g_emulatorInfo =
 class Synertek6545 : public VirtualDevice
 {
   public:
-    const int m_regCount = 19;
+    const int m_maxReg = 19;    // don't include register 31
+
+    enum StatusBits
+    {
+      eVBlanking   = 0x20,
+      eLpenFull    = 0x40,
+      eUpdateReady = 0x80
+    };
 
     Synertek6545();
 
@@ -71,51 +78,94 @@ class Synertek6545 : public VirtualDevice
     virtual uint8_t Read(uint8_t reg);
     virtual void Write(uint8_t reg, uint8_t data);
 
-    void SetLightPenHandler(std::function<uint16_t ()> handler);
+    void SetUpdateHandler(std::function<bool (bool, uint16_t &)> handler);
+    void UpdateStatus();
+
+    void Reg31();
 
   protected:
+    int m_state = 0;
     uint8_t m_status = 0;
     uint8_t m_regSel = 0;
+    bool m_writePending;
     std::vector<uint8_t> m_regs;
-    std::function<uint16_t ()> m_lightPenHandler = nullptr;
+    std::function<bool (bool, uint16_t &)> m_updateHandler = nullptr;
 };
 
 Synertek6545::Synertek6545()
 {
-  m_regs.resize(m_regCount);
+  m_regs.resize(m_maxReg+1);
 }
 
 void Synertek6545::Reset()
 {
+  cout << "6545: reset" << endl;
   m_regSel = 0;
+  m_state  = 0;
+  m_status = eUpdateReady | eVBlanking;
+  m_writePending = false;
 }
 
-void Synertek6545::SetLightPenHandler(std::function<uint16_t ()> handler)
+void Synertek6545::SetUpdateHandler(std::function<bool (bool, uint16_t &)> handler)
 {
-  m_lightPenHandler = handler;
+  m_updateHandler = handler;
+}
+
+void Synertek6545::Reg31()
+{
+  m_writePending = true;
+  m_status &= ~eUpdateReady;
+}
+
+void Synertek6545::UpdateStatus()
+{
+  if (m_state++ >= 20) {
+    if (m_updateHandler) {
+      uint16_t addr = (m_regs[18] << 8) + m_regs[19];
+      if (m_updateHandler(m_writePending, addr)) {
+        //cout << "6545: lpen returned " << HEXFORMAT0x4(addr) << endl;
+        m_regs[16] = addr >> 8;
+        m_regs[17] = addr & 0xff;
+        m_status |= eLpenFull;
+      }
+      m_writePending = false;
+      m_status |= eUpdateReady;
+    }
+    m_state = 0;
+  }
 }
 
 uint8_t Synertek6545::Read(uint8_t reg)
 {
-  if (reg == 0)
+  if (reg == 0) {
+    UpdateStatus();
+    //if (m_status != 0)
+    //  cout << "6545: read from status " << HEXFORMAT0x2(m_status) << endl;
     return m_status;
+  }
 
-  if (m_regSel >= m_regCount)
-    return 0;
+  // update
+  if (m_regSel == 31) {
+    //cout << "6545: read from 31" << endl;
+    Reg31();
+    return 0x00;
+  }  
 
-  // scan keyboard
   uint8_t data = 0x00;
+
+  // lightpen
   if ((m_regSel == 16) || (m_regSel == 17)) {
-    if (m_lightPenHandler) {
-      uint16_t addr = m_lightPenHandler();
-      m_regs[16] = addr >> 8;
-      m_regs[17] = addr & 0xff;
-    }
-    m_status &= !0x40; // set lpen register empty
+    UpdateStatus();
     data = m_regs[m_regSel];
-    m_regs[m_regSel] = 0x00;
-    //cout << "6845: lightpen address (" << ((m_regSel == 16) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[16 << 8]) + m_regs[17]) << endl;
+    m_status &= ~eLpenFull;
+    uint16_t addr = (m_regs[16] << 8) + m_regs[17];
+    //if (addr != 0)
+      //cout << "6545: read lightpen address (" << ((m_regSel == 16) ? "H" : "L") << ") is " << HEXFORMAT0x4(addr) << endl;
   } 
+  else if (m_regSel > m_maxReg) {
+    //cout << "6545: read from status " << HEXFORMAT0x2(m_status) << endl;
+    data = 0x00;
+  }
 
   return data;
 }
@@ -127,38 +177,58 @@ uint8_t Synertek6545::GetStatus() const
 
 void Synertek6545::SetStatus(uint8_t v)
 {
-  m_status = v;
+  //m_status = v;
 }
 
 void Synertek6545::Write(uint8_t reg, uint8_t data)
 {
   if (reg == 0) {
+    //cerr << "6545: write to addr reg - " << HEXFORMAT0x2(data) << endl;
     m_regSel = data;
     return;
   }
 
-  if (m_regSel >= m_regCount)
+  //cerr << "6545: write to data reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
+
+  // update
+  if (m_regSel == 31) {
+    //cout << "6545: write to 31" </< endl;
+    Reg31();
     return;
+  }  
+
+  if (m_regSel > m_maxReg) {
+    //cerr << "6545: write to bad reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
+    return;
+  }
 
   m_regs[m_regSel] = data;
 
   switch (m_regSel) {
+    case 10:
+    case 11:
+      //cout << "6545: write cursor (" << ((m_regSel == 10) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[10] << 8) + m_regs[11]) << endl;
+      break;
     case 12:
     case 13:
-      //cout << "6845: start address (" << ((m_regSel == 12) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[12 << 8]) + m_regs[13]) << endl;
+      //cout << "6545: write start address (" << ((m_regSel == 12) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[12] << 8) + m_regs[13]) << endl;
       break;
     case 14:
     case 15:
-      //cout << "6845: cursor address (" << ((m_regSel == 14) ? "H" : "L") << ") is " << HEXFORMAT0x4((m_regs[14 << 8]) + m_regs[15]) << endl;
+      //cout << "6545: write cursor address (" << ((m_regSel == 14) ? "H" : "L") << ") is " << HEXFORMAT0x4((m_regs[14] << 8) + m_regs[15]) << endl;
       break;
     case 16:
     case 17:
-      //cout << "6845: lightpen address (" << ((m_regSel == 16) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[16 << 8]) + m_regs[17]) << endl;
+      //cout << "6545: write lightpen address (" << ((m_regSel == 16) ? "H" : "L") << ") is " << HEXFORMAT0x4((m_regs[16] << 8) + m_regs[17]) << endl;
+      break;
+    case 18:
+    case 19:
+      //cout << "6545: write update address (" << ((m_regSel == 18) ? "H" : "L") << ") " << HEXFORMAT0x2(data) << " gives " << HEXFORMAT0x4((m_regs[18] << 8) + m_regs[19]) << endl;
       break;
     default:  
+      //cerr << "6545: write to reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
       break;
   }
-  //cerr << "6845: write to reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
 }
 
 static Synertek6545 m_crtc;
@@ -188,25 +258,25 @@ static Synertek6545 m_crtc;
   */
 
 const KeyboardScanner::ScanCode keys[8*8] = {
-  { "@" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
-  { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
-  { "P" },      { "Q" },      { "R" },      { "S" },    { "T"},     { "U" } ,   { "V" } ,     { "W" } ,
-  { "X" },      { "Y" },      { "Z" },      { "{" },    { "\\" },   { "}" } ,   { "^" } ,     { "Delete" } ,
-  { "0" },      { "1" },      { "2" },      { "3" },    { "4"},     { "5" } ,   { "6" } ,     { "7" } ,
-  { "8" },      { "9" },      { ":" },      { ";" },    { ","},     { "-" } ,   { "." } ,     { "/" } ,
-  { "Return" }, { "Clear" },  { "Break" },  { "Up" },   { "Down"},  { "Left" }, { "Right" },  { " " } ,
-  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 } 
+  { "@" },      { "a" },          { "b" },    { "c" },    { "d"},       { "e" } ,       { "f" } ,     { "g" } ,
+  { "h" },      { "i" },          { "j" },    { "k" },    { "l"},       { "m" } ,       { "n" } ,     { "o" } ,
+  { "p" },      { "q" },          { "r" },    { "s" },    { "t"},       { "u" } ,       { "v" } ,     { "w" } ,
+  { "x" },      { "y" },          { "z" },    { "[" },    { "\\" },     { "]" } ,       { "^" } ,     { "Delete" } ,
+  { "0" },      { "1" },          { "2" },    { "3" },    { "4"},       { "5" } ,       { "6" } ,     { "7" } ,
+  { "8" },      { "9" },          { ":" },    { ";" },    { ","},       { "-" } ,       { "." } ,     { "/" } ,
+  { "Escape" }, { "Backspace" },  { "Tab" },  { "LF" },   { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
+  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" } 
 };
 
 const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
-  { "@" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
-  { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
-  { "P" },      { "Q" },      { "R" },      { "S" },    { "T"},     { "U" } ,   { "V" } ,     { "W" } ,
-  { "X" },      { "Y" },      { "Z" },      { "{" },    { "\\" },   { "}" } ,   { "^" } ,     { "Delete" } ,
-  { "0" },      { "1" },      { "2" },      { "3" },    { "4"},     { "5" } ,   { "6" } ,     { "7" } ,
-  { "8" },      { "9" },      { ":" },      { ";" },    { ","},     { "-" } ,   { "." } ,     { "/" } ,
-  { "Return" }, { "Clear" },  { "Break" },  { "Up" },   { "Down"},  { "Left" }, { "Right" },  { " " } ,
-  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 } 
+  { "@" },      { "A" },          { "B" },    { "C" },    { "D"},       { "E" } ,       { "F" } ,     { "G" } ,
+  { "H" },      { "I" },          { "J" },    { "K" },    { "L"},       { "M" } ,       { "N" } ,     { "O" } ,
+  { "P" },      { "Q" },          { "R" },    { "S" },    { "T"},       { "U" } ,       { "V" } ,     { "W" } ,
+  { "X" },      { "Y" },          { "Z" },    { "{" },    { "|" },      { "}" } ,       { "~" } ,     { "Delete" } ,
+  { 0   },      { "!" },          { "\"" },   { "#" },    { "$"},       { "%" } ,       { "&" } ,     { "'" } ,
+  { "(" },      { ")" },          { "*" },    { "+" },    { ","},       { "=" } ,       { "." } ,     { "?" } ,
+  { "Escape" }, { "Backspace" },  { "Tab" },  { "LF" },   { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
+  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" } 
 };
 
 
@@ -235,8 +305,7 @@ bool Microbee_Emulator::Open(const Options & options)
   using namespace std::placeholders;
   m_pio.SetInterruptHandler(std::bind(&Microbee_Emulator::OnPIOInterrupt, this, _1));
 
-  m_crtc.SetLightPenHandler(std::bind(&Microbee_Emulator::OnKeyboardScan, this));
-  m_crtc.SetStatus(0x20); // always say we are in blanking
+  m_crtc.SetUpdateHandler(std::bind(&Microbee_Emulator::OnKeyboardScan, this, _1, _2));
 
   //using namespace std::placeholders;
   //m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
@@ -254,43 +323,72 @@ void Microbee_Emulator::Reset(int addr)
   Z80Emulator::Reset(addr);
   m_pio.Reset();
   m_crtc.Reset();
+  //m_crtc.SetStatus(Synertek6545::eVBlanking); // always say we are in blanking
 }
 
 static int FindBitSet(uint8_t val)
 {
   int pos = 0;
-  while ((pos < 8) && !(val & 1)) {
+  while ((pos < 8) && ~(val & 1)) {
     ++pos;
     val = val >> 1;
   }
   return pos;
 }
 
-  // XX -- --98 7654 ----
+  // XX -- ---rr rccc ----
 
 
-uint16_t Microbee_Emulator::OnKeyboardScan()
+static std::string GetRowCol(uint16_t addr) 
 {
-  uint16_t newKeyboardCode = 0x0400;
+  int row = (addr >> 7) & 0x7;
+  int col = (addr >> 4) & 0x7;
 
+  std::stringstream strm;
+  strm << "addr " << HEXFORMAT0x4(addr) << " = col " << col << ", row " << row;
+  return strm.str();
+}  
+
+bool Microbee_Emulator::ScanKeyboard(uint16_t & addr)
+{
   uint8_t mask = 1;
   bool found = false;
-  for (int i = 0; i < 8; ++i) {
-    uint8_t out = m_keyboard.Read(i);
+  for (int row = 0; row < 8; row++) {
+    uint8_t out = m_keyboard.Read(1 << row);
     if (out != 0x00) {
-      newKeyboardCode = (i << 4) + (FindBitSet(out) << 7);
-      m_crtc.SetStatus(m_crtc.GetStatus() | 0x40); // set lpen register full
-      break;
+      addr = (row << 7) + (FindBitSet(out) << 4);
+      //cout << "mbee: scan row " << (1 << row) << " returned " << HEXFORMAT0x2(out) << " -> " << GetRowCol(addr) << endl;;
+      return true;
     }
     mask = mask << 1;  
   }
 
-  if (m_prevKeyboardCode != newKeyboardCode) {
-    cout << "microbee: new keyboard code " << HEXFORMAT0x4(newKeyboardCode) << endl;
-    m_prevKeyboardCode = newKeyboardCode;
+  return false;
+}
+
+bool Microbee_Emulator::OnKeyboardScan(bool doUpdate, uint16_t & addr)
+{
+  if (doUpdate) {
+    //cout << "mbee: checking keyboard scan code " << GetRowCol(addr) << endl;
+
+    int row = (addr >> 7) & 0x7;
+    int col = (addr >> 4) & 0x7;
+
+    uint8_t out = m_keyboard.Read(1 << row);
+    if ((out & (1 << col)) != 0) {
+      //cout << "mbee: update register matched" << endl;
+      return true;
+    }
+    //cout << "mbee: no match on update register" << endl;
+    return false;
   }
 
-  return newKeyboardCode;
+  if (ScanKeyboard(addr)) {
+    //cout << "microbee: new keyboard code " << GetRowCol(addr) << endl;
+    return true;
+  }
+
+  return false;
 }
 
 void Microbee_Emulator::OnPIOInterrupt(uint8_t vector)
