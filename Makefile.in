@@ -104,6 +104,7 @@ SRCS_CC = src/main.cc \
 	devices/keypar.cc \
 	devices/z80pio.cc \
 	devices/intel8255.cc \
+	devices/synertek6545.cc \
 	video/virtual_screen.cc \
 	video/font.cc \
 	video/dg640.cc \

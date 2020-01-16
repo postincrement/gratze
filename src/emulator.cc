@@ -853,7 +853,7 @@ void Emulator::MemoryDump() const
   uint16_t addr;
   std::vector<uint8_t> dump; 
   dump.resize(GetMemorySize());
-  memset(&dump[0], 0, dump.size());
+  VECTOR_ZERO(dump);
   
   for (auto & r : m_readMemoryBlocks) {
     if (r.m_memory != nullptr) {

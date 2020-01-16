@@ -81,9 +81,13 @@ bool PixelFont::Open(SDL_Renderer * renderer)
 void PixelFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
   SDL_Rect srcRect = { 0, ch * GetHeight(), GetWidth(), GetHeight() };
-  SDL_SetTextureColorMod(m_texture, 255, 255, 255);
+  
+  SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);
+  SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b);
   SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
   SDL_RenderFillRect(renderer, &dstRect);
+
+  SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
   SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b);
   SDL_RenderCopy(renderer, m_texture, &srcRect, &dstRect);
 }

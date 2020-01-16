@@ -99,7 +99,8 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
 static KeyboardScanner::ScanLayout g_super80Keys = {
   8, 8,
   keys,
-  shiftedkeys
+  shiftedkeys,
+  { 0, 0 }
 };
 
 

@@ -17,6 +17,13 @@
 #define   FIXEDFORMAT(prec, val)      std::fixed << std::setprecision(prec) << (val)
 #define   FIXEDFORMAT3(val)           FIXEDFORMAT(3,val)
 
+template<class Type>
+inline void VECTOR_FILL(Type & v, const typename Type::value_type & val) { v.assign(v.size(), val); }
+
+template<class Type>
+inline void VECTOR_ZERO(Type & v) { VECTOR_FILL<Type>(v, 0); }
+
+
 //////////////////////////////////////////////////////////////////////////////////////////
 
 #include <sstream>

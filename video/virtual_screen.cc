@@ -45,7 +45,7 @@ void TextWindow::SetColScale(int scale)
   m_colScale = scale;
 }
 
-void TextWindow::RenderCharAtPos(int x, int y)
+void TextWindow::RenderCharAtPos(int x, int y, bool withCursor)
 { 
   if (m_font) {
     SDL_Rect dstRect;
@@ -58,11 +58,17 @@ void TextWindow::RenderCharAtPos(int x, int y)
     SDL_Colour fg, bg;
     GetColourAtPos(x, y, fg, bg);
 
-    SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale, m_vscale);    
-    m_font->RenderChar(GetCharAtPos(x, y), m_mainWindow.GetRenderer(), dstRect, fg, bg);
+    SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale, m_vscale);
+
+    RenderChar(GetCharAtPos(x, y), withCursor, m_mainWindow.GetRenderer(), dstRect, fg, bg);
 
     Update(true);
   }
+}
+
+void TextWindow::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
+{
+  m_font->RenderChar(ch, renderer, dstRect, fg, bg);
 }
 
 void TextWindow::Update(bool hasChanged)
@@ -90,8 +96,33 @@ void TextWindow::RefreshScreen()
 {
   for (int y = 0; y < m_rows; ++y)
     for (int x = 0; x < m_cols / m_colScale; x++)
-      RenderCharAtPos(x, y);
+      RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
 }
+
+void TextWindow::EnableCursor(bool enable)
+{
+  if (enable == m_cursorEnabled)
+    return;
+
+  m_cursorEnabled = enable;
+  RenderCharAtPos(m_cursorX, m_cursorY, m_cursorEnabled);
+}
+
+void TextWindow::SetCursorPos(int x, int y)
+{ 
+  if ((x == m_cursorX) && (y == m_cursorY))
+    return;
+
+  if (m_cursorEnabled)
+    RenderCharAtPos(m_cursorX, m_cursorY, false);
+
+  m_cursorX = x;
+  m_cursorY = y;
+  
+  if (m_cursorEnabled)
+    RenderCharAtPos(m_cursorX, m_cursorY, true);
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -139,7 +170,7 @@ void VirtualScreen::RenderCharAtAddress(int addr)
 {
   int x, y;
   if (MapAddressToPos(x, y, addr))
-    RenderCharAtPos(x, y);
+    RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
 }
 
 VirtualScreen::~VirtualScreen()

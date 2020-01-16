@@ -27,7 +27,7 @@ void KeyboardScanner::Compile(const ScanLayout & scanLayout)
   Compile(m_rows, m_cols, scanLayout.m_shiftedKeyCodes, true);
 
   const ScanLayout::Equivalent * equivalent = scanLayout.m_equivalents;
-  while ((equivalent != nullptr) && (equivalent->m_from == nullptr)) {
+  while ((equivalent != 0) && (equivalent->m_from != nullptr)) {
     AddEquivalent(equivalent->m_from, equivalent->m_to);
     ++equivalent;
   }
@@ -160,7 +160,7 @@ void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCo
 
 bool KeyboardScanner::Open()
 {
-  memset(&m_kbData[0], 0, m_kbData.size());
+  VECTOR_ZERO(m_kbData);
   return true;
 }
 
@@ -292,7 +292,7 @@ void KeyboardScanner::KeyAction(const SDL_Keysym & keysym, bool down)
     // activate keys that need to be shifted
     else if (rowCol.m_shiftOut) {
       //cerr << "kb: virtual shift key down" << endl;
-      memset(&m_kbData[0], 0x00, sizeof(m_kbData));
+      VECTOR_ZERO(m_kbData);
       ActivateKey(m_shiftKey, true);
       m_shiftStatus = 4;
     }
@@ -300,7 +300,7 @@ void KeyboardScanner::KeyAction(const SDL_Keysym & keysym, bool down)
     // acivate keys that need to be unshifted
     else {
       //cerr << "kb: virtual shift key up" << endl;
-      memset(&m_kbData[0], 0x00, sizeof(m_kbData));
+      VECTOR_ZERO(m_kbData);
       ActivateKey(m_shiftKey, false);
       m_shiftStatus = 0;
     }

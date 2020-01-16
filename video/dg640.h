@@ -40,7 +40,6 @@ class DG640 : public SingleColourMemoryMappedVideo
     static bool CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
     FontChar GetCharAtAddress(int addr) const override;
-
 };
 
 

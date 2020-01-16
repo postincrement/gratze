@@ -6,10 +6,10 @@
 
 #include "src/misc.h"
 #include "z80/microbee/microbee.h"
-#include "video/dg640.h"
 #include "devices/z80pio.h"
 #include "devices/keyscan.h"
-
+#include "video/chargen_mcm6574.h"
+#include "video/dg640.h"
 
 using namespace std;
 
@@ -22,216 +22,20 @@ using namespace std;
 #define   MICROBEE_VIDEO_START_ADDR   0xf000
 #define   MICROBEE_VIDEO_END_ADDR     0xf7ff
 
+#define   MICROBEE_SCREEN_COLS        64
+#define   MICROBEE_SCREEN_ROWS        16
+
+#define   MICROBEE_FONT_WIDTH         8
+#define   MICROBEE_FONT_HEIGHT        16
+
+#define   MICROBEE_VIRTUAL_FONT_CHARS    128
+
 #define   MICROBEE_PCG_START_ADDR     0xf800
 #define   MICROBEE_PCG_END_ADDR       0xffff
 
 extern unsigned char g_microbeeBasic5_22e_ROM[16384];
 
-static EmulatorInfo g_emulatorInfo = 
-{
-  "mbee",                    // command line option
-  "Microbee 32k",            // short name
-  "Microbee 32k",            // long name
-
-  {
-    INFO_CPU(4, MICROBEE_ROM_START_ADDR),
-
-    INFO_ROM(MICROBEE_ROM_START_ADDR, g_microbeeBasic5_22e_ROM),
-
-    INFO_MAIN_RAM(MICROBEE_RAM_START_ADDR, 32, 16, MICROBEE_ROM_START_ADDR / 1024),
-
-    INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
-    INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
-    INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
-    INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545 
-
-    DG640_VIDEO_DRIVER(MICROBEE_VIDEO_START_ADDR),
-
-    INFO_RAM(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR),
-
-    INFO_END()
-  }
-};
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////
-
-class Synertek6545 : public VirtualDevice
-{
-  public:
-    const int m_maxReg = 19;    // don't include register 31
-
-    enum StatusBits
-    {
-      eVBlanking   = 0x20,
-      eLpenFull    = 0x40,
-      eUpdateReady = 0x80
-    };
-
-    Synertek6545();
-
-    virtual void Reset() override;
-
-    virtual uint8_t GetStatus() const;
-    virtual void SetStatus(uint8_t status);
-
-    virtual uint8_t Read(uint8_t reg);
-    virtual void Write(uint8_t reg, uint8_t data);
-
-    void SetUpdateHandler(std::function<bool (bool, uint16_t &)> handler);
-    void UpdateStatus();
-
-    void Reg31();
-
-  protected:
-    int m_state = 0;
-    uint8_t m_status = 0;
-    uint8_t m_regSel = 0;
-    bool m_writePending;
-    std::vector<uint8_t> m_regs;
-    std::function<bool (bool, uint16_t &)> m_updateHandler = nullptr;
-};
-
-Synertek6545::Synertek6545()
-{
-  m_regs.resize(m_maxReg+1);
-}
-
-void Synertek6545::Reset()
-{
-  cout << "6545: reset" << endl;
-  m_regSel = 0;
-  m_state  = 0;
-  m_status = eUpdateReady | eVBlanking;
-  m_writePending = false;
-}
-
-void Synertek6545::SetUpdateHandler(std::function<bool (bool, uint16_t &)> handler)
-{
-  m_updateHandler = handler;
-}
-
-void Synertek6545::Reg31()
-{
-  m_writePending = true;
-  m_status &= ~eUpdateReady;
-}
-
-void Synertek6545::UpdateStatus()
-{
-  if (m_state++ >= 20) {
-    if (m_updateHandler) {
-      uint16_t addr = (m_regs[18] << 8) + m_regs[19];
-      if (m_updateHandler(m_writePending, addr)) {
-        //cout << "6545: lpen returned " << HEXFORMAT0x4(addr) << endl;
-        m_regs[16] = addr >> 8;
-        m_regs[17] = addr & 0xff;
-        m_status |= eLpenFull;
-      }
-      m_writePending = false;
-      m_status |= eUpdateReady;
-    }
-    m_state = 0;
-  }
-}
-
-uint8_t Synertek6545::Read(uint8_t reg)
-{
-  if (reg == 0) {
-    UpdateStatus();
-    //if (m_status != 0)
-    //  cout << "6545: read from status " << HEXFORMAT0x2(m_status) << endl;
-    return m_status;
-  }
-
-  // update
-  if (m_regSel == 31) {
-    //cout << "6545: read from 31" << endl;
-    Reg31();
-    return 0x00;
-  }  
-
-  uint8_t data = 0x00;
-
-  // lightpen
-  if ((m_regSel == 16) || (m_regSel == 17)) {
-    UpdateStatus();
-    data = m_regs[m_regSel];
-    m_status &= ~eLpenFull;
-    uint16_t addr = (m_regs[16] << 8) + m_regs[17];
-    //if (addr != 0)
-      //cout << "6545: read lightpen address (" << ((m_regSel == 16) ? "H" : "L") << ") is " << HEXFORMAT0x4(addr) << endl;
-  } 
-  else if (m_regSel > m_maxReg) {
-    //cout << "6545: read from status " << HEXFORMAT0x2(m_status) << endl;
-    data = 0x00;
-  }
-
-  return data;
-}
-
-uint8_t Synertek6545::GetStatus() const
-{
-  return m_status;
-}
-
-void Synertek6545::SetStatus(uint8_t v)
-{
-  //m_status = v;
-}
-
-void Synertek6545::Write(uint8_t reg, uint8_t data)
-{
-  if (reg == 0) {
-    //cerr << "6545: write to addr reg - " << HEXFORMAT0x2(data) << endl;
-    m_regSel = data;
-    return;
-  }
-
-  //cerr << "6545: write to data reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
-
-  // update
-  if (m_regSel == 31) {
-    //cout << "6545: write to 31" </< endl;
-    Reg31();
-    return;
-  }  
-
-  if (m_regSel > m_maxReg) {
-    //cerr << "6545: write to bad reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
-    return;
-  }
-
-  m_regs[m_regSel] = data;
-
-  switch (m_regSel) {
-    case 10:
-    case 11:
-      //cout << "6545: write cursor (" << ((m_regSel == 10) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[10] << 8) + m_regs[11]) << endl;
-      break;
-    case 12:
-    case 13:
-      //cout << "6545: write start address (" << ((m_regSel == 12) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[12] << 8) + m_regs[13]) << endl;
-      break;
-    case 14:
-    case 15:
-      //cout << "6545: write cursor address (" << ((m_regSel == 14) ? "H" : "L") << ") is " << HEXFORMAT0x4((m_regs[14] << 8) + m_regs[15]) << endl;
-      break;
-    case 16:
-    case 17:
-      //cout << "6545: write lightpen address (" << ((m_regSel == 16) ? "H" : "L") << ") is " << HEXFORMAT0x4((m_regs[16] << 8) + m_regs[17]) << endl;
-      break;
-    case 18:
-    case 19:
-      //cout << "6545: write update address (" << ((m_regSel == 18) ? "H" : "L") << ") " << HEXFORMAT0x2(data) << " gives " << HEXFORMAT0x4((m_regs[18] << 8) + m_regs[19]) << endl;
-      break;
-    default:  
-      //cerr << "6545: write to reg " << (int)m_regSel << " - " << HEXFORMAT0x2(data) << endl;
-      break;
-  }
-}
-
-static Synertek6545 m_crtc;
+extern EmulatorInfo g_microbeeEmulatorInfo;
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -283,12 +87,91 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
 static KeyboardScanner::ScanLayout g_microbeeKeys = {
   8, 8,
   keys,
-  shiftedkeys
+  shiftedkeys,
+  { 0, 0 }
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+class MicrobeeVideo : public SingleColourMemoryMappedVideo
+{
+  public:
+    MicrobeeVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
+
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
+    virtual uint8_t ReadMemoryAtAddress(int addr) const override;
+
+    static bool CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
+
+    FontChar GetCharAtAddress(int addr) const override;
+
+    virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 };
 
 
+MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
+  : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
+{
+  memset(&m_memory[0],             0x20, m_visibleSize);
+  memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
+}
+
+FontChar MicrobeeVideo::GetCharAtAddress(int addr) const
+{
+  int charAddr = addr & 0x3ff;
+  FontChar ch = m_memory[charAddr];
+
+  //uint8_t attr = m_memory[0x400 + charAddr];
+  // switch to graphics 
+  //ch += ((attr & 0x2) != 0) ? 0x100 : 0x000;
+
+  return ch;
+}
+
+
+void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t data)
+{
+  if ((addr >= m_memory.size()) || (m_memory[addr] == data)) {
+    return;
+  }
+
+  m_memory[addr] = data;
+
+  //if (addr >= 0x400)
+  //  addr -= 0x400;
+
+  RenderCharAtAddress(addr);
+}
+
+uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
+{
+  if (addr >= m_memory.size()) {
+    return 0xff;
+  }
+
+  return m_memory[addr];
+}
+
+void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
+{
+  if (withCursor) {
+    m_font->RenderChar(ch, renderer, dstRect, bg, fg);  
+  }
+  else {
+    m_font->RenderChar(ch, renderer, dstRect, fg, bg);  
+  }
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+void Microbee_Emulator::Instantiate()
+{  
+  VirtualScreen::AddType<MicrobeeVideo>("microbee");
+}
+
 Microbee_Emulator::Microbee_Emulator()
-  : Z80Emulator(&g_emulatorInfo)
+  : Z80Emulator(&g_microbeeEmulatorInfo)
 {
   // don't do anything in constructor as this is created to instantiate devices using Instantiate
   // do it Open instead
@@ -305,17 +188,16 @@ bool Microbee_Emulator::Open(const Options & options)
   using namespace std::placeholders;
   m_pio.SetInterruptHandler(std::bind(&Microbee_Emulator::OnPIOInterrupt, this, _1));
 
+  m_crtc.SetScreenShapeHandler(std::bind(&Microbee_Emulator::OnSetScreenSize, this, _1, _2));
+  m_crtc.SetStartAddressHandler(std::bind(&Microbee_Emulator::OnSetVideoStartAddress, this, _1));
+  m_crtc.SetCursorAddressHandler(std::bind(&Microbee_Emulator::OnSetCursorAddress, this, _1));
+  m_crtc.SetCursorShapeHandler(std::bind(&Microbee_Emulator::OnSetCursorShape, this, _1, _2, _3));
   m_crtc.SetUpdateHandler(std::bind(&Microbee_Emulator::OnKeyboardScan, this, _1, _2));
 
   //using namespace std::placeholders;
   //m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
 
   return true;
-}
-
-void Microbee_Emulator::Instantiate()
-{  
-  VirtualScreen::AddType<DG640>("dg640");
 }
 
 void Microbee_Emulator::Reset(int addr)
@@ -391,6 +273,33 @@ bool Microbee_Emulator::OnKeyboardScan(bool doUpdate, uint16_t & addr)
   return false;
 }
 
+void Microbee_Emulator::OnSetScreenSize(int cols, int rows)
+{
+  if ((cols != 64) || (rows != 16)) {
+    cout << "mbee: screen set to non-standard size of is " << cols << "x" << rows << endl;
+  }
+}
+
+void Microbee_Emulator::OnSetVideoStartAddress(uint16_t addr)
+{
+  cout << "mbee: video start address set to " << HEXFORMAT0x4(addr) << endl;
+}
+
+void Microbee_Emulator::OnSetCursorAddress(uint16_t addr)
+{
+  m_video->SetCursorPos(addr % 64, addr / 64);
+}
+
+void Microbee_Emulator::OnSetCursorShape(uint8_t start, uint8_t end, int blinkRate)
+{
+  //cout << "mbee: cursor start row = " << (int)start << ", end = " << (int)end << ", rate = " << (int)blinkRate << endl;
+  if (blinkRate < 0)
+    m_video->EnableCursor(false);
+  else {   
+    m_video->EnableCursor(true);
+  }
+}
+
 void Microbee_Emulator::OnPIOInterrupt(uint8_t vector)
 {
   Interrupt(vector);
@@ -426,4 +335,43 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
   }
   cerr << "microbee: write port " << HEXFORMAT0x2(port) << " " << HEXFORMAT0x2(data) << endl;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+EmulatorInfo g_microbeeEmulatorInfo = 
+{
+  "mbee",                    // command line option
+  "Microbee 32k",            // short name
+  "Microbee 32k",            // long name
+
+  {
+    INFO_CPU(4, MICROBEE_ROM_START_ADDR),
+
+    INFO_ROM(MICROBEE_ROM_START_ADDR, g_microbeeBasic5_22e_ROM),
+
+    INFO_MAIN_RAM(MICROBEE_RAM_START_ADDR, 32, 16, MICROBEE_ROM_START_ADDR / 1024),
+
+    INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
+    INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
+    INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
+    INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545 
+
+    INFO_VIDEO_MEMORY_MAPPED("microbee", \
+                            MICROBEE_VIDEO_START_ADDR, MICROBEE_VIDEO_END_ADDR, \
+                            MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
+                            MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
+                            MICROBEE_VIRTUAL_FONT_CHARS, \
+                            &g_charGen_MotorolaMCM6574, \
+                            nullptr), 
+
+    INFO_MONITOR(12.0, 4.0, 3.0, ePAL),
+
+    INFO_RAM(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR),
+
+    INFO_END()
+  }
+};
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 

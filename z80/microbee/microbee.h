@@ -6,6 +6,7 @@
 #include "src/options.h"
 #include "devices/z80pio.h"
 #include "devices/keyscan.h"
+#include "devices/synertek6545.h"
 
 class Microbee_Emulator : public Z80Emulator
 {
@@ -23,11 +24,18 @@ class Microbee_Emulator : public Z80Emulator
     void OnPIOInterrupt(uint8_t vector);
 
     bool OnKeyboardScan(bool doUpdate, uint16_t & addr);
+
+    void OnSetScreenSize(int cols, int rows);
+    void OnSetVideoStartAddress(uint16_t addr);
+    void OnSetCursorAddress(uint16_t addr);
+    void OnSetCursorShape(uint8_t start, uint8_t end, int blinkRate);
+
     bool ScanKeyboard(uint16_t & addr);
 
   protected:  
     KeyboardScanner m_keyboard;
     Z80PIO m_pio;
+    Synertek6545 m_crtc;
     uint16_t m_prevKeyboardCode;
 };
 

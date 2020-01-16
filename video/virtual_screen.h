@@ -35,12 +35,17 @@ class TextWindow
 
     virtual void RefreshScreen();
 
-    virtual void RenderCharAtPos(int x, int y);
+    virtual void RenderCharAtPos(int x, int y, bool withCursor);
 
     virtual FontChar GetCharAtPos(int x, int y) = 0;
     virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) = 0;
 
     virtual void SetColScale(int scale);
+
+    virtual void EnableCursor(bool enable);
+    virtual void SetCursorPos(int x, int y);
+
+    virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
 
   protected:  
     MainWindow & m_mainWindow;
@@ -58,6 +63,10 @@ class TextWindow
 
     int m_left = 0;
     int m_top = 0;
+
+    int m_cursorX = 0;
+    int m_cursorY = 0;
+    bool m_cursorEnabled = false;
 
     int m_visibleSize = 0;
     int m_visibleMask = 0;
