@@ -52,9 +52,9 @@ class CommandLineArgs
 
     typedef std::multimap<std::string, OptionValue> ValueMap;
 
-    CommandLineArgs(const Option * options);
+    CommandLineArgs();
 
-    int Parse(int argc, char *argv[]);
+    int Parse(const Option * options, int argc, char *argv[]);
 
     std::string Usage() const;
 
@@ -134,7 +134,7 @@ class CommandLineArgs
     bool ProcessArg(bool isLong, const Option & optDef, const std::string & arg_, const std::string & wildcard = "");
     const OptionValue * FindOption(const std::string & opt) const;
 
-    const Option * m_options;
+    const Option * m_options = nullptr;
     ValueMap m_values;
 };
 

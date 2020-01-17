@@ -112,7 +112,7 @@ void TRS80Emulator::Reset(int addr)
   return Z80Emulator::Reset(addr);
 }
 
-bool TRS80Emulator::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
+bool TRS80Emulator::CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
   // basic font data already in memory
   

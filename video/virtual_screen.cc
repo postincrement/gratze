@@ -123,6 +123,50 @@ void TextWindow::SetCursorPos(int x, int y)
     RenderCharAtPos(m_cursorX, m_cursorY, true);
 }
 
+bool TextWindow::SetFont(Font * font)
+{
+  m_font.reset(font);
+
+  if (!m_font) {
+    cerr << "error: font could not be opened" << endl;
+    return false;
+  }
+
+  if (m_mainWindow.GetRenderer() == nullptr) {
+    cerr << "error: renderer not available" << endl;
+    return false;
+  }
+
+  if (!m_font->Open(m_mainWindow.GetRenderer())) {
+    cerr << "error: font could not be opened" << endl;
+    return false;
+  }
+
+  cout << "info: font set = " << m_font->GetWidth() << "x" << m_font->GetHeight() << endl;
+
+  ResizeScreen();
+
+  return true;
+}
+
+bool TextWindow::ResizeScreen()
+{
+  int newWidth  = (m_left * 2) + (m_cols * m_font->GetWidth());
+  int newHeight = (m_top * 2) + m_rows * m_font->GetHeight();
+
+  cout << "info: screen resize requested old: " << m_width << "x" << m_height << ", new: " << newWidth << "x" << newHeight << endl; 
+
+  if ((newHeight == m_height) && (newWidth == m_width))
+    return false;
+
+  m_width  = newWidth;
+  m_height = newHeight;
+  
+  m_mainWindow.Open(newWidth, newHeight);
+  m_font->Open(m_mainWindow.GetRenderer());
+
+  return true;
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -146,6 +190,8 @@ void VirtualScreen::SetScale(double hscale, double vscale)
 {
   m_hscale = hscale;
   m_vscale = vscale;
+
+  cout << "info: screen scale is " << hscale << "," << vscale << endl;
 }
 
 void VirtualScreen::SetOffset(int left, int top)
@@ -179,63 +225,6 @@ VirtualScreen::~VirtualScreen()
 
 /////////////////////////////////////////////////////////////////////////////////
 
-static unsigned char reverse(unsigned char b) {
-   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-   return b;
-}
-
-static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vector<uint8_t> & fontData)
-{
-  if (config.m_charGen == nullptr) {
-    cerr << "error: no character generator found" << endl;
-    return false;
-  }
-
-  CharacterGeneratorROM & charGen = *config.m_charGen;
-
-  if (config.m_width < charGen.m_width) {
-    cerr << "error: font width " << (int)config.m_width << " cannot be less than charactr generator width " << (int)charGen.m_width << endl;
-    return false;
-  }
-
-  if (config.m_height < charGen.m_height) {
-    cerr << "error: font height " << (int)config.m_height << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
-    return false;
-  }
-
-  if (charGen.m_stride < charGen.m_height) {
-    cerr << "error: chargen stride " << (int)charGen.m_stride << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
-    return false;
-  }
-
-  if (charGen.m_width > 8) {
-    cerr << "error: character generators > 8 pixels wide not supported" << endl;
-    return false;
-  }
-
-  fontData.resize(config.m_count * config.m_height * ((config.m_width + 7) / 8));
-
-  int shiftBits = config.m_width - charGen.m_width;
-
-  for (int c = 0; c < charGen.m_count; ++c) {
-    const uint8_t * src = charGen.m_data + c * charGen.m_stride;
-    uint8_t * dst = &fontData[c * config.m_height];
-
-    for (int y = 0; y < charGen.m_height; ++y) {
-      *dst++ = charGen.m_reverse ? 
-                    reverse(*src++) >> (8 - charGen.m_width - shiftBits) :
-                    *src++ << shiftBits
-                    ;
-    }
-  }
-
-  return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-
 MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : VirtualScreen(mainWindow, emulator, options, info)
   , m_offset(0)
@@ -256,7 +245,14 @@ MemoryMappedVideo::~MemoryMappedVideo()
 
 bool MemoryMappedVideo::Open()
 {
-  return SetFont(m_fontConfig);
+  if (!m_options.m_font.empty()) {
+    SetFont(new TTFFont(m_options.m_font, 128));
+  }
+  else {
+    SetFont(new PixelFont(m_fontConfig));
+  }
+
+  return VirtualScreen::Open();
 }
 
 int MemoryMappedVideo::MapPosToAddress(int x, int y)
@@ -279,47 +275,6 @@ bool MemoryMappedVideo::MapAddressToPos(int & x, int & y, int addr)
   y = addr / m_cols;
 
   return true;
-}
-
-bool MemoryMappedVideo::SetFont(const Config::Font & font)
-{
-  m_fontConfig = font;
-  m_font.reset();
-
-  // unpack pixel data
-  if (m_fontConfig.m_charGen != NULL) {
-    if (!UnpackCharacterGeneratorFont(m_fontConfig, m_fontData)) {
-      return false;
-    }
-  }
-
-  // do extra steps if required
-  if (m_fontConfig.m_creator != NULL) {
-    if (!(m_fontConfig.m_creator)(m_options, m_fontConfig, m_fontData)) {
-      cerr << "error: font creator returned error" << endl;
-      return false;
-    }
-  }
-
-  m_font.reset(new PixelFont(m_fontConfig, &m_fontData[0]));
-  if (!m_font) {
-    cerr << "error: font could not be opened" << endl;
-    return false;
-  }
-
-  if (m_mainWindow.GetRenderer() == nullptr) {
-    cerr << "error: renderer not available" << endl;
-    return false;
-  }
-
-  if (!m_font->Open(m_mainWindow.GetRenderer())) {
-    cerr << "error: font could not be opened" << endl;
-    return false;
-  }
-
-  cout << "info: new font set" << endl;
-
-  return VirtualScreen::Open();
 }
 
 FontChar MemoryMappedVideo::GetCharAtAddress(int addr) const

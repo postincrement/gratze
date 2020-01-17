@@ -164,7 +164,6 @@ class Emulator
 
     // Video functions
     void CreateScreen(MainWindow & mainWindow, const Options & options);
-    virtual bool OpenVideo(MainWindow & mainWindow, const Options & options);
     virtual void WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
     virtual uint8_t ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr);
     virtual void ChangeVideoColour();
@@ -198,7 +197,8 @@ class Emulator
     double m_targetCPUClock_Hz;
     double m_actualCPUClock_Hz;
 
-    long long m_cycleCounter;
+    uint64_t m_cycleCounter;
+    int m_speedCycleCounter;
     std::chrono::system_clock::time_point m_cpuDelayTimer;
 
     bool m_debugWriteMemory = false;

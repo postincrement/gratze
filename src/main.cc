@@ -78,22 +78,23 @@ int main(int argc, char *argv[])
 {
   Init();
 
-  CommandLineArgs args(g_commandLineOptions);
-  if (!args.Parse(argc, argv)) {
+  Options options;
+
+  if (!options.m_args.Parse(g_commandLineOptions, argc, argv)) {
     return -1;
   }
 
-  cout << args.DumpValues();
+  cout << options.m_args.DumpValues();
 
-  if (args.HasArg("-h")) {
+  if (options.m_args.HasArg("-h")) {
     cout << "usage: gratze [options] args...\n"
          << "where options are:\n"
-        << args.Usage();
+        << options.m_args.Usage();
     return 0;
   }
 
   std::string fn;
-  if (args.GetValue("--diskette", fn)) {
+  if (options.m_args.GetValue("--diskette", fn)) {
     VirtualDriveFile file;
     if (!file.Open(fn, true)) {
       cerr << "error: could not open diskette file '" << fn << "'" << endl;
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  if (args.GetValue("--cassette", fn)) {
+  if (options.m_args.GetValue("--cassette", fn)) {
     VirtualCassetteFile file;
     if (!file.ReadOpen(fn)) {
       cerr << "error: could not open cassette file '" << fn << "'" << endl;
@@ -113,30 +114,27 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  Options options;
-
   // set default type
-  if (!args.GetValue("-t", options.m_typeName))
+  if (!options.m_args.GetValue("-t", options.m_typeName))
     options.m_typeName = "m1";
 
   bool videoTest = false;
   bool displayCPUSpeed = false;
 
-  args.GetValue("-r",           options.m_romFn);
-  args.GetValue("--ram",        options.m_ramSize_k);
-  args.GetValue("-s",           options.m_videoScale);
-  args.GetValue("-v",           options.m_verbose);
-  args.GetValue("--readdebug",  options.m_readDebug);
-  args.GetValue("--writedebug", options.m_writeDebug);
-  args.GetValue("--keyboardDebug", options.m_keyboardDebug);
-  args.GetValue("--turbo",         options.m_turbo);
+  options.m_args.GetValue("-r",           options.m_romFn);
+  options.m_args.GetValue("--ram",        options.m_ramSize_k);
+  options.m_args.GetValue("-s",           options.m_videoScale);
+  options.m_args.GetValue("-v",           options.m_verbose);
+  options.m_args.GetValue("--readdebug",  options.m_readDebug);
+  options.m_args.GetValue("--writedebug", options.m_writeDebug);
+  options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
+  options.m_args.GetValue("--turbo",         options.m_turbo);
 
-  args.GetValue("--videotest",    videoTest);
-  args.GetValue("--displaySpeed", displayCPUSpeed);
+  options.m_args.GetValue("--videotest",    videoTest);
+  options.m_args.GetValue("--displaySpeed", displayCPUSpeed);
   
-
-  if (args.GetValue("-f", options.m_font)) {
-    if (!args.GetValue("-s", options.m_fontSize)) {
+  if (options.m_args.GetValue("-f", options.m_font)) {
+    if (!options.m_args.GetValue("-s", options.m_fontSize)) {
       options.m_fontSize = 20; 
     }
   }
@@ -153,7 +151,7 @@ int main(int argc, char *argv[])
   cout << "info: running " << emulator->GetInfo().m_name << endl;
 
   std::string error;
-  if (!args.GetValues("--drive*", options.m_driveFns, error)) {
+  if (!options.m_args.GetValues("--drive*", options.m_driveFns, error)) {
     cerr << "error: could not parse drive filename list - " << error << endl;
     return -1;
   }
@@ -233,10 +231,6 @@ int main(int argc, char *argv[])
   cout << "entering loop" << endl;
 
   for (;;) {
-    //if (emulator->m_cpu.PC.W == options.m_breakpoint)
-    //  emulator->SetTrace(true);
-
-    // give CPU some time
     emulator->Run(500);
 
     auto now = std::chrono::system_clock::now();

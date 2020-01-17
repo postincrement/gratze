@@ -6,8 +6,12 @@
 
 //#include "src/cereal.h"
 
+#include "src/cmdargs.h"
+
 struct Options
 {
+  CommandLineArgs m_args;
+
   // override default type
   std::string m_typeName;
 

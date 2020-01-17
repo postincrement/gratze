@@ -101,7 +101,7 @@ class MicrobeeVideo : public SingleColourMemoryMappedVideo
     virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
     virtual uint8_t ReadMemoryAtAddress(int addr) const override;
 
-    static bool CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
+    static bool CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
     FontChar GetCharAtAddress(int addr) const override;
 

@@ -47,6 +47,10 @@ class TextWindow
 
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
 
+    virtual bool SetFont(Font * font);
+
+    virtual bool ResizeScreen();
+
   protected:  
     MainWindow & m_mainWindow;
 
@@ -141,12 +145,10 @@ class MemoryMappedVideo : public VirtualScreen
 
     // new functions
     virtual bool Open() override;
-    virtual bool SetFont(const Config::Font & font);
 
   protected:  
     Config::Font m_fontConfig;
     Options m_options;
-    std::vector<uint8_t> m_fontData;
     std::vector<uint8_t> m_memory;
     int m_offset;
 

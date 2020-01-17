@@ -113,7 +113,7 @@ class TRS80Emulator : public Z80Emulator
     void WriteFx(register uint16_t, register uint8_t val);
     uint8_t ReadFx(register uint16_t);
 
-    static bool CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
+    static bool CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
   protected:  
     KeyboardScanner m_keyboard;

@@ -7,8 +7,7 @@
 
 using namespace std;
 
-CommandLineArgs::CommandLineArgs(const Option * options)
-  : m_options(options)
+CommandLineArgs::CommandLineArgs()
 {
 }
 
@@ -138,8 +137,10 @@ bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::
   return true;  
 }
 
-int CommandLineArgs::Parse(int argc, char *argv[])
-{
+int CommandLineArgs::Parse(const Option * options, int argc, char *argv[])
+{ 
+  m_options = options;
+  
   // parse command line arguments
   int optIndex = 1;
   while (optIndex < argc) {

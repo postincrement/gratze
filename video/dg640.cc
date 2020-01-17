@@ -33,7 +33,7 @@ DG640::DG640(MainWindow & mainWindow, Emulator & emulator, const Options & optio
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
 }
 
-bool DG640::CreatePixelFont(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
+bool DG640::CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
   // basic font data already in memory, but check size
   if (fontData.size() != (DG640_FONT_HEIGHT*DG640_VIRTUAL_FONT_CHARS)) {

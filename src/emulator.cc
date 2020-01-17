@@ -189,27 +189,37 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
   const Config::Block * block = GetConfigBlock(Config::Type::eMonitor);
   const Config::Monitor * monitor = (block == nullptr) ? nullptr : &block->m_info.m_monitor;
 
-  int monitorW, monitorH;       // monitor resolution in pixels
-  int videoW, videoH;           // pixels generations by emulator
   int top = 10;
   int left = 10;                // border top and left
-  int fieldMult = 1;
-  std::string standardName;
-  int overscanX;
-  int overscanY;
-  double hratio;
-  double vratio;
+
+  int vdup = 1;                 // duplicate lines for fields
+
+  int width;
+  int height;
+  int i, j;
+
+  // get size of screen
+  SDL_DisplayMode mode;
+  SDL_GetDesktopDisplayMode(0, &mode);
+  cout << "info: screen is " << mode.w << "x" << mode.h << endl;
 
   // get the scale
-  if ((monitor == nullptr) || (monitor->m_std == Config::VideoStandard::eNone)) {
-    cerr << "error: must have monitor declaration" << endl;
-    exit(-1);
+  if ((monitor == nullptr) || (monitor->m_std == Config::VideoStandard::eNone) || !options.m_font.empty()) {
+    width   = 800;
+    height  = 600;
+    i       = 1;
+    j       = 1;
   }
   else {
 
     int totalLines;
     double frameRate;
     double activeHTime_us;
+    std::string standardName;
+    double hratio;
+    double vratio;
+    int monitorW, monitorH;       // monitor resolution in pixels
+    int videoW, videoH;           // pixels generations by emulator
 
     switch (monitor->m_std) {
       case Config::VideoStandard::eNone:
@@ -242,105 +252,99 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
          << " is " << monitorW << "x" << monitorH << endl;
 
     // remove overscan
-    overscanX = monitorW * 2 * monitor->m_hOverScan_percent / 100.0;
-    overscanY = monitorH * 2 * monitor->m_vOverScan_percent / 100.0;
+    int overscanX = monitorW * 2 * monitor->m_hOverScan_percent / 100.0;
+    int overscanY = monitorH * 2 * monitor->m_vOverScan_percent / 100.0;
     cout << "info: overscan is " << overscanX << ", " << overscanY << endl;
 
     // display video output pixels
     videoW = video->m_screenWidth;
     videoH = video->m_screenHeight;
-  }
 
-  int vdup = 2;
+    vdup = 2;
 
-  // get size of screen
-  SDL_DisplayMode mode;
-  SDL_GetDesktopDisplayMode(0, &mode);
-  cout << "info: screen is " << mode.w << "x" << mode.h << endl;
+    /*
+      need to find integers i and j where:
 
-  /*
-    need to find integers i and j where:
+          monitorW * i        hratio
+          ------------   =   
+          monitorH * j        vratio
 
-        monitorW * i        hratio
-        ------------   =   
-        monitorH * j        vratio
+      and 
+          monitorW * i < screenWidth
+          monitorH * j < screenHeight
 
-    and 
-         monitorW * i < screenWidth
-         monitorH * j < screenHeight
+    */
 
-  */
+    // calculate relative pixel sizes scaling X or Y
+    bool found = false;
+    int ratio = 1;
 
-  // calculate relative pixel sizes scaling X or Y
-  bool found = false;
-  int ratio = 1;
-  int i, j;
+    ResolutionMap resolutions;
 
-  ResolutionMap resolutions;
+    double allowedScreenRatio = 3.0 / 4.0;
 
-  double allowedScreenRatio = 3.0 / 4.0;
+    while (!found && (
+                ((monitorW * ratio) <= (allowedScreenRatio * mode.w)) 
+            || ((monitorH * ratio) <= (allowedScreenRatio * mode.h))
+            )) {
 
-  while (!found && (
-              ((monitorW * ratio) <= (allowedScreenRatio * mode.w)) 
-           || ((monitorH * ratio) <= (allowedScreenRatio * mode.h))
-           )) {
+      // try i = ratio
+      double i_f = ratio;
+      double j_f = (1.0 * monitorW * i_f * vratio) / (hratio * monitorH);
 
-    // try i = ratio
-    double i_f = ratio;
-    double j_f = (1.0 * monitorW * i_f * vratio) / (hratio * monitorH);
-
-    if (
-        (j_f >= 1.0) && (
-          ((monitorW * i_f) <= (allowedScreenRatio * mode.w))
-           && ((monitorH * j_f) <= (allowedScreenRatio * mode.h))
-        )
-      ) {
-      double r = fabs(j_f - round(j_f));
-      resolutions.insert(ResolutionMap::value_type(r, ScreenRatioInfo(ratio, (int)trunc(j_f)))); 
-      cout << "info: i=" << ratio << " => j=" << FIXEDFORMAT3(j_f) << " (" << r << ")";
-      cout << endl;
-    }
-
-    // try j = ratio
-    j_f = ratio;
-    i_f = (1.0 * monitorH * j_f * hratio) / (vratio * monitorW);
-    if (
-        (i_f >= 1.0) && (
-           ((monitorW * i_f) <= (allowedScreenRatio * mode.w))
+      if (
+          (j_f >= 1.0) && (
+            ((monitorW * i_f) <= (allowedScreenRatio * mode.w))
             && ((monitorH * j_f) <= (allowedScreenRatio * mode.h))
-        )
-      ) {
-      double r = fabs(i_f - round(i_f));
-      resolutions.insert(ResolutionMap::value_type(r, ScreenRatioInfo((int)trunc(i_f), ratio))); 
-      cout << "info: j=" << ratio << " => i=" << FIXEDFORMAT3(i_f) << " (" << r << ")";
-      cout << endl;
+          )
+        ) {
+        double r = fabs(j_f - round(j_f));
+        resolutions.insert(ResolutionMap::value_type(r, ScreenRatioInfo(ratio, (int)trunc(j_f)))); 
+        cout << "info: i=" << ratio << " => j=" << FIXEDFORMAT3(j_f) << " (" << r << ")";
+        cout << endl;
+      }
+
+      // try j = ratio
+      j_f = ratio;
+      i_f = (1.0 * monitorH * j_f * hratio) / (vratio * monitorW);
+      if (
+          (i_f >= 1.0) && (
+            ((monitorW * i_f) <= (allowedScreenRatio * mode.w))
+              && ((monitorH * j_f) <= (allowedScreenRatio * mode.h))
+          )
+        ) {
+        double r = fabs(i_f - round(i_f));
+        resolutions.insert(ResolutionMap::value_type(r, ScreenRatioInfo((int)trunc(i_f), ratio))); 
+        cout << "info: j=" << ratio << " => i=" << FIXEDFORMAT3(i_f) << " (" << r << ")";
+        cout << endl;
+      }
+      ratio++;
     }
-    ratio++;
-  }
 
-  if (resolutions.size() == 0) {
-    i = 1; //std::min(trunc(mode.w * 3 / 4 / videoW), trunc(mode.h * 3 / 4 / videoH));
-    j = 1;
-    cout << "info: no good scale found - using screen resolution" << endl;
-  }
-  else {
-    ScreenRatioInfo & info = resolutions.begin()->second;
-    i = info.m_i;
-    j = info.m_j;
-  }
+    if (resolutions.size() == 0) {
+      i = 1; //std::min(trunc(mode.w * 3 / 4 / videoW), trunc(mode.h * 3 / 4 / videoH));
+      j = 1;
+      cout << "info: no good scale found - using screen resolution" << endl;
+    }
+    else {
+      ScreenRatioInfo & info = resolutions.begin()->second;
+      i = info.m_i;
+      j = info.m_j;
+    }
 
-  cout << "info: using pixel scale " << i << ":" << j << endl;
+    cout << "info: using pixel scale " << i << ":" << j << endl;
 
-  cout << "info: raw video output is " << videoW << "x" << videoH * vdup;
-  if (vdup > 0) {
-    cout << " (" << vdup << " fields)";
-    videoH *= vdup;
+    cout << "info: raw video output is " << videoW << "x" << videoH * vdup;
+    if (vdup > 0) {
+      cout << " (" << vdup << " fields)";
+      videoH *= vdup;
+    }
+    cout << endl;
+
+    // calculate window size
+    width  = (left * 2 + videoW) * i;
+    height = (top * 2 * vdup + videoH) * j;
   }
-  cout << endl;
-
-  // calculate window size
-  int width  = (left * 2 + videoW) * i;
-  int height = (top * 2 * vdup + videoH) * j;
 
   // create main window 
   mainWindow.Open(width * options.m_videoScale, height * options.m_videoScale);
@@ -356,10 +360,6 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 
   m_video.reset(screen);
   m_video->Open();
-}
-
-bool Emulator::OpenVideo(MainWindow & mainWindow, const Options & options)
-{
 }
 
 void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)

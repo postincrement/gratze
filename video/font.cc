@@ -24,11 +24,69 @@ int Font::GetWidth() const
 int Font::GetHeight() const
 { return m_height; }
 
+
 /////////////////////////////////////////////////////////////////////////////
 
-PixelFont::PixelFont(const Config::Font & config, uint8_t * data)
+static unsigned char reverse(unsigned char b) {
+   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+
+static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vector<uint8_t> & fontData)
+{
+  if (config.m_charGen == nullptr) {
+    cerr << "error: no character generator found" << endl;
+    return false;
+  }
+
+  CharacterGeneratorROM & charGen = *config.m_charGen;
+
+  if (config.m_width < charGen.m_width) {
+    cerr << "error: font width " << (int)config.m_width << " cannot be less than charactr generator width " << (int)charGen.m_width << endl;
+    return false;
+  }
+
+  if (config.m_height < charGen.m_height) {
+    cerr << "error: font height " << (int)config.m_height << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
+    return false;
+  }
+
+  if (charGen.m_stride < charGen.m_height) {
+    cerr << "error: chargen stride " << (int)charGen.m_stride << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
+    return false;
+  }
+
+  if (charGen.m_width > 8) {
+    cerr << "error: character generators > 8 pixels wide not supported" << endl;
+    return false;
+  }
+
+  fontData.resize(config.m_count * config.m_height * ((config.m_width + 7) / 8));
+
+  int shiftBits = config.m_width - charGen.m_width;
+
+  for (int c = 0; c < charGen.m_count; ++c) {
+    const uint8_t * src = charGen.m_data + c * charGen.m_stride;
+    uint8_t * dst = &fontData[c * config.m_height];
+
+    for (int y = 0; y < charGen.m_height; ++y) {
+      *dst++ = charGen.m_reverse ? 
+                    reverse(*src++) >> (8 - charGen.m_width - shiftBits) :
+                    *src++ << shiftBits
+                    ;
+    }
+  }
+
+  return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+PixelFont::PixelFont(const Config::Font & config)
   : Font(config.m_count)
-  , m_data(data)
+  , m_config(config)
 {
   m_width  = config.m_width;
   m_height = config.m_height;
@@ -36,6 +94,23 @@ PixelFont::PixelFont(const Config::Font & config, uint8_t * data)
 
 bool PixelFont::Open(SDL_Renderer * renderer)
 {
+  std::vector<uint8_t> fontData;
+  fontData.resize(m_config.m_count * m_config.m_height);
+
+  // unpack pixel data
+  if (m_config.m_charGen != NULL) {
+    if (!UnpackCharacterGeneratorFont(m_config, fontData)) {
+      return false;
+    }
+  }
+
+  // do extra steps if required
+  if (m_config.m_creator != NULL) {
+    if (!(m_config.m_creator)(m_config, fontData)) {
+      cerr << "error: font creator returned error" << endl;
+      return false;
+    }
+  }  
   m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_width, m_height * m_charCount);
   if (m_texture == nullptr) {
     cerr << "error: cannot create font texture" << endl;
@@ -47,9 +122,11 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   std::vector<uint32_t> pixels;
   pixels.resize(m_width * m_height * m_charCount);
 
+  const uint8_t * data = &fontData[0];
+
   // copy pixel data to the surface with the correct colours
   for (int i = 0; i < m_charCount; ++i) {
-    uint8_t * srcPixels = m_data + (i * m_height);
+    const uint8_t * srcPixels = data + (i * m_height);
     for (int y = 0; y < m_height; ++y) {
       uint32_t * dstPixels = &pixels[m_width * ((i * m_height) + y)];
       unsigned mask = 1 << (m_width - 1);
@@ -112,7 +189,7 @@ bool TTFFont::Open(SDL_Renderer * renderer)
   if (m_font)
     FC_FreeFont(m_font);
 
-  int pointSize = 20;  
+  int pointSize = 40;  
 
   m_font = FC_CreateFont();  
   FC_LoadFont(m_font, renderer, m_name.c_str(), pointSize, FC_MakeColor(255, 255, 255, 255), TTF_STYLE_NORMAL); 
@@ -122,13 +199,17 @@ bool TTFFont::Open(SDL_Renderer * renderer)
     return false;
   }
 
+  // this does not work :(
+  /*
+  int m_width = FC_GetMaxWidth(m_font);
+  int m_height = FC_GetLineSpacing(m_font);
+  */
+
   {
-    TTF_Font * ttf = TTF_OpenFont(m_name.c_str(), pointSize / 2);
-  
     // calculate maximum character width - the hard way
+    TTF_Font * ttf = TTF_OpenFont(m_name.c_str(), pointSize);  
     m_height = TTF_FontHeight(ttf);
     m_width = 0;
-
     char str[2] = { 0x00, 0x00 };
     for (int i = 0x20; i < 0x7f; ++i) {
       str[0] = i;
@@ -139,6 +220,12 @@ bool TTFFont::Open(SDL_Renderer * renderer)
 
     TTF_CloseFont(ttf);
   }
+
+  m_width += 1;   // allow space between chars
+  m_height += 1;  // allow space between lines
+
+//  m_width *= 2;
+//  m_height *= 2;
 
   cerr << "info: TTF font '" << m_name << "' is " << dec << m_width << "x" << m_height << endl;
 

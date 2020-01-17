@@ -48,21 +48,21 @@ bool MainWindow::Open(int width, int height)
 
   cerr << "info: main window is " << dec << totalWidth << "x" << totalHeight << endl;
 
-  //if (m_window == nullptr) {
+  if (m_window == nullptr) {
     m_window = SDL_CreateWindow(m_title.c_str(), 
                                 SDL_WINDOWPOS_CENTERED, 
                                 SDL_WINDOWPOS_CENTERED, 
-                                totalWidth, totalHeight, SDL_WINDOW_SHOWN); 
-  //  cout << "window created" << endl;
-  //}
-  //else {
-  //  SDL_DestroyRenderer(m_renderer);
-  //  SDL_SetWindowSize(m_window, totalWidth, totalHeight);
-  //  cout << "window resized" << endl;
-  //}
+                                totalWidth, totalHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE); 
+    // create renderer
+    m_renderer = SDL_CreateRenderer(m_window, -1, 0);
 
-  // create renderer
-  m_renderer = SDL_CreateRenderer(m_window, -1, 0);
+    cout << "window created" << endl;
+  }
+  else {
+    //SDL_DestroyRenderer(m_renderer);
+    SDL_SetWindowSize(m_window, totalWidth, totalHeight);
+    cout << "window resized" << endl;
+  }
 
   SDL_Color bg = { 0, 0, 0 };
   SDL_SetRenderDrawColor(m_renderer, bg.r, bg.g, bg.b, 255);

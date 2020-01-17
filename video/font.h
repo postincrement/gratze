@@ -26,13 +26,14 @@ class Font
 class PixelFont : public Font
 {
   public:
-    PixelFont(const Config::Font & contfig, uint8_t * data);
+    PixelFont(const Config::Font & contfig);
     virtual bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 
   protected:  
     uint8_t * m_data;
     SDL_Texture * m_texture;
+    const Config::Font m_config;
 };
 
 class TTFFont : public Font

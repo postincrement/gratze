@@ -71,6 +71,7 @@ void Z80Emulator::Reset(int addr)
   m_cpu.Trap       = 0xffff;
 
   m_cycleCounter = 0;
+  m_speedCycleCounter = 0;
   m_cpuDelayTimer = std::chrono::system_clock::now();
 }
 
@@ -88,12 +89,14 @@ bool Z80Emulator::Run(int cycles)
 
   // full speed
   if (m_turbo) {
-    m_cycleCounter += cycles - ExecZ80(&m_cpu, cycles);
-    if (m_cycleCounter > 100) {
+    int cyclesDone = cycles - ExecZ80(&m_cpu, cycles);
+    m_cycleCounter      += cyclesDone;
+    m_speedCycleCounter += cyclesDone;
+    if (m_speedCycleCounter > 100) {
       double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
       if (interval >= 0.001) {
-        m_actualCPUClock_Hz = m_cycleCounter / interval;
-        m_cycleCounter = 0;
+        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
+        m_speedCycleCounter = 0;
         m_cpuDelayTimer = std::chrono::system_clock::now();
       }
     }
@@ -101,16 +104,16 @@ bool Z80Emulator::Run(int cycles)
   else {
 #define INC  4
     while (cycles > 0) {
-
-      int done = INC - ExecZ80(&m_cpu, INC);
-      m_cycleCounter += done;
-      cycles -= done;
+      int cyclesDone = INC - ExecZ80(&m_cpu, INC);
+      m_cycleCounter      += cyclesDone;
+      m_speedCycleCounter += cyclesDone;
+      cycles -= cyclesDone;
 
       double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
 
-      if ((m_cycleCounter > 100) && (interval >= 0.001)) {
-        m_actualCPUClock_Hz = m_cycleCounter / interval;
-        m_cycleCounter = 0;
+      if ((m_speedCycleCounter > 100) && (interval >= 0.001)) {
+        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
+        m_speedCycleCounter = 0;
         m_cpuDelayTimer = std::chrono::system_clock::now();
 
         m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
@@ -118,7 +121,6 @@ bool Z80Emulator::Run(int cycles)
           m_cpuDelayRepeat = 1;
         else if (m_cpuDelayRepeat > 600)  
           m_cpuDelayRepeat = 600;
-//        cout << "cerr : " << m_cpuDelayRepeat << endl; 
       }
 
       for (int i = 0; i < m_cpuDelayRepeat; ++i)

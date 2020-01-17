@@ -102,6 +102,7 @@ void S2650Emulator::Reset(int addr)
   m_cpu->registers.ap = addr;
 
   m_cycleCounter = 0;
+  m_speedCycleCounter = 0;
   m_cpuDelayTimer = std::chrono::system_clock::now();
 }
 
