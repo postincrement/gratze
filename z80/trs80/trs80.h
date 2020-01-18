@@ -59,10 +59,10 @@
 #define   MODEL4_SCREEN_WIDTH_PIXELS     (MODEL4_SCREEN_WIDTH_CHARS*MODEL4_FONT_WIDTH)
 #define   MODEL4_SCREEN_HEIGHT_PIXELS    (MODEL4_SCREEN_HEIGHT_CHARS*MODEL4_FONT_HEIGHT)
 
-class TRS80Video : public SingleColourMemoryMappedVideo
+class TRS80Video : public SingleColourMemoryMappedScreen
 {
   public:
-    TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
+    TRS80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
     virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
     void Set32Col(bool val);
 

@@ -61,7 +61,7 @@ class CommandLineArgs
     bool HasArg(const std::string & arg) const;
 
     template<class Type>
-    bool GetValue(const std::string & opt, Type & value)
+    bool GetValue(const std::string & opt, Type & value) const
     {  
       const CommandLineArgs::OptionValue * ptr = FindOption(opt);
       if (ptr == nullptr)

@@ -13,6 +13,7 @@
 #include "devices/fdc.h"
 #include "video/virtual_screen.h"
 #include "src/mainwindow.h"
+#include "terminal/terminal.h"
 
 using namespace std;
 
@@ -38,42 +39,6 @@ const EmulatorInfo & Emulator::GetInfo() const
 
 bool Emulator::Open(const Options & options)
 {
-  m_verbose = options.m_verbose;
-
-  m_debugWriteMemory = options.m_writeDebug;
-  m_debugReadMemory  = options.m_readDebug;
-  m_keyboardDebug    = options.m_keyboardDebug;
-  m_turbo            = options.m_turbo;
-
-  // get the drives
-  for (auto &r : options.m_driveFns) {
-    std::string fn(r.second);
-    VirtualDriveFile *drive = new VirtualDriveFile();
-    if (!drive->Open(fn, true))
-      return false;
-    if (!MountDrive(r.first, drive, true)) {
-      cerr << "error: cannot mount drive " << r.first << " with " << r.second << endl;
-      return false;
-    }
-    cerr << "info: mounted '" << fn << " as drive " << r.first << endl;
-  }
-
-  // set target CPU speed
-  const Config::CPU * cpu = GetCPUInfo();
-  if (cpu == NULL) {
-    cerr << "error: cannot get CPU information" << endl;
-    return false;
-  }
-
-  m_targetCPUClock_Hz = cpu->m_clockSpeed_MHz * 1000000.0;
-  m_actualCPUClock_Hz = m_targetCPUClock_Hz;
-
-  if (m_verbose) {
-    cout << "debug: target CPU speed is " << m_targetCPUClock_Hz << endl;
-  }
-
-  CompileConfigBlocks();
-
   return true;
 }
 
@@ -98,8 +63,8 @@ double Emulator::GetActualCPUSpeed_Hz() const
 
 bool Emulator::Poll()
 {
-  if (m_video)
-    m_video->Update(false);
+  if (m_screen)
+    m_screen->Update(false);
 
   SDL_Event event;
   if (SDL_PollEvent(&event)) {
@@ -169,26 +134,8 @@ void Emulator::SetKeyboard(VirtualKeyboard * kb)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-
-struct ScreenRatioInfo
-{
-  ScreenRatioInfo(int i, int j)
-    : m_i(i)
-    , m_j(j)
-  {}
-  int m_i;
-  int m_j;
-};
-
-typedef std::multimap<double, ScreenRatioInfo> ResolutionMap;
-
 void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
 {
-  const Config::Video * video = GetVideoInfo();
-
-  const Config::Block * block = GetConfigBlock(Config::Type::eMonitor);
-  const Config::Monitor * monitor = (block == nullptr) ? nullptr : &block->m_info.m_monitor;
-
   int top = 10;
   int left = 10;                // border top and left
 
@@ -197,57 +144,78 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
   int pixelCols;
   int pixelRows;
 
+  int width;
+  int height;
+
   // get size of screen
   SDL_DisplayMode mode;
   SDL_GetDesktopDisplayMode(0, &mode);
   cout << "info: screen is " << mode.w << "x" << mode.h << endl;
 
-  // get the scale
-  if ((monitor == nullptr) || (monitor->m_std == Config::VideoStandard::eNone) || !options.m_font.empty()) {
-    pixelCols = 800;
-    pixelRows = 600;
-    vdup = 1;
-  }
-  else {
-    switch (monitor->m_std) {
-      case Config::VideoStandard::eNone:
-        cerr << "info: monitor has no video standard definined" << endl;
-        exit(-1);
-      case Config::VideoStandard::ePAL:
-        //frameRate      = 25.0;
-        vdup           = 2;
-        break;
-      case Config::VideoStandard::eNTSC:
-        //frameRate      = 30.0;
-        vdup           = 2;
-        break;
-    }
+  // check for memory mapped screens
+  const Config::MemoryMappedScreen * mmapScreenInfo = GetMemoryMappedInfo();
+  if (mmapScreenInfo != nullptr) {
+
+    cout << "info: emulated screen is memory mapped" << endl;
+
+    const Config::Block * block = GetConfigBlock(Config::Type::eMonitor);
+    const Config::Monitor * monitor = (block == nullptr) ? nullptr : &block->m_info.m_monitor;
 
     // display video output pixels
-    pixelCols = video->m_screenWidth;
-    pixelRows = video->m_screenHeight;
+    pixelCols = mmapScreenInfo->m_screenWidth;
+    pixelRows = mmapScreenInfo->m_screenHeight;
+
+    width  = pixelCols * options.m_videoScale;
+    height = pixelRows * options.m_videoScale;
+
+    // create main window 
+    mainWindow.Open(width, height);
+
+    m_memMapScreen.reset(MemoryMappedScreen::Create(mainWindow, options, *mmapScreenInfo));
+    m_screen = m_memMapScreen;
+
+    if (!options.m_font.empty()) {
+      m_memMapScreen->SetFont(new TTFFont(mmapScreenInfo->m_font, 128, options.m_font, options.m_fontSize));
+    }
+    else {
+      m_memMapScreen->SetFont(new PixelFont(mmapScreenInfo->m_font));
+    }
   }
 
-  int i = options.m_videoScale;
-  int j = options.m_videoScale;
+  // check for terminals
+  else {
+    const Config::Block * block = GetConfigBlock(Config::Type::eTerminal);
+    if (block == nullptr) {
+      cerr << "error: no screen or terminal defined" << endl;
+      exit(-1);
+    }
 
-  // calculate window size
-  int width  = (2 + pixelCols) * options.m_videoScale;
-  int height = (2 + pixelRows) * options.m_videoScale;
+    // create main window with a guess at the size
+    mainWindow.Open(800 * options.m_videoScale, 600 * options.m_videoScale);
 
-  // create main window 
-  mainWindow.Open(width, height);
+    const Config::Terminal & termInfo = block->m_info.m_terminal;
 
-  VirtualScreen * screen = VirtualScreen::Create(mainWindow, *this, options, *video);
-  if (screen == nullptr) {
-    cerr << "error: could not instantiate screen type" << endl;
+    m_terminal.reset(new Terminal(mainWindow, options, termInfo.m_cols, termInfo.m_rows));
+    m_screen = m_terminal->m_screen;
+
+    std::string fontName = options.m_font;
+    if (fontName.empty())
+      fontName = DEFAULT_TTF_FONT;
+
+    int fontSize = options.m_fontSize;
+    if (fontSize <= 0)
+      fontSize = 15;
+
+    m_screen->SetFont(new TTFFont(fontName, fontSize));
+  }
+
+  if (!m_screen) {
+    cerr << "error: could not instantiate screen" << endl;
     return; // false;
   }
 
-  screen->SetScale(options.m_videoScale, options.m_videoScale);
-
-  m_video.reset(screen);
-  m_video->Open();
+  m_screen->SetScale(options.m_videoScale, options.m_videoScale);
+  m_screen->Open();
 }
 
 void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
@@ -255,7 +223,7 @@ void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, ui
   if (addr > info.m_endAddr)
     cerr << "warning: bad video write" << endl;
   else  
-    m_video->WriteMemoryAtAddress(addr - info.m_startAddr, data);
+    m_memMapScreen->WriteMemoryAtAddress(addr - info.m_startAddr, data);
 }
 
 uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr)
@@ -265,7 +233,7 @@ uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr)
     return 0x00;
   }
   else  
-    return m_video->ReadMemoryAtAddress(addr - info.m_startAddr);
+    return m_memMapScreen->ReadMemoryAtAddress(addr - info.m_startAddr);
 }
 
 void Emulator::ChangeVideoColour()
@@ -273,12 +241,12 @@ void Emulator::ChangeVideoColour()
   SDL_Color newFg;
   SDL_Color newBg;
 
-  m_video->GetFontColour(newFg, newBg);
+  m_memMapScreen->GetFontColour(newFg, newBg);
 
   newFg.r ^= 0xff;
   newFg.b ^= 0xff;
 
-  m_video->SetFontColour(newFg, newBg);
+  m_memMapScreen->SetFontColour(newFg, newBg);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -314,12 +282,10 @@ const Config::CPU * Emulator::GetCPUInfo() const
   return (info == nullptr) ? nullptr : &info->m_info.m_cpu;
 }
 
-const Config::Video * Emulator::GetVideoInfo() const
+const Config::MemoryMappedScreen * Emulator::GetMemoryMappedInfo() const
 {
-  const Config::Block * info = GetConfigBlock(Config::Type::eVideo);
-  if (info == nullptr)
-    info = GetConfigBlock(Config::Type::eVideoExternal);
-  return (info == nullptr) ? nullptr : &info->m_info.m_video;
+  const Config::Block * info = GetConfigBlock(Config::Type::eMemoryMappedScreen);
+  return (info == nullptr) ? nullptr : &info->m_info.m_memoryMappedScreen;
 }
 
 const Config::RAM * Emulator::GetMainRAMInfo() const
@@ -449,8 +415,10 @@ void Emulator::CompileConfigBlocks()
     }
 
     // add video
-    else if (block->m_type == Config::Type::eVideo) {
-      const Config::Video & info = block->m_info.m_video;
+    else if (block->m_type == Config::Type::eMemoryMappedScreen) {
+      const Config::MemoryMappedScreen & info = block->m_info.m_memoryMappedScreen;
+      if (info.m_variable)
+        continue;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: video block has end address " << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
@@ -796,3 +764,125 @@ void Emulator::MemoryDump() const
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
+
+int Emulator::Run(const Options & options)
+{
+  m_verbose = options.m_verbose;
+  m_debugWriteMemory = options.m_writeDebug;
+  m_debugReadMemory  = options.m_readDebug;
+  m_keyboardDebug    = options.m_keyboardDebug;
+  m_turbo            = options.m_turbo;
+
+  // set target CPU speed
+  const Config::CPU * cpu = GetCPUInfo();
+  if (cpu == NULL) {
+    cerr << "error: cannot get CPU information" << endl;
+    return false;
+  }
+
+  m_targetCPUClock_Hz = cpu->m_clockSpeed_MHz * 1000000.0;
+  m_actualCPUClock_Hz = m_targetCPUClock_Hz;
+
+  if (m_verbose) {
+    cout << "debug: target CPU speed is " << m_targetCPUClock_Hz << endl;
+  }
+
+  // allow any descendant classes to do whatever they need
+  if (!Open(options)) {
+    cerr << "error: cannot open emulator" << endl;
+    return -1;
+  }
+
+  // get the drives
+  for (auto &r : options.m_driveFns) {
+    std::string fn(r.second);
+    VirtualDriveFile *drive = new VirtualDriveFile();
+    if (!drive->Open(fn, true))
+      return false;
+    if (!MountDrive(r.first, drive, true)) {
+      cerr << "error: cannot mount drive " << r.first << " with " << r.second << endl;
+      return -1;
+    }
+    cerr << "info: mounted '" << fn << " as drive " << r.first << endl;
+  }
+
+  CompileConfigBlocks();
+
+  // initlialize SDL 
+  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
+    printf("error initializing SDL: %s\n", SDL_GetError()); 
+    return -1;
+  }
+
+  MainWindow mainWindow;
+
+  cerr << "Creating screen" << endl;
+  cerr << "font size is " << (int)options.m_fontSize << endl;
+
+  CreateScreen(mainWindow, options);
+
+  if (!Start()) {
+    cerr << "error: cannot start emulator" << endl;
+    return -1;
+  }
+
+  bool videoTest = false;
+  options.m_args.GetValue("--videotest",    videoTest);
+
+  if (videoTest) {
+    if (m_memMapScreen) {
+      const Config::MemoryMappedScreen * mmapInfo = GetMemoryMappedInfo();
+      for (int i = 0; i < mmapInfo->m_screenCols * mmapInfo->m_screenRows; ++i) {
+        m_memMapScreen->WriteMemoryAtAddress(i, i);
+      }
+      m_memMapScreen->Update(true);
+    }
+    else if (m_terminal) {
+      cerr << "about to write to terminal" << endl;
+      m_terminal->WriteString(m_info->m_title);
+      m_terminal->WriteString("\r\n");
+      m_terminal->Update(true);
+    }
+
+    if (m_screen) {
+      auto now = std::chrono::system_clock::now();
+      auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);
+      while (std::chrono::system_clock::now() < finish) {
+        usleep(1000);
+        m_screen->Update(false);
+      }
+    }
+  }
+
+  bool displayCPUSpeed = false;
+  options.m_args.GetValue("--displaySpeed", displayCPUSpeed);
+  
+  // run emulator
+  auto lastPoll  = std::chrono::system_clock::now();
+  auto lastSpeed = std::chrono::system_clock::now();
+
+  cout << "entering loop" << endl;
+
+  for (;;) {
+    Exec(500);
+
+    auto now = std::chrono::system_clock::now();
+
+    double interval = std::chrono::duration<double>(now - lastPoll).count();
+    if (interval >= 50e-3) {
+      if (!Poll())
+        break;
+      lastPoll = now;
+    }
+
+    if (displayCPUSpeed) {
+      interval = std::chrono::duration<double>(now - lastSpeed).count();
+      if (interval >= 1) {
+        cout << std::fixed << std::setprecision(3) << (GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
+        lastSpeed = now;
+      }
+    }
+  }
+
+  // exiting
+}

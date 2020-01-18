@@ -116,7 +116,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   }  
   m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_pixelWidth, m_pixelHeight * m_charCount);
   if (m_texture == nullptr) {
-    cerr << "error: cannot create font texture" << endl;
+    cerr << "error: cannot create font texture - " << SDL_GetError() << endl;
     return false;
   }
 
@@ -149,7 +149,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
 
   // create texture
   if (SDL_UpdateTexture(m_texture, NULL, &pixels[0], m_pixelWidth * sizeof(uint32_t)) != 0) {
-    cerr << "error: cannot create font texture - " << SDL_GetError() << endl;
+    cerr << "error: cannot update font texture - " << SDL_GetError() << endl;
     return false;
   }
 
@@ -174,12 +174,20 @@ void PixelFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect 
 
 /////////////////////////////////////////////////////////////////////////////
 
-TTFFont::TTFFont(const Config::Font & config, const std::string & fontName, int charCount)
-  : PixelFont(config)
+TTFFont::TTFFont(const std::string & fontName, int fontSize)
+  : Font(256)
   , m_name(fontName)
+  , m_fontSize(fontSize)
   , m_font(nullptr)
 {
 }
+
+TTFFont::TTFFont(const Config::Font & config, int charCount, const std::string & fontName, int fontSize)
+  : TTFFont(fontName, fontSize)
+{
+  m_pixelFont.reset(new PixelFont(config));
+}
+
 
 TTFFont::~TTFFont()
 {
@@ -192,13 +200,11 @@ bool TTFFont::Open(SDL_Renderer * renderer)
   if (m_font)
     FC_FreeFont(m_font);
 
-  if (!PixelFont::Open(renderer))
+  if (m_pixelFont && !m_pixelFont->Open(renderer))
     return false;  
 
-  int pointSize = 40;  
-
   m_font = FC_CreateFont();  
-  FC_LoadFont(m_font, renderer, m_name.c_str(), pointSize, FC_MakeColor(255, 255, 255, 255), TTF_STYLE_NORMAL); 
+  FC_LoadFont(m_font, renderer, m_name.c_str(), m_fontSize, FC_MakeColor(255, 255, 255, 255), TTF_STYLE_NORMAL); 
 
   if (!m_font) {
     cerr << "error: could not load font " << m_name << endl;
@@ -213,7 +219,7 @@ bool TTFFont::Open(SDL_Renderer * renderer)
 
   {
     // calculate maximum character width - the hard way
-    TTF_Font * ttf = TTF_OpenFont(m_name.c_str(), pointSize);  
+    TTF_Font * ttf = TTF_OpenFont(m_name.c_str(), m_fontSize);  
     m_height = TTF_FontHeight(ttf);
     m_width = 0;
     char str[2] = { 0x00, 0x00 };
@@ -230,18 +236,22 @@ bool TTFFont::Open(SDL_Renderer * renderer)
   m_width += 1;   // allow space between chars
   m_height += 1;  // allow space between lines
 
-//  m_width *= 2;
-//  m_height *= 2;
-
-  cerr << "info: TTF font '" << m_name << "' is " << dec << m_width << "x" << m_height << endl;
+  cerr << "info: TTF font '" << m_name << " " << (int)m_fontSize << " is " << dec << m_width << "x" << m_height << endl;
 
   return true;
 }
 
+bool TTFFont::UsePixelFont(const FontChar & ch) const
+{
+  return m_pixelFont && (
+    ((ch < 0x20) || ((ch >= 0x7f) && (ch < 0xb0)) || (ch >= 0xff)) 
+  );
+}
+
 void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  if ((ch < 0x20) || ((ch >= 0x7f) && (ch < 0xb0)) || (ch >= 0xff)) {
-    return PixelFont::RenderChar(ch, renderer, dstRect, fg, bg);
+  if (UsePixelFont(ch)) {
+    return m_pixelFont->RenderChar(ch, renderer, dstRect, fg, bg);
   }
 
   SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);

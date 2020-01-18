@@ -53,7 +53,7 @@ static EmulatorInfo g_emulatorInfo =
 
 void DG680_Emulator::Instantiate()
 {  
-  VirtualScreen::AddType<DG640>("dg640");
+  MemoryMappedScreen::AddType<DG640>("dg640");
 }
 
 DG680_Emulator::DG680_Emulator()

@@ -13,6 +13,8 @@
 #include "video/virtual_screen.h"
 #include "devices/fdc.h"
 #include "devices/keyboard.h"
+#include "terminal/terminal.h"
+
 
 class Emulator
 {
@@ -91,6 +93,8 @@ class Emulator
     Emulator(const EmulatorInfo * info);
     virtual void Instantiate();
 
+    int Run(const Options & options);
+
     virtual bool Open(const Options & options);
     virtual const EmulatorInfo & GetInfo() const;
     virtual bool Poll();
@@ -98,7 +102,7 @@ class Emulator
     // info functions
     virtual const Config::Block * GetConfigBlock(Config::Type type) const;
     virtual const Config::CPU * GetCPUInfo() const;
-    virtual const Config::Video * GetVideoInfo() const;
+    virtual const Config::MemoryMappedScreen * GetMemoryMappedInfo() const;
     virtual const Config::RAM * GetMainRAMInfo() const;
     virtual int GetRAMSize_k() const;
     virtual bool SetRAMSize_k(int len);  
@@ -106,7 +110,7 @@ class Emulator
     // CPU functions
     virtual double GetActualCPUSpeed_Hz() const;
     virtual bool Start(int addr = -1) = 0;
-    virtual bool Run(int cycles = 1000) = 0;
+    virtual bool Exec(int cycles = 1000) = 0;
 
     virtual void NMI() = 0;
     virtual void Interrupt(uint16_t vector = 0) = 0;
@@ -172,7 +176,6 @@ class Emulator
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
 
     virtual void MemoryDump() const;
-    std::unique_ptr<VirtualScreen> m_video;
 
     void SetKeyboard(VirtualKeyboard * keyboard);
 
@@ -206,9 +209,11 @@ class Emulator
     bool m_keyboardDebug = false;
     bool m_turbo = false;
 
-  private:
     unsigned m_verbose = 0;
     VirtualKeyboard * m_keyboardDriver = nullptr;
+    std::shared_ptr<VirtualScreen>      m_screen;
+    std::shared_ptr<MemoryMappedScreen> m_memMapScreen;
+    std::shared_ptr<Terminal>           m_terminal;
 };
 
 struct EmulatorInfo

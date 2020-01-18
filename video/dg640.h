@@ -20,7 +20,7 @@
 extern void CreateDG640PixelData(const Options & options, const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
 #define DG640_VIDEO_DRIVER(addr) \
-  INFO_VIDEO_MEMORY_MAPPED("dg640", \
+  INFO_SCREEN_MEMORY_MAPPED_FIXED("dg640", \
                            addr, addr + DG640_VIDEO_RAM_SIZE_K * 1024 - 1, \
                            DG640_SCREEN_COLS, DG640_SCREEN_ROWS, \
                            DG640_FONT_WIDTH, DG640_FONT_HEIGHT, \
@@ -29,17 +29,20 @@ extern void CreateDG640PixelData(const Options & options, const Config::Font & f
                            &DG640::CreatePixelFont), \
   INFO_MONITOR(12.0, 4.0, 3.0, ePAL)
 
-class DG640 : public SingleColourMemoryMappedVideo
+class DG640 : public SingleColourMemoryMappedScreen
 {
   public:
-    DG640(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
+    DG640(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
 
+    // override to ensure correct operation of attribute memory
     virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
     virtual uint8_t ReadMemoryAtAddress(int addr) const override;
 
-    static bool CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
+    // override to allow graphics chars to use fonr
+    FontChar GetCharAtLoc(int addr) const override;
 
-    FontChar GetCharAtAddress(int addr) const override;
+    // create font with graphics chars
+    static bool CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 };
 
 

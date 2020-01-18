@@ -9,7 +9,7 @@ class Font;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-#define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
+#define DEFAULT_TTF_FONT   "./fonts/UbuntuMono-R.ttf"
 
 #define INFO_END()                          { Config::Type::eEnd }    
 #define INFO_CPU(speed, addr)               { Config::Type::eCPU,         { .m_cpu={ speed, addr } } }
@@ -23,19 +23,22 @@ class Font;
 #define INFO_IO_PORT_RW(start, end, id)     { Config::Type::eIOPortRW,    { .m_ioPort={ start, end, id } } }
 #define INFO_MONITOR(freq, h, v, fmt)       { Config::Type::eMonitor,     { .m_monitor={ freq, h, v, Config::VideoStandard::fmt, 6.7, 5.0 } } }
 
-#define INFO_VIDEO_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
-    { Config::Type::eVideo, { .m_video={ \
+#define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
+
+#define INFO_SCREEN_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator, var) \
+    { Config::Type::eMemoryMappedScreen, { .m_memoryMappedScreen={ \
       start, end, name, \
       cols, rows, cols*fontWid, rows*fontHgt, \
-      INFO_FONT(count, fontWid, fontHgt, fontData, fontCreator) \
+      INFO_FONT(count, fontWid, fontHgt, fontData, fontCreator), var \
     } } }
 
-#define INFO_VIDEO_EXTERNAL(name, size, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
-    { Config::Type::eVideoExternal, { .m_video={ \
-      0, size, name, \
-      cols, rows, cols*fontWid, rows*fontHgt, \
-      INFO_FONT(count, fontWid, fontHgt, fontData, fontCreator) \
-    } } }
+#define INFO_SCREEN_MEMORY_MAPPED_FIXED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
+  INFO_SCREEN_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator, false)
+
+#define INFO_SCREEN_MEMORY_MAPPED_VARIABLE(name, size, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
+  INFO_SCREEN_MEMORY_MAPPED(name, 0, size, cols, rows, fontWid, fontHgt, count, fontData, fontCreator, true)
+
+#define INFO_TERMINAL(cols, rows)   { Config::Type::eTerminal,    { .m_terminal={ cols, rows, DEFAULT_TTF_FONT } } }
 
 class EmulatorInfo;
 
@@ -53,8 +56,8 @@ enum class Type
   eIOPortRead,
   eIOPortWrite,
   eIOPortRW,
-  eVideo,
-  eVideoExternal,
+  eMemoryMappedScreen,
+  eTerminal,
   eMonitor
 };
 
@@ -67,7 +70,7 @@ struct Font
   bool (* m_creator)(const Font & fontInfo, std::vector<uint8_t> & fontData);  // function to create final font data (if required)
 };
 
-struct Video 
+struct MemoryMappedScreen 
 {
   uint16_t  m_startAddr;
   uint16_t  m_endAddr;
@@ -80,7 +83,9 @@ struct Video
   int       m_screenWidth;    // screen width in pixels (X)
   int       m_screenHeight;   // screen height in pixels (Y)
 
-  Font  m_font;
+  Font      m_font;
+
+  bool      m_variable;
 };
 
 enum class VideoStandard
@@ -135,6 +140,13 @@ struct IOPort
   uint16_t  m_id;
 };
 
+struct Terminal
+{
+  int  m_cols;
+  int  m_rows;
+  const char * m_fontName;
+};
+
 /////////////////////////////////////////////
 //
 //  master config structure
@@ -144,13 +156,14 @@ struct Block {
   Type m_type;
 
   union {
-    CPU     m_cpu;
-    ROM     m_rom;
-    RAM     m_ram;
-    MemIO   m_memIO;
-    IOPort  m_ioPort;
-    Video   m_video;
-    Monitor m_monitor;
+    CPU                 m_cpu;
+    ROM                 m_rom;
+    RAM                 m_ram;
+    MemIO               m_memIO;
+    IOPort              m_ioPort;
+    MemoryMappedScreen  m_memoryMappedScreen;
+    Monitor             m_monitor;
+    Terminal            m_terminal;
   } m_info;
 };
 

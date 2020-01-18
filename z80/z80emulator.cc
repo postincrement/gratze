@@ -80,12 +80,12 @@ void Z80Emulator::SetTrace(bool v)
   m_cpu.Trace = v ? 1 : 0;
 }
 
-bool Z80Emulator::Run(int cycles)
+bool Z80Emulator::Exec(int cycles)
 {
-  if (m_cpu.Trace) {
-    ExecZ80(&m_cpu, 1);
-    return false;
-  }
+  //if (m_cpu.Trace) {
+  //  ExecZ80(&m_cpu, 1);
+  //  return false;
+  //}
 
   // full speed
   if (m_turbo) {
@@ -105,9 +105,9 @@ bool Z80Emulator::Run(int cycles)
 #define INC  4
     while (cycles > 0) {
       int cyclesDone = INC - ExecZ80(&m_cpu, INC);
+      cycles              -= cyclesDone;
       m_cycleCounter      += cyclesDone;
       m_speedCycleCounter += cyclesDone;
-      cycles -= cyclesDone;
 
       double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
 

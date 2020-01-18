@@ -96,9 +96,6 @@ bool S2650Emulator::Start(int addr)
 
 void S2650Emulator::Reset(int addr)
 {
-  if (addr < 0)
-    addr = GetCPUInfo()->m_resetAddr;
-    
   m_cpu->registers.ap = addr;
 
   m_cycleCounter = 0;
@@ -110,9 +107,12 @@ void S2650Emulator::SetTrace(bool v)
 {
 }
 
-bool S2650Emulator::Run(int cycles)
+bool S2650Emulator::Exec(int cycles)
 {
+  // execute an instruction
   m_cpu->cpu();
+  m_cycleCounter += m_cpu->cpucycles;
+
   return true;
 }
 
@@ -139,7 +139,7 @@ unsigned char S2650Emulator::ReadPortC()
 
 void S2650Emulator::WritePortC(unsigned char data)
 {
-  cout << "2650: unknown write to port C" << endl;
+  //cout << "2650: unknown write to port C" << endl;
 }
 
 unsigned char S2650Emulator::ReadPortD()

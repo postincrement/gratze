@@ -26,7 +26,7 @@ class Font
 class PixelFont : public Font
 {
   public:
-    PixelFont(const Config::Font & contfig);
+    PixelFont(const Config::Font & contig);
     virtual bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 
@@ -39,17 +39,23 @@ class PixelFont : public Font
     int m_pixelHeight;  
 };
 
-class TTFFont : public PixelFont
+class TTFFont : public Font 
 {
   public:
-    TTFFont(const Config::Font & config, const std::string & fontName, int charCount);
+    TTFFont(const std::string & fontName, int fontSize);
+    TTFFont(const Config::Font & config, int charCount, const std::string & fontName, int fontSize);
     ~TTFFont();
 
     bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 
   protected:
+    bool UsePixelFont(const FontChar & ch) const;
+
+    std::unique_ptr<PixelFont> m_pixelFont;
+    SDL_Texture * m_texture;
     std::string m_name;  
+    int m_fontSize;
     FC_Font * m_font;
 };
 

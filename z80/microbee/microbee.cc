@@ -93,33 +93,29 @@ static KeyboardScanner::ScanLayout g_microbeeKeys = {
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-class MicrobeeVideo : public SingleColourMemoryMappedVideo
+class MicrobeeVideo : public SingleColourMemoryMappedScreen
 {
   public:
-    MicrobeeVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
-
-    virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
-    virtual uint8_t ReadMemoryAtAddress(int addr) const override;
+    MicrobeeVideo(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
 
     static bool CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
-    FontChar GetCharAtAddress(int addr) const override;
+    FontChar GetCharAtLoc(int addr) const override;
 
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 };
 
 
-MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
-  : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
+MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+  : SingleColourMemoryMappedScreen(mainWindow, options, info)
 {
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
 }
 
-FontChar MicrobeeVideo::GetCharAtAddress(int addr) const
+FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
 {
-  int charAddr = addr & 0x3ff;
-  FontChar ch = m_memory[charAddr];
+  FontChar ch = m_memory[loc & 0x7ff];
 
   //uint8_t attr = m_memory[0x400 + charAddr];
   // switch to graphics 
@@ -128,29 +124,6 @@ FontChar MicrobeeVideo::GetCharAtAddress(int addr) const
   return ch;
 }
 
-
-void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t data)
-{
-  if ((addr >= m_memory.size()) || (m_memory[addr] == data)) {
-    return;
-  }
-
-  m_memory[addr] = data;
-
-  //if (addr >= 0x400)
-  //  addr -= 0x400;
-
-  RenderCharAtAddress(addr);
-}
-
-uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
-{
-  if (addr >= m_memory.size()) {
-    return 0xff;
-  }
-
-  return m_memory[addr];
-}
 
 void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
@@ -167,7 +140,7 @@ void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * rend
 
 void Microbee_Emulator::Instantiate()
 {  
-  VirtualScreen::AddType<MicrobeeVideo>("microbee");
+  MemoryMappedScreen::AddType<MicrobeeVideo>("microbee");
 }
 
 Microbee_Emulator::Microbee_Emulator()
@@ -287,16 +260,16 @@ void Microbee_Emulator::OnSetVideoStartAddress(uint16_t addr)
 
 void Microbee_Emulator::OnSetCursorAddress(uint16_t addr)
 {
-  m_video->SetCursorPos(addr % 64, addr / 64);
+  m_screen->SetCursorPos(addr % 64, addr / 64);
 }
 
 void Microbee_Emulator::OnSetCursorShape(uint8_t start, uint8_t end, int blinkRate)
 {
   //cout << "mbee: cursor start row = " << (int)start << ", end = " << (int)end << ", rate = " << (int)blinkRate << endl;
   if (blinkRate < 0)
-    m_video->EnableCursor(false);
+    m_screen->EnableCursor(false);
   else {   
-    m_video->EnableCursor(true);
+    m_screen->EnableCursor(true);
   }
 }
 
@@ -356,7 +329,7 @@ EmulatorInfo g_microbeeEmulatorInfo =
     INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
     INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545 
 
-    INFO_VIDEO_MEMORY_MAPPED("microbee", \
+    INFO_SCREEN_MEMORY_MAPPED_FIXED("microbee", \
                             MICROBEE_VIDEO_START_ADDR, MICROBEE_VIDEO_END_ADDR, \
                             MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
                             MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \

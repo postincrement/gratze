@@ -14,7 +14,7 @@ class S2650Emulator : public Emulator
 
     // overrides from Emulator
     virtual bool Start(int addr = -1) override;
-    virtual bool Run(int cycles = 1000)  override;
+    virtual bool Exec(int cycles = 1000)  override;
 
     virtual void NMI() override;
     virtual void Interrupt(uint16_t vector = 0) override;
@@ -28,6 +28,12 @@ class S2650Emulator : public Emulator
     virtual void WritePortC(unsigned char data);
     virtual unsigned char ReadPortD();
     virtual void WritePortD(unsigned char data);
+
+    inline bool GetFlag() const
+    { return (m_cpu->registers.psu & (1 << 6)) != 0; }
+
+    inline void SetSense(bool val)
+    { if (val) m_cpu->registers.psu |= (1 << 7); else m_cpu->registers.psu &= ~(1 << 7); }
 
     //virtual unsigned char ReadPort(unsigned char port);
     //virtual void WritePort(unsigned char port, unsigned char data);

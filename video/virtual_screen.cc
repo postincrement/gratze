@@ -10,42 +10,42 @@
 #include "src/config.h"
 #include "video/virtual_screen.h"
 #include "src/mainwindow.h"
-#include "src/emulator.h"
 
 using namespace std;
 
-VirtualScreenFactory VirtualScreen::g_virtualScreenFactory;
+MemoryMappedScreenFactory MemoryMappedScreen::g_memoryMappedScreenFactory;
 
 /////////////////////////////////////////////////////////////////////////////////
 
-TextWindow::TextWindow(MainWindow & mainWindow, int rows, int cols, int width, int height)
+VirtualScreen::VirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows)
   : m_mainWindow(mainWindow)
-  , m_rows(rows)
+  , m_options(options)
   , m_cols(cols)
-  , m_width(width)
-  , m_height(height)
-  , m_colScale(1)
+  , m_rows(rows)
 {
+  m_hscale   = 1;
+  m_vscale   = 1;
+  m_colScale = 1;
+
+  // this will be set when the font is set
+  m_width = 0;
+  m_height = 0;
+
   m_lazyUpdates = true;
   m_dirty = true;
   m_updateTimer = std::chrono::system_clock::now();
 
-  m_visibleSize = rows * cols;
+  m_visibleSize = m_rows * m_cols;
   m_visibleMask = m_visibleSize - 1;
-  cout << "info: text window is " << m_width << " x " << m_height << " pixels, " << m_visibleSize << " chars, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
+  cout << "info: text window is " << m_cols << " x " << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 }
 
-bool TextWindow::Open()
+bool VirtualScreen::Open()
 {
   return true;
 }
 
-void TextWindow::SetColScale(int scale)
-{
-  m_colScale = scale;
-}
-
-void TextWindow::RenderCharAtPos(int x, int y, bool withCursor)
+void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
 { 
   if (m_font) {
     SDL_Rect dstRect;
@@ -68,12 +68,16 @@ void TextWindow::RenderCharAtPos(int x, int y, bool withCursor)
   }
 }
 
-void TextWindow::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
+void VirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  m_font->RenderChar(ch, renderer, dstRect, fg, bg);
+  cout << "render char " << HEXFORMAT0x2(ch) << " " << (isalpha(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
+  if (withCursor)
+    m_font->RenderChar('_', renderer, dstRect, bg, fg);
+  else  
+    m_font->RenderChar(ch, renderer, dstRect, fg, bg);
 }
 
-void TextWindow::Update(bool hasChanged)
+void VirtualScreen::Update(bool hasChanged)
 {
   if (!m_lazyUpdates) {
     if (!hasChanged || m_dirty)
@@ -94,14 +98,14 @@ void TextWindow::Update(bool hasChanged)
   }
 }
 
-void TextWindow::RefreshScreen()
+void VirtualScreen::RefreshScreen()
 {
   for (int y = 0; y < m_rows; ++y)
     for (int x = 0; x < m_cols / m_colScale; x++)
       RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
 }
 
-void TextWindow::EnableCursor(bool enable)
+void VirtualScreen::EnableCursor(bool enable)
 {
   if (enable == m_cursorEnabled)
     return;
@@ -110,10 +114,10 @@ void TextWindow::EnableCursor(bool enable)
   RenderCharAtPos(m_cursorX, m_cursorY, m_cursorEnabled);
 }
 
-void TextWindow::SetCursorPos(int x, int y)
+void VirtualScreen::SetCursorPos(int x, int y)
 { 
-  if ((x == m_cursorX) && (y == m_cursorY))
-    return;
+//  if ((x == m_cursorX) && (y == m_cursorY))
+//    return;
 
   if (m_cursorEnabled)
     RenderCharAtPos(m_cursorX, m_cursorY, false);
@@ -125,7 +129,7 @@ void TextWindow::SetCursorPos(int x, int y)
     RenderCharAtPos(m_cursorX, m_cursorY, true);
 }
 
-bool TextWindow::SetFont(Font * font)
+bool VirtualScreen::SetFont(Font * font)
 {
   m_font.reset(font);
 
@@ -144,22 +148,26 @@ bool TextWindow::SetFont(Font * font)
     return false;
   }
 
-  cout << "info: font set = " << m_font->GetWidth() << "x" << m_font->GetHeight() << endl;
+  cout << "info: font size = " << m_font->GetWidth() << "x" << m_font->GetHeight() << endl;
 
   ResizeScreen();
 
   return true;
 }
 
-bool TextWindow::ResizeScreen()
+bool VirtualScreen::ResizeScreen()
 {
   int newWidth  = m_cols * m_font->GetWidth();
   int newHeight = m_rows * m_font->GetHeight();
 
-  cout << "info: screen resize requested old: " << m_width << "x" << m_height << ", new: " << newWidth << "x" << newHeight << endl; 
-
-  if ((newHeight == m_height) && (newWidth == m_width))
-    return false;
+  if ((m_width == 0) || (m_height == 0)) {
+    cout << "info: screen size set to " << newWidth << "x" << newHeight << endl; 
+  }
+  else {
+    if ((newHeight == m_height) && (newWidth == m_width))
+      return false;
+    cout << "info: screen resize requested old: " << m_width << "x" << m_height << ", new: " << newWidth << "x" << newHeight << endl; 
+  }
 
   m_width  = newWidth;
   m_height = newHeight;
@@ -170,24 +178,6 @@ bool TextWindow::ResizeScreen()
   return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-
-VirtualScreen * VirtualScreen::Create(MainWindow & mainWindow, 
-                                        Emulator & emulator, 
-                                   const Options & options, 
-                             const Config::Video & info)
-{
-  VirtualScreen * screen = g_virtualScreenFactory.CreateInstance(info.m_name, mainWindow, emulator, options, info);
-  return screen;
-}  
-
-VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
-  : TextWindow(mainWindow, info.m_screenRows, info.m_screenCols, info.m_screenWidth, info.m_screenHeight)
-{
-  m_hscale = 1;
-  m_vscale = 1;
-}
-
 void VirtualScreen::SetScale(int hscale, int vscale)
 {
   m_hscale = hscale;
@@ -196,37 +186,81 @@ void VirtualScreen::SetScale(int hscale, int vscale)
   cout << "info: screen scale is " << hscale << "," << vscale << endl;
 }
 
+void VirtualScreen::SetColScale(int scale)
+{
+  m_colScale = scale;
+}
+
+int VirtualScreen::MapPosToLoc(int x, int y)
+{
+  return y * m_cols + (x * m_colScale);
+}
+
+bool VirtualScreen::MapLocToPos(int & x, int & y, int loc)
+{
+  if (loc >= m_visibleSize)
+    return false;
+
+  x = loc % m_cols;
+  if (m_colScale != 1) {
+    if ((x % m_colScale) != 0)
+      return false;
+    x /= m_colScale;  
+  }
+
+  y = loc / m_cols;
+
+  return true;
+}
+
 FontChar VirtualScreen::GetCharAtPos(int x, int y)
 {
-  int addr = MapPosToAddress(x, y);
-  return GetCharAtAddress(addr);
+  int addr = MapPosToLoc(x, y);
+  return GetCharAtLoc(addr);
 }
 
 void VirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
 {
-  int addr = MapPosToAddress(x, y);
-  return GetColourAtAddress(addr, fg, bg);
+  int loc = MapPosToLoc(x, y);
+  return GetColourAtLoc(loc, fg, bg);
 }
 
-void VirtualScreen::RenderCharAtAddress(int addr)
+
+void VirtualScreen::RenderCharAtLoc(int loc)
 {
   int x, y;
-  if (MapAddressToPos(x, y, addr))
+  if (MapLocToPos(x, y, loc))
     RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
 }
 
-VirtualScreen::~VirtualScreen()
+FontChar VirtualScreen::GetCharAtLoc(int loc) const
 {
+  cerr << "screen: GetCharAtLoc or GetCharAtPos not defined" << endl;
+  return 0;
+}
+
+void VirtualScreen::GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg)
+{
+  cerr << "screen: GetColourAtLoc or GetColourAtPos not defined" << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 
-MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
-  : VirtualScreen(mainWindow, emulator, options, info)
-  , m_offset(0)
-  , m_fontConfig(info.m_font)
-  , m_options(options)
+MemoryMappedScreen * MemoryMappedScreen::Create(MainWindow & mainWindow, 
+                                             const Options & options, 
+                                       const Config::MemoryMappedScreen & info)
 {
+  MemoryMappedScreen * screen = g_memoryMappedScreenFactory.CreateInstance(info.m_name, mainWindow, options, info);
+  return screen;
+}  
+
+MemoryMappedScreen::MemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+  : VirtualScreen(mainWindow, options, info.m_screenCols, info.m_screenRows)
+  , m_offset(0)
+{
+  m_width    = info.m_screenWidth;
+  m_height   = info.m_screenHeight;
+
   // create video memory
   int size_bytes = info.m_endAddr - info.m_startAddr + 1;
   m_memory.resize(size_bytes);
@@ -235,82 +269,50 @@ MemoryMappedVideo::MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulato
   cout << "info: video memory size is " << size_bytes << " bytes, mask is " << HEXFORMAT0x4(m_memoryMask) << endl;
 }
 
-MemoryMappedVideo::~MemoryMappedVideo()
+MemoryMappedScreen::~MemoryMappedScreen()
 {}
 
 
-bool MemoryMappedVideo::Open()
+void MemoryMappedScreen::WriteMemoryAtAddress(int addr, uint8_t data)
 {
-  if (!m_options.m_font.empty()) {
-    SetFont(new TTFFont(m_fontConfig, m_options.m_font, 128));
-  }
-  else {
-    SetFont(new PixelFont(m_fontConfig));
-  }
-
-  return VirtualScreen::Open();
-}
-
-int MemoryMappedVideo::MapPosToAddress(int x, int y)
-{
-  return y * m_cols + (x * m_colScale);
-}
-
-bool MemoryMappedVideo::MapAddressToPos(int & x, int & y, int addr)
-{
-  if (addr >= m_visibleSize)
-    return false;
-
-  x = addr % m_cols;
-  if (m_colScale != 1) {
-    if ((x % m_colScale) != 0)
-      return false;
-    x /= m_colScale;  
-  }
-
-  y = addr / m_cols;
-
-  return true;
-}
-
-FontChar MemoryMappedVideo::GetCharAtAddress(int addr) const
-{
+  // make sure address is in correct range
   if (addr >= m_memory.size()) {
-    return 0x00;
-  }
-
-  return m_memory[addr];
-}
-
-void MemoryMappedVideo::WriteMemoryAtAddress(int addr, uint8_t ch)
-{
-  if ((addr >= m_memory.size()) || (m_memory[addr] == ch)) {
     return;
   }
 
-  m_memory[addr] = ch;
-  RenderCharAtAddress(addr);
+  // put data into memory
+  m_memory[addr] = data;
+
+  // calculate location using offset
+  int loc = addr - m_offset;
+
+  RenderCharAtLoc(loc);
 }
 
-uint8_t MemoryMappedVideo::ReadMemoryAtAddress(int addr) const
+uint8_t MemoryMappedScreen::ReadMemoryAtAddress(int addr) const
 {
   if (addr >= m_memory.size()) {
     return 0x00;
   }
 
   return m_memory[addr];
+}
+
+FontChar MemoryMappedScreen::GetCharAtLoc(int loc) const
+{
+  return m_memory[loc & m_memoryMask];
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 
-SingleColourMemoryMappedVideo::SingleColourMemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
-  : MemoryMappedVideo(mainWindow, emulator, options, info)
+SingleColourMemoryMappedScreen::SingleColourMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+  : MemoryMappedScreen(mainWindow, options, info)
 {
   m_fgColour = { 0xff, 0xff, 0xff, 0xff };
   m_bgColour = { 0, 0, 0, 0 };
 }
 
-void SingleColourMemoryMappedVideo::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
+void SingleColourMemoryMappedScreen::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
 {
   m_fgColour = fg;
   m_bgColour = bg;
@@ -318,13 +320,13 @@ void SingleColourMemoryMappedVideo::SetFontColour(const SDL_Colour & fg, const S
   RefreshScreen();
 }
 
-void SingleColourMemoryMappedVideo::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
+void SingleColourMemoryMappedScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
 {
   fg = m_fgColour;
   bg = m_bgColour;
 }
 
-void SingleColourMemoryMappedVideo::GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg)
+void SingleColourMemoryMappedScreen::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
 {
   return GetFontColour(fg, bg);  
 }

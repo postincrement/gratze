@@ -77,8 +77,8 @@ bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::
           cerr << "error: argument to '" << optionName << " is not an unsigned decimal integer" << endl;
           return false;
         }
-        value.m_type    = OptionValue::Type::eInteger; 
-        value.m_integer = num;
+        value.m_type    = OptionValue::Type::eUnsigned; 
+        value.m_unsigned = num;
       }
       break;
 

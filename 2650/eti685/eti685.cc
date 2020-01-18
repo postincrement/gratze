@@ -48,7 +48,7 @@ static EmulatorInfo g_emulatorInfo =
 
 void ETI685::Instantiate()
 {  
-  VirtualScreen::AddType<DG640>("dg640");
+  MemoryMappedScreen::AddType<DG640>("dg640");
 }
 
 ETI685::ETI685()
@@ -77,13 +77,12 @@ void ETI685::Reset(int addr)
   S2650Emulator::Reset(addr);
   m_ppi.Reset();
 
-  // make sure sense is not set
-  m_cpu->registers.psu |= (1 << 7);
-  SetKeyboardData(0x00);
+  // make sure sense is not set to indicate start of serial char
+  SetSense(true);
 
   // indicate use of parallel keyboard
+  SetKeyboardData(0x00);
   m_ppi.SetData(2, 1 << 6); // bit 6 = 0 
-
 }
 
 void ETI685::SetKeyboardData(uint8_t data)

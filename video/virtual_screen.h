@@ -14,7 +14,6 @@
 #include "video/font.h"
 
 class MainWindow;
-class Emulator;
 
 class VirtualScreen;
 
@@ -22,37 +21,44 @@ namespace Config {
   class Video;
 }
 
-using VirtualScreenFactory = Factory<VirtualScreen, std::string, MainWindow &, Emulator &, const Options &, const Config::Video &>;
-
-class TextWindow
+class VirtualScreen
 {
   public:
-    TextWindow(MainWindow & mainWindow, int rows, int cols, int width, int height);
+    VirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows);
 
     virtual bool Open();
 
     virtual void Update(bool hasChanged = false);
 
-    virtual void RefreshScreen();
-
-    virtual void RenderCharAtPos(int x, int y, bool withCursor);
-
-    virtual FontChar GetCharAtPos(int x, int y) = 0;
-    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) = 0;
-
+    virtual void SetScale(int hscale, int vscale);
     virtual void SetColScale(int scale);
 
-    virtual void EnableCursor(bool enable);
+    virtual void EnableCursor(bool enable = true);
     virtual void SetCursorPos(int x, int y);
 
+    virtual void RenderCharAtPos(int x, int y, bool withCursor);
+    virtual void RenderCharAtLoc(int loc);
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
+
+    virtual void RefreshScreen();
+    virtual bool ResizeScreen();
+
+    virtual int MapPosToLoc(int x, int y);
+    virtual bool MapLocToPos(int & x, int & y, int addr);
+
+    // decendant classes must implement one of the following interfaces
+    virtual FontChar GetCharAtPos(int x, int y);
+    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg);
+
+    virtual FontChar GetCharAtLoc(int addr) const;
+    virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg);
 
     virtual bool SetFont(Font * font);
 
-    virtual bool ResizeScreen();
-
   protected:  
+
     MainWindow & m_mainWindow;
+    Options m_options;
 
     int m_rows;
     int m_cols;
@@ -62,7 +68,6 @@ class TextWindow
 
     int m_hscale = 1;
     int m_vscale = 1;
-
     int m_colScale = 1;
 
     int m_cursorX = 0;
@@ -80,88 +85,55 @@ class TextWindow
 
 /////////////////////////////////////////////////////////////////////////////////
 
-class VirtualScreen : public TextWindow
+class MemoryMappedScreen;
+
+using MemoryMappedScreenFactory = Factory<MemoryMappedScreen, std::string, MainWindow &, const Options &, const Config::MemoryMappedScreen &>;
+
+class MemoryMappedScreen : public VirtualScreen
 {
   public:
-    VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
-    ~VirtualScreen();
+    MemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
+    ~MemoryMappedScreen();
+
+    // CPU access
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch);
+    virtual uint8_t ReadMemoryAtAddress(int addr) const;
+
+    // overrides from VirtualScreen
+    virtual void GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg) = 0;
+    virtual FontChar GetCharAtLoc(int loc) const override;
 
     // new functions
-    virtual void SetScale(int hscale, int vscale);
+    virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
+    virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const = 0;
+
+    static MemoryMappedScreen * Create(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
 
     template<class Type>
     static void AddType(const std::string & name)
     {
-      if (!g_virtualScreenFactory.HasKey(name))
-        g_virtualScreenFactory.AddConcreteClass<Type>(name);
+      if (!g_memoryMappedScreenFactory.HasKey(name))
+        g_memoryMappedScreenFactory.AddConcreteClass<Type>(name);
     }
 
-    static VirtualScreen * Create(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);  
-
-    virtual void WriteMemoryAtAddress(int addr, uint8_t ch) = 0;
-    virtual uint8_t ReadMemoryAtAddress(int addr) const = 0;
-
-    virtual int MapPosToAddress(int x, int y) = 0;
-    virtual bool MapAddressToPos(int & x, int & y, int addr) = 0;
-
-    virtual void GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
-    virtual FontChar GetCharAtAddress(int addr) const = 0;
-
-    virtual void RenderCharAtAddress(int addr);
-
-    virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
-    virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const = 0;
-
-  protected:
-    // overrides from TextWindow
-    virtual FontChar GetCharAtPos(int x, int y) override;
-    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) override;
-
   protected:  
-    static VirtualScreenFactory g_virtualScreenFactory;
-};
-
-/////////////////////////////////////////////////////////////////////////////////
-
-class MemoryMappedVideo : public VirtualScreen
-{
-  public:
-    MemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
-    ~MemoryMappedVideo();
-
-    // overrides
-    virtual void GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
-    virtual FontChar GetCharAtAddress(int addr) const;
-
-    virtual void WriteMemoryAtAddress(int addr, uint8_t ch) override;
-    virtual uint8_t ReadMemoryAtAddress(int addr) const override;
-
-    virtual int MapPosToAddress(int x, int y) override;
-    virtual bool MapAddressToPos(int & x, int & y, int addr) override;
-
-    // new functions
-    virtual bool Open() override;
-
-  protected:  
-    Config::Font m_fontConfig;
-    Options m_options;
     std::vector<uint8_t> m_memory;
-    int m_offset;
-
     int m_memoryMask = 0;
+    int m_offset;
+    static MemoryMappedScreenFactory g_memoryMappedScreenFactory;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
 
-class SingleColourMemoryMappedVideo : public MemoryMappedVideo
+class SingleColourMemoryMappedScreen : public MemoryMappedScreen
 {
   public:
-    SingleColourMemoryMappedVideo(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
+    SingleColourMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg);
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
 
-    virtual void GetColourAtAddress(int addr, SDL_Colour & fg, SDL_Colour & bg);
+    virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg);
 
   protected:  
     SDL_Color m_bgColour;

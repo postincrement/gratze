@@ -22,8 +22,8 @@ using namespace std;
 
 extern unsigned char g_dg640Char_ROM[1024];
 
-DG640::DG640(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
-  : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
+DG640::DG640(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+  : SingleColourMemoryMappedScreen(mainWindow, options, info)
 {
   if (m_memory.size() != DG640_VIDEO_RAM_SIZE_K * 1024) {
     cerr << "error: DG640 memory is wrong size - " << m_memory.size() << " instead of " << DG640_VIDEO_RAM_SIZE_K * 1024 << endl;
@@ -31,6 +31,50 @@ DG640::DG640(MainWindow & mainWindow, Emulator & emulator, const Options & optio
   }
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
+}
+
+
+// CPU access
+void DG640::WriteMemoryAtAddress(int addr, uint8_t data)
+{
+  if (addr >= m_memory.size()) {
+    return;
+  }
+
+  m_memory[addr] = data;
+
+  int loc = addr;
+  if (loc >= 0x400)
+    loc -= 0x400;
+
+  RenderCharAtLoc(loc);
+}
+
+// CPU access
+uint8_t DG640::ReadMemoryAtAddress(int addr) const
+{
+  if (addr >= m_memory.size()) {
+    return 0xff;
+  }
+
+  if (addr < 0x400)
+    return m_memory[addr];
+
+  return m_memory[addr] | 0xf8;
+}
+
+
+FontChar DG640::GetCharAtLoc(int loc) const
+{
+  int charAddr = loc & 0x3ff;
+  FontChar ch = m_memory[charAddr];
+
+  uint8_t attr = m_memory[0x400 + charAddr];
+
+  // switch to graphics 
+  ch += ((attr & 0x2) != 0) ? 0x100 : 0x000;
+
+  return ch;
 }
 
 bool DG640::CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
@@ -72,44 +116,4 @@ bool DG640::CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> 
   cerr << "dg640: created font" << endl;
 
   return true;
-}
-
-FontChar DG640::GetCharAtAddress(int addr) const
-{
-  int charAddr = addr & 0x3ff;
-  FontChar ch = m_memory[charAddr];
-
-  uint8_t attr = m_memory[0x400 + charAddr];
-
-  // switch to graphics 
-  ch += ((attr & 0x2) != 0) ? 0x100 : 0x000;
-
-  return ch;
-}
-
-
-void DG640::WriteMemoryAtAddress(int addr, uint8_t data)
-{
-  if ((addr >= m_memory.size()) || (m_memory[addr] == data)) {
-    return;
-  }
-
-  m_memory[addr] = data;
-
-  if (addr >= 0x400)
-    addr -= 0x400;
-
-  RenderCharAtAddress(addr);
-}
-
-uint8_t DG640::ReadMemoryAtAddress(int addr) const
-{
-  if (addr >= m_memory.size()) {
-    return 0xff;
-  }
-
-  if (addr < 0x400)
-    return m_memory[addr];
-
-  return m_memory[addr] | 0xf8;
 }

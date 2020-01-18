@@ -68,7 +68,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "drive*",      's', "name of file for virtual disk drive" },
   { 'b', "breakpoint",  'x', "breakpoint address"  },
   { 'f', "font",        's', "use TTF font"},
-  { ' ', "fontSize",    'u', "TTF font size" },
+  { 'F', "fontSize",    'u', "TTF font size" },
   { 's', "scale",       'u', "Screen scale factor" },
   { ' ', "diskette",    's', "test virtual drive file"},
   { ' ', "cassette",    's', "test virtual cassette file"},
@@ -147,9 +147,6 @@ int main(int argc, char *argv[])
   if (!options.m_args.GetValue("-t", options.m_typeName))
     options.m_typeName = "m1";
 
-  bool videoTest = false;
-  bool displayCPUSpeed = false;
-
   options.m_args.GetValue("-r",           options.m_romFn);
   options.m_args.GetValue("--ram",        options.m_ramSize_k);
   options.m_args.GetValue("-s",           options.m_videoScale);
@@ -159,14 +156,11 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
   options.m_args.GetValue("--turbo",         options.m_turbo);
 
-  options.m_args.GetValue("--videotest",    videoTest);
-  options.m_args.GetValue("--displaySpeed", displayCPUSpeed);
-  
-  if (options.m_args.GetValue("-f", options.m_font)) {
-    if (!options.m_args.GetValue("-s", options.m_fontSize)) {
-      options.m_fontSize = 20; 
-    }
-  }
+  options.m_args.GetValue("-f", options.m_font);
+  options.m_args.GetValue("-F", options.m_fontSize);
+
+  cerr << "A font size is " << (int)options.m_fontSize << endl;
+
 
   cout << "info: using type '" << options.m_typeName << "'" << endl;  
 
@@ -204,81 +198,6 @@ int main(int argc, char *argv[])
     cout << "info: RAM size set to " << dec << ramSize_k << "k" << endl;
   }
 
-  // load ROM
-  //if (!ReadROMFromFile(options.m_romFn, m_rom))
-  //  return false;
-
-  // open and start the emulator
-  if (!emulator->Open(options)) {
-    cerr << "error: cannot open emulator" << endl;
-    return -1;
-  }
-
-  MainWindow mainWindow;
-  bool hasMemoryMappedVideo = false;
-  const Config::Video * videoInfo = emulator->GetVideoInfo();
-  if (videoInfo == nullptr) {
-    cerr << "error: emulator has no video device defined" << endl;
-    return -1;
-  }
-
-  // initlialize SDL 
-  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
-    printf("error initializing SDL: %s\n", SDL_GetError()); 
-    return -1;
-  }
-
-  // get ASCII codes in the keysyms
-  //SDL_EnableUNICODE(1);
-
-  cerr << "Creating screen" << endl;
-
-  emulator->CreateScreen(mainWindow, options);
-
-  if (!emulator->Start()) {
-    cerr << "error: cannot start emulator" << endl;
-    return -1;
-  }
-
-  if (videoTest) {
-    for (int i = 0; i < videoInfo->m_screenCols * videoInfo->m_screenRows; ++i) {
-      emulator->m_video->WriteMemoryAtAddress(i, i);
-    }
-    emulator->m_video->Update(true);
-    auto now = std::chrono::system_clock::now();
-    auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);
-    while (std::chrono::system_clock::now() < finish) {
-      usleep(1000);
-      emulator->m_video->Update(false);
-    }
-  }
-
-  // run emulator
-  auto lastPoll  = std::chrono::system_clock::now();
-  auto lastSpeed = std::chrono::system_clock::now();
-
-  cout << "entering loop" << endl;
-
-  for (;;) {
-    emulator->Run(500);
-
-    auto now = std::chrono::system_clock::now();
-
-    double interval = std::chrono::duration<double>(now - lastPoll).count();
-    if (interval >= 50e-3) {
-      if (!emulator->Poll())
-        break;
-      lastPoll = now;
-    }
-
-    if (displayCPUSpeed) {
-      interval = std::chrono::duration<double>(now - lastSpeed).count();
-      if (interval >= 1) {
-        cout << std::fixed << std::setprecision(3) << (emulator->GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
-        lastSpeed = now;
-      }
-    }
-  }
-
-  // exiting
+  return emulator->Run(options);
 }
+

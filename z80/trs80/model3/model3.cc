@@ -23,7 +23,7 @@ static struct EmulatorInfo g_emulatorInfo
 
     INFO_MONITOR(10.6445, 4.0, 3.0, ePAL),        
 
-    INFO_VIDEO_MEMORY_MAPPED("trs80", \
+    INFO_SCREEN_MEMORY_MAPPED_FIXED("trs80", \
                               MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
                               MODEL3_SCREEN_WIDTH_CHARS, MODEL3_SCREEN_HEIGHT_CHARS, \
                               MODEL3_FONT_WIDTH, MODEL3_FONT_HEIGHT, \

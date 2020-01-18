@@ -66,7 +66,7 @@ static KeyboardScanner::ScanLayout g_trs80Keys = {
 
 void TRS80Emulator::Instantiate()
 {  
-  VirtualScreen::AddType<TRS80Video>("trs80");
+  MemoryMappedScreen::AddType<TRS80Video>("trs80");
 }
 
 TRS80Emulator::TRS80Emulator(const EmulatorInfo * info)
@@ -390,7 +390,7 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
   if (new32Col != m_32Col) {
     m_32Col = new32Col;
     cout << "trs80: 32 column mode turned " << (m_32Col ? "on" : "off") << endl;
-    ((TRS80Video *)m_video.get())->Set32Col(m_32Col);
+    ((TRS80Video *)m_memMapScreen.get())->Set32Col(m_32Col);
   }
 }
 
@@ -484,8 +484,8 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
 
 /////////////////////////////////////////////////////////////
 
-TRS80Video::TRS80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
-  : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
+TRS80Video::TRS80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+  : SingleColourMemoryMappedScreen(mainWindow, options, info)
 {
   m_32Col = false;
 }
@@ -504,5 +504,5 @@ void TRS80Video::WriteMemoryAtAddress(int addr, uint8_t ch)
   if (ch < 0x20)
     ch += 0x40;
     
-  SingleColourMemoryMappedVideo::WriteMemoryAtAddress(addr, ch);
+  SingleColourMemoryMappedScreen::WriteMemoryAtAddress(addr, ch);
 }

@@ -10,6 +10,8 @@ class EA78UP5_Emulator : public S2650Emulator
 
     void Instantiate() override;
 
+    virtual bool Exec(int cycles) override;
+
     virtual bool Open(const Options & options) override;
     virtual void Reset(int addr) override;
 };

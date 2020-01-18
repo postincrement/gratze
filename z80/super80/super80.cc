@@ -50,9 +50,7 @@ static EmulatorInfo g_emulatorInfo =
 
     INFO_MAIN_RAM(SUPER80_RAM_START_ADDR, 48, 8, SUPER80_ROM_U26_START_ADDR / 1024),
 
-
-    //INFO_VIDEO_MEMORY_MAPPED("super80", 0xf000, 0xf1ff,
-    INFO_VIDEO_EXTERNAL("super80", SUPER80_VIDEO_CHARS, \
+    INFO_SCREEN_MEMORY_MAPPED_VARIABLE("super80", SUPER80_VIDEO_CHARS, \
                          SUPER80_VIDEO_COLS, SUPER80_VIDEO_ROWS, \
                          SUPER80_FONT_WIDTH, SUPER80_FONT_HEIGHT, \
                          64, &g_charGen_Signetics2513, nullptr),
@@ -106,15 +104,15 @@ static KeyboardScanner::ScanLayout g_super80Keys = {
 
 //////////////////////////////////////////////////////////////////////////////////
 
-class Super80Video : public SingleColourMemoryMappedVideo
+class Super80Video : public SingleColourMemoryMappedScreen
 {
   public:
-    Super80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info);
+    Super80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
     virtual FontChar GetCharAtPos(int x, int y) override;
 };
 
-Super80Video::Super80Video(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
-  : SingleColourMemoryMappedVideo(mainWindow, emulator, options, info)
+Super80Video::Super80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+  : SingleColourMemoryMappedScreen(mainWindow, options, info)
 {
 }
 
@@ -138,7 +136,7 @@ FontChar Super80Video::GetCharAtPos(int x, int y)
 
 void Super80_Emulator::Instantiate()
 {  
-  VirtualScreen::AddType<Super80Video>("super80");
+  MemoryMappedScreen::AddType<Super80Video>("super80");
 }
 
 Super80_Emulator::Super80_Emulator()
@@ -266,7 +264,7 @@ void Super80_Emulator::CopyToVideo()
   for (int i = 0; i < SUPER80_VIDEO_CHARS; ++i) {
     uint8_t data = ReadMemory(addr);
     //cout << "super80: copy to video from " << HEXFORMAT0x4(addr) << " to " << HEXFORMAT0x4(i) << " " << HEXFORMAT0x2(data) << endl;
-    m_video->WriteMemoryAtAddress(i, data);
+    m_memMapScreen->WriteMemoryAtAddress(i, data);
     addr++;
   }
 }
@@ -274,7 +272,7 @@ void Super80_Emulator::CopyToVideo()
 void Super80_Emulator::WriteMemory(uint16_t addr, uint8_t data)
 {
   if (m_videoOn && (addr >= m_videoStartAddr) && (addr <= m_videoEndAddr)) {
-    m_video->WriteMemoryAtAddress(addr - m_videoStartAddr, data);
+    m_memMapScreen->WriteMemoryAtAddress(addr - m_videoStartAddr, data);
     //cout << "super80: write to video at " << HEXFORMAT0x4(m_videoStartAddr) << " " << HEXFORMAT0x2(data) << endl;
   }
   Z80Emulator::WriteMemory(addr, data);  

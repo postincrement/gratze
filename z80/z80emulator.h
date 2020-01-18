@@ -20,7 +20,7 @@ class Z80Emulator : public Emulator
 
     // overrides from Emulator
     virtual bool Start(int addr = -1) override;
-    virtual bool Run(int cycles = 1000)  override;
+    virtual bool Exec(int cycles = 1000)  override;
 
     virtual void NMI() override;
     virtual void Interrupt(uint16_t vector = 0) override;
