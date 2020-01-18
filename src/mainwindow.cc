@@ -25,7 +25,10 @@ MainWindow::~MainWindow()
 
 bool MainWindow::Open(int width, int height)
 {
-  cout << "info: window screen is " << width << "x" << height << endl;
+  cout << "info: virtual screen is " << width << "x" << height << endl;
+
+  m_left = 10;
+  m_top  = 10;
 
   // save information
   m_screenWidth  = width;
@@ -35,16 +38,16 @@ bool MainWindow::Open(int width, int height)
   m_panelWidth = 200;
 
   // calcuate screen rect
-  m_screenRect = { 0, 0, m_screenWidth, m_screenHeight };
+  m_screenRect = { m_left, m_top, m_screenWidth, m_screenHeight };
 
   cout << "info: window screen area is " << m_screenRect.w << "x" << m_screenRect.h << endl;
 
   // calculate panel rect
-  m_panelRect  = { m_screenRect.w, 0, m_panelWidth, m_screenRect.h };
+  m_panelRect  = { m_left + m_screenRect.w + m_left, 0, m_panelWidth, m_screenRect.h };
 
   // create window
-  int totalHeight = m_screenRect.h;
-  int totalWidth  = m_screenRect.w + m_panelWidth; 
+  int totalHeight = m_top  + m_screenRect.h + m_top ;
+  int totalWidth  = m_left + m_screenRect.w + m_left + m_panelWidth; 
 
   cerr << "info: main window is " << dec << totalWidth << "x" << totalHeight << endl;
 
@@ -81,11 +84,11 @@ bool MainWindow::Open(int width, int height)
   return true;
 }
 
-void MainWindow::GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h)
+void MainWindow::GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h, int hscale, int vscale)
 {
   rect = { 
-           m_screenRect.x + x,
-           m_screenRect.y + y, 
+           (m_screenRect.x - m_left) + (m_left / hscale) + x,
+           (m_screenRect.y - m_top) + (m_top / vscale) + y, 
            w, 
            h 
          };

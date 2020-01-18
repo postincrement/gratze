@@ -34,12 +34,15 @@ class PixelFont : public Font
     uint8_t * m_data;
     SDL_Texture * m_texture;
     const Config::Font m_config;
+  private:
+    int m_pixelWidth;
+    int m_pixelHeight;  
 };
 
-class TTFFont : public Font
+class TTFFont : public PixelFont
 {
   public:
-    TTFFont(const std::string & fontName, int charCount);
+    TTFFont(const Config::Font & config, const std::string & fontName, int charCount);
     ~TTFFont();
 
     bool Open(SDL_Renderer * m_renderer) override;

@@ -60,13 +60,10 @@ class TextWindow
     int m_width;
     int m_height;
 
-    double m_hscale = 1;
-    double m_vscale = 1;
+    int m_hscale = 1;
+    int m_vscale = 1;
 
     int m_colScale = 1;
-
-    int m_left = 0;
-    int m_top = 0;
 
     int m_cursorX = 0;
     int m_cursorY = 0;
@@ -90,8 +87,7 @@ class VirtualScreen : public TextWindow
     ~VirtualScreen();
 
     // new functions
-    virtual void SetScale(double hscale, double vscale);
-    virtual void SetOffset(int left, int top);
+    virtual void SetScale(int hscale, int vscale);
 
     template<class Type>
     static void AddType(const std::string & name)

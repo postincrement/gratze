@@ -23,12 +23,14 @@ class MainWindow
 
     void Update();
 
-    void GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h);
+    void GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h, int hscale, int vscale);
 
   protected:
     int m_screenHeight;
     int m_screenWidth;
     int m_panelWidth;
+    int m_left = 12;   // divisible by 2, 3, 4, 6
+    int m_top = 12;    // divisible by 2, 3, 5, 6
 
     std::string m_title;
 

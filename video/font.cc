@@ -90,12 +90,15 @@ PixelFont::PixelFont(const Config::Font & config)
 {
   m_width  = config.m_width;
   m_height = config.m_height;
+
+  m_pixelWidth = config.m_width;
+  m_pixelHeight = config.m_height;
 }
 
 bool PixelFont::Open(SDL_Renderer * renderer)
 {
   std::vector<uint8_t> fontData;
-  fontData.resize(m_config.m_count * m_config.m_height);
+  fontData.resize(m_config.m_count * m_pixelHeight);
 
   // unpack pixel data
   if (m_config.m_charGen != NULL) {
@@ -111,7 +114,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
       return false;
     }
   }  
-  m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_width, m_height * m_charCount);
+  m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_pixelWidth, m_pixelHeight * m_charCount);
   if (m_texture == nullptr) {
     cerr << "error: cannot create font texture" << endl;
     return false;
@@ -120,17 +123,17 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   cout << "info: creating font with " << dec << m_charCount << " chars" << endl;;
 
   std::vector<uint32_t> pixels;
-  pixels.resize(m_width * m_height * m_charCount);
+  pixels.resize(m_pixelWidth * m_pixelHeight * m_charCount);
 
   const uint8_t * data = &fontData[0];
 
   // copy pixel data to the surface with the correct colours
   for (int i = 0; i < m_charCount; ++i) {
-    const uint8_t * srcPixels = data + (i * m_height);
-    for (int y = 0; y < m_height; ++y) {
-      uint32_t * dstPixels = &pixels[m_width * ((i * m_height) + y)];
-      unsigned mask = 1 << (m_width - 1);
-      for (int x = 0; x < m_width; ++x) {
+    const uint8_t * srcPixels = data + (i * m_pixelHeight);
+    for (int y = 0; y < m_pixelHeight; ++y) {
+      uint32_t * dstPixels = &pixels[m_pixelWidth * ((i * m_pixelHeight) + y)];
+      unsigned mask = 1 << (m_pixelWidth - 1);
+      for (int x = 0; x < m_pixelWidth; ++x) {
         if (*srcPixels & mask) {
           *dstPixels = 0xffffffff;
         }
@@ -145,7 +148,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   }
 
   // create texture
-  if (SDL_UpdateTexture(m_texture, NULL, &pixels[0], m_width * sizeof(uint32_t)) != 0) {
+  if (SDL_UpdateTexture(m_texture, NULL, &pixels[0], m_pixelWidth * sizeof(uint32_t)) != 0) {
     cerr << "error: cannot create font texture - " << SDL_GetError() << endl;
     return false;
   }
@@ -157,7 +160,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
 
 void PixelFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  SDL_Rect srcRect = { 0, ch * GetHeight(), GetWidth(), GetHeight() };
+  SDL_Rect srcRect = { 0, ch * m_pixelHeight, m_pixelWidth, m_pixelHeight };
   
   SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);
   SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b);
@@ -171,8 +174,8 @@ void PixelFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect 
 
 /////////////////////////////////////////////////////////////////////////////
 
-TTFFont::TTFFont(const std::string & fontName, int charCount)
-  : Font(charCount)
+TTFFont::TTFFont(const Config::Font & config, const std::string & fontName, int charCount)
+  : PixelFont(config)
   , m_name(fontName)
   , m_font(nullptr)
 {
@@ -188,6 +191,9 @@ bool TTFFont::Open(SDL_Renderer * renderer)
 {
   if (m_font)
     FC_FreeFont(m_font);
+
+  if (!PixelFont::Open(renderer))
+    return false;  
 
   int pointSize = 40;  
 
@@ -234,9 +240,17 @@ bool TTFFont::Open(SDL_Renderer * renderer)
 
 void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
+  if ((ch < 0x20) || ((ch >= 0x7f) && (ch < 0xb0)) || (ch >= 0xff)) {
+    return PixelFont::RenderChar(ch, renderer, dstRect, fg, bg);
+  }
+
+  SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);
+  SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b);
   SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
   SDL_RenderFillRect(renderer, &dstRect);
 
+  SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
+  SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b);
   char str[2] = { (char)(ch & 0xff), 0x00 };
   FC_DrawBoxAlign(m_font, renderer, dstRect, FC_ALIGN_CENTER, str); 
 }

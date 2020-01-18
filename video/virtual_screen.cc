@@ -50,15 +50,17 @@ void TextWindow::RenderCharAtPos(int x, int y, bool withCursor)
   if (m_font) {
     SDL_Rect dstRect;
     m_mainWindow.GetScreenCharRect(dstRect, 
-                          m_left + (x * m_font->GetWidth() * m_colScale), 
-                          m_top + y * m_font->GetHeight(), 
-                          m_font->GetWidth() * m_colScale,
-                          m_font->GetHeight());
+                                   (x * m_font->GetWidth()/* * m_colScale*/), 
+                                    y * m_font->GetHeight(), 
+                                    m_font->GetWidth()/* * m_colScale*/,
+                                    m_font->GetHeight(),
+                                    m_hscale * m_colScale, 
+                                    m_vscale);
 
     SDL_Colour fg, bg;
     GetColourAtPos(x, y, fg, bg);
 
-    SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale, m_vscale);
+    SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale * m_colScale, m_vscale);
 
     RenderChar(GetCharAtPos(x, y), withCursor, m_mainWindow.GetRenderer(), dstRect, fg, bg);
 
@@ -151,8 +153,8 @@ bool TextWindow::SetFont(Font * font)
 
 bool TextWindow::ResizeScreen()
 {
-  int newWidth  = (m_left * 2) + (m_cols * m_font->GetWidth());
-  int newHeight = (m_top * 2) + m_rows * m_font->GetHeight();
+  int newWidth  = m_cols * m_font->GetWidth();
+  int newHeight = m_rows * m_font->GetHeight();
 
   cout << "info: screen resize requested old: " << m_width << "x" << m_height << ", new: " << newWidth << "x" << newHeight << endl; 
 
@@ -182,22 +184,16 @@ VirtualScreen * VirtualScreen::Create(MainWindow & mainWindow,
 VirtualScreen::VirtualScreen(MainWindow & mainWindow, Emulator & emulator, const Options & options, const Config::Video & info)
   : TextWindow(mainWindow, info.m_screenRows, info.m_screenCols, info.m_screenWidth, info.m_screenHeight)
 {
-  m_hscale = 1.0;
-  m_vscale = 1.0;
+  m_hscale = 1;
+  m_vscale = 1;
 }
 
-void VirtualScreen::SetScale(double hscale, double vscale)
+void VirtualScreen::SetScale(int hscale, int vscale)
 {
   m_hscale = hscale;
   m_vscale = vscale;
 
   cout << "info: screen scale is " << hscale << "," << vscale << endl;
-}
-
-void VirtualScreen::SetOffset(int left, int top)
-{
-  m_left = left;
-  m_top  = top;
 }
 
 FontChar VirtualScreen::GetCharAtPos(int x, int y)
@@ -246,7 +242,7 @@ MemoryMappedVideo::~MemoryMappedVideo()
 bool MemoryMappedVideo::Open()
 {
   if (!m_options.m_font.empty()) {
-    SetFont(new TTFFont(m_options.m_font, 128));
+    SetFont(new TTFFont(m_fontConfig, m_options.m_font, 128));
   }
   else {
     SetFont(new PixelFont(m_fontConfig));
