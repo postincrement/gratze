@@ -19,7 +19,7 @@ using namespace std;
 #define   BINBUG_VIDEO_START_ADDR   0x7800
 #define   BINBUG_VIDEO_END_ADDR     0x7fff
 
-extern unsigned char g_rom_binbug6_1ROM[1024];
+extern unsigned char g_rom_binbug6_1[1024];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,7 +31,7 @@ static EmulatorInfo g_emulatorInfo =
 
   {
     INFO_CPU(1, 0x0000),
-    INFO_ROM(0x0000, g_rom_binbug6_1ROM),
+    INFO_ROM(0x0000, g_rom_binbug6_1),
 
     //INFO_MAIN_RAM(BINBUG_RAM_START_ADDR, 16, 1, 32 - 1 - DG640_VIDEO_RAM_SIZE_K),
     INFO_RAM(BINBUG_RAM_START_ADDR, BINBUG_RAM_END_ADDR),

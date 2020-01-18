@@ -17,6 +17,7 @@
 #include "z80/super80/super80.h"
 #include "z80/microbee/microbee.h"
 #include "2650/eti685/eti685.h"
+#include "2650/78up5/78up5.h"
 
 #include "src/factory.h"
 #include "src/cereal.h"
@@ -29,17 +30,27 @@ static EmulatorFactory g_emulatorFactory;
 
 /////////////////////////////////////////////////////
 
+
+template <class Type>
+void AddEmulator()
+{
+  std::unique_ptr<Emulator> emulator(new Type());
+  const EmulatorInfo & info = emulator->GetInfo();
+  std::string key = info.m_option;
+  g_emulatorFactory.AddConcreteClass<Type>(key);
+}
+
 void Init()
 {
-  g_emulatorFactory.AddConcreteClass<Model1Level2_Emulator>("m1");
-  g_emulatorFactory.AddConcreteClass<Model1Level1_Emulator>("m11");
-  g_emulatorFactory.AddConcreteClass<Model1Level2_Emulator>("m12");
-  g_emulatorFactory.AddConcreteClass<Model3_Emulator>("m3");
-  g_emulatorFactory.AddConcreteClass<Model4_Emulator>("m4");
-  g_emulatorFactory.AddConcreteClass<DG680_Emulator>("dg680");
-  g_emulatorFactory.AddConcreteClass<ETI685>("eti685");
-  g_emulatorFactory.AddConcreteClass<Super80_Emulator>("super80");
-  g_emulatorFactory.AddConcreteClass<Microbee_Emulator>("microbee");
+  AddEmulator<Model1Level1_Emulator>();
+  AddEmulator<Model1Level2_Emulator>();
+  AddEmulator<Model3_Emulator>();
+  AddEmulator<Model4_Emulator>();
+  AddEmulator<DG680_Emulator>();
+  AddEmulator<ETI685>();
+  AddEmulator<Super80_Emulator>();
+  AddEmulator<Microbee_Emulator>();
+  AddEmulator<EA78UP5_Emulator>();
 
   std::vector<std::string> keys;
   g_emulatorFactory.GetKeys(keys);
@@ -70,6 +81,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "displaySpeed",  ' ', "display CPU speed on console"},
   { ' ', "keyboardDebug", ' ', "display keyboard debug on console" },
   { ' ', "turbo",         ' ', "do not throttle CPU speed"},
+  { ' ', "list",          ' ', "list all emulations"},
   { 0, 0, 0, 0}
 };
 
@@ -85,6 +97,23 @@ int main(int argc, char *argv[])
   }
 
   cout << options.m_args.DumpValues();
+
+  if (options.m_args.HasArg("--list")) {
+    cout << "Available emulations\n";
+    ColumnFormatter::Columns<2> columns;
+    std::vector<std::string> keys;
+    g_emulatorFactory.GetKeys(keys);
+
+    for (auto & r : keys) {
+      columns[0].push_back(r);
+      std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(r));
+      const EmulatorInfo & info = emulator->GetInfo();
+      columns[1].push_back(info.m_title);
+    }
+
+    cout << ColumnFormatter::Print<2>(columns, { "   ", "   " });
+    exit(0);
+  }
 
   if (options.m_args.HasArg("-h")) {
     cout << "usage: gratze [options] args...\n"
