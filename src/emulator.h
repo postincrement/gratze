@@ -85,6 +85,61 @@ class Emulator
       int m_id;
     };
 
+    typedef std::function<void (double, uint64_t)> PollHandler;
+
+    struct PollDef 
+    {
+      PollDef(double interval, PollHandler handler)
+        : m_timeInterval(interval)
+        , m_handler(handler)
+        , m_pollIsTime(true)
+      { }
+
+      PollDef(uint64_t interval, PollHandler handler)
+        : m_clockInterval(interval)
+        , m_handler(handler)
+        , m_pollIsTime(false)
+      { }
+
+      PollDef(const PollDef & def) = default;
+
+      void Execute(double secs, uint64_t clocks)
+      {
+        if (m_handler)
+          m_handler(secs,clocks);
+      }
+
+      void SetHandler(PollHandler handler);
+
+      double m_nextTime;
+      double m_timeInterval;
+      double m_lastTime;
+
+      uint64_t m_nextClock;
+      uint64_t m_clockInterval;
+      uint64_t m_lastClock;
+
+      bool m_pollIsTime;
+
+      PollHandler m_handler = nullptr;
+    };
+
+    class PollDefList
+    {
+      public:
+        void Add(double secs, PollHandler handler)
+        {
+          m_list.push_back(PollDef(secs, handler));
+        }
+
+        void Add(uint64_t clocks, PollHandler handler)
+        {
+          m_list.push_back(PollDef(clocks, handler));
+        }
+
+        std::vector<PollDef> m_list;
+    };
+
     /////////////////////////////////////////////
     //
     //  main emulator functions
@@ -97,7 +152,8 @@ class Emulator
 
     virtual bool Open(const Options & options);
     virtual const EmulatorInfo & GetInfo() const;
-    virtual bool Poll();
+    void UpdateScreen();
+    void CheckKeyboard();
 
     // info functions
     virtual const Config::Block * GetConfigBlock(Config::Type type) const;
@@ -110,7 +166,7 @@ class Emulator
     // CPU functions
     virtual double GetActualCPUSpeed_Hz() const;
     virtual bool Start(int addr = -1) = 0;
-    virtual bool Exec(int cycles = 1000) = 0;
+    virtual int Exec(int cycles) = 0;
 
     virtual void NMI() = 0;
     virtual void Interrupt(uint16_t vector = 0) = 0;
@@ -179,6 +235,11 @@ class Emulator
 
     void SetKeyboard(VirtualKeyboard * keyboard);
 
+    void AddRealTimePollDef(double seconds, PollHandler handler);
+    void AddCPUTimePollDef(uint64_t cycles, PollHandler handler);
+
+    void CalcCPUSpeed(double secs, uint64_t clocks);
+
   protected:  
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
 
@@ -193,16 +254,15 @@ class Emulator
     std::vector<ReadIOPortBlockInfo> m_readIOPortBlocks;
     std::vector<WriteIOPortBlockInfo> m_writeIOPortBlocks;
 
-    std::vector<uint8_t> m_ram;
+    PollDefList m_pollers;
+
+    uint64_t m_cycleCounter;
+
     int m_ramSize_bytes;
     int m_ramMask;
 
     double m_targetCPUClock_Hz;
     double m_actualCPUClock_Hz;
-
-    uint64_t m_cycleCounter;
-    int m_speedCycleCounter;
-    std::chrono::system_clock::time_point m_cpuDelayTimer;
 
     bool m_debugWriteMemory = false;
     bool m_debugReadMemory = false;

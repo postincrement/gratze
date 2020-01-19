@@ -46,13 +46,17 @@ class BitDecoder
 
     inline void OnBit(bool val, uint64_t cycles);
 
-    void OnTransition(bool val, uint64_t cycles);
-
     virtual void OnBreak();
 
+    void SetHandler(std::function<void (uint8_t)> handler);
+
   protected:
+    std::function<void (uint8_t)> m_handler = nullptr;
+
     double m_clock_mhz;
-    uint64_t m_prevTime;
+    uint64_t m_startTime;
+    uint64_t m_cycleCount = 0;
+
     bool m_prevState;
 
     int m_bitTime_us;
@@ -71,8 +75,8 @@ BitDecoder::BitDecoder()
 void BitDecoder::Open(double clock_mhz, bool state, int baud)
 {
   m_clock_mhz = clock_mhz;
-  m_prevTime  = 0;
   m_prevState = state;
+  m_cycleCount = 0;
 
   m_bitTime_us = m_clock_mhz / baud;
 
@@ -81,33 +85,34 @@ void BitDecoder::Open(double clock_mhz, bool state, int baud)
   cout << "serial: bit time is " << m_bitTime_us << " us, min " << m_minBitTime_us << " us" << endl;
 }
 
-void BitDecoder::OnBit(bool val, uint64_t cycles)
-{
-  if (val == m_prevState)
-    return;
+ void BitDecoder::SetHandler(std::function<void (uint8_t)> handler)
+ {
+   m_handler = handler;
+ }
 
-  OnTransition(val, cycles);  
-}
 
 void BitDecoder::OnBreak()
 {
   cerr << "serial: BREAK" << endl;
 }
 
-
-void BitDecoder::OnTransition(bool val, uint64_t cycles)
+void BitDecoder::OnBit(bool val, uint64_t cycles)
 {
-  // each CPU cycle is 3 clock cycles
-  int us = (cycles - m_prevTime) * 3 * 1e+6 / m_clock_mhz;
+  m_cycleCount += cycles;
 
-  //cout << "serial: transition is " << us << " us" << endl;
+  if (val == m_prevState)
+    return;
+
+  int us = m_cycleCount * 1e+6 / m_clock_mhz;
+
+//  cout << "serial: transition is " << us << " us with " << val << endl;
 
   switch (m_state) {
 
     // waiting for start bit
     case 0:
       if (!val) {
-        //cout << "serial: start bit" << endl;
+//        cout << "serial: start bit" << endl;
         m_state = 1;
       }
       break;
@@ -117,40 +122,45 @@ void BitDecoder::OnTransition(bool val, uint64_t cycles)
     // if previous run of zeroes was more than 10 bit times, it's a break 
     case 1:
       if (us < m_minBitTime_us) {
-        //cout << "serial: ignore low transient" << endl;
+//        cout << "serial: ignore low transient" << endl;
         m_state = 0;
         break;
       }
       if (us > (8*m_bitTime_us)) {
-        //cout << "serial: break" << endl;
+//        cout << "serial: break" << endl;
         OnBreak();
         m_state = 0;
         break;
       }
 
       m_state = 2;
-      m_count = 9; // include start bit
+      m_count = 8; // include start bit
+
+      // remove start bit, and go to half way through bit time
+      us -= m_bitTime_us * 3 / 2;
       // fall through
 
     // decode the bits preior to the transition
     case 2:  
       //cout << "serial: data " << (m_prevState ? "1" : "0") << " " << us << " us" << endl;
       // extract bits
-      while ((m_count > 0) && (us > m_minBitTime_us)) {
-        //cout << "serial: bit " << (m_prevState ? "1" : "0") << endl;      
+      while ((m_count > 0) && (us > m_minBitTime_us/2)) {
+//        cout << "serial: bit " << (m_prevState ? "1" : "0") << endl;      
         m_data = (m_data >> 1) | (m_prevState ? 0x80 : 0);
         us -= m_bitTime_us;
         m_count--;
       }
       if (m_count == 0) {
         cout << "serial: extracted " << HEXFORMAT0x2(m_data) << endl;
+        if (m_handler)
+          m_handler(m_data);
         m_state = 0;
       }
       break;
   }
 
-  m_prevTime  = cycles;
-  m_prevState = val;     
+  m_prevState = val;
+  m_cycleCount = 0;
 }
 
 BitDecoder m_bitDecoder;
@@ -173,6 +183,13 @@ bool EA78UP5_Emulator::Open(const Options & options)
   if (!S2650Emulator::Open(options))
     return false;
 
+  uint64_t clockInterval = m_targetCPUClock_Hz / 110.0 / 4;
+
+  cout << "78up5: poll interval = " << clockInterval << " = " << 1000000.0 / clockInterval << " Hz" << endl;
+
+  using namespace std::placeholders;
+  AddCPUTimePollDef(clockInterval, std::bind(&EA78UP5_Emulator::SerialIn, this, _1, _2));  
+
   return true;
 }
 
@@ -183,14 +200,14 @@ void EA78UP5_Emulator::Reset(int addr)
   // make sure sense is not set to indicate start of serial char
   SetSense(true);
 
+  using namespace std::placeholders;
+
   m_bitDecoder.Open(m_targetCPUClock_Hz, true, 110);
+  m_bitDecoder.SetHandler(std::bind(&Terminal::WriteChar, m_terminal.get(), _1));
 }
 
-bool EA78UP5_Emulator::Exec(int cycles)
+void EA78UP5_Emulator::SerialIn(double secs, uint64_t clocks)
 {
-  S2650Emulator::Exec(cycles);
-
-  m_bitDecoder.OnBit(GetFlag(), m_cycleCounter);
-
-  return true;
+  //cout << "78up5: poll" << endl;
+  m_bitDecoder.OnBit(GetFlag(), clocks);
 }

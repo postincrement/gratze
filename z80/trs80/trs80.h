@@ -86,8 +86,6 @@ class TRS80Emulator : public Z80Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
-    virtual bool Poll() override;
-
     // new functions
     void WriteVideoChar(unsigned int offset, uint8_t ch);
 
@@ -104,6 +102,7 @@ class TRS80Emulator : public Z80Emulator
     uint8_t ReadFDC(uint16_t addr);
     void WriteFDC(uint16_t addr, uint8_t val);
     void FDCInterrupt();
+    void RTCInterrupt();
 
     uint8_t ReadInterrupt(uint16_t);
 

@@ -14,7 +14,7 @@ class S2650Emulator : public Emulator
 
     // overrides from Emulator
     virtual bool Start(int addr = -1) override;
-    virtual bool Exec(int cycles = 1000)  override;
+    virtual int Exec(int cycles)  override;
 
     virtual void NMI() override;
     virtual void Interrupt(uint16_t vector = 0) override;

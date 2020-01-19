@@ -69,10 +69,6 @@ void Z80Emulator::Reset(int addr)
   m_cpu.PC.W       = addr;
   m_cpu.TrapBadOps = 1;
   m_cpu.Trap       = 0xffff;
-
-  m_cycleCounter = 0;
-  m_speedCycleCounter = 0;
-  m_cpuDelayTimer = std::chrono::system_clock::now();
 }
 
 void Z80Emulator::SetTrace(bool v)
@@ -80,55 +76,10 @@ void Z80Emulator::SetTrace(bool v)
   m_cpu.Trace = v ? 1 : 0;
 }
 
-bool Z80Emulator::Exec(int cycles)
+int Z80Emulator::Exec(int cycles)
 {
-  //if (m_cpu.Trace) {
-  //  ExecZ80(&m_cpu, 1);
-  //  return false;
-  //}
-
-  // full speed
-  if (m_turbo) {
-    int cyclesDone = cycles - ExecZ80(&m_cpu, cycles);
-    m_cycleCounter      += cyclesDone;
-    m_speedCycleCounter += cyclesDone;
-    if (m_speedCycleCounter > 100) {
-      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
-      if (interval >= 0.001) {
-        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
-        m_speedCycleCounter = 0;
-        m_cpuDelayTimer = std::chrono::system_clock::now();
-      }
-    }
-  }
-  else {
-#define INC  4
-    while (cycles > 0) {
-      int cyclesDone = INC - ExecZ80(&m_cpu, INC);
-      cycles              -= cyclesDone;
-      m_cycleCounter      += cyclesDone;
-      m_speedCycleCounter += cyclesDone;
-
-      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
-
-      if ((m_speedCycleCounter > 100) && (interval >= 0.001)) {
-        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
-        m_speedCycleCounter = 0;
-        m_cpuDelayTimer = std::chrono::system_clock::now();
-
-        m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
-        if (m_cpuDelayRepeat < 1)
-          m_cpuDelayRepeat = 1;
-        else if (m_cpuDelayRepeat > 600)  
-          m_cpuDelayRepeat = 600;
-      }
-
-      for (int i = 0; i < m_cpuDelayRepeat; ++i)
-        memset(m_delayBuffer, 0, sizeof(m_delayBuffer));
-    }
-  }
+  return ExecZ80(&m_cpu, cycles);
 }
-
 
 void Z80Emulator::NMI()
 {

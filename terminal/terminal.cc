@@ -1,6 +1,6 @@
 #include <iostream>
 
-
+#include "src/misc.h"
 #include "terminal/terminal.h"
 
 using namespace std;
@@ -22,6 +22,7 @@ bool Terminal::Open()
 {
   m_cursorX = 0;
   m_cursorY = 0;
+  m_cursorEnabled = true;
   m_screen->SetCursorPos(m_cursorX, m_cursorY);
   m_screen->EnableCursor(true);
 }
@@ -55,12 +56,23 @@ void Terminal::WriteChar(uint8_t ch)
     m_screen->SetCursorPos(m_cursorX, m_cursorY);
   }
   else if ((ch >= 0x20) && (ch <= 0x7e)) {
-    int newCursorX = m_cursorX+1;
-    m_screen->SetCursorPos(newCursorX, m_cursorY);
     int loc = m_screen->MapPosToLoc(m_cursorX, m_cursorY);
+    cout << "loc = " << loc << endl;
     m_screen->m_chars[loc].m_ch = ch;
-    m_screen->RenderCharAtLoc(loc);
-    m_cursorX = newCursorX;
+    m_screen->RefreshCharAtLoc(loc);
+    if (m_cursorX < m_cols-1) {
+      m_cursorX++;
+    }
+    else {
+      m_cursorX = 0;
+      if (m_cursorY < m_rows-1) {
+        ++m_cursorY;
+      }
+      else {
+        m_cursorY = 0;
+      }  
+    }
+    m_screen->SetCursorPos(m_cursorX, m_cursorY);
     Update(true);
   }
 }
@@ -73,10 +85,18 @@ Terminal::Screen::Screen(Terminal & terminal, MainWindow & mainWindow, const Opt
   , m_terminal(terminal)
 {
   m_chars.resize(cols * rows);
+  for (auto & r : m_chars) {
+    r.m_ch = ' ';
+    r.m_fg = { 0, 255, 0, 255 };
+    r.m_bg = { 0, 0, 0, 0 };
+  }
 }
 
 bool Terminal::Screen::Screen::Open()
 {
+  if (!VirtualScreen::Open())
+    return false;
+
   return m_terminal.Open();
 }
 

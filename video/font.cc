@@ -13,10 +13,15 @@ using namespace std;
 
 Font::Font(int charCount)
   : m_charCount(charCount)
-{}
+{
+  m_texture = NULL;
+}
 
 Font::~Font()
-{}
+{
+  if (m_texture != NULL)
+    SDL_DestroyTexture(m_texture);
+}
 
 int Font::GetWidth() const
 { return m_width; }
@@ -113,9 +118,13 @@ bool PixelFont::Open(SDL_Renderer * renderer)
       cerr << "error: font creator returned error" << endl;
       return false;
     }
-  }  
+  }
+
+  if (m_texture)
+    SDL_DestroyTexture(m_texture);
+
   m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_pixelWidth, m_pixelHeight * m_charCount);
-  if (m_texture == nullptr) {
+  if (m_texture == NULL) {
     cerr << "error: cannot create font texture - " << SDL_GetError() << endl;
     return false;
   }
@@ -236,6 +245,15 @@ bool TTFFont::Open(SDL_Renderer * renderer)
   m_width += 1;   // allow space between chars
   m_height += 1;  // allow space between lines
 
+  if (m_texture)
+    SDL_DestroyTexture(m_texture);
+
+  m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_width, m_height * m_charCount);
+  if (m_texture == NULL) {
+    cerr << "error: cannot create font texture - " << SDL_GetError() << endl;
+    return false;
+  }
+
   cerr << "info: TTF font '" << m_name << " " << (int)m_fontSize << " is " << dec << m_width << "x" << m_height << endl;
 
   return true;
@@ -254,13 +272,42 @@ void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & 
     return m_pixelFont->RenderChar(ch, renderer, dstRect, fg, bg);
   }
 
-  SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);
-  SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b);
-  SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
-  SDL_RenderFillRect(renderer, &dstRect);
+  cerr << "TTF rendering char " << (int)ch << endl;
 
-  SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
-  SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b);
-  char str[2] = { (char)(ch & 0xff), 0x00 };
-  FC_DrawBoxAlign(m_font, renderer, dstRect, FC_ALIGN_CENTER, str); 
+  if (m_texture == nullptr) {
+    cerr << "font: null texture" << endl;
+  }
+  else if (renderer == nullptr) {
+    cerr << "font: null renderer" << endl;
+  }
+  else {
+    if (SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE) != 0) {
+      cerr << "error: SDL_SetTextureBlendMode - " << SDL_GetError() << endl;
+      return;
+    }
+    if (SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b)) {
+      cerr << "error: SDL_SetTextureColorMod - " << SDL_GetError() << endl;
+      return;
+    }
+    if (SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255)) {
+      cerr << "error: SDL_SetRenderDrawColor - " << SDL_GetError() << endl;
+      return;
+    }
+    if (SDL_RenderFillRect(renderer, &dstRect)) {
+      cerr << "error: SDL_RenderFillRect - " << SDL_GetError() << endl;
+      return;
+    }
+
+    if (SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND)) {
+      cerr << "error: SDL_SetTextureBlendMode - " << SDL_GetError() << endl;
+      return;
+    }
+    if (SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b)) {
+      cerr << "error: SDL_SetTextureColorMod - " << SDL_GetError() << endl;
+      return;
+    }
+
+    char str[2] = { (char)(ch & 0xff), 0x00 };
+    FC_DrawBoxAlign(m_font, renderer, dstRect, FC_ALIGN_CENTER, str); 
+  }
 }

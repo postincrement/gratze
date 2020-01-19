@@ -96,24 +96,27 @@ bool S2650Emulator::Start(int addr)
 
 void S2650Emulator::Reset(int addr)
 {
-  m_cpu->registers.ap = addr;
+  if (addr < 0)
+    addr = GetCPUInfo()->m_resetAddr;
 
-  m_cycleCounter = 0;
-  m_speedCycleCounter = 0;
-  m_cpuDelayTimer = std::chrono::system_clock::now();
+  m_cpu->registers.ap = addr;
 }
 
 void S2650Emulator::SetTrace(bool v)
 {
 }
 
-bool S2650Emulator::Exec(int cycles)
+int S2650Emulator::Exec(int cycles)
 {
-  // execute an instruction
-  m_cpu->cpu();
-  m_cycleCounter += m_cpu->cpucycles;
+  // execute instructions
+  // 3 clock cycles per CPU cycle 
+  while (cycles > 0) {
+    m_cpu->cpu();
+    cycles -= m_cpu->cpucycles * 3;
+  } 
 
-  return true;
+  // return remaining cycles (may be negative)
+  return cycles;
 }
 
 void S2650Emulator::NMI()

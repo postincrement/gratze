@@ -101,6 +101,11 @@ bool TRS80Emulator::Open(const Options & options)
 
   cout << "info: RTC is " << (m_rtcEnabled ? "en" : "dis") << "abled" << endl; 
 
+  using namespace std::placeholders;
+  if (m_rtcEnabled) {
+    AddRealTimePollDef(0.04, std::bind(&TRS80Emulator::RTCInterrupt, this));
+  }
+
   return true;
 }
 
@@ -142,7 +147,7 @@ bool TRS80Emulator::CreatePixelFont(const Config::Font & fontInfo, std::vector<u
   return true;
 }
 
-bool TRS80Emulator::Poll()
+void TRS80Emulator::RTCInterrupt()
 {
   auto now = std::chrono::system_clock::now();
   if (now > m_rtcTimer) {
@@ -152,8 +157,6 @@ bool TRS80Emulator::Poll()
       Interrupt();
     }
   }
-
-  return Z80Emulator::Poll();
 }
 
 /////////////////////////////////////////////////////////////

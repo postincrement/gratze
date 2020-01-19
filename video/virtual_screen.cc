@@ -70,9 +70,9 @@ void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
 
 void VirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  cout << "render char " << HEXFORMAT0x2(ch) << " " << (isalpha(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
+  cout << "render char " << HEXFORMAT0x2(ch) << " " << (isgraph(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
   if (withCursor)
-    m_font->RenderChar('_', renderer, dstRect, bg, fg);
+    m_font->RenderChar(ch, renderer, dstRect, bg, fg);
   else  
     m_font->RenderChar(ch, renderer, dstRect, fg, bg);
 }
@@ -226,7 +226,7 @@ void VirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & b
 }
 
 
-void VirtualScreen::RenderCharAtLoc(int loc)
+void VirtualScreen::RefreshCharAtLoc(int loc)
 {
   int x, y;
   if (MapLocToPos(x, y, loc))
@@ -286,7 +286,7 @@ void MemoryMappedScreen::WriteMemoryAtAddress(int addr, uint8_t data)
   // calculate location using offset
   int loc = addr - m_offset;
 
-  RenderCharAtLoc(loc);
+  RefreshCharAtLoc(loc);
 }
 
 uint8_t MemoryMappedScreen::ReadMemoryAtAddress(int addr) const

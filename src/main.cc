@@ -159,9 +159,6 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("-f", options.m_font);
   options.m_args.GetValue("-F", options.m_fontSize);
 
-  cerr << "A font size is " << (int)options.m_fontSize << endl;
-
-
   cout << "info: using type '" << options.m_typeName << "'" << endl;  
 
   // attempt to instantiate emulator

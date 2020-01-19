@@ -18,6 +18,7 @@ class Font
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) = 0;
 
   protected:  
+    SDL_Texture * m_texture;
     int m_charCount;
     int m_width;
     int m_height;
@@ -32,7 +33,6 @@ class PixelFont : public Font
 
   protected:  
     uint8_t * m_data;
-    SDL_Texture * m_texture;
     const Config::Font m_config;
   private:
     int m_pixelWidth;
@@ -53,7 +53,6 @@ class TTFFont : public Font
     bool UsePixelFont(const FontChar & ch) const;
 
     std::unique_ptr<PixelFont> m_pixelFont;
-    SDL_Texture * m_texture;
     std::string m_name;  
     int m_fontSize;
     FC_Font * m_font;

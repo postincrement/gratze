@@ -44,8 +44,8 @@ bool Emulator::Open(const Options & options)
 
 bool Emulator::SetRAMSize_k(int len)
 {
-  m_ram.resize(len * 1024);
-  m_ramSize_bytes = m_ram.size();
+  //m_ram.resize(len * 1024);
+  m_ramSize_bytes = len * 1024; //m_ram.size();
   m_ramMask = (m_ramSize_bytes - 1);
 
   cout << "info: RAM size " << len << " k, " << m_ramSize_bytes << " bytes, " << HEXFORMAT0x4(m_ramMask) << endl;
@@ -53,7 +53,7 @@ bool Emulator::SetRAMSize_k(int len)
 
 int Emulator::GetRAMSize_k() const
 {
-  return m_ram.size() / 1024;
+  return m_ramSize_bytes / 1024;
 }
 
 double Emulator::GetActualCPUSpeed_Hz() const
@@ -61,17 +61,20 @@ double Emulator::GetActualCPUSpeed_Hz() const
   return m_actualCPUClock_Hz;
 }
 
-bool Emulator::Poll()
+void Emulator::UpdateScreen()
 {
   if (m_screen)
     m_screen->Update(false);
+}
 
+void Emulator::CheckKeyboard()
+{
   SDL_Event event;
   if (SDL_PollEvent(&event)) {
     switch (event.type) {
 
       case SDL_QUIT:
-        return false;
+        return;
         break;
 
       case SDL_KEYDOWN:
@@ -121,8 +124,6 @@ bool Emulator::Poll()
         break;
     }
   }
-
-  return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -839,18 +840,53 @@ int Emulator::Run(const Options & options)
     }
     else if (m_terminal) {
       cerr << "about to write to terminal" << endl;
-      m_terminal->WriteString(m_info->m_title);
+      for (int c = 0x20; c <= 0x3f; ++c)
+        m_terminal->WriteChar(c);
       m_terminal->WriteString("\r\n");
+      for (int c = 0x40; c <= 0x5f; ++c)
+        m_terminal->WriteChar(c);
+      m_terminal->WriteString("\r\n");
+      for (int c = 0x60; c <= 0x7e; ++c)
+        m_terminal->WriteChar(c);
+      m_terminal->WriteString("\r\n\n");
+      m_terminal->WriteString(m_info->m_title);
+      m_terminal->WriteString("\r\n\n");
       m_terminal->Update(true);
     }
 
     if (m_screen) {
       auto now = std::chrono::system_clock::now();
-      auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);
+      auto finish = std::chrono::system_clock::now() + std::chrono::seconds(20);
       while (std::chrono::system_clock::now() < finish) {
         usleep(1000);
         m_screen->Update(false);
       }
+    }
+  }
+ 
+ using namespace std::placeholders;
+ AddRealTimePollDef(1.0,   std::bind(&Emulator::CalcCPUSpeed,  this, _1, _2));
+ AddRealTimePollDef(0.1,   std::bind(&Emulator::CheckKeyboard, this));
+
+ AddCPUTimePollDef(100000,  std::bind(&Emulator::UpdateScreen,  this));
+
+#define GET_NOW_AS_DOUBLE() \
+  std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+
+  m_cycleCounter = 0;  
+  double now = GET_NOW_AS_DOUBLE();
+
+  cout << "now = " << FIXEDFORMAT(3, now) << endl;
+
+  // initialise real time pollers
+  for (auto & r : m_pollers.m_list) {
+    r.m_lastTime  = now;
+    r.m_lastClock = m_cycleCounter;
+    if (r.m_pollIsTime) {
+      r.m_nextTime = now + r.m_timeInterval;
+    }
+    else {
+      r.m_nextClock = m_cycleCounter + r.m_clockInterval;
     }
   }
 
@@ -861,10 +897,84 @@ int Emulator::Run(const Options & options)
   auto lastPoll  = std::chrono::system_clock::now();
   auto lastSpeed = std::chrono::system_clock::now();
 
-  cout << "entering loop" << endl;
-
   for (;;) {
-    Exec(500);
+    now                            = GET_NOW_AS_DOUBLE();
+    double  earliestNextRealTime_s = now + 1.0;
+    int64_t earliestNextClockTime  = m_cycleCounter + 1e+6;
+
+    // run pollers
+    for (auto & r : m_pollers.m_list) {
+      if (r.m_pollIsTime) {
+        if (now >= r.m_nextTime) {
+//          cout << "info: clocks = " << m_cycleCounter << ", clock interval = " << r.m_clockInterval << endl;
+          r.Execute(now - r.m_lastTime, m_cycleCounter - r.m_lastClock);
+          r.m_lastTime  = now;
+          r.m_lastClock = m_cycleCounter;
+          r.m_nextTime  = r.m_nextTime + r.m_timeInterval;
+        }
+//        cout << "real time interval = " << r.m_timeInterval << endl;
+        earliestNextRealTime_s = std::min<double>(earliestNextRealTime_s, r.m_nextTime);
+      }
+      else if (!r.m_pollIsTime) {
+        if (m_cycleCounter >= r.m_nextClock) {
+          r.Execute(now - r.m_lastTime, m_cycleCounter - r.m_lastClock);
+          r.m_lastTime  = now;
+          r.m_lastClock = m_cycleCounter;
+          r.m_nextClock = r.m_nextClock + r.m_clockInterval;
+        }
+        earliestNextClockTime = std::min<uint64_t>(earliestNextClockTime, r.m_nextClock);
+      }
+    }
+
+    // run the CPU
+    uint64_t cyclesToDo = earliestNextClockTime - m_cycleCounter;
+    double   timeToDo_s = earliestNextRealTime_s - now;
+
+    uint64_t cyclesForTime = timeToDo_s * m_targetCPUClock_Hz;
+    if (cyclesForTime < cyclesToDo)
+      cyclesToDo = cyclesForTime;
+
+    int remaining = Exec(cyclesToDo);
+    int cyclesDone = cyclesToDo - remaining;
+    //cout << "time to do " << timeToDo_s << ", cycles to do - " << cyclesToDo << ", cycles done = " << cyclesDone << endl;
+    m_cycleCounter += cyclesDone;
+  }
+}
+
+void Emulator::AddRealTimePollDef(double seconds, PollHandler handler)
+{
+  m_pollers.Add(seconds, handler);
+}
+
+void Emulator::AddCPUTimePollDef(uint64_t cycles, PollHandler handler)
+{
+  m_pollers.Add(cycles, handler);
+}
+
+void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)
+{
+  if (secs > 0) {
+    m_actualCPUClock_Hz = 1.0 * clocks / secs;
+    cout << "secs " << secs << ", clocks " << clocks << endl;
+    cout << std::fixed << std::setprecision(3) << (m_actualCPUClock_Hz / 1e+6) << " MHz" << endl;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+
+  double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
+      if (interval >= 0.001) {
+        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
+        m_speedCycleCounter = 0;
+        m_cpuDelayTimer = std::chrono::system_clock::now();
+      }
+    }
+    }
+    else {
+      for (;;) {
+        Exec(poll_cycles);
 
     auto now = std::chrono::system_clock::now();
 
@@ -884,5 +994,50 @@ int Emulator::Run(const Options & options)
     }
   }
 
+
+  // full speed
+  if (m_turbo) {
+    int cyclesDone = cycles - ExecZ80(&m_cpu, cycles);
+    m_cycleCounter      += cyclesDone;
+    m_speedCycleCounter += cyclesDone;
+    if (m_speedCycleCounter > 100) {
+      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
+      if (interval >= 0.001) {
+        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
+        m_speedCycleCounter = 0;
+        m_cpuDelayTimer = std::chrono::system_clock::now();
+      }
+    }
+  }
+  else {
+#define INC  4
+    while (cycles > 0) {
+      int cyclesDone = INC - ExecZ80(&m_cpu, INC);
+      cycles              -= cyclesDone;
+      m_cycleCounter      += cyclesDone;
+      m_speedCycleCounter += cyclesDone;
+
+      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
+
+      if ((m_speedCycleCounter > 100) && (interval >= 0.001)) {
+        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
+        m_speedCycleCounter = 0;
+        m_cpuDelayTimer = std::chrono::system_clock::now();
+
+        m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
+        if (m_cpuDelayRepeat < 1)
+          m_cpuDelayRepeat = 1;
+        else if (m_cpuDelayRepeat > 600)  
+          m_cpuDelayRepeat = 600;
+      }
+
+      for (int i = 0; i < m_cpuDelayRepeat; ++i)
+        memset(m_delayBuffer, 0, sizeof(m_delayBuffer));
+    }
+  }
   // exiting
 }
+
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////////

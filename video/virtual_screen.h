@@ -36,9 +36,7 @@ class VirtualScreen
     virtual void EnableCursor(bool enable = true);
     virtual void SetCursorPos(int x, int y);
 
-    virtual void RenderCharAtPos(int x, int y, bool withCursor);
-    virtual void RenderCharAtLoc(int loc);
-    virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
+    virtual void RefreshCharAtLoc(int loc);
 
     virtual void RefreshScreen();
     virtual bool ResizeScreen();
@@ -55,8 +53,11 @@ class VirtualScreen
 
     virtual bool SetFont(Font * font);
 
-  protected:  
+  private:  
+    virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
+    virtual void RenderCharAtPos(int x, int y, bool withCursor);
 
+  protected:  
     MainWindow & m_mainWindow;
     Options m_options;
 

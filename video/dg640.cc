@@ -47,7 +47,7 @@ void DG640::WriteMemoryAtAddress(int addr, uint8_t data)
   if (loc >= 0x400)
     loc -= 0x400;
 
-  RenderCharAtLoc(loc);
+  RefreshCharAtLoc(loc);
 }
 
 // CPU access

@@ -19,6 +19,12 @@ struct Terminal
 
         struct CharCell
         {
+          CharCell()
+            : m_ch(' ')
+          { }
+          CharCell(uint8_t ch)
+            : m_ch(ch)
+          { }
           FontChar  m_ch;
           SDL_Color m_fg;
           SDL_Color m_bg;
