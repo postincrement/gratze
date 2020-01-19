@@ -48,7 +48,7 @@ class Our2650 : public CPU2650
     virtual unsigned char ReadMemory(unsigned short addr)
     { 
       return m_emulator.ReadMemory(addr); 
-      }
+    }
 
     virtual void WriteMemory(unsigned short addr, unsigned char data)
     { 
@@ -111,7 +111,12 @@ int S2650Emulator::Exec(int cycles)
   // execute instructions
   // 3 clock cycles per CPU cycle 
   while (cycles > 0) {
+    //cout << "PC " << HEXFORMAT0x4(m_cpu->registers.ap) << endl;
     m_cpu->cpu();
+    if (m_cpu->cpucycles == 0) {
+      cerr << "error: CPU executed zero cycles" << endl;
+      return 0;
+    }
     cycles -= m_cpu->cpucycles * 3;
   } 
 

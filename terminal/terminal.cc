@@ -57,7 +57,7 @@ void Terminal::WriteChar(uint8_t ch)
   }
   else if ((ch >= 0x20) && (ch <= 0x7e)) {
     int loc = m_screen->MapPosToLoc(m_cursorX, m_cursorY);
-    cout << "loc = " << loc << endl;
+    //cout << "loc = " << loc << endl;
     m_screen->m_chars[loc].m_ch = ch;
     m_screen->RefreshCharAtLoc(loc);
     if (m_cursorX < m_cols-1) {

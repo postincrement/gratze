@@ -501,7 +501,9 @@ uint8_t Emulator::ReadMemory(uint16_t addr)
     if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
       if (r.m_function != nullptr)
         return std::invoke(r.m_function, *this, r, addr);
-      return r.m_memory[addr - r.m_startAddr];
+      uint8_t data = r.m_memory[addr - r.m_startAddr];
+      //cout << "info: read " << HEXFORMAT0x2(data) << " from " << HEXFORMAT0x4(addr - r.m_startAddr) << endl;
+      return data;
     }
   }
   return ReadLog(addr);
@@ -856,7 +858,7 @@ int Emulator::Run(const Options & options)
 
     if (m_screen) {
       auto now = std::chrono::system_clock::now();
-      auto finish = std::chrono::system_clock::now() + std::chrono::seconds(20);
+      auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);
       while (std::chrono::system_clock::now() < finish) {
         usleep(1000);
         m_screen->Update(false);
@@ -867,8 +869,7 @@ int Emulator::Run(const Options & options)
  using namespace std::placeholders;
  AddRealTimePollDef(1.0,   std::bind(&Emulator::CalcCPUSpeed,  this, _1, _2));
  AddRealTimePollDef(0.1,   std::bind(&Emulator::CheckKeyboard, this));
-
- AddCPUTimePollDef(100000,  std::bind(&Emulator::UpdateScreen,  this));
+ AddCPUTimePollDef(100000, std::bind(&Emulator::UpdateScreen,  this));
 
 #define GET_NOW_AS_DOUBLE() \
   std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -955,7 +956,7 @@ void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)
 {
   if (secs > 0) {
     m_actualCPUClock_Hz = 1.0 * clocks / secs;
-    cout << "secs " << secs << ", clocks " << clocks << endl;
+    //cout << "secs " << secs << ", clocks " << clocks << endl;
     cout << std::fixed << std::setprecision(3) << (m_actualCPUClock_Hz / 1e+6) << " MHz" << endl;
   }
 }

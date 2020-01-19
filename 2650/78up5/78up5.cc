@@ -26,6 +26,7 @@ static EmulatorInfo g_emulatorInfo =
 
   {
     INFO_CPU(1, 0x0000),
+
     INFO_ROM(0x0000, g_rom_pipbug),
 
     INFO_MAIN_RAM(RAM_START_ADDR, 16, 1, 32 - 1),

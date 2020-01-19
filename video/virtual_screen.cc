@@ -70,7 +70,7 @@ void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
 
 void VirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  cout << "render char " << HEXFORMAT0x2(ch) << " " << (isgraph(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
+  //cout << "render char " << HEXFORMAT0x2(ch) << " " << (isgraph(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
   if (withCursor)
     m_font->RenderChar(ch, renderer, dstRect, bg, fg);
   else  

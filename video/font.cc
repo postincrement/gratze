@@ -272,7 +272,7 @@ void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & 
     return m_pixelFont->RenderChar(ch, renderer, dstRect, fg, bg);
   }
 
-  cerr << "TTF rendering char " << (int)ch << endl;
+  //cerr << "TTF rendering char " << (int)ch << endl;
 
   if (m_texture == nullptr) {
     cerr << "font: null texture" << endl;
