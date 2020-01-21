@@ -39,6 +39,51 @@ static EmulatorInfo g_emulatorInfo =
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+
+class VirtualUART
+{
+  public:
+    VirtualUART(Emulator & emulator);
+    
+    void SetBaudRate(bool rx, int rate);
+    void Write(uint8_t ch);
+    uint8_t Read();
+
+  protected:
+    Emulator & m_emulator;
+    unsigned m_rxBaud;
+    unsigned m_txBaud;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+VirtualUART::VirtualUART(Emulator & emulator)
+  : m_emulator(emulator)
+  , m_rxBaud(9600)
+  , m_txBaud(9600)
+{
+  // register schedulers
+}
+
+void VirtualUART::SetBaudRate(bool rx, int rate)
+{
+  if (rx) {
+    m_rxBaud = rate;
+  }
+  else {
+    m_txBaud = rate;
+  }
+}
+
+void VirtualUART::Write(uint8_t ch)
+{}
+
+uint8_t VirtualUART::Read()
+{}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
 class BitDecoder 
 {
   public:
@@ -205,10 +250,17 @@ void EA78UP5_Emulator::Reset(int addr)
 
   m_bitDecoder.Open(m_targetCPUClock_Hz, true, 110);
   m_bitDecoder.SetHandler(std::bind(&Terminal::WriteChar, m_terminal.get(), _1));
+
+  m_terminal->m_keyboard.SetHandler(std::bind(&Terminal::OnKeyboard, this, _1))
 }
 
 void EA78UP5_Emulator::SerialIn(double secs, uint64_t clocks)
 {
   //cout << "78up5: poll" << endl;
   m_bitDecoder.OnBit(GetFlag(), clocks);
+}
+
+void EA78UP5_Emulator::SerialOut(uint8_t ch)
+{
+
 }

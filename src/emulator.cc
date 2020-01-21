@@ -942,14 +942,14 @@ int Emulator::Run(const Options & options)
   }
 }
 
-void Emulator::AddRealTimePollDef(double seconds, PollHandler handler)
+int Emulator::AddRealTimePollDef(double seconds, PollHandler handler)
 {
-  m_pollers.Add(seconds, handler);
+  return m_pollers.Add(seconds, handler);
 }
 
-void Emulator::AddCPUTimePollDef(uint64_t cycles, PollHandler handler)
+int Emulator::AddCPUTimePollDef(uint64_t cycles, PollHandler handler)
 {
-  m_pollers.Add(cycles, handler);
+  return m_pollers.Add(cycles, handler);
 }
 
 void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)

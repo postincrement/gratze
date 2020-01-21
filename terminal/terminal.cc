@@ -17,7 +17,6 @@ Terminal::Terminal(MainWindow & mainWindow, const Options & options, int cols, i
   m_screen.reset(new Screen(*this, mainWindow, options, cols, rows));
 }
 
-
 bool Terminal::Open()
 {
   m_cursorX = 0;

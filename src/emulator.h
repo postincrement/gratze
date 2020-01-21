@@ -127,17 +127,23 @@ class Emulator
     class PollDefList
     {
       public:
-        void Add(double secs, PollHandler handler)
+        int Add(double secs, PollHandler handler)
         {
-          m_list.push_back(PollDef(secs, handler));
+          m_list[m_index++] = PollDef(secs, handler);
         }
 
-        void Add(uint64_t clocks, PollHandler handler)
+        int Add(uint64_t clocks, PollHandler handler)
         {
-          m_list.push_back(PollDef(clocks, handler));
+          m_list[m_index++] = PollDef(clocks, handler);
         }
 
-        std::vector<PollDef> m_list;
+        void Remove(int index)
+        {
+          m_list.erase(index);
+        }
+
+        int m_index = 0;
+        std::map<int, PollDef> m_list;
     };
 
     /////////////////////////////////////////////
@@ -235,8 +241,8 @@ class Emulator
 
     void SetKeyboard(VirtualKeyboard * keyboard);
 
-    void AddRealTimePollDef(double seconds, PollHandler handler);
-    void AddCPUTimePollDef(uint64_t cycles, PollHandler handler);
+    int AddRealTimePollDef(double seconds, PollHandler handler);
+    int AddCPUTimePollDef(uint64_t cycles, PollHandler handler);
 
     void CalcCPUSpeed(double secs, uint64_t clocks);
 

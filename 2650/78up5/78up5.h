@@ -14,6 +14,7 @@ class EA78UP5_Emulator : public S2650Emulator
     virtual void Reset(int addr) override;
 
     void SerialIn(double secs, uint64_t clocks);
+    void SerialOut(uint8_t ch)
 };
 
 #endif // EA78UP5_H_
