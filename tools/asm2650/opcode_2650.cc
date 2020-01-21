@@ -1,112 +1,112 @@
 
-#include "assembler.h"
+#include "s2650.h"
 
 OpCodeInfo g_2650_opcodes[] = {
-  { "lodz", 0, 0x00, 1 },
-  { "lodi", 1, 0x04, 2 },
-  { "lodr", 2, 0x08, 2 },
-  { "loda", 3, 0x0c, 3 },
+  { "lodz", (int)S2650Mode::eZ,  0x00, 1 },
+  { "lodi", (int)S2650Mode::eI,  0x04, 2 },
+  { "lodr", (int)S2650Mode::eR,  0x08, 2 },
+  { "loda", (int)S2650Mode::eA,  0x0c, 3 },
 
-  { "strz", 0, 0xc0, 1 },
-  { "stri", 1, 0xc4, 2 },
-  { "strr", 2, 0xc8, 2 },
-  { "stra", 3, 0xcc, 3 },
+  { "strz", (int)S2650Mode::eZ,  0xc0, 1 },
+  { "stri", (int)S2650Mode::eI,  0xc4, 2 },
+  { "strr", (int)S2650Mode::eR,  0xc8, 2 },
+  { "stra", (int)S2650Mode::eA,  0xcc, 3 },
 
-  { "addz", 0, 0x80, 1 },
-  { "addi", 1, 0x84, 2 },
-  { "addr", 2, 0x88, 2 },
-  { "adda", 3, 0xcc, 3 },
+  { "addz", (int)S2650Mode::eZ,  0x80, 1 },
+  { "addi", (int)S2650Mode::eI,  0x84, 2 },
+  { "addr", (int)S2650Mode::eR,  0x88, 2 },
+  { "adda", (int)S2650Mode::eA,  0xcc, 3 },
 
-  { "subz", 0, 0xa0, 1 },
-  { "subi", 1, 0xa4, 2 },
-  { "subr", 2, 0xa8, 2 },
-  { "suba", 3, 0xac, 3 },
+  { "subz", (int)S2650Mode::eZ,  0xa0, 1 },
+  { "subi", (int)S2650Mode::eI,  0xa4, 2 },
+  { "subr", (int)S2650Mode::eR,  0xa8, 2 },
+  { "suba", (int)S2650Mode::eA,  0xac, 3 },
 
-  { "dar",  0, 0x94, 1 },
+  { "dar",  (int)S2650Mode::eZ,  0x94, 1 },
 
-  { "andz", 0, 0x40, 1 },
-  { "andi", 1, 0x44, 2 },
-  { "andr", 2, 0x48, 2 },
-  { "anda", 3, 0x4c, 3 },
+  { "andz", (int)S2650Mode::eZ,  0x40, 1 },
+  { "andi", (int)S2650Mode::eI,  0x44, 2 },
+  { "andr", (int)S2650Mode::eR,  0x48, 2 },
+  { "anda", (int)S2650Mode::eA,  0x4c, 3 },
 
-  { "iorz", 0, 0x60, 1 },
-  { "iori", 1, 0x64, 2 },
-  { "iorr", 2, 0x68, 2 },
-  { "iora", 3, 0x6c, 3 },
+  { "iorz", (int)S2650Mode::eZ,  0x60, 1 },
+  { "iori", (int)S2650Mode::eI,  0x64, 2 },
+  { "iorr", (int)S2650Mode::eR,  0x68, 2 },
+  { "iora", (int)S2650Mode::eA,  0x6c, 3 },
 
-  { "eorz", 0, 0x20, 1 },
-  { "eori", 1, 0x24, 2 },
-  { "eorr", 2, 0x28, 2 },
-  { "eora", 3, 0x2c, 3 },
-  
-  { "comz", 0, 0xe0, 1 },
-  { "comi", 1, 0xe4, 2 },
-  { "comr", 2, 0xe8, 2 },
-  { "coma", 3, 0xec, 3 },
+  { "eorz", (int)S2650Mode::eZ,  0x20, 1 },
+  { "eori", (int)S2650Mode::eI,  0x24, 2 },
+  { "eorr", (int)S2650Mode::eR,  0x28, 2 },
+  { "eora", (int)S2650Mode::eA,  0x2c, 3 },
 
-  { "rrr",  9, 0x50, 1 },
-  { "rrl",  9, 0xd0, 1 },
+  { "comz", (int)S2650Mode::eZ,  0xe0, 1 },
+  { "comi", (int)S2650Mode::eI,  0xe4, 2 },
+  { "comr", (int)S2650Mode::eR,  0xe8, 2 },
+  { "coma", (int)S2650Mode::eA,  0xec, 3 },
 
-  { "bctr", 4 + 2, 0x18, 2 },
-  { "bcta", 4 + 3, 0x1c, 3 },
+  { "rrr",  (int)S2650Mode::eZ,  0x50, 1 },
+  { "rrl",  (int)S2650Mode::eZ,  0xd0, 1 },
 
-  { "bcfr", 4 + 2, 0x98, 2 },
-  { "bcfa", 4 + 3, 0x9c, 3 },
+  { "bctr", (int)S2650Mode::eR,  0x18, 2 },
+  { "bcta", (int)S2650Mode::eB,  0x1c, 3 },
 
-  { "brnr", 4 + 2, 0x58, 2 },
-  { "brna", 4 + 3, 0x5c, 3 },
+  { "bcfr", (int)S2650Mode::eR,  0x98, 2 },
+  { "bcfa", (int)S2650Mode::eB,  0x9c, 3 },
 
-  { "birr", 4 + 2, 0xd8, 2 },
-  { "bira", 4 + 3, 0xdc, 3 },
+  { "brnr", (int)S2650Mode::eR,  0x58, 2 },
+  { "brna", (int)S2650Mode::eB,  0x5c, 3 },
 
-  { "bdrr", 4 + 2, 0xf8, 2 },
-  { "bdra", 4 + 3, 0xfc, 3 },
+  { "birr", (int)S2650Mode::eR,  0xd8, 2 },
+  { "bira", (int)S2650Mode::eB,  0xdc, 3 },
 
-  { "zbrr", 2, 0x9b, 2 },
-  { "bxa",  3, 0x9f, 3 },
+  { "bdrr", (int)S2650Mode::eR,  0xf8, 2 },
+  { "bdra", (int)S2650Mode::eB,  0xfc, 3 },
 
-  { "bstr", 4 + 2, 0x38, 2 },
-  { "bsta", 4 + 3, 0x3c, 3 },
+  { "zbrr", (int)S2650Mode::eE,  0x9b, 2 },
+  { "bxa",  (int)S2650Mode::eE,  0x9f, 3 },
 
-  { "bsfr", 4 + 2, 0xb8, 2 },
-  { "bsfa", 4 + 3, 0xbc, 3 },
+  { "bstr", (int)S2650Mode::eR,  0x38, 2 },
+  { "bsta", (int)S2650Mode::eB,  0x3c, 3 },
 
-  { "bsnr", 4 + 2, 0x78, 2 },
-  { "bsna", 4 + 3, 0x7c, 3 },
+  { "bsfr", (int)S2650Mode::eR,  0xb8, 2 },
+  { "bsfa", (int)S2650Mode::eB,  0xbc, 3 },
 
-  { "zbsr", 2, 0xbb, 2 },
-  { "bsxa", 3, 0xbf, 3 },
+  { "bsnr", (int)S2650Mode::eR,  0x78, 2 },
+  { "bsna", (int)S2650Mode::eB,  0x7c, 3 },
 
-  { "retc", 4 + 0, 0x14, 1 },
-  { "rete", 4 + 0, 0x34, 1 },
+  { "zbsr", (int)S2650Mode::eE,  0xbb, 2 },
+  { "bsxa", (int)S2650Mode::eE,  0xbf, 3 },
 
-  { "wrtd", -1,    0xf0, 1 },
-  { "redd", 8,     0x70, 2 },
-  { "wrtc", -1,    0xb0, 1 },
-  { "redc", 8,     0x30, 2 },
+  { "retc", (int)S2650Mode::eZ,  0x14, 1 },
+  { "rete", (int)S2650Mode::eZ,  0x34, 1 },
 
-  { "wrtc", 1,     0xd4, 2 },
-  { "rede", 1,     0x54, 2 },
+  { "wrtd", (int)S2650Mode::eZ,  0xf0, 1 },
+  { "redd", (int)S2650Mode::eZ,  0x70, 2 },
+  { "wrtc", (int)S2650Mode::eZ,  0xb0, 1 },
+  { "redc", (int)S2650Mode::eZ,  0x30, 2 },
 
-  { "halt", -1,     0x40, 1 },
-  { "nop",  -1,     0xc0, 1 },
+  { "wrte", (int)S2650Mode::eI,  0xd4, 2 },
+  { "rede", (int)S2650Mode::eZ,  0x54, 2 },
 
-  { "tmi",  1,     0xf4, 1 },
+  { "halt", (int)S2650Mode::eE,  0x40, 1 },
+  { "nop",  (int)S2650Mode::eE,  0xc0, 1 },
 
-  { "lpsu", -1,     0x92, 1 },
-  { "lpsl", -1,     0x93, 1 },
+  { "tmi",  (int)S2650Mode::eI,  0xf4, 1 },
 
-  { "spsu", -1,     0x12, 1 },
-  { "spsl", -1,     0x13, 1 },
+  { "lpsu", (int)S2650Mode::eE,  0x92, 1 },
+  { "lpsl", (int)S2650Mode::eE,  0x93, 1 },
 
-  { "cpsu", 8,     0x78, 2 },
-  { "cpsl", 8,     0x79, 2 },
+  { "spsu", (int)S2650Mode::eE,  0x12, 1 },
+  { "spsl", (int)S2650Mode::eE,  0x13, 1 },
 
-  { "ppsu", 8,     0x76, 2 },
-  { "ppsl", 8,     0x77, 2 },
+  { "cpsu", (int)S2650Mode::eIn, 0x78, 2 },
+  { "cpsl", (int)S2650Mode::eIn, 0x79, 2 },
 
-  { "tpsu", 8,     0xb4, 2 },
-  { "tpsl", 8,     0xb5, 2 },
+  { "ppsu", (int)S2650Mode::eIn, 0x76, 2 },
+  { "ppsl", (int)S2650Mode::eIn, 0x77, 2 },
+
+  { "tpsu", (int)S2650Mode::eIn, 0xb4, 2 },
+  { "tpsl", (int)S2650Mode::eIn, 0xb5, 2 },
 
   { 0 }
 };

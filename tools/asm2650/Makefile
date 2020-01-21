@@ -20,7 +20,7 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 $(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
 	$(COMPILE.cc) $(OUTPUT_OPTION) $<
 
-asm2650:  $(OBJS)
+asm8bit:  $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 clean:

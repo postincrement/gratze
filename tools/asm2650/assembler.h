@@ -57,13 +57,11 @@ class Assembler
     struct ListingInfo
     {
       ListingInfo(unsigned addr = 0)
-        : m_opLen(0)
-        , m_addr(addr)
+        : m_addr(addr)
       { }    
 
       unsigned m_addr;
-      int      m_opLen;
-      uint8_t  m_ops[3];
+      std::vector<uint8_t> m_ops;
     };
 
     std::vector<std::string> m_lines;

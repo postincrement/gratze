@@ -45,19 +45,7 @@ static bool ParseReg(uint8_t & reg, const std::string & arg)
     reg = 0x02;
   else if (arg == "r3")
     reg = 0x03;
-  else
-    return false;
-
-  return true;  
-}
-
-static bool ParseCond(uint8_t & reg, const std::string & arg)
-{
-  reg = 0;
-  if (ParseReg(reg, arg))
-    return true;
-
-  if (arg == "un")
+  else if (arg == "un")
     ;
   else if (arg == "z")
     ;
@@ -71,10 +59,9 @@ static bool ParseCond(uint8_t & reg, const std::string & arg)
     reg = 0x01;
   else if (arg == "gt")
     reg = 0x02;
-//  else if (arg == "r3")
-//    reg = 0x03;
   else
     return false;
+
   return true;  
 }
 
@@ -120,27 +107,31 @@ bool S2650Assembler::ParseLine(const std::string & line_)
   else if (op == "org") {
     unsigned intVal = ParseExpr(value);
     listing.m_addr = intVal;
-    cout << "set address to " << intVal << endl;
+    cout << "set address to 0x" << setw(4) << setfill('0') << hex << intVal << endl;
   }
   else if (op == "dw") {
     unsigned intVal = ParseExpr(value);
     listing.m_addr   = m_address;
+    int len = 2;
+    listing.m_ops.resize(len);
     listing.m_ops[0] = intVal >> 8;
     listing.m_ops[1] = intVal & 0xff;
-    listing.m_opLen  = 2;
-    m_address += 2;
+    m_address += len;
   }
   else if (op == "db") {
     unsigned intVal = ParseExpr(value);
     listing.m_addr   = m_address;
+    int len = 1;
+    listing.m_ops.resize(len);
     listing.m_ops[0] = intVal & 0xff;
-    listing.m_opLen  = 1;
-    m_address += 1;
+    m_address += len;
   }
   else if (op == "ds") {
     unsigned intVal = ParseExpr(value);
+    int len = intVal;
+    listing.m_ops.resize(len);
     listing.m_addr   = m_address;
-    m_address += intVal;
+    m_address += len;
   }
   else {
     std::string arg;
@@ -161,24 +152,29 @@ bool S2650Assembler::ParseLine(const std::string & line_)
     }
     else {
       listing.m_addr   = m_address;
+      int len = info->m_opLen;
+      listing.m_ops.resize(len);
       listing.m_ops[0] = info->m_opcode;
-      listing.m_opLen  = info->m_opLen;
 
-      switch (info->m_mode) {
-        case -1: // no arg
-          break;
-        case 0: // r0
+      switch ((S2650Mode)info->m_mode) {
+        case S2650Mode::eZ: // r0
           {
             uint8_t reg;
-            if (!ParseReg(reg, value)) {
-              ParseError("mode 0 - unknown reg", m_value);
+            if (!value.empty()) {
+              if (!ParseReg(reg, value)) {
+                ParseError("mode 0 - unknown reg", m_value);
+              }    
             }
+            else if (!ParseReg(reg, arg)) {
+              ParseError("mode 0 - unknown reg", arg);
+            }    
             else {
               listing.m_ops[0] |= reg;
             }
           }
           break;
-        case 1: // immediate
+
+        case S2650Mode::eI: // immediate
           {
             listing.m_ops[1] = ParseExpr(value);
             uint8_t reg;
@@ -190,7 +186,14 @@ bool S2650Assembler::ParseLine(const std::string & line_)
             }
           }
           break;
-        case 2: // relative
+
+        case S2650Mode::eIn: // immediate with no arg
+          {
+            listing.m_ops[1] = ParseExpr(value);
+          }
+          break;
+
+        case S2650Mode::eR: // relative
           {
             listing.m_ops[1] = ParseExpr(value);
             uint8_t reg;
@@ -202,7 +205,8 @@ bool S2650Assembler::ParseLine(const std::string & line_)
             }
           }
           break;
-        case 3: // absolute
+
+        case S2650Mode::eA: // absolute
           {
             listing.m_ops[1] = ParseExpr(value);
             uint8_t reg;
@@ -214,34 +218,12 @@ bool S2650Assembler::ParseLine(const std::string & line_)
             }
           }
           break;
-        case 4+0: // r0
-          {
-            uint8_t reg;
-            if (!ParseCond(reg, arg)) {
-              ParseError("mode 4 - unknown reg", arg);
-            }
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-        case 4+2: // cond + relative
+
+        case S2650Mode::eB: // cond absolute
           {
             listing.m_ops[1] = ParseExpr(value);
             uint8_t reg;
-            if (!ParseCond(reg, arg)) {
-              ParseError("mode 6 - unknown cond", arg);
-            }
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-        case 4+3: // cond absolute
-          {
-            listing.m_ops[1] = ParseExpr(value);
-            uint8_t reg;
-            if (!ParseCond(reg, arg)) {
+            if (!ParseReg(reg, arg)) {
               ParseError("mode 7 - unknown cond", arg);
             }
             else {
@@ -249,24 +231,10 @@ bool S2650Assembler::ParseLine(const std::string & line_)
             }
           }
           break;
-        case 8: // immediate
+
+        case S2650Mode::eE: // misc
           {
-            listing.m_ops[1] = ParseExpr(value);
           }
-          break;
-        case 9: // r0
-          {
-            uint8_t reg;
-            if (!ParseReg(reg, arg)) {
-              ParseError("mode 9 - unknown reg", arg);
-            }
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-        default:
-          ParseError("unknown mnemonic", op);
           break;
       }
       m_address += info->m_opLen;

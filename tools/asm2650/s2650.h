@@ -4,6 +4,17 @@
 #include "assembler.h"
 
 //////////////////////////////////////////////////////////////////
+enum class S2650Mode {
+  eZ,    // register addressing
+  eI,    // immediate addressing
+  eR,    // relative addressing
+  eA,    // absolute addressing (non-branch)
+  eB,    // absolute addressing (branch)
+  eE,    // miscellaneous instructions
+
+  eZa,    // register addressing using arg
+  eIn,    // immediate addressing with no arg
+};
 
 class S2650Assembler : public Assembler
 {

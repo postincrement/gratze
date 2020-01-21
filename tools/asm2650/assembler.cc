@@ -155,8 +155,8 @@ bool Assembler::WriteBinary()
 
   // get binary data
   for (auto & r : m_listings) {
-    for (int i = 0; i < r.second.m_opLen; ++i) {
-      data.push_back(r.second.m_ops[i]);
+    for (auto & s : r.second.m_ops) {
+      data.push_back(s);
     }
   }
 
@@ -180,26 +180,57 @@ std::string Assembler::GetListing()
 
   for (int i = 1; i <= m_lineNumber; ++i) {
 
-    // lllll aaaa 11 22 33      line.....
+    // print line number
+    strm << setw(5) << setfill(' ') << dec << i;
 
-    strm << setw(5) << setfill('0') << dec << i << " ";
+    // print empty line if source line was empty
     auto r = m_listings.find(i);
     if (r == m_listings.end()) {
-           // "aaaa 11 22 33      "
-      strm << "                      ";
+      strm << "\n";
+      continue;
+    }
+
+    // print address (which could be a symbol value)
+    strm << " " << setw(4) << setfill('0') << hex << r->second.m_addr;
+
+    // if no opcodes, print line only
+    if ((r->second.m_ops.size() == 0)) {
+      strm << "               " << m_lines[i-1] << endl;
+      continue;
+    }
+
+    strm << " ";
+
+    // print opcodes
+    auto & listing = r->second;
+    bool first = true;
+    int count = 0;
+    while (count < r->second.m_ops.size()) {
+      if (!first) {
+        strm << "\n           ";
+      }
+      int col = r->second.m_ops.size() - count;
+      if (col > 4)
+        col = 4;
+      int j;
+      for (j = 0; j < col; ++j)
+        strm << hex << setw(2) << setfill('0') << (int)listing.m_ops[j] << " ";
+      for (;j < 4; ++j)
+        strm << "   ";
+      count += col;  
+      if (first) {
+        strm << "  ";
+        strm << m_lines[i-1] << endl;
+        first = false;
+      }
+    }
+    if (first) {
+      strm << "  ";
+      strm << m_lines[i-1] << endl;
     }
     else {
-      auto & listing = r->second;
-      strm << hex << setw(4) << setfill('0') << listing.m_addr;
-      strm << " ";
-      int j;
-      for (j = 0; j < listing.m_opLen; ++j)
-        strm << hex << setw(2) << setfill('0') << (int)listing.m_ops[j] << " ";
-      for (;j < 3; ++j)
-        strm << "   ";
+      strm << "\n";
     }
-    strm << "  ";
-    strm << m_lines[i-1] << endl;
   }
 
   return strm.str();
