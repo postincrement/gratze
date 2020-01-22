@@ -96,6 +96,8 @@ bool S2650Emulator::Start(int addr)
 
 void S2650Emulator::Reset(int addr)
 {
+  Emulator::Reset(addr);
+
   if (addr < 0)
     addr = GetCPUInfo()->m_resetAddr;
 

@@ -127,14 +127,15 @@ class Emulator
     class PollDefList
     {
       public:
+        typedef std::map<int, PollDef> ListType;
         int Add(double secs, PollHandler handler)
         {
-          m_list[m_index++] = PollDef(secs, handler);
+          m_list.insert(ListType::value_type(m_index++, PollDef(secs, handler)));
         }
 
         int Add(uint64_t clocks, PollHandler handler)
         {
-          m_list[m_index++] = PollDef(clocks, handler);
+          m_list.insert(ListType::value_type(m_index++, PollDef(clocks, handler)));
         }
 
         void Remove(int index)
@@ -143,7 +144,7 @@ class Emulator
         }
 
         int m_index = 0;
-        std::map<int, PollDef> m_list;
+        ListType m_list;
     };
 
     /////////////////////////////////////////////
@@ -176,7 +177,7 @@ class Emulator
 
     virtual void NMI() = 0;
     virtual void Interrupt(uint16_t vector = 0) = 0;
-    virtual void Reset(int addr = -1) = 0;
+    virtual void Reset(int addr = -1);
 
     virtual void DumpStack(int count);
     virtual void DumpStack(const std::vector<uint16_t> & stack);

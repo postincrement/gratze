@@ -145,6 +145,8 @@ DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))
 
+test:
+	echo $(OBJS)
 
 $(APP):	$(OBJS)
 

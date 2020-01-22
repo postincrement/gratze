@@ -42,6 +42,16 @@ bool Emulator::Open(const Options & options)
   return true;
 }
 
+void Emulator::Reset(int addr)
+{
+  m_pollers.m_list.clear();
+
+  using namespace std::placeholders;
+  AddRealTimePollDef(1.0,   std::bind(&Emulator::CalcCPUSpeed,  this, _1, _2));
+  AddRealTimePollDef(0.1,   std::bind(&Emulator::CheckKeyboard, this));
+  AddCPUTimePollDef(100000, std::bind(&Emulator::UpdateScreen,  this));
+}
+
 bool Emulator::SetRAMSize_k(int len)
 {
   //m_ram.resize(len * 1024);
@@ -866,11 +876,6 @@ int Emulator::Run(const Options & options)
     }
   }
  
- using namespace std::placeholders;
- AddRealTimePollDef(1.0,   std::bind(&Emulator::CalcCPUSpeed,  this, _1, _2));
- AddRealTimePollDef(0.1,   std::bind(&Emulator::CheckKeyboard, this));
- AddCPUTimePollDef(100000, std::bind(&Emulator::UpdateScreen,  this));
-
 #define GET_NOW_AS_DOUBLE() \
   std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -881,13 +886,14 @@ int Emulator::Run(const Options & options)
 
   // initialise real time pollers
   for (auto & r : m_pollers.m_list) {
-    r.m_lastTime  = now;
-    r.m_lastClock = m_cycleCounter;
-    if (r.m_pollIsTime) {
-      r.m_nextTime = now + r.m_timeInterval;
+    PollDef & def = r.second;
+    def.m_lastTime  = now;
+    def.m_lastClock = m_cycleCounter;
+    if (def.m_pollIsTime) {
+      def.m_nextTime = now + def.m_timeInterval;
     }
     else {
-      r.m_nextClock = m_cycleCounter + r.m_clockInterval;
+      def.m_nextClock = m_cycleCounter + def.m_clockInterval;
     }
   }
 
@@ -905,25 +911,26 @@ int Emulator::Run(const Options & options)
 
     // run pollers
     for (auto & r : m_pollers.m_list) {
-      if (r.m_pollIsTime) {
-        if (now >= r.m_nextTime) {
+      PollDef & def = r.second;
+      if (def.m_pollIsTime) {
+        if (now >= def.m_nextTime) {
 //          cout << "info: clocks = " << m_cycleCounter << ", clock interval = " << r.m_clockInterval << endl;
-          r.Execute(now - r.m_lastTime, m_cycleCounter - r.m_lastClock);
-          r.m_lastTime  = now;
-          r.m_lastClock = m_cycleCounter;
-          r.m_nextTime  = r.m_nextTime + r.m_timeInterval;
+          def.Execute(now - def.m_lastTime, m_cycleCounter - def.m_lastClock);
+          def.m_lastTime  = now;
+          def.m_lastClock = m_cycleCounter;
+          def.m_nextTime  = def.m_nextTime + def.m_timeInterval;
         }
 //        cout << "real time interval = " << r.m_timeInterval << endl;
-        earliestNextRealTime_s = std::min<double>(earliestNextRealTime_s, r.m_nextTime);
+        earliestNextRealTime_s = std::min<double>(earliestNextRealTime_s, def.m_nextTime);
       }
-      else if (!r.m_pollIsTime) {
-        if (m_cycleCounter >= r.m_nextClock) {
-          r.Execute(now - r.m_lastTime, m_cycleCounter - r.m_lastClock);
-          r.m_lastTime  = now;
-          r.m_lastClock = m_cycleCounter;
-          r.m_nextClock = r.m_nextClock + r.m_clockInterval;
+      else if (!def.m_pollIsTime) {
+        if (m_cycleCounter >= def.m_nextClock) {
+          def.Execute(now - def.m_lastTime, m_cycleCounter - def.m_lastClock);
+          def.m_lastTime  = now;
+          def.m_lastClock = m_cycleCounter;
+          def.m_nextClock = def.m_nextClock + def.m_clockInterval;
         }
-        earliestNextClockTime = std::min<uint64_t>(earliestNextClockTime, r.m_nextClock);
+        earliestNextClockTime = std::min<uint64_t>(earliestNextClockTime, def.m_nextClock);
       }
     }
 

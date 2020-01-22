@@ -62,6 +62,8 @@ bool Z80Emulator::Start(int addr)
 
 void Z80Emulator::Reset(int addr)
 {
+  Emulator::Reset(addr);
+  
   if (addr < 0)
     addr = GetCPUInfo()->m_resetAddr;
     

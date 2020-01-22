@@ -48,11 +48,16 @@ NFD_BUILD_DIR=gmake_windows
 NFD_LIB_DIR=./nativefiledialog/build/lib/Release/x64
 NFD_LIB=$(NFD_LIB_DIR)/nfd.lib
 
+MFZ_FLAGS=-DDEBUG
+
+CEREAL_DIR=./cereal
+CEREAL_INCLUDE_DIR=$(CEREAL_DIR)/include
+
 CC=x86_64-w64-mingw32-gcc
 CXX=x86_64-w64-mingw32-g++
 
-CXXFLAGS :=  -DEXECZ80 -DLSB_FIRST -I./nativefiledialog/src/include -std=c++17 -Wno-register -g $(INC_DIRS) $(SDL_INC)
-CFLAGS   :=  -DEXECZ80 -DLSB_FIRST -g   $(INC_DIRS) $(SDL_INC) -DDEBUG  # DEBUG symbol needed for mf80 debug
+CXXFLAGS :=  -DEXECZ80 -DLSB_FIRST -I./nativefiledialog/src/include -std=c++17 -Wno-register -g $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS) -I$(CEREAL_INCLUDE_DIR)
+CFLAGS   :=  -DEXECZ80 -DLSB_FIRST -g   $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS)
 
 LDFLAGS=$(SDL_LDFLAGS)  -L./nativefiledialog/build/lib/Release/x64 -g
 LDLIBS=-l:nfd.lib -lole32 -luuid  -static-libgcc -static-libstdc++ -lmingw32 -lSDL2_ttf -lSDL2main -lSDL2
@@ -62,54 +67,76 @@ COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 
 OUTPUT_OPTION = -o $(OBJDIR)/$*.o
 
+ifeq ($(VERBOSE),1)
+
 %.o : %.c 
 $(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
-	@echo "(CC) $<" 
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+				
+%.o : %.cc
+$(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+else
+
+$(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
+	@echo "(CC) $<"
 	@$(COMPILE.c) $(OUTPUT_OPTION) $<
 				
 %.o : %.cc
 $(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
-	@echo "(CXX) $<" 
+	@echo "(CXX) $<"
 	@$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+endif
 
 all:	$(APP)
 
 ################################################################################################	
 
-SRCS_CC = main.cc \
-					mainwindow.cc \
-	  			magmedia/fdc.cc \
-					magmedia/cassette.cc \
-					devices/keyscan.cc \
-					video/virtual_screen.cc \
-					video/font.cc \
-					video/dg640.cc \
-					video/chargen_2513.cc \
-					video/chargen_mcm6574.cc \
-					video/chargen_mcm6674.cc \
-					cpu/emulator.cc \
-					cpu/z80emulator.cc \
-					cpu/2650emulator.cc \
-					cpu/cpu_2650.cc \
-					devices/z80pio.cc \
-					trs80/trs80.cc \
-					trs80/model1/model1.cc \
-					trs80/model3/model3.cc \
-					trs80/model3/chargen_model3.cc \
-					trs80/model4/model4.cc \
-					dg680/dg680.cc \
-					super80/super80.cc \
-					2650/binbug/binbug.cc \
+SRCS_CC = src/main.cc \
+	src/mainwindow.cc \
+	src/emulator.cc \
+	src/cmdargs.cc \
+  devices/fdc.cc \
+	devices/cassette.cc \
+	devices/keyscan.cc \
+	devices/keypar.cc \
+	devices/z80pio.cc \
+	devices/intel8255.cc \
+	devices/synertek6545.cc \
+	video/virtual_screen.cc \
+	video/font.cc \
+	video/dg640.cc \
+	video/chargen_2513.cc \
+	video/chargen_mcm6574.cc \
+	video/chargen_mcm6674.cc \
+	terminal/terminal.cc \
+	z80/z80emulator.cc \
+	z80/trs80/trs80.cc \
+	z80/trs80/model1/model1.cc \
+	z80/trs80/model3/model3.cc \
+	z80/trs80/model3/chargen_model3.cc \
+	z80/trs80/model4/model4.cc \
+	z80/microbee/microbee.cc \
+	z80/dg680/dg680.cc \
+	z80/super80/super80.cc \
+	2650/2650emulator.cc \
+	2650/cpu_2650.cc \
+	2650/eti685/eti685.cc \
+	2650/78up5/78up5.cc \
 
-SRCS_C  = trs80/model1/rom_level1.c \
-          trs80/model1/rom_level2.c \
-          trs80/model3/rom_model3.c \
-					SDL_FontCache/SDL_FontCache.c \
-  				cpu/mfz80/Z80.c \
-					cpu/mfz80/Debug.c \
-					dg680/rom_dgos1_4.c \
-					super80/rom_super80.c \
-					2650/binbug/rom_binbug_6_1ROM.c
+SRCS_C = z80/trs80/model1/rom_level1.c \
+	z80/trs80/model1/rom_level2.c \
+	z80/trs80/model3/rom_model3.c \
+	SDL_FontCache/SDL_FontCache.c \
+  z80/mfz80/Z80.c \
+	z80/mfz80/Debug.c \
+	z80/dg680/rom_dgos1_4.c \
+	z80/super80/rom_super80.c \
+	z80/microbee/rom_basic5_22e.c \
+	2650/eti685/rom_binbug_6_1.c \
+	2650/78up5/rom_pipbug.c
 
 FILENAMES	:= $(notdir $(basename $(SRCS_C) $(SRCS_CC)))
 OBJS	    := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
@@ -118,10 +145,12 @@ DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))
 
+test:
+	echo $(OBJS)
 
 $(APP):	$(OBJS)
 
-gratze:	nfd sdl ttf $(OBJS)
+gratze:	nfd sdl ttf cereal $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 $(OBJDIR):
@@ -187,6 +216,43 @@ clean_sdl:
 	rm -rf $(SDL_DIR)     $(SDL_TGZ)     $(SDL_TARGETS) \
 	       $(SDL_TTF_DIR) $(SDL_TTF_TGZ) $(SDL_TTF_TARGETS)
 
+#
+#  MingW libhash
+#
+
+MHASH_SRC_DIR= ./mhash-code
+MHASH_DIR=$(shell pwd)/mhash-install
+
+.PHONY: mhash
+
+mhash: $(MHASH_DIR)/include/mhash.h
+
+$(MHASH_DIR)/include/mhash.h: $(MHASH_SRC_DIR)/configure
+	cd $(MHASH_SRC_DIR)/lib && make install 
+	cd $(MHASH_SRC_DIR)/include && make install
+
+$(MHASH_SRC_DIR)/configure: $(MHASH_SRC_DIR) 
+	cd $(MHASH_SRC_DIR) ; CC=$(CC) LDFLAGS="" ./configure --disable-shared --prefix=$(MHASH_DIR) \
+  --disable-md5 \
+	--disable-sha1 \
+	--disable-md4 \
+	--disable-md2 \
+	--disable-tiger \
+	--disable-haval \
+	--disable-crc32 \
+	--disable-adler32 \
+	--disable-ripemd \
+	--disable-gost \
+	--disable-sha512-sha384 \
+	--disable-snefru \
+	--disable-whirlpool
+
+	#--disable-sha256-sha224  -static-libgcc LIBS="-lmingw32" 
+
+$(MHASH_SRC_DIR):
+	git clone https://git.code.sf.net/p/mhash/code mhash-code
+
+
 ################################################################################################	
 
 else
@@ -196,6 +262,21 @@ sdl:		# configure uses packages on other platforms
 ttf:		# configure uses packages on other platforms
 
 endif # ($(MINGW_ENABLED),)
+
+
+################################################################################################	
+#
+#  Cereal
+#
+
+.PHONY: cereal
+
+cereal:
+	@if test \! -d cereal ; then \
+		git clone -b v1.3.0 https://github.com/USCiLab/cereal.git ; \
+	fi
+
+https://github.com/USCiLab/cereal.git
 
 ################################################################################################	
 #
@@ -212,13 +293,13 @@ clean_nfd:
 	cd nativefiledialog/build/$(NFD_BUILD_DIR) && $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean"
 
 nfd: 
-	if test \! -d nativefiledialog ; then \
-		git clone https://github.com/postincrement/nativefiledialog.git ; \
+	@if test \! -d nativefiledialog ; then \
+	  git clone https://github.com/postincrement/nativefiledialog.git ; \
 	  cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
-		$(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean && make config=$(NFD_BUILD_TYPE) nfd" ; \
+	  $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean && make config=$(NFD_BUILD_TYPE) nfd" ; \
 	else \
 	  cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
-		$(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) nfd" ; \
+	  $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) nfd" ; \
 	fi
 
 ################################################################################################	

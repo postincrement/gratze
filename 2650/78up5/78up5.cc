@@ -39,56 +39,10 @@ static EmulatorInfo g_emulatorInfo =
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-
-class VirtualUART
+class SerialDecoder 
 {
   public:
-    VirtualUART(Emulator & emulator);
-    
-    void SetBaudRate(bool rx, int rate);
-    void Write(uint8_t ch);
-    uint8_t Read();
-
-  protected:
-    Emulator & m_emulator;
-    unsigned m_rxBaud;
-    unsigned m_txBaud;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-VirtualUART::VirtualUART(Emulator & emulator)
-  : m_emulator(emulator)
-  , m_rxBaud(9600)
-  , m_txBaud(9600)
-{
-  // register schedulers
-}
-
-void VirtualUART::SetBaudRate(bool rx, int rate)
-{
-  if (rx) {
-    m_rxBaud = rate;
-  }
-  else {
-    m_txBaud = rate;
-  }
-}
-
-void VirtualUART::Write(uint8_t ch)
-{}
-
-uint8_t VirtualUART::Read()
-{}
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-class BitDecoder 
-{
-  public:
-    BitDecoder();
-    void Open(double clock_mhz, bool state, int baud);
+    SerialDecoder();
 
     inline void OnBit(bool val, uint64_t cycles);
 
@@ -99,117 +53,73 @@ class BitDecoder
   protected:
     std::function<void (uint8_t)> m_handler = nullptr;
 
-    double m_clock_mhz;
-    uint64_t m_startTime;
-    uint64_t m_cycleCount = 0;
-
-    bool m_prevState;
-
-    int m_bitTime_us;
-    int m_minBitTime_us;
-
     int m_state = 0;
     unsigned m_data = 0;
-    int m_count = 0;
 };
 
-BitDecoder::BitDecoder()
+SerialDecoder::SerialDecoder()
 {
-
 }
 
-void BitDecoder::Open(double clock_mhz, bool state, int baud)
+void SerialDecoder::SetHandler(std::function<void (uint8_t)> handler)
 {
-  m_clock_mhz = clock_mhz;
-  m_prevState = state;
-  m_cycleCount = 0;
-
-  m_bitTime_us = m_clock_mhz / baud;
-
-  m_minBitTime_us = m_bitTime_us * 8 / 10;
-
-  cout << "serial: bit time is " << m_bitTime_us << " us, min " << m_minBitTime_us << " us" << endl;
+  m_handler = handler;
 }
 
- void BitDecoder::SetHandler(std::function<void (uint8_t)> handler)
- {
-   m_handler = handler;
- }
-
-
-void BitDecoder::OnBreak()
+void SerialDecoder::OnBreak()
 {
   cerr << "serial: BREAK" << endl;
 }
 
-void BitDecoder::OnBit(bool val, uint64_t cycles)
+void SerialDecoder::OnBit(bool val, uint64_t cycles)
 {
-  m_cycleCount += cycles;
+  /*
+      ---+   +---+---+---+---+---+---+---+---+---+---
+         | S | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | S
+         +---+---+---+---+---+---+---+---+---+
+          01  2345
+  */
 
-  if (val == m_prevState)
-    return;
+  int start = 2;
 
-  int us = m_cycleCount * 1e+6 / m_clock_mhz;
-
-//  cout << "serial: transition is " << us << " us with " << val << endl;
-
-  switch (m_state) {
-
-    // waiting for start bit
-    case 0:
-      if (!val) {
-//        cout << "serial: start bit" << endl;
-        m_state = 1;
-      }
-      break;
-
-    // input has gone to 1
-    // if previous run of zeroes was less than a bit time, it's a transient
-    // if previous run of zeroes was more than 10 bit times, it's a break 
-    case 1:
-      if (us < m_minBitTime_us) {
-//        cout << "serial: ignore low transient" << endl;
-        m_state = 0;
-        break;
-      }
-      if (us > (8*m_bitTime_us)) {
-//        cout << "serial: break" << endl;
-        OnBreak();
-        m_state = 0;
-        break;
-      }
-
-      m_state = 2;
-      m_count = 8; // include start bit
-
-      // remove start bit, and go to half way through bit time
-      us -= m_bitTime_us * 3 / 2;
-      // fall through
-
-    // decode the bits preior to the transition
-    case 2:  
-      //cout << "serial: data " << (m_prevState ? "1" : "0") << " " << us << " us" << endl;
-      // extract bits
-      while ((m_count > 0) && (us > m_minBitTime_us/2)) {
-//        cout << "serial: bit " << (m_prevState ? "1" : "0") << endl;      
-        m_data = (m_data >> 1) | (m_prevState ? 0x80 : 0);
-        us -= m_bitTime_us;
-        m_count--;
-      }
-      if (m_count == 0) {
-        cout << "serial: extracted " << HEXFORMAT0x2(m_data) << endl;
-        if (m_handler)
-          m_handler(m_data);
-        m_state = 0;
-      }
-      break;
+  // waiting for start bit
+  if (m_state == 0) {
+    if (!val) {
+      cout << "serial: start bit" << endl;
+      m_state = 1;
+    }
   }
 
-  m_prevState = val;
-  m_cycleCount = 0;
+  // ensure input stays low until middle of start bit
+  else if (m_state < start) {
+    if (!val) {
+      m_state++;
+    }
+    else {
+      cout << "serial: ignoring transient" << endl;
+      m_state = 0;
+    }
+  }
+
+  // in the middle of (or close to) the start bit
+  else {
+    int b = (m_state - start);
+    if ((m_state % 4) == start) {
+      m_data = (m_data >> 1) | (val ? 0x80 : 0);
+    }
+    if (m_state == (start + 8*4)) {
+      m_state = 0;
+      cout << "serial: extracted " << HEXFORMAT0x2(m_data) << endl;
+      if (m_handler)
+        m_handler(m_data);
+    }
+    else {
+      m_state++;
+    }
+  }
 }
 
-BitDecoder m_bitDecoder;
+SerialDecoder m_serialDecoder;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -229,13 +139,6 @@ bool EA78UP5_Emulator::Open(const Options & options)
   if (!S2650Emulator::Open(options))
     return false;
 
-  uint64_t clockInterval = m_targetCPUClock_Hz / 110.0 / 4;
-
-  cout << "78up5: poll interval = " << clockInterval << " = " << 1000000.0 / clockInterval << " Hz" << endl;
-
-  using namespace std::placeholders;
-  AddCPUTimePollDef(clockInterval, std::bind(&EA78UP5_Emulator::SerialIn, this, _1, _2));  
-
   return true;
 }
 
@@ -246,18 +149,20 @@ void EA78UP5_Emulator::Reset(int addr)
   // make sure sense is not set to indicate start of serial char
   SetSense(true);
 
+  // add decoder for flag
+  uint64_t clockInterval = m_targetCPUClock_Hz / 110.0 / 4;
+  cout << "78up5: poll interval = " << clockInterval << " = " << 1000000.0 / clockInterval << " Hz" << endl;
   using namespace std::placeholders;
+  AddCPUTimePollDef(clockInterval, std::bind(&EA78UP5_Emulator::SerialIn, this, _1, _2));  
 
-  m_bitDecoder.Open(m_targetCPUClock_Hz, true, 110);
-  m_bitDecoder.SetHandler(std::bind(&Terminal::WriteChar, m_terminal.get(), _1));
-
-  m_terminal->m_keyboard.SetHandler(std::bind(&Terminal::OnKeyboard, this, _1))
+  m_serialDecoder.SetHandler(std::bind(&Terminal::WriteChar, m_terminal.get(), _1));
+  //m_terminal->m_keyboard.SetHandler(std::bind(&Terminal::OnKeyboard, this, _1))
 }
 
 void EA78UP5_Emulator::SerialIn(double secs, uint64_t clocks)
 {
   //cout << "78up5: poll" << endl;
-  m_bitDecoder.OnBit(GetFlag(), clocks);
+  m_serialDecoder.OnBit(GetFlag(), clocks);
 }
 
 void EA78UP5_Emulator::SerialOut(uint8_t ch)
