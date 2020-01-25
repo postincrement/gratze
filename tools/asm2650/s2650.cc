@@ -13,233 +13,468 @@ extern OpCodeInfo g_2650_opcodes[];
 
 using namespace std;
 
-static unsigned ParseExpr(const std::string & str_)
+struct Token
 {
-  unsigned val = 0;
+  enum class Type
+  {
+    eEOF,
+    eInteger,
+    eOp,
+    eString,
+    eSymbol,
+    eCurrentAddr
+  };
 
-  std::string str(str_);
-  for (auto & r : str) r = tolower(r);
+  Type m_type;
+  std::string m_lexeme;
+  unsigned m_value;
 
-  if (str.length() == 0)
-    return val;
+  Type Parse(const std::string & str, size_t & pos);
+};
 
-  char * ptr;
-  if (str[str.length()-1] == 'h') {
-    val = strtoul(str.c_str(), &ptr, 16);
+Token::Type Token::Parse(const std::string & str, size_t & pos)
+{
+  //cout << "parsing '" << str.substr(pos) << "'" << endl;
+  m_type = Type::eEOF;
+
+  // ignore spaces
+  while ((pos < str.length()) && isspace(str[pos]))
+    ++pos;
+
+  if (pos >= str.length()) {
+    return m_type;
   }
-  else { 
-    val = strtoul(str.c_str(), &ptr, 10);
+
+  char ch = str[pos++];
+
+  // character string
+  if (ch == '\'') {
+    size_t start = pos;
+    while (pos < str.length()) {
+      char ch = str[pos++];
+      if (ch == '\'')
+        break;
+      m_lexeme += ch;
+    }
+    if (m_lexeme.length() == 1) {
+      m_value = (int)m_lexeme[0];
+      m_type  = Type::eInteger;
+    }
+    else {
+      m_type = Token::Type::eString;
+    }
   }
 
-  return val;
-}
+  // operator
+  else if ((ch == '+') || (ch == '-')) {
+    m_type = Token::Type::eOp;
+    m_lexeme = ch;
+  }
+
+  // operator
+  else if (ch == '$') {
+    m_type = Token::Type::eCurrentAddr;
+    m_lexeme = ch;
+  }
+
+  // numeric/hex constant
+  else if (isdigit(ch)) {
+    m_lexeme = ch;
+    bool decimal = true;
+    size_t start = pos;
+    while (pos < str.length()) {
+      char ch = tolower(str[pos++]);
+      if (isdigit(ch)) {
+        m_lexeme += ch;
+      }
+      else if (ch >= 'a' && (ch <= 'f')) {
+        m_lexeme += ch;
+        decimal = false;
+      }
+      else if (ch == 'h') {
+        m_lexeme += ch;
+        decimal = false;
+        break;
+      }
+      else
+        break;
+    }
+    char * ptr;
+    m_value = strtoul(m_lexeme.c_str(), &ptr, decimal ? 10 : 16);
+    if (ptr == NULL) {
+      cerr << "error: cannot parse expression '" << str << "'" << endl;
+    }
+    else {
+      //cout << "'" << m_lexeme << "' converted to 0x" << hex << m_value << endl;
+      m_type = Type::eInteger;
+    }
+  }
+
+  // symbol
+  else if (isalpha(ch)) {
+    m_lexeme = ch;
+    size_t start = pos;
+    while ((pos < str.length()) && isalnum(str[pos])) {
+      m_lexeme += str[pos++];
+    }
+    m_type = Token::Type::eSymbol;
+  }
+
+  return m_type;;
+};
+
+
 
 static bool ParseReg(uint8_t & reg, const std::string & arg)
 {
   reg = 0;
   if (arg == "r0")
-    ;
+    reg =  0x00;
   else if (arg == "r1")
     reg = 0x01;
   else if (arg == "r2")
     reg = 0x02;
   else if (arg == "r3")
     reg = 0x03;
+
   else if (arg == "un")
-    ;
+    reg = 0x03;
   else if (arg == "z")
-    ;
+    reg = 0;
   else if (arg == "n")
-    ;
+    reg = 2;
   else if (arg == "p")
-    ;
+    reg = 1;
+
   else if (arg == "eq")
-    ;
+    reg = 0;
   else if (arg == "lt")
-    reg = 0x01;
-  else if (arg == "gt")
     reg = 0x02;
+  else if (arg == "gt")
+    reg = 0x01;
+
   else
     return false;
 
   return true;  
 }
 
-bool S2650Assembler::ParseLine(const std::string & line_)
+static bool ResolveIntegerValue(unsigned & val, const Token & token, unsigned int currentAddr, std::map<std::string, unsigned> & symbolTable)
 {
-  ++m_lineNumber;
+  switch (token.m_type) {
+    case Token::Type::eEOF:
+    case Token::Type::eOp:
+    case Token::Type::eString:
+      return false;
 
-  // save lines for creating the listing file
-  m_line = TrimRight(line_);
-  m_lines.push_back(m_line);
+    case Token::Type::eInteger:
+      val = token.m_value;
+      break;
 
-  // ignore blank lines
-  m_trimmedLine = TrimLeft(m_line);
-  if (m_trimmedLine.length() == 0)
+    case Token::Type::eCurrentAddr:
+      val = currentAddr;
+      break;
+
+    case Token::Type::eSymbol:
+      {
+        std::string str(token.m_lexeme);
+        for (auto & r : str) r = toupper(r);
+        if (symbolTable.count(str) == 0)
+          return false;
+        val = symbolTable[str];
+        //cout << "symbol " << token.m_lexeme << " resolved to 0x" << hex << val << endl;
+      }
+      break;
+  }
+
+  return true;
+}
+
+
+bool S2650Assembler::ParseExpr(unsigned int & val, const std::string & str, size_t pos, std::string & error)
+{
+  val = 0;
+  stringstream strm;
+
+  // get first token and resolve
+  Token token1;
+  if (token1.Parse(str, pos) == Token::Type::eEOF) {
+    return true;
+  }
+  unsigned lhs;
+  if (!ResolveIntegerValue(lhs, token1, m_address, m_symbols)) {
+    return (m_pass == 1);
+  }
+
+  // get op
+  Token token2;
+  if (token2.Parse(str, pos) == Token::Type::eEOF) {
+    val = lhs;
+    return true;
+  }
+  if (token2.m_type != Token::Type::eOp) {
+    stringstream strm;
+    strm << "expected operator, got '" << token2.m_lexeme << "'";
+    error = strm.str();
+    return false;
+  }
+
+  // get rhs
+  unsigned rhs;
+  if (!ParseExpr(rhs, str, pos, error)) {
+    return (m_pass == 1);
+  }
+
+  switch (token2.m_lexeme[0]) {
+    case '+':
+      val = lhs + rhs;
+      break;
+    case '-':
+      val = lhs - rhs;
+      break;
+  }  
+
+  //cout << "expr: " << token1.m_lexeme << "(0x" << hex << lhs << ") " << token2.m_lexeme << " 0x" << hex << rhs << " = 0x" << hex << val << endl;
+
+  return true;
+}
+
+bool S2650Assembler::ParseByteExpr(uint8_t & val, const std::string & str, size_t pos, std::string & error)
+{
+  unsigned intVal;
+  if (!ParseExpr(intVal, str, pos, error))
+    return false;
+
+  if (intVal > 0xff) {
+    stringstream strm;
+    strm << "expression value 0x" << hex << intVal << " too large for destination"; 
+    error = strm.str();
+    return false;
+  }
+
+  val = intVal & 0xff;
+  return true;
+}
+
+
+bool S2650Assembler::IsCommentStart(const char * str, size_t col)
+{
+  if (*str == 0)
+    return false;
+
+  if ((col == 0) && (*str == '*'))
     return true;
 
-  // ignore comment lines
-  if ((m_trimmedLine[0] == '*') || (m_trimmedLine[0] == ';'))
-    return true;
+  return (*str == ';'); 
+}
 
+bool S2650Assembler::ParseLine()
+{
   ListingInfo & listing = m_listings[m_lineNumber];
 
   // symbol and op
-  m_symbol  = GetNextWord();
-  m_op      = GetNextWord();
+  m_symbol  = GetNextWord();    // label or symbol
+  m_op      = GetNextWord();    
   m_value   = GetNextWord();
+
+  // ignore comment lines
+  if (m_symbol.empty() && m_op.empty())
+    return true;
 
   std::string op(m_op);
   std::string value(m_value);
 
-  for (auto & r : op) r = tolower(r);
+  for (auto & r : op)    r = tolower(r);
   for (auto & r : value) r = tolower(r);
 
-  if (!m_symbol.empty() && op.empty()) {
-    AssignSymbol(m_symbol, m_address);
-    listing.m_addr = m_address;
-  }
-  else if (op == "equ") {
-    unsigned intVal = ParseExpr(value);
+  // EQU pseudo-op
+  if (op == "equ") {
+    unsigned intVal;
+    if (!ParseExpr(intVal, m_value, 0, m_error)) {
+      return ParseError(m_error);
+    }
     listing.m_addr = intVal;
     AssignSymbol(m_symbol, intVal);
+    return true;
   }
-  else if (op == "org") {
-    unsigned intVal = ParseExpr(value);
+
+  // org pseudo-op
+  if (op == "org") {
+    unsigned intVal;
+    if (!ParseExpr(intVal, m_value, 0, m_error))
+      return ParseError(m_error);
+
     listing.m_addr = intVal;
-    cout << "set address to 0x" << setw(4) << setfill('0') << hex << intVal << endl;
+    m_address      = intVal;
+    return true;
   }
-  else if (op == "dw") {
-    unsigned intVal = ParseExpr(value);
-    listing.m_addr   = m_address;
-    int len = 2;
-    listing.m_ops.resize(len);
+
+  // if symbol specified, defines symbol as current address
+  if (!m_symbol.empty()) {
+    AssignSymbol(m_symbol, m_address);
+  }
+
+  listing.m_addr = m_address;
+
+  if (op.empty())
+    return true;
+
+  // DW pseudo-op
+  if (op == "dw") {
+    unsigned intVal;
+    if (!ParseExpr(intVal, m_value, 0, m_error)) {
+      return ParseError(m_error);
+    }
+    listing.m_ops.resize(2);
     listing.m_ops[0] = intVal >> 8;
     listing.m_ops[1] = intVal & 0xff;
-    m_address += len;
+    m_address += 2;
+    return true;
   }
-  else if (op == "db") {
-    unsigned intVal = ParseExpr(value);
-    listing.m_addr   = m_address;
-    int len = 1;
-    listing.m_ops.resize(len);
-    listing.m_ops[0] = intVal & 0xff;
-    m_address += len;
-  }
-  else if (op == "ds") {
-    unsigned intVal = ParseExpr(value);
-    int len = intVal;
-    listing.m_ops.resize(len);
-    listing.m_addr   = m_address;
-    m_address += len;
-  }
-  else {
-    std::string arg;
-    size_t pos = op.find(',');
-    if (pos != string::npos) {
-      arg = op.substr(pos+1);
-      op  = op.substr(0,pos);
-    }
 
-    OpCodeInfo * info = g_2650_opcodes;
-    while (info->m_mnemonic != 0) {
-      if (op == info->m_mnemonic)
-        break;
-      ++info;  
+  // DB pseudo op
+  if (op == "db") {
+    Token token;
+    size_t pos = 0;
+    if (token.Parse(m_value, pos) == Token::Type::eString) {
+      listing.m_ops.resize(token.m_lexeme.length());
+      int i = 0;
+      for (auto & r : token.m_lexeme) {
+        listing.m_ops[i] = r;
+        m_address++;
+        ++i;
+      }
+      return true;
     }
-    if (info->m_mnemonic == 0) {
-      ParseError("unknown mnemonic", m_op);
+    
+    listing.m_ops.resize(1);
+    if (ParseByteExpr(listing.m_ops[0], m_value, 0, m_error)) {
+      m_address++;
+      return true;
     }
     else {
-      listing.m_addr   = m_address;
-      int len = info->m_opLen;
-      listing.m_ops.resize(len);
-      listing.m_ops[0] = info->m_opcode;
-
-      switch ((S2650Mode)info->m_mode) {
-        case S2650Mode::eZ: // r0
-          {
-            uint8_t reg;
-            if (!value.empty()) {
-              if (!ParseReg(reg, value)) {
-                ParseError("mode 0 - unknown reg", m_value);
-              }    
-            }
-            else if (!ParseReg(reg, arg)) {
-              ParseError("mode 0 - unknown reg", arg);
-            }    
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-
-        case S2650Mode::eI: // immediate
-          {
-            listing.m_ops[1] = ParseExpr(value);
-            uint8_t reg;
-            if (!ParseReg(reg, arg)) {
-              ParseError("mode 1 - unknown reg", arg);
-            }
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-
-        case S2650Mode::eIn: // immediate with no arg
-          {
-            listing.m_ops[1] = ParseExpr(value);
-          }
-          break;
-
-        case S2650Mode::eR: // relative
-          {
-            listing.m_ops[1] = ParseExpr(value);
-            uint8_t reg;
-            if (!ParseReg(reg, arg)) {
-              ParseError("mode 2 - unknown reg", arg);
-            }
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-
-        case S2650Mode::eA: // absolute
-          {
-            listing.m_ops[1] = ParseExpr(value);
-            uint8_t reg;
-            if (!ParseReg(reg, arg)) {
-              ParseError("mode 3 - unknown reg", arg);
-            }
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-
-        case S2650Mode::eB: // cond absolute
-          {
-            listing.m_ops[1] = ParseExpr(value);
-            uint8_t reg;
-            if (!ParseReg(reg, arg)) {
-              ParseError("mode 7 - unknown cond", arg);
-            }
-            else {
-              listing.m_ops[0] |= reg;
-            }
-          }
-          break;
-
-        case S2650Mode::eE: // misc
-          {
-          }
-          break;
-      }
-      m_address += info->m_opLen;
+      return ParseError(m_error);
     }
   }
+
+  // DS pseudo-op
+  if (op == "ds") {
+    unsigned intVal;
+    if (!ParseExpr(intVal, m_value, 0, m_error)) {
+      return ParseError(m_error);
+    }
+    listing.m_ops.resize(intVal);
+    m_address += intVal;
+    return true;
+  }
+
+  // extract mnemonic arg
+  std::string arg;
+  size_t pos = op.find(',');
+  if (pos != string::npos) {
+    arg = op.substr(pos+1);
+    op  = op.substr(0,pos);
+  }
+
+  // look for mnemonic
+  OpCodeInfo * info = g_2650_opcodes;
+  while (info->m_mnemonic != 0) {
+    if (op == info->m_mnemonic)
+      break;
+    ++info;  
+  }
+  if (info->m_mnemonic == 0) {
+    return ParseError("unknown mnemonic", m_op);
+  }
+
+  // copy opcode to listing
+  int len = info->m_opLen;
+  listing.m_ops.resize(len);
+  listing.m_ops[0] = info->m_opcode;
+
+  uint8_t reg = 0;
+  bool indirect = false;
+  unsigned addr = 0;
+
+  switch ((S2650Mode)info->m_mode) {
+    case S2650Mode::eZ: // r0
+      if (!value.empty()) {
+        if (!ParseReg(reg, value)) {
+          return ParseError("mode 0 - unknown reg", m_value);
+        }    
+      }
+      else { 
+        if (!ParseReg(reg, arg)) {
+          return ParseError("mode 0 - unknown reg", arg);
+        }
+      }
+      listing.m_ops[0] |= reg;
+      break;
+
+    case S2650Mode::eI: // immediate
+      if (!ParseByteExpr(listing.m_ops[1], value, 0, m_error)) {
+        return ParseError(m_error);
+      }
+      if (!ParseReg(reg, arg)) {
+        return ParseError("mode 1 - unknown reg", arg);
+      }
+      listing.m_ops[0] |= reg;
+      break;
+
+    case S2650Mode::eIn: // immediate with no arg
+      if (!ParseByteExpr(listing.m_ops[1], value, 0, m_error)) {
+        return ParseError(m_error);
+      }
+      break;
+
+    case S2650Mode::eR: // relative
+      if (!ParseExpr(addr, value, 0, m_error)) {
+        return ParseError(m_error);
+      }
+      if (!ParseReg(reg, arg)) {
+        return ParseError("mode 2 - unknown reg", arg);
+      }
+      listing.m_ops[0] |= reg;
+      listing.m_ops[1] = addr - (m_address + 2);
+      break;
+
+    case S2650Mode::eA: // absolute
+      if (!ParseReg(reg, arg)) {
+        return ParseError("unknown reg", arg);
+      }
+      indirect = (value[0] == '*');
+      if (indirect) {
+        value = value.substr(1);
+      }
+      if (!ParseExpr(addr, value, 0, m_error)) {
+        return ParseError(m_error);
+      }
+      listing.m_ops[0] |= reg;
+      listing.m_ops[1] = addr >> 8;
+      listing.m_ops[2] = addr & 0xff;
+      break;
+
+    case S2650Mode::eB: // cond absolute
+      if (!ParseReg(reg, arg)) {
+        return ParseError("unknown reg", arg);
+      }
+      indirect = (value[0] == '*');
+      if (indirect) {
+        value = value.substr(1);
+      }
+      if (!ParseExpr(addr, value, 0, m_error)) {
+        return ParseError(m_error);
+      }
+      listing.m_ops[0] |= reg;
+      listing.m_ops[1] = addr >> 8;
+      listing.m_ops[2] = addr & 0xff;
+      break;
+
+    case S2650Mode::eE: // misc
+      break;
+  }
+
+  m_address += info->m_opLen;
 
   return true;
 }

@@ -9,6 +9,9 @@ FILENAMES	:= $(notdir $(basename $(SRCS)))
 OBJS			:= $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
 DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
 
+CXXFLAGS += -g
+LDFLAGS += -g
+
 COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 
@@ -24,7 +27,7 @@ asm8bit:  $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 clean:
-	rm asm2650
+	rm -f asm8bit $(OBJS)
 
 $(OBJDIR):
 	@mkdir -p $@

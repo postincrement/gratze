@@ -99,8 +99,8 @@ OpCodeInfo g_2650_opcodes[] = {
   { "spsu", (int)S2650Mode::eE,  0x12, 1 },
   { "spsl", (int)S2650Mode::eE,  0x13, 1 },
 
-  { "cpsu", (int)S2650Mode::eIn, 0x78, 2 },
-  { "cpsl", (int)S2650Mode::eIn, 0x79, 2 },
+  { "cpsu", (int)S2650Mode::eIn, 0x74, 2 },
+  { "cpsl", (int)S2650Mode::eIn, 0x75, 2 },
 
   { "ppsu", (int)S2650Mode::eIn, 0x76, 2 },
   { "ppsl", (int)S2650Mode::eIn, 0x77, 2 },
