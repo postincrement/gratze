@@ -76,6 +76,10 @@ void Terminal::WriteChar(uint8_t ch)
   }
 }
 
+void Terminal::SetKeyboardHandler(std::function<void (uint8_t)> handler)
+{
+  m_keyboard.SetHandler(handler);
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

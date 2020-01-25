@@ -45,11 +45,15 @@ struct Terminal
     void WriteChar(uint8_t ch);
     void WriteString(const std::string & str);
 
+    void SetKeyboardHandler(std::function<void (uint8_t)> handler);
+
+  protected:
     int m_rows;
     int m_cols;
     int m_cursorX, m_cursorY;
     bool m_cursorEnabled = true;
 
+    std::function<void (uint8_t)> m_kbHandler = nullptr;
     std::shared_ptr<Screen> m_screen;
     ParallelKeyboard m_keyboard;
 };

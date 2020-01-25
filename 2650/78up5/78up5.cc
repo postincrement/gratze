@@ -42,37 +42,34 @@ static EmulatorInfo g_emulatorInfo =
 class SerialDecoder 
 {
   public:
-    SerialDecoder();
-
-    inline void OnBit(bool val, uint64_t cycles);
-
-    virtual void OnBreak();
-
-    void SetHandler(std::function<void (uint8_t)> handler);
+    void SetInHandler(std::function<bool ()> handler);
+    void SetOutHandler(std::function<void (uint_t)> handler);
+    inline void Clock(double secs, uint64_t clocks);
 
   protected:
-    std::function<void (uint8_t)> m_handler = nullptr;
+    std::function<bool ()> m_inHandler = nullptr;
+    std::function<void (uint8_t)> m_outHandler = nullptr;
 
     int m_state = 0;
     unsigned m_data = 0;
 };
 
-SerialDecoder::SerialDecoder()
+void SerialDecoder::SetInHandler(std::function<bool ()> handler)
 {
+  m_inHandler = handler;
 }
 
-void SerialDecoder::SetHandler(std::function<void (uint8_t)> handler)
+void SerialDecoder::SetOutHandler(std::function<void (uint8_t)> handler)
 {
-  m_handler = handler;
+  m_outHandler = handler;
 }
 
-void SerialDecoder::OnBreak()
+void SerialDecoder::Clock()
 {
-  cerr << "serial: BREAK" << endl;
-}
+  if (!m_inHandler)
+    return;
 
-void SerialDecoder::OnBit(bool val, uint64_t cycles)
-{
+  bool val = m_inHandler();  
   /*
       ---+   +---+---+---+---+---+---+---+---+---+---
          | S | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | S
@@ -110,8 +107,8 @@ void SerialDecoder::OnBit(bool val, uint64_t cycles)
     if (m_state == (start + 8*4)) {
       m_state = 0;
       cout << "serial: extracted " << HEXFORMAT0x2(m_data) << endl;
-      if (m_handler)
-        m_handler(m_data);
+      if (m_outHandler)
+        m_outHandler(m_data);
     }
     else {
       m_state++;
@@ -120,6 +117,24 @@ void SerialDecoder::OnBit(bool val, uint64_t cycles)
 }
 
 SerialDecoder m_serialDecoder;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+class SerialEncoder 
+{
+  public:
+    void SetInHandler(std::function<bool ()> handler);
+    void SetOutHandler(std::function<void (uint_t)> handler);
+    void Clock(double secs, uint64_t clocks);
+
+  protected:
+    std::function<void (uint8_t)> m_handler = nullptr;
+
+    int m_state = 0;
+    std::queue<uint8_t> m_queue;
+};
+
+SerialEncoder m_serialEncoder;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -146,26 +161,43 @@ void EA78UP5_Emulator::Reset(int addr)
 {
   S2650Emulator::Reset(addr);
 
-  // make sure sense is not set to indicate start of serial char
+  m_serialInterval = m_targetCPUClock_Hz / 110.0 / 4;
+  cout << "78up5: poll interval = " << m_serialInterval << " = " << 1000000.0 / m_serialInterval << " Hz" << endl;
+
+  using namespace std::placeholders;
+
+  // make sure sense starts high
   SetSense(true);
 
-  // add decoder for flag
-  uint64_t clockInterval = m_targetCPUClock_Hz / 110.0 / 4;
-  cout << "78up5: poll interval = " << clockInterval << " = " << 1000000.0 / clockInterval << " Hz" << endl;
-  using namespace std::placeholders;
-  AddCPUTimePollDef(clockInterval, std::bind(&EA78UP5_Emulator::SerialIn, this, _1, _2));  
+  m_serialDecoder.SetInHandler (std::bind(&EA78UP5_Emulator::GetFlag,  this));
+  m_serialDecoder.SetOutHandler(std::bind(&Terminal::WriteChar,        m_terminal.get(), _1));
 
-  m_serialDecoder.SetHandler(std::bind(&Terminal::WriteChar, m_terminal.get(), _1));
-  //m_terminal->m_keyboard.SetHandler(std::bind(&Terminal::OnKeyboard, this, _1))
+  terminal.SetKeyboardHandler  (std::bind(&SerialEncoder::WriteChar,   &m_serialEncoder, _1));
+  m_serialEncoder.SetOutHandler(std::bind(&EA78UP5_Emulator::SetSense, this, _1));
+
+  // add serial clocks
+  AddCPUTimePollDef(m_serialInterval, std::bind(&SerialDecoder::Clock, this, _1, _2));
+  AddCPUTimePollDef(m_serialInterval, std::bind(&SerialEncoder::Clock, this, _1, _2));
 }
 
 void EA78UP5_Emulator::SerialIn(double secs, uint64_t clocks)
 {
-  //cout << "78up5: poll" << endl;
-  m_serialDecoder.OnBit(GetFlag(), clocks);
+  m_serialDecoder.OnBit(GetFlag());
 }
 
-void EA78UP5_Emulator::SerialOut(uint8_t ch)
+void EA78UP5_Emulator::SerialOut(double secs, uint64_t clocks)
 {
+  m_serialEncoder.Clock();
+}
 
+
+uint8_t ch)
+{
+  m_queue.push_back(ch);
+  SetSense(true);
+
+  // make sure sense is not set to indicate start of serial char
+  AddCPUTimePollDef(clockInterval, std::bind(&EA78UP5_Emulator::SerialOut, this, _1, _2));
+
+  m_serialEncoder.Write(ch);
 }

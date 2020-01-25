@@ -15,6 +15,10 @@ class EA78UP5_Emulator : public S2650Emulator
 
     void SerialIn(double secs, uint64_t clocks);
     void SerialOut(uint8_t ch);
+
+    protected:
+      uint64_t m_serialInterval;
+      int m_sendSerial = -1;
 };
 
 #endif // EA78UP5_H_
