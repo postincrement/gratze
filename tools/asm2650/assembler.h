@@ -32,6 +32,7 @@ class Assembler
     { return m_lineNumber; }
 
     virtual std::string GetNextWord();
+    virtual std::string GetRestOfLine();
 
     virtual void AssignSymbol(const std::string & sym, unsigned val);
 

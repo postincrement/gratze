@@ -15,7 +15,7 @@ OpCodeInfo g_2650_opcodes[] = {
   { "addz", (int)S2650Mode::eZ,  0x80, 1 },
   { "addi", (int)S2650Mode::eI,  0x84, 2 },
   { "addr", (int)S2650Mode::eR,  0x88, 2 },
-  { "adda", (int)S2650Mode::eA,  0xcc, 3 },
+  { "adda", (int)S2650Mode::eA,  0x8c, 3 },
 
   { "subz", (int)S2650Mode::eZ,  0xa0, 1 },
   { "subi", (int)S2650Mode::eI,  0xa4, 2 },

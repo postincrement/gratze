@@ -88,6 +88,17 @@ bool Assembler::Parse()
   return true;
 }
 
+std::string Assembler::GetRestOfLine()
+{
+  size_t start = m_pos;
+
+  while ((m_pos < m_line.length()) && !IsCommentStart(&m_line[m_pos], m_pos))
+    ++m_pos;
+
+  return Trim(m_line.substr(start, m_pos-start));  
+}
+
+
 std::string Assembler::GetNextWord()
 {
   // if position is spaces, consume them and return empty word

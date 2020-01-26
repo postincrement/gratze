@@ -34,7 +34,6 @@ struct Token
 
 Token::Type Token::Parse(const std::string & str, size_t & pos)
 {
-  //cout << "parsing '" << str.substr(pos) << "'" << endl;
   m_type = Type::eEOF;
 
   // ignore spaces
@@ -125,8 +124,11 @@ Token::Type Token::Parse(const std::string & str, size_t & pos)
 
 
 
-static bool ParseReg(uint8_t & reg, const std::string & arg)
+static bool ParseReg(uint8_t & reg, const std::string & arg_)
 {
+  std::string arg(arg_);
+  for (auto & r : arg) r = tolower(r);
+
   reg = 0;
   if (arg == "r0")
     reg =  0x00;
@@ -182,7 +184,7 @@ static bool ResolveIntegerValue(unsigned & val, const Token & token, unsigned in
         if (symbolTable.count(str) == 0)
           return false;
         val = symbolTable[str];
-        //cout << "symbol " << token.m_lexeme << " resolved to 0x" << hex << val << endl;
+//        cout << "symbol " << token.m_lexeme << " resolved to 0x" << hex << val << endl;
       }
       break;
   }
@@ -201,12 +203,13 @@ bool S2650Assembler::ParseExpr(unsigned int & val, const std::string & str, size
   if (token1.Parse(str, pos) == Token::Type::eEOF) {
     return true;
   }
+
   unsigned lhs;
   if (!ResolveIntegerValue(lhs, token1, m_address, m_symbols)) {
     return (m_pass == 1);
   }
 
-  // get op
+  // get op - if none, then return lhs
   Token token2;
   if (token2.Parse(str, pos) == Token::Type::eEOF) {
     val = lhs;
@@ -256,6 +259,83 @@ bool S2650Assembler::ParseByteExpr(uint8_t & val, const std::string & str, size_
   return true;
 }
 
+bool S2650Assembler::ParseIndexExpr(uint8_t & reg, unsigned & addr, const std::string & arg, const std::string & str_)
+{
+  if (!ParseReg(reg, arg)) {
+    return ParseError("unknown reg", arg);
+  }
+
+  std::string str(str_);
+
+  bool indirect = (str[0] == '*');
+  if (indirect) {
+    str = str.substr(1);
+  }
+
+  reg = 0;
+  addr = 0;
+
+  size_t pos = str.find(',');
+
+  // non-indexed
+  if (pos == std::string::npos) {
+    if (!ParseExpr(addr, str, 0, m_error))
+      return ParseError(m_error);
+    addr &= 0x1fff;  
+
+    if (!ParseReg(reg, arg)) {
+      return ParseError("unknown reg", str);
+    }
+  }
+  else {
+    // all index operations require R0 as argument
+    if (arg != "r0") {
+      return ParseError("index mode requires R0 as destination");
+    }
+
+    // get base address
+    std::string value = Trim(str.substr(0, pos));
+    ++pos;
+    str = str.substr(pos);
+    if (!ParseExpr(addr, value, 0, m_error)) {
+      return ParseError(m_error);
+    }
+
+    addr &= 0x1fff;  
+
+    // see if auto inc/dec  
+    std::string regName;
+    size_t pos = str.find(',');
+    if (pos == std::string::npos) {
+      regName = str;
+      addr |= 0x6000;
+    }
+    else {
+      regName = str.substr(0, pos);
+      str = Trim(str.substr(pos+1));
+      if (str[0] == '-')
+        addr |= 0x4000;
+      else if (str[0] == '+')
+        addr |= 0x2000;
+      else {
+        stringstream strm;
+        strm << "unknown index direction '" << str << "'";
+        return ParseError(strm.str());
+      }
+    }
+
+    // parse index reg
+    regName = Trim(regName);
+    if (!ParseReg(reg, regName)) {
+      return ParseError("unknown reg", regName);
+    }
+  }
+
+  addr |= (indirect ? 0x8000 : 0);
+
+  return true;
+}
+
 
 bool S2650Assembler::IsCommentStart(const char * str, size_t col)
 {
@@ -275,7 +355,7 @@ bool S2650Assembler::ParseLine()
   // symbol and op
   m_symbol  = GetNextWord();    // label or symbol
   m_op      = GetNextWord();    
-  m_value   = GetNextWord();
+  m_value   = GetRestOfLine();
 
   // ignore comment lines
   if (m_symbol.empty() && m_op.empty())
@@ -285,7 +365,7 @@ bool S2650Assembler::ParseLine()
   std::string value(m_value);
 
   for (auto & r : op)    r = tolower(r);
-  for (auto & r : value) r = tolower(r);
+//  for (auto & r : value) r = tolower(r);
 
   // EQU pseudo-op
   if (op == "equ") {
@@ -346,7 +426,7 @@ bool S2650Assembler::ParseLine()
       }
       return true;
     }
-    
+
     listing.m_ops.resize(1);
     if (ParseByteExpr(listing.m_ops[0], m_value, 0, m_error)) {
       m_address++;
@@ -395,6 +475,8 @@ bool S2650Assembler::ParseLine()
   uint8_t reg = 0;
   bool indirect = false;
   unsigned addr = 0;
+  signed offs = 0;
+  stringstream strm;
 
   switch ((S2650Mode)info->m_mode) {
     case S2650Mode::eZ: // r0
@@ -428,20 +510,6 @@ bool S2650Assembler::ParseLine()
       break;
 
     case S2650Mode::eR: // relative
-      if (!ParseExpr(addr, value, 0, m_error)) {
-        return ParseError(m_error);
-      }
-      if (!ParseReg(reg, arg)) {
-        return ParseError("mode 2 - unknown reg", arg);
-      }
-      listing.m_ops[0] |= reg;
-      listing.m_ops[1] = addr - (m_address + 2);
-      break;
-
-    case S2650Mode::eA: // absolute
-      if (!ParseReg(reg, arg)) {
-        return ParseError("unknown reg", arg);
-      }
       indirect = (value[0] == '*');
       if (indirect) {
         value = value.substr(1);
@@ -449,6 +517,22 @@ bool S2650Assembler::ParseLine()
       if (!ParseExpr(addr, value, 0, m_error)) {
         return ParseError(m_error);
       }
+      if (!ParseReg(reg, arg)) {
+        return ParseError("unknown reg", arg);
+      }
+      offs = addr - (m_address + 2);
+      if ((m_pass == 2) && ((offs < -64) || (offs > 63))) {
+        strm << "relative offset " << (int)offs << " is too large";
+        return ParseError(strm.str());
+      }
+      listing.m_ops[0] |= reg;
+      listing.m_ops[1] = (offs & 0x7f) | (indirect ? 0x80 : 0x00);
+      break;
+
+    case S2650Mode::eA: // absolute
+      if (!ParseIndexExpr(reg, addr, arg, value))
+        return false;
+
       listing.m_ops[0] |= reg;
       listing.m_ops[1] = addr >> 8;
       listing.m_ops[2] = addr & 0xff;
@@ -465,9 +549,10 @@ bool S2650Assembler::ParseLine()
       if (!ParseExpr(addr, value, 0, m_error)) {
         return ParseError(m_error);
       }
+      addr &= 0x7fff;
       listing.m_ops[0] |= reg;
-      listing.m_ops[1] = addr >> 8;
-      listing.m_ops[2] = addr & 0xff;
+      listing.m_ops[1] = (addr >> 8) | (indirect ? 0x80 : 0x00);
+      listing.m_ops[2] = (addr & 0xff);
       break;
 
     case S2650Mode::eE: // misc
