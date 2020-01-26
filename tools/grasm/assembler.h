@@ -105,7 +105,7 @@ class Assembler
     std::string m_binaryFn;
     std::string m_listingFn;
     std::string m_symFn;
-    int m_pageLength = DEFAULT_PAGE_LENGTH;
+    unsigned m_pageLength = DEFAULT_PAGE_LENGTH;
 
     std::ifstream m_file;
 

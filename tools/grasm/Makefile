@@ -23,11 +23,11 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 $(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
 	$(COMPILE.cc) $(OUTPUT_OPTION) $<
 
-asm8bit:  $(OBJS)
+grasm:  $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 clean:
-	rm -f asm8bit $(OBJS)
+	rm -f grasm $(OBJS)
 
 $(OBJDIR):
 	@mkdir -p $@

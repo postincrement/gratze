@@ -365,32 +365,23 @@ bool Assembler::WriteBinary()
 //////////////////////////////////////////////////////
 
 static CommandLineArgs::Option g_options[] = {
-  { 'h', "help",          ' ',   "display this help message" },
-  { 'l', "",              ' ',   "generate listing file as basename.lst" },
-  { 'L', "--listing",     's',   "generate listing as filename" },
-  { 'O', "--output",      's',   "generate output as filename instead of basename.out" },
-  { 's', "--symbols",     ' ',   "include symbols in listing" },
-  { 'p', "--pagelength",  'p',   "set page length for listing (0 = no pages)" },
+  { 'h', "help",        ' ',   "display this help message" },
+  { 'l', "",            ' ',   "generate listing file as basename.lst" },
+  { 'L', "listing",     's',   "generate listing as filename" },
+  { 'O', "output",      's',   "generate output as filename instead of basename.out" },
+  { 's', "symbols",     ' ',   "include symbols in listing" },
+  { 'p', "pagelength",  'u',   "set page length for listing (0 = no pages)" },
   { 0, 0, 0, 0}
 };
 
-void Usage()
-{
-  cerr << "usage: asm2650 fn" << endl;
-}
-
 int main(int argc, char *argv[])
 {
-  if (argc < 2) {
-    Usage();
-    return 0;
-  }
-
   CommandLineArgs args;
-
   int opt = args.Parse(g_options, argc, argv);
-  if (opt < 0) {
-    cerr << args.Usage();
+  if ((opt < 0) || (argc < 2)) {
+    cerr << "usage: grasm [opts] inputfile\n"
+         << "where opts are:\n"
+         << args.Usage();
     return -1;
   }
 
