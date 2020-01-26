@@ -155,8 +155,9 @@ bool Microbee_Emulator::Open(const Options & options)
   if (!Z80Emulator::Open(options))
     return false;
 
-  SetKeyboard(&m_keyboard);
-  m_keyboard.Compile(g_microbeeKeys);
+  KeyboardScanner * kb = new KeyboardScanner();
+  SetKeyboard(kb);
+  kb->Compile(g_microbeeKeys);
 
   using namespace std::placeholders;
   m_pio.SetInterruptHandler(std::bind(&Microbee_Emulator::OnPIOInterrupt, this, _1));
@@ -209,7 +210,7 @@ bool Microbee_Emulator::ScanKeyboard(uint16_t & addr)
   uint8_t mask = 1;
   bool found = false;
   for (int row = 0; row < 8; row++) {
-    uint8_t out = m_keyboard.Read(1 << row);
+    uint8_t out = m_keyboard->Read(1 << row);
     if (out != 0x00) {
       addr = (row << 7) + (FindBitSet(out) << 4);
       //cout << "mbee: scan row " << (1 << row) << " returned " << HEXFORMAT0x2(out) << " -> " << GetRowCol(addr) << endl;;
@@ -229,7 +230,7 @@ bool Microbee_Emulator::OnKeyboardScan(bool doUpdate, uint16_t & addr)
     int row = (addr >> 7) & 0x7;
     int col = (addr >> 4) & 0x7;
 
-    uint8_t out = m_keyboard.Read(1 << row);
+    uint8_t out = m_keyboard->Read(1 << row);
     if ((out & (1 << col)) != 0) {
       //cout << "mbee: update register matched" << endl;
       return true;

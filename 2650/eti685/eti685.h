@@ -21,7 +21,6 @@ class ETI685 : public S2650Emulator
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data) override;
 
   protected:
-    ParallelKeyboard m_keyboard;
     Intel8255 m_ppi;
     uint8_t m_keyboardData;
 };

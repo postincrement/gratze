@@ -1,0 +1,627 @@
+    1 0001                P      EQU       1
+    2 0002                N      EQU       2
+    3 0000                Z      EQU       0
+    4 0002                LCOM   EQU       02H
+    5 0001                CAR    EQU       01H
+    6 0080                SENS   EQU       80H
+    7 0040                FLAG   EQU       40H
+    8 0020                II     EQU       20H
+    9 0020                IDC    EQU       20H
+   10 0004                OVF    EQU       04H
+   11 0003                UN     EQU       3
+   12 0000                EQ     EQU       0
+   13 0002                LT     EQU       2
+   14 0001                GT     EQU       1
+   15 0008                WC     EQU       08H
+   16 0010                RS     EQU       10H
+   17 0020                SPAC   EQU       20H
+   18 0001                BMAX   EQU       1
+   19 007f                DELE   EQU       7FH
+   20 000d                CR     EQU       13
+   21 000a                LF     EQU       10
+   22 0014                BLEN   EQU       20
+   23 003a                STAR   EQU       ':'
+   24                     *
+   25                            ORG       0          ;Zero mark vector and 0
+   26 0000 07 3f          INIT   LODI,R3   63
+   27 0002 20                    EORZ      R0
+   28 0003 cf 44 00       AINI   STRA,R0   COM,R3,-
+   29 0006 5b 7b                 BRNR,R3   AINI
+   30 0008 04 77                 LODI,R0   77H
+   31 000a cc 04 09              STRA,R0   XGOT
+   32 000d 04 1b                 LODI,R0   1BH
+   33 000f cc 04 0b              STRA,R0   XGOT+2
+   34 0012 04 80                 LODI,R0   80H
+   35 0014 cc 04 0c              STRA,R0   XGOT+3
+   36 0017 1b 09                 BCTR,UN   MBUG
+   37 0019 01 60          VEC    DW        BK01      ; Breakpoint vector
+   38 001b 01 6e                 DW        BK02
+   39                     *
+   40                     * COMMAND HANDLER
+   41 001d 04 3f          EBUG   LODI,R0   '?'
+   42 001f 3f 02 b4              BSTA,UN   COUT
+   43 0022 75 ff          MBUG   CPSL      0FFH
+   44 0024 3f 00 8a              BSTA,UN   CRLF
+   45 0027 04 2a                 LODI,R0   '*'
+   46 0029 3f 02 b4              BSTA,UN   COUT
+   47 002c 3b 2d                 BSTR,UN   LINE      ; Don't care if there is
+   48 002e 20                    EORZ      R0
+   49 002f cc 04 27              STRA,R0   BPTR
+   50 0032 0c 04 13              LODA,R0   BUFF
+   51 0035 e4 41                 COMI,R0   'A'
+   52 0037 1c 00 ab              BCTA,EQ   ALTE
+   53 003a e4 42                 COMI,R0   'B'
+   54 003c 1c 01 e5              BCTA,EQ   BKPT
+   55 003f e4 43                 COMI,R0   'C'
+   56 0041 1c 01 ca              BCTA,EQ   CLR
+   57 0044 e4 44                 COMI,R0   'D'
+   58 0046 1c 03 10              BCTA,EQ   DUMP
+   59 0049 e4 47                 COMI,R0   'G'
+   60 004b 1c 01 3a              BCTA,EQ   GOTO
+   61 004e e4 4c                 COMI,R0   'L'
+   62 0050 1c 03 b5              BCTA,EQ   LOAD
+   63 0053 e4 53                 COMI,R0   'S'
+   64 0055 1c 00 f4              BCTA,EQ   SREG
+   65 0058 1f 00 1d              BCTA,UN   EBUG
+   66                     * Input a CMD line into buffer
+   67                     * Code is 1=CR  2=LF  3=MSG+CR  4=MSG+LF
+   68 005b 07 ff          LINE   LODI,R3   0FFH      ; -1
+   69 005d cf 04 27              STRA,R3   BPTR
+   70 0060 e7 14          LLIN   COMI,R3   BLEN
+   71 0062 18 19                 BCTR,EQ   ELIN      ; On buffer overflow
+   72 0064 3f 02 86              BSTA,UN   CHIN      ; Get char
+   73 0067 e4 7f                 COMI,R0   DELE
+   74 0069 98 0e                 BCFR,EQ   ALIN
+   75 006b e7 ff                 COMI,R3   0FFH      ; -1 Echo and back ptr
+   76 006d 18 71                 BCTR,EQ   LLIN
+   77 006f 0f 64 13              LODA,R0   BUFF,R3
+   78 0072 3f 02 b4              BSTA,UN   COUT
+   79 0075 a7 01                 SUBI,R3   1
+   80 0077 1b 67                 BCTR,UN   LLIN
+   81 0079 e4 0d          ALIN   COMI,R0   CR
+   82 007b 98 18                 BCFR,EQ   BLIN
+   83 007d 05 01          ELIN   LODI,R1   1
+   84 007f 03             CLIN   LODZ      R3
+   85 0080 1a 02                 BCTR,N    DLIN
+   86 0082 85 02                 ADDI,R1   2
+   87 0084 cd 04 2a       DLIN   STRA,R1   CODE
+   88 0087 cf 04 29              STRA,R3   CNT
+   89 008a 04 0d          CRLF   LODI,R0   CR
+   90 008c 3f 02 b4              BSTA,UN   COUT
+   91 008f 04 0a                 LODI,R0   LF
+   92 0091 3f 02 b4              BSTA,UN   COUT
+   93 0094 17                    RETC,UN
+   94 0095 05 02          BLIN   LODI,R1   2
+   95 0097 e4 0a                 COMI,R0   LF
+   96 0099 18 64                 BCTR,EQ   CLIN
+   97 009b cf 24 13              STRA,R0   BUFF,R3,+ ; Store char and echo
+   98 009e 3f 02 b4              BSTA,UN   COUT
+   99 00a1 1f 00 60              BCTA,UN   LLIN
+  100                     *
+  101                     * Subr that stores double precision into temp
+  102 00a4 cd 04 0d       STRT   STRA,R1   TEMP
+  103 00a7 ce 04 0e              STRA,R2   TEMP+1
+  104 00aa 17                    RETC,UN
+  105                     * Display and alter memory
+  106 00ab 3f 02 db       ALTE   BSTA,UN   GNUM
+  107 00ae 3b 74          LALT   BSTR,UN   STRT
+  108 00b0 3f 02 69              BSTA,UN   BOUT
+  109 00b3 0d 04 0e              LODA,R1   TEMP+1
+  110 00b6 3f 02 69              BSTA,UN   BOUT
+  111 00b9 3f 03 5b              BSTA,UN   FORM
+  112 00bc 0d 84 0d              LODA,R1   *TEMP     ; Display content
+  113 00bf 3f 02 69              BSTA,UN   BOUT
+  114 00c2 3f 03 5b              BSTA,UN   FORM
+  115 00c5 3f 00 5b              BSTA,UN   LINE
+  116 00c8 0c 04 2a              LODA,R0   CODE
+  117 00cb e4 02                 COMI,R0   2
+  118 00cd 1e 00 22              BCTA,LT   MBUG
+  119 00d0 18 11                 BCTR,EQ   DALT
+  120 00d2 cc 04 11       CALT   STRA,R0   TEMR
+  121 00d5 3f 02 db              BSTA,UN   GNUM
+  122 00d8 ce 84 0d              STRA,R2   *TEMP     ; Update contents
+  123 00db 0c 04 11              LODA,R0   TEMR
+  124 00de e4 04                 COMI,R0   4
+  125 00e0 9c 00 22              BCFA,EQ   MBUG
+  126 00e3 06 01          DALT   LODI,R2   1
+  127 00e5 8e 04 0e              ADDA,R2   TEMP+1
+  128 00e8 05 00                 LODI,R1   0
+  129 00ea 77 08                 PPSL      WC
+  130 00ec 8d 04 0d              ADDA,R1   TEMP
+  131 00ef 75 08                 CPSL      WC
+  132 00f1 1f 00 ae              BCTA,UN   LALT
+  133                     * Selectively display and alter registers
+  134 00f4 3f 02 db       SREG   BSTA,UN   GNUM      ; Get index of reg
+  135 00f7 e6 08          LSRE   COMI,R2   8         ; Check range
+  136 00f9 1d 00 1d              BCTA,GT   EBUG
+  137 00fc ce 04 11              STRA,R2   TEMR
+  138 00ff 0e 64 00              LODA,R0   COM,R2    ; Display contents
+  139 0102 c1                    STRZ      R1
+  140 0103 3f 02 69              BSTA,UN   BOUT
+  141 0106 3f 03 5b              BSTA,UN   FORM
+  142 0109 3f 00 5b              BSTA,UN   LINE
+  143 010c 0c 04 2a              LODA,R0   CODE
+  144 010f e4 02                 COMI,R0   2
+  145 0111 1e 00 22              BCTA,LT   MBUG      ; CR
+  146 0114 18 1c                 BCTR,EQ   CSRE      ; LF
+  147 0116 cc 04 0f       ASRE   STRA,R0   TEMQ      ; Upate contents, then
+  148 0119 3f 02 db              BSTA,UN   GNUM
+  149 011c 02                    LODZ      R2
+  150 011d 0e 04 11              LODA,R2   TEMR
+  151 0120 ce 64 00              STRA,R0   COM,R2
+  152 0123 e6 08                 COMI,R2   8         ; Must update PSW lower
+  153 0125 98 03                 BCFR,EQ   BSRE
+  154 0127 cc 04 0a              STRA,R0   XGOT+1
+  155 012a 0c 04 0f       BSRE   LODA,R0   TEMQ
+  156 012d e4 03                 COMI,R0   3
+  157 012f 1c 00 22              BCTA,EQ   MBUG
+  158 0132 0e 04 11       CSRE   LODA,R2   TEMR
+  159 0135 86 01                 ADDI,R2   1
+  160 0137 1f 00 f7              BCTA,UN   LSRE
+  161                     * Goto Address
+  162 013a 3f 02 db       GOTO   BSTA,UN   GNUM
+  163 013d 3f 00 a4              BSTA,UN   STRT      ; Put addr in RAM
+  164 0140 0c 04 07              LODA,R0   COM+7
+  165 0143 92                    LPSU
+  166 0144 0d 04 01              LODA,R1   COM+1     ; Bank zero
+  167 0147 0e 04 02              LODA,R2   COM+2
+  168 014a 0f 04 03              LODA,R3   COM+3
+  169 014d 77 10                 PPSL      RS        ; Bank one
+  170 014f 0d 04 04              LODA,R1   COM+4
+  171 0152 0e 04 05              LODA,R2   COM+5
+  172 0155 0f 04 06              LODA,R3   COM+6
+  173 0158 0c 04 00              LODA,R0   COM
+  174 015b 75 ff                 CPSL      0FFH
+  175 015d 1f 04 09              BCTA,UN   XGOT      ; and BCTA,UN $TEMP
+  176                     *
+  177                     * Breakpoint Runtime Code
+  178 0160 cc 04 00       BK01   STRA,R0   COM       ; Entry for BKPT-1 VIA V
+  179 0163 13                    SPSL
+  180 0164 cc 04 08              STRA,R0   COM+8
+  181 0167 cc 04 0a              STRA,R0   XGOT+1    ; In RAM for reg restore
+  182 016a 04 00                 LODI,R0   0         ; BKPT index
+  183 016c 1b 0c                 BCTR,UN   BKEN
+  184 016e cc 04 00       BK02   STRA,R0   COM       ; Entry for BKPT-2
+  185 0171 13                    SPSL
+  186 0172 cc 04 08              STRA,R0   COM+8
+  187 0175 cc 04 0a              STRA,R0   XGOT+1
+  188 0178 04 01                 LODI,R0   1
+  189 017a cc 04 11       BKEN   STRA,R0   TEMR
+  190 017d 12                    SPSU
+  191 017e cc 04 07              STRA,R0   COM+7
+  192 0181 77 10                 PPSL      RS
+  193 0183 cd 04 04              STRA,R1   COM+4
+  194 0186 ce 04 05              STRA,R2   COM+5
+  195 0189 cf 04 06              STRA,R3   COM+6
+  196 018c 75 10                 CPSL      RS        ; Force to bank zero
+  197 018e cd 04 01              STRA,R1   COM+1
+  198 0191 ce 04 02              STRA,R2   COM+2
+  199 0194 cf 04 03              STRA,R3   COM+3
+  200 0197 0e 04 11              LODA,R2   TEMR
+  201 019a 3b 0f                 BSTR,UN   CLBK
+  202 019c 0d 04 0d              LODA,R1   TEMP      ; Print BKPT addr
+  203 019f 3f 02 69              BSTA,UN   BOUT
+  204 01a2 0d 04 0e              LODA,R1   TEMP+1
+  205 01a5 3f 02 69              BSTA,UN   BOUT
+  206 01a8 1f 00 22              BCTA,UN   MBUG
+  207                     * Subr to clear a BKPT  Like many subr has rel addr
+  208 01ab 20             CLBK   EORZ      R0
+  209 01ac ce 64 2d              STRA,R0   MARK,R2
+  210 01af 0e 64 33              LODA,R0   HADR,R2
+  211 01b2 cc 04 0d              STRA,R0   TEMP
+  212 01b5 0e 64 35              LODA,R0   LADR,R2
+  213 01b8 cc 04 0e              STRA,R0   TEMP+1
+  214 01bb 0e 64 2f              LODA,R0   HDAT,R2
+  215 01be cc 84 0d              STRA,R0   *TEMP
+  216 01c1 0e 64 31              LODA,R0   LDAT,R2
+  217 01c4 07 01                 LODI,R3   1
+  218 01c6 cf e4 0d              STRA,R0   *TEMP,R3
+  219 01c9 17                    RETC,UN
+  220                     * Break point  Mark indicates if set
+  221                     * HADR +LADR is BKPT addr,  HDAT + LDAT is two byte
+  222 01ca 3b 0b          CLR    BSTR,UN   NOK
+  223 01cc 0e 64 2d              LODA,R0   MARK,R2   ; Clear it if set
+  224 01cf 1c 00 1d              BCTA,Z    EBUG
+  225 01d2 3b 57                 BSTR,UN   CLBK
+  226 01d4 1f 00 22              BCTA,UN   MBUG
+  227 01d7 3f 02 db       NOK    BSTA,UN   GNUM      ; Check range on BKPT number
+  228 01da a6 01                 SUBI,R2   1
+  229 01dc 1e 02 50              BCTA,N    ABRT
+  230 01df e6 01                 COMI,R2   BMAX
+  231 01e1 1d 02 50              BCTA,GT   ABRT
+  232 01e4 17                    RETC,UN
+  233 01e5 3b 70          BKPT   BSTR,UN   NOK
+  234 01e7 0e 64 2d              LODA,R0   MARK,R2
+  235 01ea bc 01 ab              BSFA,Z    CLBK      ; Clear existing
+  236 01ed ce 04 11              STRA,R2   TEMR
+  237 01f0 3f 02 db              BSTA,UN   GNUM      ; Get BKPT addr
+  238 01f3 3f 00 a4              BSTA,UN   STRT      ; Subr to store r1-r2 in
+  239 01f6 0f 04 11              LODA,R3   TEMR
+  240 01f9 02                    LODZ      R2
+  241 01fa cf 64 35              STRA,R0   LADR,R3
+  242 01fd 01                    LODZ      R1
+  243 01fe cf 64 33              STRA,R0   HADR,R3
+  244 0201 0c 84 0d              LODA,R0   *TEMP     ; Save contents
+  245 0204 cf 64 2f              STRA,R0   HDAT,R3
+  246 0207 05 9b                 LODI,R1   9BH       ; = ZBBR
+  247 0209 cd 84 0d              STRA,R1   *TEMP
+  248 020c 06 01                 LODI,R2   1
+  249 020e 0e e4 0d              LODA,R0   *TEMP,R2
+  250 0211 cf 64 31              STRA,R0   LDAT,R3
+  251 0214 0f 62 22              LODA,R0   DISP,R3
+  252 0217 ce e4 0d              STRA,R0   *TEMP,R2
+  253 021a 04 ff                 LODI,R0   0FFH      ; -1
+  254 021c cf 64 2d              STRA,R0   MARK, R3
+  255 021f 1f 00 22              BCTA,UN   MBUG
+  256 0222 99             DISP   DB        VEC+80H
+  257 0223 9b                    DB        VEC+80H+2
+  258                     *
+  259                     * Input two hex chars and form as byte in R1
+  260 0224 3f 02 86       BIN    BSTA,UN   CHIN
+  261 0227 3b 1d                 BSTR,UN   LKUP
+  262 0229 d3                    RRL,R3
+  263 022a d3                    RRL,R3
+  264 022b d3                    RRL,R3
+  265 022c d3                    RRL,R3
+  266 022d cf 04 12              STRA,R3   TEMS
+  267 0230 3f 02 86              BSTA,UN   CHIN
+  268 0233 3b 11                 BSTR,UN   LKUP
+  269 0235 6f 04 12              IORA,R3   TEMS
+  270 0238 03                    LODZ      R3
+  271 0239 c1                    STRZ      R1
+  272 023a 3b 01                 BSTR,UN   CBCC
+  273 023c 17                    RETC,UN
+  274                     * Calculate the BCC char, EOR and then rotate left
+  275 023d 01             CBCC   LODZ      R1
+  276 023e 2c 04 2c              EORA,R0   BCC
+  277 0241 d0                    RRL,R0
+  278 0242 cc 04 2c              STRA,R0   BCC
+  279 0245 17                    RETC,UN
+  280                     * Lookup ASCII char in hex value table
+  281 0246 07 10          LKUP   LODI,R3   16
+  282 0248 ef 42 59       ALKU   COMA,R0   ANSI,R3,-
+  283 024b 14                    RETC,EQ
+  284 024c e7 01                 COMI,R3   1
+  285 024e 9a 78                 BCFR,LT   ALKU
+  286                     * Abort exit from any level of subr
+  287                     * Use RAS ptr since possible BKPT prog using it
+  288 0250 0c 04 07       ABRT   LODA,R0   COM+7
+  289 0253 64 40                 IORI,R0   40H
+  290 0255 12                    SPSU
+  291 0256 1f 00 1d              BCTA,UN   EBUG
+  292 0259 30 31 32 33    ANSI   DB        '0123'
+  293 025d 34 35 36 37           DB        '4567'
+  294 0261 38 39 41 42           DB        '89AB'
+  295 0265 43 44 45 46           DB        'CDEF'
+  296                     * Byte in R1 output in hex
+  297 0269 cd 04 12       BOUT   STRA,R1   TEMS
+  298 026c 3b 4f                 BSTR,UN   CBCC
+  299 026e 51                    RRR,R1
+  300 026f 51                    RRR,R1
+  301 0270 51                    RRR,R1
+  302 0271 51                    RRR,R1
+  303 0272 45 0f                 ANDI,R1   0FH
+  304 0274 0d 62 59              LODA,R0   ANSI,R1
+  305 0277 3f 02 b4              BSTA,UN   COUT
+  306 027a 0d 04 12              LODA,R1   TEMS
+  307 027d 45 0f                 ANDI,R1   0FH
+  308 027f 0d 62 59              LODA,R0   ANSI,R1
+  309 0282 3f 02 b4              BSTA,UN   COUT
+  310 0285 17                    RETC,UN
+  311                     * 110 baud input for papertape and char  1Mhz clock
+  312 0286 77 10          CHIN   PPSL      RS
+  313 0288 04 80                 LODI,R0   80H
+  314 028a b0                    WRTC,R0
+  315 028b 05 00                 LODI,R1   0
+  316 028d 06 08                 LODI,R2   8
+  317 028f 12             ACHI   SPSU
+  318 0290 1a 74                 BCTR,LT   CHIN
+  319 0292 20                    EORZ      R0
+  320 0293 b0                    WRTC,R0
+  321 0294 3b 17                 BSTR,UN   DLY
+  322 0296 3b 10          BCHI   BSTR,UN   DLAY
+  323 0298 12                    SPSU
+  324 0299 44 80                 ANDI,R0   80H
+  325 029b 51                    RRR,R1
+  326 029c 61                    IORZ      R1
+  327 029d c1                    STRZ      R1
+  328 029e fa 76                 BDRR,R2   BCHI
+  329 02a0 3b 06                 BSTR,UN   DLAY
+  330 02a2 45 7f                 ANDI,R1   7FH       ; Delete parity bit
+  331 02a4 01                    LODZ      R1
+  332 02a5 75 18                 CPSL      RS+WC
+  333 02a7 17                    RETC,UN
+  334                     * Delay for one bit time
+  335 02a8 20             DLAY   EORZ      R0
+  336 02a9 f8 7e                 BDRR,R0   $
+  337 02ab f8 7e                 BDRR,R0   $
+  338 02ad f8 7e          DLY    BDRR,R0   $
+  339 02af 04 e5                 LODI,R0   0E5H
+  340 02b1 f8 7e                 BDRR,R0   $
+  341 02b3 17                    RETC,UN
+  342                     *
+  343 02b4 77 10          COUT   PPSL      RS
+  344 02b6 76 40                 PPSU      FLAG
+  345 02b8 c2                    STRZ      R2
+  346 02b9 05 08                 LODI,R1   8
+  347 02bb 3b 6b                 BSTR,UN   DLAY
+  348 02bd 3b 69                 BSTR,UN   DLAY
+  349 02bf 74 40                 CPSU      FLAG
+  350 02c1 3b 65          ACOU   BSTR,UN   DLAY
+  351 02c3 52                    RRR,R2
+  352 02c4 1a 04                 BCTR,LT   ONE
+  353 02c6 74 40                 CPSU      FLAG
+  354 02c8 1b 02                 BCTR,UN   ZERO
+  355 02ca 76 40          ONE    PPSU      FLAG
+  356 02cc f9 73          ZERO   BDRR,R1   ACOU
+  357 02ce 3b 58                 BSTR,UN   DLAY
+  358 02d0 76 40                 PPSU      FLAG
+  359 02d2 75 10                 CPSL      RS
+  360 02d4 17                    RETC,UN
+  361                     *
+  362                     * Get a number from the buffer into R1 - R2
+  363 02d5 0c 04 2a       DNUM   LODA,R0   CODE
+  364 02d8 18 07                 BCTR,Z    LNUM      ; Skip spaces until EOB
+  365 02da 17                    RETC,UN             ; or space ending number
+  366 02db 20             GNUM   EORZ      R0
+  367 02dc c1                    STRZ      R1
+  368 02dd c2                    STRZ      R2
+  369 02de cc 04 2a              STRA,R0   CODE
+  370 02e1 0f 04 27       LNUM   LODA,R3   BPTR
+  371 02e4 ef 04 29              COMA,R3   CNT       ; Check for EOB
+  372 02e7 14                    RETC,EQ
+  373 02e8 0f 24 13              LODA,R0   BUFF,R3,+ ; Get char
+  374 02eb cf 04 27              STRA,R3   BPTR
+  375 02ee e4 20                 COMI,R0   SPAC
+  376 02f0 18 63                 BCTR,EQ   DNUM
+  377 02f2 3f 02 46       BNUM   BSTA,UN   LKUP
+  378 02f5 04 0f          CNUM   LODI,R0   0FH       ; R1=AB R2=DD
+  379 02f7 d2                    RRL,R2
+  380 02f8 d2                    RRL,R2
+  381 02f9 d2                    RRL,R2
+  382 02fa d2                    RRL,R2
+  383 02fb 42                    ANDZ      R2
+  384 02fc d1                    RRL,R1
+  385 02fd d1                    RRL,R1
+  386 02fe d1                    RRL,R1
+  387 02ff d1                    RRL,R1
+  388 0300 45 f0                 ANDI,R1   0F0H;
+  389 0302 46 f0                 ANDI,R2   0F0H      ; R0=C R1=B0 R2=D0 R3=V
+  390 0304 61                    IORZ      R1
+  391 0305 c1                    STRZ      R1
+  392 0306 03                    LODZ      R3
+  393 0307 62                    IORZ      R2
+  394 0308 c2                    STRZ      R2        ; R1=BC R2=DV
+  395 0309 04 01                 LODI,R0   1
+  396 030b cc 04 2a              STRA,R0   CODE
+  397 030e 1b 51                 BCTR,UN   LNUM
+  398                     * Dump to paper tape in object format
+  399 0310 3b 49          DUMP   BSTR,UN   GNUM      ; Start address
+  400 0312 3f 00 a4              BSTA,UN   STRT
+  401 0315 3b 44                 BSTR,UN   GNUM
+  402 0317 86 01                 ADDI,R2   1
+  403 0319 77 08                 PPSL      WC
+  404 031b 85 00                 ADDI,R1   0
+  405 031d 75 08                 CPSL      WC        ; Make end addr not incl
+  406 031f cd 04 0f              STRA,R1   TEMQ
+  407 0322 ce 04 10              STRA,R2   TEMQ+1
+  408 0325 3b 38          FDUM   BSTR,UN   GAP
+  409 0327 04 ff                 LODI,R0   0FFH      ; -1
+  410 0329 cc 04 29              STRA,R0   CNT
+  411 032c 3f 00 8a              BSTA,UN   CRLF      ; Punch for CR/LF and star
+  412 032f 04 3a                 LODI,R0   STAR
+  413 0331 3f 02 b4              BSTA,UN   COUT
+  414 0334 20                    EORZ      R0
+  415 0335 cc 04 2c              STRA,R0   BCC
+  416 0338 0d 04 0f              LODA,R1   TEMQ
+  417 033b 0e 04 10              LODA,R2   TEMQ+1
+  418 033e ae 04 0e              SUBA,R2   TEMP+1    ; Get byte count
+  419 0341 77 08                 PPSL      WC
+  420 0343 ad 04 0d              SUBA,R1   TEMP
+  421 0346 75 08                 CPSL      WC
+  422 0348 1e 00 1d              BCTA,N    EBUG      ; Start > end addr
+  423 034b 19 1c                 BCTR,P    ADUM      ; Cnt > normal block size
+  424 034d 5a 1c                 BRNR,R2   BDUM      ; This is short block
+  425 034f 07 04                 LODI,R3   4         ; EOF. Punch zero blk
+  426 0351 3f 02 69       CDUM   BSTA,UN   BOUT
+  427 0354 fb 7b                 BDRR,R3   CDUM
+  428 0356 3b 07                 BSTR,UN   GAP
+  429 0358 1f 00 22              BCTA,UN   MBUG
+  430                     * Subrs for outputting blanks
+  431 035b 07 03          FORM   LODI,R3   3
+  432 035d 1b 02                 BCTR,UN   AGAP
+  433 035f 07 32          GAP    LODI,R3   50
+  434 0361 04 20          AGAP   LODI,R0   SPAC
+  435 0363 3f 02 b4              BSTA,UN   COUT
+  436 0366 fb 79                 BDRR,R3   AGAP
+  437 0368 17                    RETC,UN
+  438 0369 06 ff          ADUM   LODI,R2   255
+  439 036b ce 04 28       BDUM   STRA,R2   MCNT
+  440 036e 0d 04 0d              LODA,R1   TEMP      ; Starting address
+  441 0371 3f 02 69              BSTA,UN   BOUT
+  442 0374 0d 04 0e              LODA,R1   TEMP+1
+  443 0377 3f 02 69              BSTA,UN   BOUT
+  444 037a 0d 04 28              LODA,R1   MCNT      ; Count of data bytes in
+  445 037d 3f 02 69              BSTA,UN   BOUT
+  446 0380 0d 04 2c              LODA,R1   BCC
+  447 0383 3f 02 69              BSTA,UN   BOUT
+  448 0386 0f 04 29       DDUM   LODA,R3   CNT
+  449 0389 0f a4 0d              LODA,R0   *TEMP,R3,+
+  450 038c ef 04 28              COMA,R3   MCNT
+  451 038f 18 09                 BCTR,EQ   EDUM      ; Output BCC
+  452 0391 cf 04 29              STRA,R3   CNT
+  453 0394 c1                    STRZ      R1
+  454 0395 3f 02 69              BSTA,UN   BOUT
+  455 0398 1b 6c                 BCTR,UN   DDUM
+  456 039a 0d 04 2c       EDUM   LODA,R1   BCC
+  457 039d 3f 02 69              BSTA,UN   BOUT
+  458 03a0 0e 04 0e              LODA,R2   TEMP+1
+  459 03a3 8e 04 28              ADDA,R2   MCNT
+  460 03a6 05 00                 LODI,R1   0
+  461 03a8 77 08                 PPSL      WC
+  462 03aa 8d 04 0d              ADDA,R1   TEMP
+  463 03ad 75 08                 CPSL      WC
+  464 03af 3f 00 a4              BSTA,UN   STRT
+  465 03b2 1f 03 25              BCTA,UN   FDUM
+  466                     * Load from papertape in object format
+  467 03b5 3f 02 86       LOAD   BSTA,UN   CHIN      ; Look for start char
+  468 03b8 e4 3a                 COMI,R0   STAR
+  469 03ba 98 79                 BCFR,EQ   LOAD
+  470 03bc 20                    EORZ      R0
+  471 03bd cc 04 2c              STRA,R0   BCC
+  472 03c0 3f 02 24              BSTA,UN   BIN       ; Read addr and count in
+  473 03c3 cd 04 0d              STRA,R1   TEMP
+  474 03c6 3f 02 24              BSTA,UN   BIN
+  475 03c9 cd 04 0e              STRA,R1   TEMP+1
+  476 03cc 3f 02 24              BSTA,UN   BIN
+  477 03cf 59 03                 BRNR,R1   ALOA
+  478 03d1 1f 84 0d              BCTA,UN   *TEMP
+  479 03d4 cd 04 28       ALOA   STRA,R1   MCNT
+  480 03d7 3f 02 24              BSTA,UN   BIN       ; Check BCC on information
+  481 03da 0c 04 2c              LODA,R0   BCC
+  482 03dd 9c 00 1d              BCFA,Z    EBUG
+  483 03e0 c3                    STRZ      R3        ; Read data
+  484 03e1 cf 04 29       BLOA   STRA,R3   CNT
+  485 03e4 3f 02 24              BSTA,UN   BIN
+  486 03e7 0f 04 29              LODA,R3   CNT
+  487 03ea ef 04 28              COMA,R3   MCNT
+  488 03ed 18 06                 BCTR,EQ   CLOA      ; Have read BCC
+  489 03ef 01                    LODZ      R1
+  490 03f0 cf e4 0d              STRA,R0   *TEMP,R3  ; Store data
+  491 03f3 db 6c                 BIRR,R3   BLOA
+  492 03f5 0c 04 2c       CLOA   LODA,R0   BCC
+  493 03f8 9c 00 1d              BCFA,Z    EBUG
+  494 03fb 1f 03 b5              BCTA,UN   LOAD
+  495                     *
+  496                            ORG       0400H
+  497                     *******     RAM Definitions
+  498 0400                COM    DS        9
+  499 0409                XGOT   DS        2         ; PPSL      0
+  500 040b                       DS        2         ; BCTR,UN   *$+2
+  501                                                ; Must precede the TEMP
+  502 040d                TEMP   DS        2
+  503 040f                TEMQ   DS        2
+  504 0411                TEMR   DS        1
+  505 0412                TEMS   DS        1
+  506 0413                BUFF   DS        BLEN
+  507 0427                BPTR   DS        1
+  508 0428                MCNT   DS        1
+  509 0429                CNT    DS        1
+  510 042a                CODE   DS        1
+  511 042b                OKGO   DS        1
+  512 042c                BCC    DS        1
+  513 042d                MARK   DS        BMAX+1
+  514 042f                HDAT   DS        BMAX+1
+  515 0431                LDAT   DS        BMAX+1
+  516 0433                HADR   DS        BMAX+1
+  517 0435                LADR   DS        BMAX+1
+  518                     END
+    ABRT = 0x0250
+    ACHI = 0x028f
+    ACOU = 0x02c1
+    ADUM = 0x0369
+    AGAP = 0x0361
+    AINI = 0x0003
+    ALIN = 0x0079
+    ALKU = 0x0248
+    ALOA = 0x03d4
+    ALTE = 0x00ab
+    ANSI = 0x0259
+    ASRE = 0x0116
+     BCC = 0x042c
+    BCHI = 0x0296
+    BDUM = 0x036b
+     BIN = 0x0224
+    BK01 = 0x0160
+    BK02 = 0x016e
+    BKEN = 0x017a
+    BKPT = 0x01e5
+    BLEN = 0x0014
+    BLIN = 0x0095
+    BLOA = 0x03e1
+    BMAX = 0x0001
+    BNUM = 0x02f2
+    BOUT = 0x0269
+    BPTR = 0x0427
+    BSRE = 0x012a
+    BUFF = 0x0413
+    CALT = 0x00d2
+     CAR = 0x0001
+    CBCC = 0x023d
+    CDUM = 0x0351
+    CHIN = 0x0286
+    CLBK = 0x01ab
+    CLIN = 0x007f
+    CLOA = 0x03f5
+     CLR = 0x01ca
+     CNT = 0x0429
+    CNUM = 0x02f5
+    CODE = 0x042a
+     COM = 0x0400
+    COUT = 0x02b4
+      CR = 0x000d
+    CRLF = 0x008a
+    CSRE = 0x0132
+    DALT = 0x00e3
+    DDUM = 0x0386
+    DELE = 0x007f
+    DISP = 0x0222
+    DLAY = 0x02a8
+    DLIN = 0x0084
+     DLY = 0x02ad
+    DNUM = 0x02d5
+    DUMP = 0x0310
+    EBUG = 0x001d
+    EDUM = 0x039a
+    ELIN = 0x007d
+     END = 0x0437
+      EQ = 0x0000
+    FDUM = 0x0325
+    FLAG = 0x0040
+    FORM = 0x035b
+     GAP = 0x035f
+    GNUM = 0x02db
+    GOTO = 0x013a
+      GT = 0x0001
+    HADR = 0x0433
+    HDAT = 0x042f
+     IDC = 0x0020
+      II = 0x0020
+    INIT = 0x0000
+    LADR = 0x0435
+    LALT = 0x00ae
+    LCOM = 0x0002
+    LDAT = 0x0431
+      LF = 0x000a
+    LINE = 0x005b
+    LKUP = 0x0246
+    LLIN = 0x0060
+    LNUM = 0x02e1
+    LOAD = 0x03b5
+    LSRE = 0x00f7
+      LT = 0x0002
+    MARK = 0x042d
+    MBUG = 0x0022
+    MCNT = 0x0428
+       N = 0x0002
+     NOK = 0x01d7
+    OKGO = 0x042b
+     ONE = 0x02ca
+     OVF = 0x0004
+       P = 0x0001
+      RS = 0x0010
+    SENS = 0x0080
+    SPAC = 0x0020
+    SREG = 0x00f4
+    STAR = 0x003a
+    STRT = 0x00a4
+    TEMP = 0x040d
+    TEMQ = 0x040f
+    TEMR = 0x0411
+    TEMS = 0x0412
+      UN = 0x0003
+     VEC = 0x0019
+      WC = 0x0008
+    XGOT = 0x0409
+       Z = 0x0000
+    ZERO = 0x02cc

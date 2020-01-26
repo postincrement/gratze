@@ -277,7 +277,7 @@ class Emulator
     bool m_turbo = false;
 
     unsigned m_verbose = 0;
-    VirtualKeyboard * m_keyboardDriver = nullptr;
+    std::shared_ptr<VirtualKeyboard>    m_keyboard;
     std::shared_ptr<VirtualScreen>      m_screen;
     std::shared_ptr<MemoryMappedScreen> m_memMapScreen;
     std::shared_ptr<Terminal>           m_terminal;

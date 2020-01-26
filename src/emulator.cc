@@ -104,11 +104,11 @@ void Emulator::CheckKeyboard()
           else if (event.key.keysym.sym == REBOOT_SYM) {
             Reset();
           }
-          else if (m_keyboardDriver != nullptr) {
+          else if (m_keyboard != nullptr) {
             if (m_keyboardDebug) {
               cerr << "debug: key down " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
             }
-            m_keyboardDriver->OnKeyDown(event.key.keysym);
+            m_keyboard->OnKeyDown(event.key.keysym);
           }
           else {
             OnKeyDown(event.key.keysym);
@@ -118,11 +118,11 @@ void Emulator::CheckKeyboard()
 
       case SDL_KEYUP:
         if (event.key.repeat == 0) {
-          if (m_keyboardDriver != nullptr) {
+          if (m_keyboard != nullptr) {
             if (m_keyboardDebug) {
               cerr << "debug: key up " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
             }
-            m_keyboardDriver->OnKeyUp(event.key.keysym);
+            m_keyboard->OnKeyUp(event.key.keysym);
           }
           else {
             OnKeyUp(event.key.keysym);
@@ -140,7 +140,7 @@ void Emulator::CheckKeyboard()
 
 void Emulator::SetKeyboard(VirtualKeyboard * kb)
 {
-  m_keyboardDriver = kb;
+  m_keyboard.reset(kb);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +207,8 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     const Config::Terminal & termInfo = block->m_info.m_terminal;
 
     m_terminal.reset(new Terminal(mainWindow, options, termInfo.m_cols, termInfo.m_rows));
-    m_screen = m_terminal->m_screen;
+    m_screen   = m_terminal->m_screen;
+    m_keyboard = m_terminal->m_keyboard;
 
     std::string fontName = options.m_font;
     if (fontName.empty())
@@ -851,7 +852,6 @@ int Emulator::Run(const Options & options)
       m_memMapScreen->Update(true);
     }
     else if (m_terminal) {
-      cerr << "about to write to terminal" << endl;
       for (int c = 0x20; c <= 0x3f; ++c)
         m_terminal->WriteChar(c);
       m_terminal->WriteString("\r\n");

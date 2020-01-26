@@ -23,7 +23,6 @@ class DG680_Emulator : public Z80Emulator
     void OnPIOInterrupt(uint8_t vector);
 
   protected:  
-    ParallelKeyboard m_keyboard;
     Z80PIO m_pio;
 };
 

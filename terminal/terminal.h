@@ -47,6 +47,9 @@ struct Terminal
 
     void SetKeyboardHandler(std::function<void (uint8_t)> handler);
 
+    std::shared_ptr<Screen> m_screen;
+    std::shared_ptr<ParallelKeyboard> m_keyboard;
+
   protected:
     int m_rows;
     int m_cols;
@@ -54,8 +57,6 @@ struct Terminal
     bool m_cursorEnabled = true;
 
     std::function<void (uint8_t)> m_kbHandler = nullptr;
-    std::shared_ptr<Screen> m_screen;
-    ParallelKeyboard m_keyboard;
 };
 
 #endif // TERMINAL_H_

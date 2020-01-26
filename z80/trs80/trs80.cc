@@ -87,8 +87,9 @@ bool TRS80Emulator::Open(const Options & options)
   if (!Z80Emulator::Open(options))
     return false;
 
-  SetKeyboard(&m_keyboard);
-  m_keyboard.Compile(g_trs80Keys);
+  KeyboardScanner * kb = new KeyboardScanner();
+  SetKeyboard(kb);
+  kb->Compile(g_trs80Keys);
 
   m_rtcTimer   = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
@@ -169,7 +170,7 @@ uint8_t TRS80Emulator::ReadNull(uint16_t)
 
 uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
 {
-  return m_keyboard.Read(addr);
+  return m_keyboard->Read(addr);
 }
 
 /////////////////////////////////////////////////////////////

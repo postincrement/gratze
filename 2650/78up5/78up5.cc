@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <queue>
 
 #include "src/misc.h"
 #include "2650/78up5/78up5.h"
@@ -39,102 +40,195 @@ static EmulatorInfo g_emulatorInfo =
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-class SerialDecoder 
+class VirtualUART : public VirtualDevice 
 {
   public:
+    virtual void Reset() override;
+
+    // set function to poll for serial input
     void SetInHandler(std::function<bool ()> handler);
-    void SetOutHandler(std::function<void (uint_t)> handler);
-    inline void Clock(double secs, uint64_t clocks);
+
+    // set function to set serial output
+    void SetOutHandler(std::function<void (bool)> handler);
+
+    // set function to call when serial input decodes a character
+    void SetRXHandler(std::function<void (uint8_t)> handler);
+
+    // call to send a character 
+    void SerialOut(uint8_t);
+
+    // call at 4 x the baud rate
+    inline void OnClock();
 
   protected:
-    std::function<bool ()> m_inHandler = nullptr;
-    std::function<void (uint8_t)> m_outHandler = nullptr;
+    void HandleSerialIn(bool val);
+    bool HandleSerialOut();
 
-    int m_state = 0;
-    unsigned m_data = 0;
+    std::function<bool ()> m_inHandler = nullptr;
+    std::function<void (bool)> m_outHandler = nullptr;
+
+    std::function<void (uint8_t)> m_rxHandler = nullptr;
+
+    int m_inState = 0;
+    unsigned m_rxData = 0;
+
+    int m_outState = 0;
+    unsigned m_outData;
+    std::queue<uint8_t> m_outQueue;
+
+    bool m_debugOut = false; //true;
+    bool m_debugIn = false; //true;
 };
 
-void SerialDecoder::SetInHandler(std::function<bool ()> handler)
+void VirtualUART::Reset()
+{
+  
+}
+
+void VirtualUART::SetInHandler(std::function<bool ()> handler)
 {
   m_inHandler = handler;
 }
 
-void SerialDecoder::SetOutHandler(std::function<void (uint8_t)> handler)
+void VirtualUART::SetOutHandler(std::function<void (bool)> handler)
 {
   m_outHandler = handler;
 }
 
-void SerialDecoder::Clock()
+// set function to call when serial input decodes a character
+void VirtualUART::SetRXHandler(std::function<void (uint8_t)> rxHandler)
 {
-  if (!m_inHandler)
-    return;
+  m_rxHandler = rxHandler;
+}
 
-  bool val = m_inHandler();  
-  /*
-      ---+   +---+---+---+---+---+---+---+---+---+---
-         | S | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | S
-         +---+---+---+---+---+---+---+---+---+
-          01  2345
-  */
+void VirtualUART::SerialOut(uint8_t ch)
+{
+  if (m_debugOut)
+    cerr << "uart: queueing " << (int)ch << endl;
+  m_outQueue.push(ch);
+}
 
-  int start = 2;
+void VirtualUART::OnClock()
+{
+  // look for incoming serial chars
+  if (m_inHandler)
+    HandleSerialIn(m_inHandler());
+
+  // do outgoing chars
+  if (m_outHandler)
+    m_outHandler(HandleSerialOut());
+}
+
+void VirtualUART::HandleSerialIn(bool val)
+{    
+  int start = 4;
 
   // waiting for start bit
-  if (m_state == 0) {
+  if (m_inState == 0) {
     if (!val) {
-      cout << "serial: start bit" << endl;
-      m_state = 1;
+      if (m_debugIn)
+        cout << "uart: in " << m_inState << " " << (val ? "1" : "0") << " (start)" << endl;
+      m_inState = 1;
     }
   }
 
   // ensure input stays low until middle of start bit
-  else if (m_state < start) {
+  else if (m_inState < start) {
+    if (m_debugIn)
+      cout << "uart: in " << m_inState << " " << (val ? "1" : "0") << " (start)" << endl;
     if (!val) {
-      m_state++;
+      m_inState++;
     }
     else {
-      cout << "serial: ignoring transient" << endl;
-      m_state = 0;
+      if (m_debugIn)
+        cout << "uart: ignoring in transient" << endl;
+      m_inState = 0;
     }
   }
 
   // in the middle of (or close to) the start bit
+  else if (m_inState < (start + (8 * 4))) {
+    int b = (m_inState - start);
+    if (m_debugIn)
+      cout << "uart: in " << m_inState << " " << (val ? "1" : "0");
+    if ((m_inState % 4) == 2) {
+      if (m_debugIn)
+        cout << " (data " << ((m_inState - start) / 4) << ")" << endl;;
+      m_rxData = (m_rxData >> 1) | (val ? 0x80 : 0);
+    }
+    else if (m_debugIn)
+      if (m_debugIn)
+        cout << endl;
+    m_inState++;
+  }
+
+  else if (m_inState < (start + (8 * 4) + 4)) {
+    if (m_debugIn)
+      cout << "uart: in " << m_inState << " " << (val ? "1" : "0") << " (stop)" << endl;
+    m_inState++;  
+  }
   else {
-    int b = (m_state - start);
-    if ((m_state % 4) == start) {
-      m_data = (m_data >> 1) | (val ? 0x80 : 0);
-    }
-    if (m_state == (start + 8*4)) {
-      m_state = 0;
-      cout << "serial: extracted " << HEXFORMAT0x2(m_data) << endl;
-      if (m_outHandler)
-        m_outHandler(m_data);
-    }
-    else {
-      m_state++;
-    }
+    if (m_debugIn)
+      cout << "uart: received " << HEXFORMAT0x2(m_rxData) << endl;
+    if (m_rxHandler)
+      m_rxHandler(m_rxData);
+    m_inState = 0;
   }
 }
 
-SerialDecoder m_serialDecoder;
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-class SerialEncoder 
+bool VirtualUART::HandleSerialOut()
 {
-  public:
-    void SetInHandler(std::function<bool ()> handler);
-    void SetOutHandler(std::function<void (uint_t)> handler);
-    void Clock(double secs, uint64_t clocks);
+  int start = 4;
 
-  protected:
-    std::function<void (uint8_t)> m_handler = nullptr;
+  // if not sending, we can only start if we have a char to send
+  // and the input is not decoding something
+  if (m_outState == 0) {
+    if ((m_outQueue.size() == 0) || (m_inState != 0))
+      return true;
 
-    int m_state = 0;
-    std::queue<uint8_t> m_queue;
-};
+    m_outData = m_outQueue.front();
+    m_outQueue.pop();
+    if (m_debugOut) {
+      cerr << "uart: sending " << HEXFORMAT0x2(m_outData) << endl;
+      cout << "uart: out " << m_outState << " 0 (start)" << endl;
+    }
+    m_outState = 1;
+    return false;
+  }
 
-SerialEncoder m_serialEncoder;
+  // do reset of start bit
+  else if (m_outState < start) {
+    if (m_debugOut) {
+      cout << "uart: out " << m_outState << " 0 (start)" << endl;
+    }
+    m_outState++;
+    return false;
+  }
+
+  else if (m_outState < (start + (8 * 4))) {
+    bool bit = (m_outData & 0x01) != 0;
+    if (((m_outState - start) % 4) == 3) {
+      m_outData = m_outData >> 1;
+    }
+    if (m_debugOut)
+      cout << "uart: out " << m_outState << " " << (bit ? "1" : "0") << " (data (" << ((m_outState - start) / 4) << ")" << endl;
+    m_outState++;
+    return bit;
+  }
+
+  else if (m_outState < (start + (9 * 4))) {
+    if (m_debugOut)
+      cout << "uart: out " << m_outState << " 1 (stop)" << endl;
+    m_outState++;
+  }
+  else
+    m_outState = 0;
+
+  return true;
+}
+
+
+VirtualUART m_virtualUART;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -169,35 +263,15 @@ void EA78UP5_Emulator::Reset(int addr)
   // make sure sense starts high
   SetSense(true);
 
-  m_serialDecoder.SetInHandler (std::bind(&EA78UP5_Emulator::GetFlag,  this));
-  m_serialDecoder.SetOutHandler(std::bind(&Terminal::WriteChar,        m_terminal.get(), _1));
+  // set clock
+  AddCPUTimePollDef(m_serialInterval, std::bind(&VirtualUART::OnClock, &m_virtualUART));
 
-  terminal.SetKeyboardHandler  (std::bind(&SerialEncoder::WriteChar,   &m_serialEncoder, _1));
-  m_serialEncoder.SetOutHandler(std::bind(&EA78UP5_Emulator::SetSense, this, _1));
+  // set serial in and out
+  m_virtualUART.SetInHandler (std::bind(&EA78UP5_Emulator::GetFlag,  this));
+  m_virtualUART.SetOutHandler(std::bind(&EA78UP5_Emulator::SetSense, this, _1));
 
-  // add serial clocks
-  AddCPUTimePollDef(m_serialInterval, std::bind(&SerialDecoder::Clock, this, _1, _2));
-  AddCPUTimePollDef(m_serialInterval, std::bind(&SerialEncoder::Clock, this, _1, _2));
+  // set callbacks to terminal
+  m_virtualUART.SetRXHandler(std::bind(&Terminal::WriteChar,        m_terminal.get(), _1));
+  m_terminal->SetKeyboardHandler(std::bind(&VirtualUART::SerialOut,   &m_virtualUART, _1));
 }
 
-void EA78UP5_Emulator::SerialIn(double secs, uint64_t clocks)
-{
-  m_serialDecoder.OnBit(GetFlag());
-}
-
-void EA78UP5_Emulator::SerialOut(double secs, uint64_t clocks)
-{
-  m_serialEncoder.Clock();
-}
-
-
-uint8_t ch)
-{
-  m_queue.push_back(ch);
-  SetSense(true);
-
-  // make sure sense is not set to indicate start of serial char
-  AddCPUTimePollDef(clockInterval, std::bind(&EA78UP5_Emulator::SerialOut, this, _1, _2));
-
-  m_serialEncoder.Write(ch);
-}

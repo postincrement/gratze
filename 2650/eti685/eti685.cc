@@ -63,11 +63,12 @@ bool ETI685::Open(const Options & options)
   if (!S2650Emulator::Open(options))
     return false;
 
-  SetKeyboard(&m_keyboard);
+  ParallelKeyboard * kb = new ParallelKeyboard();
+  SetKeyboard(kb);
 
   // set keyboard handler
   using namespace std::placeholders;
-  m_keyboard.SetHandler(true, std::bind(&ETI685::SetKeyboardData, this, _1));
+  kb->SetHandler(true, std::bind(&ETI685::SetKeyboardData, this, _1));
 
   return true;
 }

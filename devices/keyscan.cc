@@ -10,6 +10,11 @@
 
 using namespace std;
 
+uint8_t VirtualKeyboard::Read(uint16_t rowMask)
+{
+  return 0;
+}
+
 void KeyboardScanner::Reset()
 {
   m_shiftStatus = 0;

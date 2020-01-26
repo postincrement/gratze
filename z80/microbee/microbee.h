@@ -33,7 +33,6 @@ class Microbee_Emulator : public Z80Emulator
     bool ScanKeyboard(uint16_t & addr);
 
   protected:  
-    KeyboardScanner m_keyboard;
     Z80PIO m_pio;
     Synertek6545 m_crtc;
     uint16_t m_prevKeyboardCode;

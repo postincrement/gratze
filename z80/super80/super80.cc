@@ -163,8 +163,9 @@ bool Super80_Emulator::Open(const Options & options)
   // 0xd  = screen full of @                               JUMPER B
   // 0xe  = monitor?                                       JUMPER A   
   m_options = 0xe;
-  SetKeyboard(&m_keyboard);
-  m_keyboard.Compile(g_super80Keys);
+  KeyboardScanner * kb = new KeyboardScanner();
+  SetKeyboard(kb);
+  kb->Compile(g_super80Keys);
 
   using namespace std::placeholders;
 
@@ -187,8 +188,8 @@ void Super80_Emulator::Reset(int addr)
 
 uint8_t Super80_Emulator::OnReadKeyboard()
 {
-  uint8_t kbIn  = m_pio.GetData(0) ^ 0xff;
-  uint8_t kbOut = m_keyboard.Read(kbIn);
+  uint16_t kbIn  = m_pio.GetData(0) ^ 0xff;
+  uint8_t kbOut = m_keyboard->Read(kbIn);
 
   //if ((kbIn != 0x00) && (kbOut != 0x00))
   //  cout << "kb: read in " << HEXFORMAT0x2(kbIn) << " returned " << HEXFORMAT0x2(kbOut) << endl;

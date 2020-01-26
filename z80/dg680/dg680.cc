@@ -68,13 +68,14 @@ bool DG680_Emulator::Open(const Options & options)
   if (!Z80Emulator::Open(options))
     return false;
 
-  SetKeyboard(&m_keyboard);
+  ParallelKeyboard * kb = new ParallelKeyboard();
+  SetKeyboard(kb);
 
   using namespace std::placeholders;
   m_pio.SetInterruptHandler(std::bind(&DG680_Emulator::OnPIOInterrupt, this, _1));
 
   using namespace std::placeholders;
-  m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
+  kb->SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
 
   return true;
 }

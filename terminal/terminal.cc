@@ -15,6 +15,7 @@ Terminal::Terminal(MainWindow & mainWindow, const Options & options, int cols, i
   m_cursorEnabled = true;
 
   m_screen.reset(new Screen(*this, mainWindow, options, cols, rows));
+  m_keyboard.reset(new ParallelKeyboard());
 }
 
 bool Terminal::Open()
@@ -78,7 +79,7 @@ void Terminal::WriteChar(uint8_t ch)
 
 void Terminal::SetKeyboardHandler(std::function<void (uint8_t)> handler)
 {
-  m_keyboard.SetHandler(handler);
+  m_keyboard->SetHandler(true, handler);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,6 @@ class Super80_Emulator : public Z80Emulator
 
   protected:  
     Z80PIO m_pio;
-    KeyboardScanner m_keyboard;
 
     uint16_t m_videoPage;
     uint16_t m_videoStartAddr;

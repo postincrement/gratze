@@ -115,8 +115,6 @@ class TRS80Emulator : public Z80Emulator
     static bool CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 
   protected:  
-    KeyboardScanner m_keyboard;
-
     bool m_fdcEnabled = false;
     int m_fdcPending = false;
     uint8_t m_drvSel;
