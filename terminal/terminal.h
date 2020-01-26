@@ -17,6 +17,10 @@ struct Terminal
         virtual FontChar GetCharAtPos(int x, int y) override;
         virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) override;
 
+        void Scroll(int lines);
+        void ClearToEndOfLine(int col, int line);
+        void SetCharAtLoc(int loc, uint8_t ch);
+
         struct CharCell
         {
           CharCell()
@@ -32,6 +36,8 @@ struct Terminal
 
         Terminal & m_terminal;
         std::vector<CharCell> m_chars;
+        SDL_Color m_fg;
+        SDL_Color m_bg;
     };
 
     Terminal(MainWindow & mainWindow, const Options & options, int cols, int rows);
