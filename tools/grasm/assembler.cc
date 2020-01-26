@@ -2,15 +2,22 @@
 #include <iomanip>
 
 #include "assembler.h"
+#include "cmdargs.h"
 
 #include "s2650.h"
+
+#define FORM_FEED       0x0c
+
+#define OPCODE_COLS     4
+
+#define GRASM_VERSION   "1.0.0"
 
 using namespace std;
 
 Assembler::Assembler()
 {}
 
-bool Assembler::Open(const std::string & fn)
+bool Assembler::Open(const CommandLineArgs & args, const std::string & fn)
 {
   m_sourceFn = fn;
 
@@ -30,7 +37,16 @@ bool Assembler::Open(const std::string & fn)
     m_basename = m_basename.substr(0, pos);
   }
 
-  m_binaryFn = m_sourceDir + m_basename + ".bin";
+  if (!args.GetValue("-O", m_binaryFn))
+    m_binaryFn = m_sourceDir + m_basename + ".out";
+
+  if (!args.GetValue("-L", m_listingFn)) {
+    if (m_listingFn != "--")
+      m_listingFn = m_sourceDir + m_basename + ".lst";
+  }
+
+  m_includeSymbols = args.HasArg("-s");
+  args.GetValue("-p", m_pageLength);
 
   // open the source file
   m_file.open(m_sourceFn.c_str());
@@ -83,6 +99,8 @@ bool Assembler::Parse()
       cerr << m_errorCount << " errors found" << endl;
       return false;
     }
+    else if (m_pass == 2)
+      cerr << "no errors found" << endl;
   }
 
   return true;
@@ -141,13 +159,13 @@ bool Assembler::ParseError(const std::string & str, const std::string & arg)
   if (!arg.empty()) {
     cerr << " '" << arg << "'";
   }
-  cout << endl; 
-  cout << setw(5) << dec << m_lineNumber << "     " << m_line << endl;
-  cout << "          ";
+  cerr << endl; 
+  cerr << setw(5) << dec << m_lineNumber << "     " << m_line << endl;
+  cerr << "          ";
   for (int i = 0; i < m_pos-1; ++i)
-    cout << ' ';
-  cout << '^' << endl;  
-  cout << "sym:'" << m_symbol << "', op:'" << m_op << "', value:'" << m_value << "'" << endl;
+    cerr << ' ';
+  cerr << '^' << endl;  
+  //cout << "sym:'" << m_symbol << "', op:'" << m_op << "', value:'" << m_value << "'" << endl;
   return false;
 }
 
@@ -179,22 +197,52 @@ std::string Assembler::Trim(const std::string & str)
 void Assembler::AssignSymbol(const std::string & sym, unsigned val)
 {
   if (m_symbols.count(sym) != 0) {
-    if (m_symbols[sym] == val)
+    if (m_symbols[sym].m_value == val)
       return;
+    // possible warning about dupicate symbol  
     return;  
   }
 
-  m_symbols[sym] = val;
+  m_symbols.insert(SymbolTable::value_type(sym, SymbolInfo(val)));
 }
 
 //////////////////////////////////////////////////////
 
+std::string Assembler::GetPageHeader(int & row, int & page)
+{
+  std::string str;
+
+  if (m_pageLength > 0) {
+    stringstream strm;
+    if (row == 0) {
+      if (page != 1)
+        str = std::string(1, FORM_FEED);
+      strm << "GRASM ASSEMBLER v" << GRASM_VERSION;
+      while (strm.str().length() < 70)
+        strm << " ";
+      strm << "PAGE " << (int)page++ << "\n";
+      strm << "\n"
+          << " LINE ADDR ";
+      for (int j = 0; j < OPCODE_COLS; ++j)
+          strm << "B" << (int)j << " ";
+      strm << "   SOURCE\n\n";
+      str += strm.str();
+    }
+    row = (row + 1) % m_pageLength;
+  }
+
+  return str;
+}
+
 std::string Assembler::GetListing()
 {
   std::stringstream strm;
-  int opcodeCols = 4;
+
+  int row = 0;
+  int page = 1;
 
   for (int i = 1; i <= m_lineNumber; ++i) {
+    strm << GetPageHeader(row, page);
 
     // print line number
     strm << setw(5) << setfill(' ') << dec << i;
@@ -206,51 +254,63 @@ std::string Assembler::GetListing()
       continue;
     }
 
-    // print address (which could be a symbol value)
-    strm << " " << setw(4) << setfill('0') << hex << r->second.m_addr;
-
     // if no opcodes, print line only
-    if ((r->second.m_ops.size() == 0)) {
-      strm << "               " << m_lines[i-1] << endl;
-      continue;
-    }
-
+    // else print address and opcodes
     strm << " ";
-
-    // print opcodes
-    auto & listing = r->second;
-    bool first = true;
-    int count = 0;
-    while (count < r->second.m_ops.size()) {
-      if (!first) {
-        strm << "\n           ";
-      }
-      int col = r->second.m_ops.size() - count;
-      if (col > 4)
-        col = 4;
-      int j;
-      for (j = 0; j < col; ++j)
-        strm << hex << setw(2) << setfill('0') << (int)listing.m_ops[j] << " ";
-      for (;j < 4; ++j)
-        strm << "   ";
-      count += col;  
-      if (first) {
-        strm << "  ";
-        strm << m_lines[i-1];
-        first = false;
-      }
-    }
-    if (first) {
-      strm << "  ";
-      strm << m_lines[i-1] << endl;
+    if ((r->second.m_ops.size() != 0) || (r->second.m_spaceLen != 0) || r->second.m_equ) {
+      strm << setw(4) << setfill('0') << hex << r->second.m_addr << " ";
     }
     else {
-      strm << endl;
+      strm << "     ";  // address
+    }
+
+    if (r->second.m_ops.size() == 0) {
+      for (int j = 0; j < OPCODE_COLS; ++j)
+        strm << "   ";
+      strm << "   " << m_lines[i-1] << endl;;
+    }
+    else {  
+      // print opcodes
+      auto & listing = r->second;
+      bool first = true;
+      int count = 0;
+      while (count < r->second.m_ops.size()) {
+        if (!first) { 
+          strm << "\n";
+          strm << GetPageHeader(row, page);
+          strm << "           ";
+        }
+        int col = r->second.m_ops.size() - count;
+        if (col > OPCODE_COLS)
+          col = OPCODE_COLS;
+        int j;
+        for (j = 0; j < col; ++j)
+          strm << hex << setw(2) << setfill('0') << (int)listing.m_ops[j] << " ";
+        for (;j < OPCODE_COLS; ++j)
+          strm << "   ";
+        count += col;  
+        if (first) {
+          strm << "   ";
+          strm << m_lines[i-1];
+          first = false;
+        }
+      }
+      if (first) {
+        strm << "   ";
+        strm << m_lines[i-1] << endl;
+      }
+      else {
+        strm << endl;
+      }
     }
   }
 
-  for (auto & r : m_symbols)
-    strm << r.first << " = 0x" << hex << r.second << endl;
+  if (m_includeSymbols) {
+    for (auto & r : m_symbols) {
+      strm << GetPageHeader(row, page);
+      strm << setw(8) << setfill(' ') << r.first << " = 0x" << setw(4) << setfill('0') << hex << r.second.m_value << (r.second.m_used ? "" : " not used") << endl;
+    }
+  }
 
   return strm.str();
 }
@@ -258,21 +318,21 @@ std::string Assembler::GetListing()
 
 bool Assembler::WriteListing()
 {
-  std::string listFn = m_sourceDir + m_basename + ".lst";
-
-  // write to file
-  ofstream file(listFn.c_str());
-  if (!file.is_open()) {
-    std::stringstream strm;
-    strm << "cannot create '" << listFn << "'";
-    return false;
+  if (m_listingFn == "--") {
+    cout << GetListing();
   }
+  else {
+    ofstream file(m_listingFn.c_str());
+    if (!file.is_open()) {
+      std::stringstream strm;
+      strm << "cannot create '" << m_listingFn << "'";
+      return false;
+    }
 
-  std::string listing = GetListing();
-  file.write((const char *)&listing[0], listing.length());
-
-  cout << dec << listing.size() << " bytes written to " << listFn << endl; 
-  file.close();
+    file << GetListing();
+    cerr << "listing written to " << m_listingFn << endl; 
+    file.close();
+  }
 
   return true;
 }
@@ -298,16 +358,25 @@ bool Assembler::WriteBinary()
 
   file.write((const char *)&data[0], data.size());
 
-  cout << dec << data.size() << " bytes written to " << m_binaryFn << endl; 
+  cerr << dec << data.size() << " bytes written to " << m_binaryFn << endl; 
   file.close();
 }
 
 //////////////////////////////////////////////////////
 
+static CommandLineArgs::Option g_options[] = {
+  { 'h', "help",          ' ',   "display this help message" },
+  { 'l', "",              ' ',   "generate listing file as basename.lst" },
+  { 'L', "--listing",     's',   "generate listing as filename" },
+  { 'O', "--output",      's',   "generate output as filename instead of basename.out" },
+  { 's', "--symbols",     ' ',   "include symbols in listing" },
+  { 'p', "--pagelength",  'p',   "set page length for listing (0 = no pages)" },
+  { 0, 0, 0, 0}
+};
 
 void Usage()
 {
-  cout << "usage: asm2650 fn" << endl;
+  cerr << "usage: asm2650 fn" << endl;
 }
 
 int main(int argc, char *argv[])
@@ -317,18 +386,34 @@ int main(int argc, char *argv[])
     return 0;
   }
 
+  CommandLineArgs args;
+
+  int opt = args.Parse(g_options, argc, argv);
+  if (opt < 0) {
+    cerr << args.Usage();
+    return -1;
+  }
+
+  if (opt >= argc) {
+    cerr << "error: no input filename specified" << endl;
+    return -1;
+  }
+
+  cerr << "assembling '" << argv[opt] << "'" << endl;
+
   S2650Assembler assembler;
 
-  if (!assembler.Open(argv[1])) {
+  if (!assembler.Open(args, argv[opt])) {
     cerr << "error: " << assembler.GetError() << endl;
     return -1;
   }
 
   bool result = assembler.Parse();
-  cout << assembler.GetLineCount() << " lines parsed" << endl;
+  cerr << assembler.GetLineCount() << " lines parsed" << endl;
   if (result) {
-    assembler.WriteListing();
     assembler.WriteBinary();
+    if (args.HasArg("-l") || args.HasArg("-L"))  
+      assembler.WriteListing();
   }
 }
 

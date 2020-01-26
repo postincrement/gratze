@@ -2,7 +2,7 @@ LINK.o = $(LINK.cc)
 OBJDIR = ./obj
 DEPDIR = ./.deps
 
-SRCS	=	assembler.cc \
+SRCS	=	assembler.cc cmdargs.cc \
         s2650.cc opcode_2650.cc
 
 FILENAMES	:= $(notdir $(basename $(SRCS)))

@@ -8,6 +8,10 @@ FLAG   EQU       40H
 II     EQU       20H
 IDC    EQU       20H
 OVF    EQU       04H
+R0     EQU       0
+R1     EQU       1
+R2     EQU       2
+R3     EQU       3
 UN     EQU       3
 EQ     EQU       0
 LT     EQU       2
@@ -289,10 +293,7 @@ ABRT   LODA,R0   COM+7
        IORI,R0   40H
        SPSU
        BCTA,UN   EBUG
-ANSI   DB        '0123'
-       DB        '4567'
-       DB        '89AB'
-       DB        'CDEF'
+ANSI   DB        '0123456789ABCDEF'
 * Byte in R1 output in hex
 BOUT   STRA,R1   TEMS
        BSTR,UN   CBCC
@@ -497,8 +498,7 @@ CLOA   LODA,R0   BCC
 *******     RAM Definitions
 COM    DS        9
 XGOT   DS        2         ; PPSL      0
-       DS        2         ; BCTR,UN   *$+2      
-                           ; Must precede the TEMP
+       DS        2         ; BCTR,UN   *$+2 Must precede the TEMP    
 TEMP   DS        2
 TEMQ   DS        2
 TEMR   DS        1
@@ -515,4 +515,3 @@ HDAT   DS        BMAX+1
 LDAT   DS        BMAX+1
 HADR   DS        BMAX+1
 LADR   DS        BMAX+1
-END

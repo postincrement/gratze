@@ -9,6 +9,10 @@
 #include <fstream>
 #include <iostream>
 
+#include "cmdargs.h"
+
+#define DEFAULT_PAGE_LENGTH   52
+
 struct OpCodeInfo
 {
   const char * m_mnemonic;
@@ -22,7 +26,7 @@ class Assembler
   public:
     Assembler();
 
-    virtual bool Open(const std::string & fn);
+    virtual bool Open(const CommandLineArgs & args, const std::string & fn);
     virtual bool Parse();
 
     virtual bool ParseLine() = 0;
@@ -48,6 +52,22 @@ class Assembler
     static std::string TrimLeft(const std::string & str);
     static std::string Trim(const std::string & str);
 
+    struct SymbolInfo
+    {
+      SymbolInfo() = default;
+
+      SymbolInfo(unsigned value)
+        : m_value(value)
+      {}
+
+      unsigned m_value = 0;
+      bool m_used = false;
+    };
+
+    std::string GetPageHeader(int & row, int & page);
+
+    typedef std::map<std::string, SymbolInfo> SymbolTable;
+
   protected:   
     int m_lineNumber;
     unsigned m_address;
@@ -62,22 +82,30 @@ class Assembler
     {
       ListingInfo(unsigned addr = 0)
         : m_addr(addr)
+        , m_spaceLen(0)
+        , m_equ(false)
       { }    
 
       unsigned m_addr;
       std::vector<uint8_t> m_ops;
+      int m_spaceLen;
+      bool m_equ;
     };
 
     std::vector<std::string> m_lines;
     std::map<int, ListingInfo> m_listings;
 
-    std::map<std::string, unsigned> m_symbols;
+    SymbolTable m_symbols;
+    bool m_includeSymbols = false;
 
     std::string m_sourceDir;
     std::string m_basename;
 
     std::string m_sourceFn;
     std::string m_binaryFn;
+    std::string m_listingFn;
+    std::string m_symFn;
+    int m_pageLength = DEFAULT_PAGE_LENGTH;
 
     std::ifstream m_file;
 

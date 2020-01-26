@@ -161,7 +161,7 @@ static bool ParseReg(uint8_t & reg, const std::string & arg_)
   return true;  
 }
 
-static bool ResolveIntegerValue(unsigned & val, const Token & token, unsigned int currentAddr, std::map<std::string, unsigned> & symbolTable)
+static bool ResolveIntegerValue(unsigned & val, const Token & token, unsigned int currentAddr, Assembler::SymbolTable & symbolTable)
 {
   switch (token.m_type) {
     case Token::Type::eEOF:
@@ -180,11 +180,10 @@ static bool ResolveIntegerValue(unsigned & val, const Token & token, unsigned in
     case Token::Type::eSymbol:
       {
         std::string str(token.m_lexeme);
-        for (auto & r : str) r = toupper(r);
         if (symbolTable.count(str) == 0)
           return false;
-        val = symbolTable[str];
-//        cout << "symbol " << token.m_lexeme << " resolved to 0x" << hex << val << endl;
+        val = symbolTable[str].m_value;
+        symbolTable[str].m_used = true;
       }
       break;
   }
@@ -375,6 +374,7 @@ bool S2650Assembler::ParseLine()
     }
     listing.m_addr = intVal;
     AssignSymbol(m_symbol, intVal);
+    listing.m_equ = true;
     return true;
   }
 
@@ -443,7 +443,7 @@ bool S2650Assembler::ParseLine()
     if (!ParseExpr(intVal, m_value, 0, m_error)) {
       return ParseError(m_error);
     }
-    listing.m_ops.resize(intVal);
+    listing.m_spaceLen = intVal;
     m_address += intVal;
     return true;
   }
