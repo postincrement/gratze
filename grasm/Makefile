@@ -3,15 +3,15 @@ OBJDIR = ./obj
 DEPDIR = ./.deps
 
 SRCS	=	main.cc \
-                ../Common/cmdargs.cc \
-		assembler.cc disassembler.cc \
-                s2650.cc opcode_2650.cc
+				../common/cmdargs.cc \
+				xssembler.cc assembler.cc disassembler.cc \
+				s2650.cc opcode_2650.cc
 
 FILENAMES := $(notdir $(basename $(SRCS)))
 OBJS	  := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
 DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
 
-CXXFLAGS += -g -I../common
+CXXFLAGS += -g -I..
 LDFLAGS += -g
 
 vpath %.cc ../common

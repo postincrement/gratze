@@ -102,7 +102,7 @@ extern unsigned char g_model1Level2ROM[12288];
 
 static struct EmulatorInfo g_levelEmulatorInfo =
 {
-  "m2",                           // command line option
+  "m1",                           // command line option
   "Model 1 L2",                   // short name
   "TRS-80 Model 1, Level 2",      // long name
 

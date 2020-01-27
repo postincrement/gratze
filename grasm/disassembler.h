@@ -3,8 +3,7 @@
 
 #include <set>
 
-#include "cmdargs.h"
-#include "assembler.h"
+#include "xssembler.h"
 
 class Disassembler  : public XSsembler
 {

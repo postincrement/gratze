@@ -4,7 +4,8 @@
 
 #include "assembler.h"
 #include "disassembler.h"
-#include "cmdargs.h"
+#include "common/cmdargs.h"
+#include "common/factory.h"
 
 #include "s2650.h"
 

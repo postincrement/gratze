@@ -9,8 +9,8 @@
 #include <string.h>
 
 #include "disassembler.h"
-#include "cmdargs.h"
-#include "misc.h"
+#include "common/cmdargs.h"
+#include "common/misc.h"
 
 using namespace std;
 
