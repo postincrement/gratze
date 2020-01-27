@@ -2,8 +2,10 @@
 #define S2650_H_
 
 #include "assembler.h"
+#include "disassembler.h"
 
 //////////////////////////////////////////////////////////////////
+
 enum class S2650Mode {
   eZ,    // register addressing
   eI,    // immediate addressing
@@ -14,11 +16,14 @@ enum class S2650Mode {
 
   eZa,    // register addressing using arg
   eIn,    // immediate addressing with no arg
+
+  eTerm = XSsembler::eTerm   // terminating instruction
 };
 
 class S2650Assembler : public Assembler
 {
   public:
+    S2650Assembler();
     virtual bool ParseLine() override;
     virtual bool IsCommentStart(const char * str, size_t col) override;
 
@@ -27,5 +32,14 @@ class S2650Assembler : public Assembler
     bool ParseByteExpr(uint8_t & val, const std::string & str, size_t pos, std::string & error);
     bool ParseIndexExpr(uint8_t & reg, unsigned & addr, const std::string & arg, const std::string & str);
 };
+
+class S2650Disassembler : public Disassembler
+{
+  public:
+    S2650Disassembler();
+    virtual const OpCodeInfo * GetOpcodes() const override;
+    virtual bool DecodeInstruction(DisasmInfo & disasm, int & len, unsigned address, const std::vector<uint8_t> & image, unsigned addr, bool & isTerm) override;
+};
+
 
 #endif // S2650_H_

@@ -9,6 +9,10 @@
 
 #include "z80/trs80/model1/model1.h"
 
+extern "C" {
+#include "nfd.h"
+};
+
 /*
   Port FF write
   -------------
@@ -295,12 +299,6 @@ uint8_t TRS80Emulator::ReadInterrupt(uint16_t addr)
 
   return value;
 }
-
-/////////////////////////////////////////////////////////////
-
-extern "C" {
-#include "nfd.h"
-};
 
 /////////////////////////////////////////////////////////////
 

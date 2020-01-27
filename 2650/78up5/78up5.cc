@@ -15,28 +15,49 @@ using namespace std;
 #define   RAM_START_ADDR        0x0400
 #define   RAM_END_ADDR          0x7fff
 
-extern unsigned char g_rom_pipbug[1024];
+extern unsigned char g_rom_pipbug_110[1024];
+extern unsigned char g_rom_pipbug_300[1024];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static EmulatorInfo g_emulatorInfo =
+static EmulatorInfo g_pipbug110Info =
 {
-  "78up5",                                     // command line option
-  "78UP5 with PIPBUG",                         // short name
-  "Electronics Australia 78UP5 with PIPBUG",   // long name
+  "78up5-110",                                            // command line option
+  "78UP5 with PIPBUG at 100 baud",                        // short name
+  "Electronics Australia 78UP5 with PIPBUG at 110 baud",  // long name
 
   {
     INFO_CPU(1, 0x0000),
 
-    INFO_ROM(0x0000, g_rom_pipbug),
+    INFO_ROM(0x0000, g_rom_pipbug_110),
 
-    INFO_MAIN_RAM(RAM_START_ADDR, 16, 1, 32 - 1),
+    INFO_MAIN_RAM(RAM_START_ADDR, 32-1, 1, 32-1),
 
     INFO_TERMINAL(80, 24),
 
     INFO_END()
   }
 };
+
+static EmulatorInfo g_pipbug300Info =
+{
+  "78up5",                                                // command line option
+  "78UP5 with PIPBUG at 300 baud",                        // short name
+  "Electronics Australia 78UP5 with PIPBUG at 300 baud",  // long name
+
+  {
+    INFO_CPU(1, 0x0000),
+
+    INFO_ROM(0x0000, g_rom_pipbug_300),
+
+    INFO_MAIN_RAM(RAM_START_ADDR, 32-1, 1, 32-1),
+
+    INFO_TERMINAL(80, 24),
+
+    INFO_END()
+  }
+};
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -232,12 +253,25 @@ VirtualUART m_virtualUART;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+EA78UP5_PIPBUG_110::EA78UP5_PIPBUG_110()
+  : EA78UP5_Emulator(&g_pipbug110Info, 110)
+{
+}
+
+EA78UP5_PIPBUG_300::EA78UP5_PIPBUG_300()
+  : EA78UP5_Emulator(&g_pipbug300Info, 300)
+{
+}
+
 void EA78UP5_Emulator::Instantiate()
 {  
 }
 
-EA78UP5_Emulator::EA78UP5_Emulator()
-  : S2650Emulator(&g_emulatorInfo)
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+EA78UP5_Emulator::EA78UP5_Emulator(const EmulatorInfo * info, int baud)
+  : S2650Emulator(info)
+  , m_baud(baud)
 {
   // don't do anything in constructor as this is created to instantiate devices using Instantiate
   // do it Open instead
@@ -255,7 +289,7 @@ void EA78UP5_Emulator::Reset(int addr)
 {
   S2650Emulator::Reset(addr);
 
-  m_serialInterval = m_targetCPUClock_Hz / 110.0 / 4;
+  m_serialInterval = m_targetCPUClock_Hz / (m_baud * 1.0) / 4;
   cout << "78up5: poll interval = " << m_serialInterval << " = " << 1000000.0 / m_serialInterval << " Hz" << endl;
 
   using namespace std::placeholders;

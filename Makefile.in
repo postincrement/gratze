@@ -136,7 +136,8 @@ SRCS_C = z80/trs80/model1/rom_level1.c \
 	z80/super80/rom_super80.c \
 	z80/microbee/rom_basic5_22e.c \
 	2650/eti685/rom_binbug_6_1.c \
-	2650/78up5/rom_pipbug.c
+	2650/78up5/rom_pipbug.c \
+	2650/78up5/rom_mwbasic.c
 
 FILENAMES	:= $(notdir $(basename $(SRCS_C) $(SRCS_CC)))
 OBJS	    := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))

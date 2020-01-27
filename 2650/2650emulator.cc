@@ -96,12 +96,20 @@ bool S2650Emulator::Start(int addr)
 
 void S2650Emulator::Reset(int addr)
 {
-  Emulator::Reset(addr);
-
   if (addr < 0)
     addr = GetCPUInfo()->m_resetAddr;
 
+  Emulator::Reset(addr);
+
+  cout << "setting PC to " << HEXFORMAT0x4(addr) << endl;
+
   m_cpu->registers.ap = addr;
+  m_cpu->registers.na = addr;
+}
+
+unsigned S2650Emulator::GetPC() const
+{
+  return m_cpu->registers.ap;
 }
 
 void S2650Emulator::SetTrace(bool v)
@@ -113,7 +121,6 @@ int S2650Emulator::Exec(int cycles)
   // execute instructions
   // 3 clock cycles per CPU cycle 
   while (cycles > 0) {
-    //cout << "PC " << HEXFORMAT0x4(m_cpu->registers.ap) << endl;
     m_cpu->cpu();
     if (m_cpu->cpucycles == 0) {
       cerr << "error: CPU executed zero cycles" << endl;

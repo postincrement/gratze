@@ -14,7 +14,7 @@ class Font;
 #define INFO_END()                          { Config::Type::eEnd }    
 #define INFO_CPU(speed, addr)               { Config::Type::eCPU,         { .m_cpu={ speed, addr } } }
 #define INFO_ROM(addr, data)                { Config::Type::eROM,         { .m_rom={ addr, addr + sizeof(data) - 1, data } } }
-#define INFO_MAIN_RAM(start, k, min, max)   { Config::Type::eMainRAM,     { .m_ram={ start, start + k*1024 - 1, min, max } } }
+#define INFO_MAIN_RAM(start, k, min, max)   { Config::Type::eMainRAM,     { .m_ram={ start, start + (k)*1024 - 1, min, max } } }
 #define INFO_RAM(start, end)                { Config::Type::eRAM,         { .m_ram={ start, end } } }
 #define INFO_MEM_IO_READ(start, end, id)    { Config::Type::eMemIORead,   { .m_memIO={ start, end, id } } }
 #define INFO_MEM_IO_WRITE(start, end, id)   { Config::Type::eMemIOWrite,  { .m_memIO={ start, end, id } } }

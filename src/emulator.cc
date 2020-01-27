@@ -14,10 +14,18 @@
 #include "video/virtual_screen.h"
 #include "src/mainwindow.h"
 #include "terminal/terminal.h"
+#include "src/grz.h"
+
+extern "C" {
+#include "nfd.h"
+};
 
 using namespace std;
 
 #define TRACE_SYM   SDLK_F2
+#define COLOUR_SYM  SDLK_F9
+#define DUMP_SYM    SDLK_F10
+#define GRZ_SYM     SDLK_F11
 #define REBOOT_SYM  SDLK_F12
 
 
@@ -95,11 +103,14 @@ void Emulator::CheckKeyboard()
           if (event.key.keysym.sym == TRACE_SYM + 1)
             SetTrace(false);
 
-          if (event.key.keysym.sym == SDLK_F9) {
+          if (event.key.keysym.sym == COLOUR_SYM) {
             ChangeVideoColour();
           }
-          else if (event.key.keysym.sym == SDLK_F10) {
+          else if (event.key.keysym.sym == DUMP_SYM) {
             MemoryDump();
+          }
+          else if (event.key.keysym.sym == GRZ_SYM) {
+            LoadGRZ();
           }
           else if (event.key.keysym.sym == REBOOT_SYM) {
             Reset();
@@ -513,7 +524,7 @@ uint8_t Emulator::ReadMemory(uint16_t addr)
       if (r.m_function != nullptr)
         return std::invoke(r.m_function, *this, r, addr);
       uint8_t data = r.m_memory[addr - r.m_startAddr];
-      //cout << "info: read " << HEXFORMAT0x2(data) << " from " << HEXFORMAT0x4(addr - r.m_startAddr) << endl;
+      // cout << "info: read " << HEXFORMAT0x2(data) << " from " << HEXFORMAT0x4(addr - r.m_startAddr) << endl;
       return data;
     }
   }
@@ -545,8 +556,9 @@ uint8_t Emulator::DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t add
     cout << "debug: reading from " << HEXFORMAT0x4(addr) << " failed with no memory" << endl;
     return 0x00;
   }
-  cout << "debug: reading from " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
-  return info.m_memory[addr - info.m_startAddr];
+  uint8_t v = info.m_memory[addr - info.m_startAddr];
+  cout << "debug: read " << HEXFORMAT0x2(v) << " from " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
+  return v;
 }
 
 void Emulator::DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
@@ -965,6 +977,94 @@ void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)
     m_actualCPUClock_Hz = 1.0 * clocks / secs;
     //cout << "secs " << secs << ", clocks " << clocks << endl;
     cout << std::fixed << std::setprecision(3) << (m_actualCPUClock_Hz / 1e+6) << " MHz" << endl;
+  }
+}
+
+void Emulator::LoadGRZ()
+{
+  nfd_OpenDialogExt extInfo;
+  memset(&extInfo, 0, sizeof(extInfo));
+  extInfo.filterList      = "grz";
+  extInfo.title           = "Open GRZ file";
+
+  nfdchar_t * path = NULL;
+  if (NFD_OpenDialogExt(&extInfo, &path) == NFD_OKAY) {
+    std::string json;
+    {
+      std::ifstream file(path);
+      if (!file.is_open()) {
+        cout << "cannot open " << path << endl;
+        return;
+      }
+      std::string line;
+      while ( getline(file,line)) {
+        json += line;
+      }
+      file.close();
+    }
+    cout << "json: " << json << endl;
+    {
+      GRZ grz;
+      std::stringstream strm(json);
+      try {
+        cereal::JSONInputArchive ar(strm);
+        grz.load(ar);
+      }
+      catch(const std::exception& e) {
+        cerr << "load failed - " << e.what() << endl;
+        return;
+      }
+
+      std::string dir(path);
+
+      size_t pos = dir.rfind(DIR_SEPERATOR);
+      if (pos != std::string::npos)
+        dir = dir.substr(0, pos+1);
+
+      std::string fn = dir + grz.m_filename; 
+
+      int fd = ::open(fn.c_str(), O_RDONLY);
+      if (fd < 0) {
+        cerr << "error: cannot open '" << fn << "' - " << strerror(errno) << endl;
+        return;
+      }
+
+      // read file
+      off_t len = lseek(fd, 0, SEEK_END);
+      if (len < 0) {
+        cerr << "error: cannot get length of '" << fn << "'" << endl;
+        return;
+      }
+      
+      // check offset
+      unsigned offset = grz.m_hasOffs ? grz.m_offs : 0;
+      if (grz.m_hasOffs && (len < offset)) {
+        cerr << "error: file too short for offset" << endl;
+        return;
+      }
+
+      // check length
+      signed length = (grz.m_hasLength ? grz.m_length : len) - offset;
+      if ((length < 0) || ((offset + length) > len)) {
+        cerr << "error: file too short for offset + length" << endl;
+        return;
+      }
+
+      // allocate and read data
+      std::vector<int8_t> m_data;
+      m_data.resize(length);
+      lseek(fd, offset, SEEK_SET);
+      ::read(fd, &m_data[0], length);
+      ::close(fd);
+
+      // copy to memory
+      unsigned addr = grz.m_addr;
+      for (unsigned i = 0; i < length; ++i) {
+        WriteMemory(addr++, m_data[i]); 
+      }
+
+      cout << "info: loaded " << HEXFORMAT0x4(length) << " bytes to " << HEXFORMAT0x4(grz.m_addr) << endl; 
+    } 
   }
 }
 

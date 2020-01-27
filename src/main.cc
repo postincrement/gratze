@@ -50,7 +50,8 @@ void Init()
   AddEmulator<ETI685>();
   AddEmulator<Super80_Emulator>();
   AddEmulator<Microbee_Emulator>();
-  AddEmulator<EA78UP5_Emulator>();
+  AddEmulator<EA78UP5_PIPBUG_110>();
+  AddEmulator<EA78UP5_PIPBUG_300>();
 
   std::vector<std::string> keys;
   g_emulatorFactory.GetKeys(keys);

@@ -9,9 +9,17 @@
 
 #include "s2650.h"
 
-extern OpCodeInfo g_2650_opcodes[];
+extern XSsembler::OpCodeInfo g_2650_opcodes[];
 
 using namespace std;
+
+struct XSsembler::FormatInfo g_2650Format = {
+  5,    // line number width
+  5,    // number of bytes in listing file
+  7,    // number of chars for symbol in listing file (if generated)
+  10,   // number of chars for mnemonic column in listing file (if generated)
+  10    // number of chars for argument column in listing file (if generated)
+};
 
 struct Token
 {
@@ -31,6 +39,7 @@ struct Token
 
   Type Parse(const std::string & str, size_t & pos);
 };
+
 
 Token::Type Token::Parse(const std::string & str, size_t & pos)
 {
@@ -122,8 +131,6 @@ Token::Type Token::Parse(const std::string & str, size_t & pos)
   return m_type;;
 };
 
-
-
 static bool ParseReg(uint8_t & reg, const std::string & arg_)
 {
   std::string arg(arg_);
@@ -191,6 +198,13 @@ static bool ResolveIntegerValue(unsigned & val, const Token & token, unsigned in
   return true;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+S2650Assembler::S2650Assembler()
+  : Assembler(g_2650Format)
+{
+}
 
 bool S2650Assembler::ParseExpr(unsigned int & val, const std::string & str, size_t pos, std::string & error)
 {
@@ -478,7 +492,7 @@ bool S2650Assembler::ParseLine()
   signed offs = 0;
   stringstream strm;
 
-  switch ((S2650Mode)info->m_mode) {
+  switch ((S2650Mode)(info->m_mode & XSsembler::eModeMask)) {
     case S2650Mode::eZ: // r0
       if (!value.empty()) {
         if (!ParseReg(reg, value)) {
@@ -561,5 +575,114 @@ bool S2650Assembler::ParseLine()
 
   m_address += info->m_opLen;
 
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////
+
+S2650Disassembler::S2650Disassembler()
+  : Disassembler(g_2650Format)
+{
+}
+
+std::string DecodeReg(uint8_t reg, const XSsembler::OpCodeInfo * info)
+{
+  if (info->m_bitInfo == 0)
+    return std::string("???");
+
+  if (info->m_mask == 0xff) {
+    return (const char *)info->m_bitInfo;
+  }
+
+  const char ** names = (const char **)info->m_bitInfo;
+  return names[reg & 3];
+}
+
+const XSsembler::OpCodeInfo * S2650Disassembler::GetOpcodes() const
+{
+  return g_2650_opcodes;
+}
+
+bool S2650Disassembler::DecodeInstruction(DisasmInfo & disasm, int & len, unsigned address, const std::vector<uint8_t> & image, unsigned offs, bool & isTerm)
+{
+  len = 0;
+  uint8_t opcode = image[offs];
+  const OpCodeInfo * info = nullptr;
+
+  const OpCodeInfo * ptr = g_2650_opcodes;
+  while (ptr->m_mnemonic != 0) {
+    if (
+          ((opcode & ptr->m_mask) == ptr->m_opcode) &&
+          ((info == nullptr) || (ptr->m_mask > info->m_mask))
+        )
+        info = ptr;
+     ptr++;     
+  }
+
+  if (info == nullptr)
+    return false;
+
+  unsigned addr;
+  signed relOffs;
+  bool indirect;
+  std::string symbol;
+
+  len  = info->m_opLen;
+  isTerm = (info->m_mode & XSsembler::eTerm) != 0;
+  stringstream strm;
+  disasm[1] = info->m_mnemonic;
+  switch ((S2650Mode)(info->m_mode & XSsembler::eModeMask)) {
+
+    case S2650Mode::eZ:    // register addressing
+      disasm[2] = DecodeReg(opcode, info);
+      break;
+
+    case S2650Mode::eI:    // immediate addressing
+      disasm[1] += "," + DecodeReg(opcode, info);
+      strm << "0" << setw(2) << setfill('0') << hex << (int)m_image[offs+1] << "h";
+      disasm[2] = strm.str();
+      break; 
+
+    case S2650Mode::eR:    // relative addressing
+      indirect = (m_image[offs+1] & 0x80) != 0;
+      relOffs = m_image[offs+1] & ~0x80;
+      if (relOffs > 63)
+        relOffs = relOffs - 128;
+      //cout << "rel val 0x" << hex << (int)m_image[offs+1] << " -> " << dec << (int)relOffs << endl;
+      addr = address + 2 + relOffs;
+      addr &= 0x7fff;
+      disasm[1] += "," + DecodeReg(opcode, info);
+      disasm[2] = CreateSymbol(addr);
+      break;
+
+    case S2650Mode::eA:    // absolute addressing (non-branch)
+      indirect = (m_image[offs+1] & 0x80) != 0;
+      addr = (m_image[offs+1] << 8) + m_image[offs+2];
+      addr &= 0x1fff;
+      disasm[1] += "," + DecodeReg(opcode, info);
+      disasm[2] = (indirect ? "*" : "") + CreateSymbol(addr);
+      break;
+
+    case S2650Mode::eB:    // absolute addressing (branch)
+      indirect = (m_image[offs+1] & 0x80) != 0;
+      addr = (m_image[offs+1] << 8) + m_image[offs+2];
+      addr &= 0x7fff;
+      disasm[1] += "," + DecodeReg(opcode, info);
+      disasm[2] = (indirect ? "*" : "") + CreateSymbol(addr);
+      break;
+
+    case S2650Mode::eZa:   // register addressing using arg
+      disasm[2] = DecodeReg(opcode, info);
+      break;
+
+    case S2650Mode::eIn:   // immediate addressing with no arg
+      strm << "0" << setw(2) << setfill('0') << hex << (int)m_image[offs+1] << "h";
+      disasm[2] = strm.str();
+      break;
+
+    case S2650Mode::eE:    // miscellaneous instructions
+      break;
+  }
   return true;
 }

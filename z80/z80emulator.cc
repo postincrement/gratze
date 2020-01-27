@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <memory.h>
 
+#define DISABLE_CEREAL
+
 #include "src/misc.h"
 #include "z80/z80emulator.h"
 
@@ -121,7 +123,10 @@ void Z80Emulator::DumpStackInternal(const std::vector<uint16_t> & stack)
   }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
+unsigned Z80Emulator::GetPC() const
+{
+  return m_cpu.PC.W;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -129,30 +134,30 @@ Z80Emulator * Z80Emulator::g_z80Instance = NULL;
 
 extern "C"
 {
-  void PatchZ80(register Z80 *R) {}
+  void PatchZ80(register MFZ::Z80 *R) {}
 
-  word LoopZ80(register Z80 *R)
+  MFZ::word LoopZ80(register MFZ::Z80 *R)
   {
     cerr << "loop called" << endl;
     return INT_NONE;
   }
 
-  void WrZ80(register word Addr, register byte Value)
+  void WrZ80(register MFZ::word Addr, register MFZ::byte Value)
   {
     Z80Emulator::g_z80Instance->WriteMemory(Addr, Value);
   }
 
-  byte RdZ80(register word Addr)
+  MFZ::byte RdZ80(register MFZ::word Addr)
   {
     return Z80Emulator::g_z80Instance->ReadMemory(Addr);
   }
 
-  void OutZ80(register word Port, register byte Value)
+  void OutZ80(register MFZ::word Port, register MFZ::byte Value)
   {
     Z80Emulator::g_z80Instance->WritePort(Port, Value);
   }
 
-  byte InZ80(register word Port)
+  MFZ::byte InZ80(register MFZ::word Port)
   {
     return Z80Emulator::g_z80Instance->ReadPort(Port);
   }

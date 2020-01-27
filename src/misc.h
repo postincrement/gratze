@@ -1,6 +1,14 @@
 #ifndef MISC_H_
 #define MISC_H_
 
+#ifndef WIN32
+#define DIR_SEPERATOR   '\\'
+#endif
+
+#ifdef __linux__
+#define DIR_SEPERATOR   '/'
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>

@@ -4,17 +4,34 @@
 #include "assembler.h"
 #include "cmdargs.h"
 
-#include "s2650.h"
+#define GRASM_VERSION   "1.0.0"
 
 #define FORM_FEED       0x0c
 
-#define OPCODE_COLS     4
-
-#define GRASM_VERSION   "1.0.0"
-
 using namespace std;
 
-Assembler::Assembler()
+XSsembler::XSsembler(const FormatInfo & format)
+  : m_format(format)
+{}
+
+
+
+void XSsembler::AssignSymbol(const std::string & sym, unsigned val)
+{
+  if (m_symbols.count(sym) != 0) {
+    if (m_symbols[sym].m_value == val)
+      return;
+    // possible warning about dupicate symbol  
+    return;  
+  }
+
+  m_symbols.insert(SymbolTable::value_type(sym, SymbolInfo(val)));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+Assembler::Assembler(const FormatInfo & format)
+  : XSsembler(format)
 {}
 
 bool Assembler::Open(const CommandLineArgs & args, const std::string & fn)
@@ -22,7 +39,7 @@ bool Assembler::Open(const CommandLineArgs & args, const std::string & fn)
   m_sourceFn = fn;
 
   // extract dir and basename from source
-  size_t pos = m_sourceFn.rfind('/');
+  size_t pos = m_sourceFn.rfind("/");
   if (pos != std::string::npos) {
     m_sourceDir = m_sourceFn.substr(0, pos); 
     m_basename  = m_sourceFn.substr(pos);
@@ -194,18 +211,6 @@ std::string Assembler::Trim(const std::string & str)
   return TrimLeft(TrimRight(str));
 }
 
-void Assembler::AssignSymbol(const std::string & sym, unsigned val)
-{
-  if (m_symbols.count(sym) != 0) {
-    if (m_symbols[sym].m_value == val)
-      return;
-    // possible warning about dupicate symbol  
-    return;  
-  }
-
-  m_symbols.insert(SymbolTable::value_type(sym, SymbolInfo(val)));
-}
-
 //////////////////////////////////////////////////////
 
 std::string Assembler::GetPageHeader(int & row, int & page)
@@ -223,7 +228,7 @@ std::string Assembler::GetPageHeader(int & row, int & page)
       strm << "PAGE " << (int)page++ << "\n";
       strm << "\n"
           << " LINE ADDR ";
-      for (int j = 0; j < OPCODE_COLS; ++j)
+      for (int j = 0; j < m_format.m_opcodeByteCount; ++j)
           strm << "B" << (int)j << " ";
       strm << "   SOURCE\n\n";
       str += strm.str();
@@ -233,6 +238,8 @@ std::string Assembler::GetPageHeader(int & row, int & page)
 
   return str;
 }
+
+#define SPACE_BETWEEN_OPCODE_AND_LINE   3
 
 std::string Assembler::GetListing()
 {
@@ -245,7 +252,7 @@ std::string Assembler::GetListing()
     strm << GetPageHeader(row, page);
 
     // print line number
-    strm << setw(5) << setfill(' ') << dec << i;
+    strm << setw(m_format.m_lineNumberWidth) << setfill(' ') << dec << i;
 
     // print empty line if source line was empty
     auto r = m_listings.find(i);
@@ -261,13 +268,13 @@ std::string Assembler::GetListing()
       strm << setw(4) << setfill('0') << hex << r->second.m_addr << " ";
     }
     else {
-      strm << "     ";  // address
+      strm << std::string(5, ' ');  // address + space
     }
 
     if (r->second.m_ops.size() == 0) {
-      for (int j = 0; j < OPCODE_COLS; ++j)
-        strm << "   ";
-      strm << "   " << m_lines[i-1] << endl;;
+      for (int j = 0; j < m_format.m_opcodeByteCount; ++j)
+        strm << std::string(3, ' '); // opcode + space
+      strm << std::string(SPACE_BETWEEN_OPCODE_AND_LINE, ' ') << m_lines[i-1] << endl;;
     }
     else {  
       // print opcodes
@@ -278,26 +285,24 @@ std::string Assembler::GetListing()
         if (!first) { 
           strm << "\n";
           strm << GetPageHeader(row, page);
-          strm << "           ";
+          strm << std::string(m_format.m_lineNumberWidth + 1 + 4 + 1, ' ');  // line number, space, address, space
         }
         int col = r->second.m_ops.size() - count;
-        if (col > OPCODE_COLS)
-          col = OPCODE_COLS;
+        if (col > m_format.m_opcodeByteCount)
+          col = m_format.m_opcodeByteCount;
         int j;
         for (j = 0; j < col; ++j)
-          strm << hex << setw(2) << setfill('0') << (int)listing.m_ops[j] << " ";
-        for (;j < OPCODE_COLS; ++j)
+          strm << hex << setw(2) << setfill('0') << (int)listing.m_ops[count+j] << " ";
+        for (;j < m_format.m_opcodeByteCount; ++j)
           strm << "   ";
         count += col;  
         if (first) {
-          strm << "   ";
-          strm << m_lines[i-1];
+          strm << std::string(SPACE_BETWEEN_OPCODE_AND_LINE, ' ') << m_lines[i-1];
           first = false;
         }
       }
       if (first) {
-        strm << "   ";
-        strm << m_lines[i-1] << endl;
+        strm << std::string(SPACE_BETWEEN_OPCODE_AND_LINE, ' ') << m_lines[i-1] << endl;
       }
       else {
         strm << endl;
@@ -364,47 +369,4 @@ bool Assembler::WriteBinary()
 
 //////////////////////////////////////////////////////
 
-static CommandLineArgs::Option g_options[] = {
-  { 'h', "help",        ' ',   "display this help message" },
-  { 'l', "",            ' ',   "generate listing file as basename.lst" },
-  { 'L', "listing",     's',   "generate listing as filename" },
-  { 'O', "output",      's',   "generate output as filename instead of basename.out" },
-  { 's', "symbols",     ' ',   "include symbols in listing" },
-  { 'p', "pagelength",  'u',   "set page length for listing (0 = no pages)" },
-  { 0, 0, 0, 0}
-};
-
-int main(int argc, char *argv[])
-{
-  CommandLineArgs args;
-  int opt = args.Parse(g_options, argc, argv);
-  if ((opt < 0) || (argc < 2)) {
-    cerr << "usage: grasm [opts] inputfile\n"
-         << "where opts are:\n"
-         << args.Usage();
-    return -1;
-  }
-
-  if (opt >= argc) {
-    cerr << "error: no input filename specified" << endl;
-    return -1;
-  }
-
-  cerr << "assembling '" << argv[opt] << "'" << endl;
-
-  S2650Assembler assembler;
-
-  if (!assembler.Open(args, argv[opt])) {
-    cerr << "error: " << assembler.GetError() << endl;
-    return -1;
-  }
-
-  bool result = assembler.Parse();
-  cerr << assembler.GetLineCount() << " lines parsed" << endl;
-  if (result) {
-    assembler.WriteBinary();
-    if (args.HasArg("-l") || args.HasArg("-L"))  
-      assembler.WriteListing();
-  }
-}
 

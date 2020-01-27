@@ -13,44 +13,29 @@
 
 #define DEFAULT_PAGE_LENGTH   52
 
-struct OpCodeInfo
-{
-  const char * m_mnemonic;
-  int          m_mode;   // 0 = R0, 1 = immediate, 2 = rel, 3 = abs  
-  uint8_t      m_opcode;
-  int          m_opLen;
-};
-
-class Assembler
+class XSsembler
 {
   public:
-    Assembler();
+    struct FormatInfo
+    {
+      int m_lineNumberWidth;  // width of line number
+      int m_opcodeByteCount;  // number of bytes in listing file
+      int m_symColWidth;      // number of chars for symbol in listing file
+      int m_mnemColWidth;     // number of chars for mnemonic column in listing file
+      int m_argColWidth;      // number of chars for argument column in listing file
+    };
 
-    virtual bool Open(const CommandLineArgs & args, const std::string & fn);
-    virtual bool Parse();
+    XSsembler(const FormatInfo & format);
 
-    virtual bool ParseLine() = 0;
-    virtual bool IsCommentStart(const char * str, size_t col) = 0;
-
-    virtual int GetLineCount() const
-    { return m_lineNumber; }
-
-    virtual std::string GetNextWord();
-    virtual std::string GetRestOfLine();
-
-    virtual void AssignSymbol(const std::string & sym, unsigned val);
-
-    virtual std::string GetListing();
-
-    virtual std::string GetError();
-    virtual bool ParseError(const std::string & str, const std::string & arg = "");
-
-    virtual bool WriteBinary();
-    virtual bool WriteListing();
-
-    static std::string TrimRight(const std::string & str);
-    static std::string TrimLeft(const std::string & str);
-    static std::string Trim(const std::string & str);
+    struct OpCodeInfo
+    {
+      const char *  m_mnemonic = nullptr;
+      int           m_mode = 0;     
+      uint8_t       m_opcode = 0;
+      uint8_t       m_mask = 0;
+      int           m_opLen = 0;
+      void *        m_bitInfo = nullptr;
+    };
 
     struct SymbolInfo
     {
@@ -64,14 +49,56 @@ class Assembler
       bool m_used = false;
     };
 
-    std::string GetPageHeader(int & row, int & page);
+    enum {
+      eModeMask = 0x0ff,
+      eTerm     = 0x800
+    };
+
+    virtual void AssignSymbol(const std::string & sym, unsigned val);
 
     typedef std::map<std::string, SymbolInfo> SymbolTable;
+
+  protected:
+    FormatInfo m_format;  
+    int m_pass;
+    SymbolTable m_symbols;
+};
+
+class Assembler : public XSsembler
+{
+  public:
+    Assembler(const FormatInfo & format);
+
+    virtual bool Open(const CommandLineArgs & args, const std::string & fn);
+    virtual bool Parse();
+
+    virtual bool ParseLine() = 0;
+    virtual bool IsCommentStart(const char * str, size_t col) = 0;
+
+    virtual int GetLineCount() const
+    { return m_lineNumber; }
+
+    virtual std::string GetNextWord();
+    virtual std::string GetRestOfLine();
+
+    virtual std::string GetListing();
+
+    virtual std::string GetError();
+    virtual bool ParseError(const std::string & str, const std::string & arg = "");
+
+    virtual bool WriteBinary();
+    virtual bool WriteListing();
+
+    static std::string TrimRight(const std::string & str);
+    static std::string TrimLeft(const std::string & str);
+    static std::string Trim(const std::string & str);
+
+
+    std::string GetPageHeader(int & row, int & page);
 
   protected:   
     int m_lineNumber;
     unsigned m_address;
-    int m_pass;
     int m_errorCount;
 
     std::string m_line;
@@ -95,7 +122,6 @@ class Assembler
     std::vector<std::string> m_lines;
     std::map<int, ListingInfo> m_listings;
 
-    SymbolTable m_symbols;
     bool m_includeSymbols = false;
 
     std::string m_sourceDir;

@@ -2,9 +2,13 @@
 #ifndef Z80_EMULATOR_H_
 #define Z80_EMULATOR_H_
 
+namespace MFZ {
+
 extern "C" {
 #include "z80/mfz80/Z80.h"
 };
+
+} // namespace MFZ
 
 #include "src/emulator.h"
 #include "video/virtual_screen.h"
@@ -21,6 +25,7 @@ class Z80Emulator : public Emulator
     // overrides from Emulator
     virtual bool Start(int addr = -1) override;
     virtual int Exec(int cycles)  override;
+    virtual unsigned GetPC() const override;
 
     virtual void NMI() override;
     virtual void Interrupt(uint16_t vector = 0) override;
@@ -36,7 +41,7 @@ class Z80Emulator : public Emulator
 
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;
-    Z80 m_cpu;
+    MFZ::Z80 m_cpu;
     int m_cpuDelayRepeat;
     uint8_t m_delayBuffer[32];
 };

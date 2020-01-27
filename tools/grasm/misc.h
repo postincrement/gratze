@@ -84,6 +84,17 @@ std::string Print(const Columns<Cols> & columns)
 }
 
 template <int Cols>
+std::string Print(const std::string & sep, const Columns<Cols> & columns)
+{
+  std::array<std::string, Cols> seps;
+  for (int i = 0; i < Cols; ++i) {
+    if (i != 0)
+      seps[i] = sep;
+  }
+  return Print<Cols>(columns, seps);
+}
+
+template <int Cols>
 std::string Print(const Columns<Cols> & columns, char sep)
 {
   std::array<std::string, Cols> seps;

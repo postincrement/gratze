@@ -20,6 +20,7 @@ class S2650Emulator : public Emulator
     virtual void Interrupt(uint16_t vector = 0) override;
     virtual void Reset(int addr = -1) override;
     virtual uint16_t ReadMemoryWord(uint16_t addr) override;
+    virtual unsigned GetPC() const override;
 
     virtual void GetStack(std::vector<uint16_t> & stack) override;
     virtual void SetTrace(bool v) override;

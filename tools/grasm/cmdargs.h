@@ -122,6 +122,7 @@ class CommandLineArgs
         if (r->second.GetValue(value)) {
           values.insert(typename std::multimap<std::string, Type>::value_type(r->second.m_wildcard, value));
         }
+        ++r;
         --count;
       }
 

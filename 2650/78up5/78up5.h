@@ -6,7 +6,7 @@
 class EA78UP5_Emulator : public S2650Emulator
 {
   public:
-    EA78UP5_Emulator();
+    EA78UP5_Emulator(const EmulatorInfo * info, int baud);
 
     void Instantiate() override;
 
@@ -14,7 +14,20 @@ class EA78UP5_Emulator : public S2650Emulator
     virtual void Reset(int addr) override;
 
     protected:
+      int m_baud;
       uint64_t m_serialInterval;
+};
+
+class EA78UP5_PIPBUG_110 : public EA78UP5_Emulator
+{
+  public:
+    EA78UP5_PIPBUG_110();
+};
+
+class EA78UP5_PIPBUG_300 : public EA78UP5_Emulator
+{
+  public:
+    EA78UP5_PIPBUG_300();
 };
 
 #endif // EA78UP5_H_

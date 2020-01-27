@@ -10,6 +10,31 @@
 
 using namespace std;
 
+static char g_shiftKeys[][2] = {
+  {  '`', '~' },
+  {  '1', '!' },
+  {  '2', '@' },
+  {  '3', '#' },
+  {  '4', '$' },
+  {  '5', '%' },
+  {  '6', '^' },
+  {  '7', '&' },
+  {  '8', '*' },
+  {  '9', '(' },
+  {  '0', ')' },
+  {  '-', '_' },
+  {  '=', '+' },
+  {  '[', '{' },
+  {  ']', '}' },
+  { '\\', '|' },
+  {  ';', ':' },
+  { '\'', '"' },
+  {  ',', '<' },
+  {  '.', '>' },
+  {  '/', '?' },
+  { 0, 0 }
+};
+
 
 ParallelKeyboard::ParallelKeyboard()
   : ParallelKeyboard(Mapping())
@@ -34,15 +59,25 @@ int ParallelKeyboard::ConvertKeySymToASCII(const SDL_Keysym & keysym)
 {
   int ascii = keysym.sym;
 
+  bool shiftDown = (keysym.mod & KMOD_SHIFT) != 0;
+
   //cout << "kb: " << HEXFORMAT0x4(keysym.sym) << ", mod " << HEXFORMAT0x4(keysym.mod) << endl;
 
-  bool makeUpper = m_mapping.m_defaultUpper == ((keysym.mod & KMOD_SHIFT) == 0);
+  bool makeUpper = m_mapping.m_defaultUpper == !shiftDown;
   if (islower(ascii)) {
     ascii = makeUpper ? toupper(ascii) : tolower(ascii);
     if (keysym.mod & KMOD_CTRL)
       ascii = toupper(ascii) - 0x40;
   }
   else {
+    if (shiftDown) {
+      for (int i = 0; g_shiftKeys[i][0] != 0; ++i) {
+        if (ascii == g_shiftKeys[i][0]) {
+          ascii = g_shiftKeys[i][1];
+          break;
+        }
+      }
+    }
     if (m_mapping.m_arrowsToWASD) {
       switch (keysym.sym) {
         case SDLK_LEFT:

@@ -16,7 +16,7 @@ bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::
   std::string arg(arg_);
 
   std::string valueNameShort;
-  if (optDef.m_shortName != ' ')
+  if ((optDef.m_shortName != ' ') && (optDef.m_shortName != 0))  
     valueNameShort = std::string(1, '-') + std::string(1, optDef.m_shortName);
 
   std::string valueNameLong;

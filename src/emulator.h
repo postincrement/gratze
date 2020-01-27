@@ -178,6 +178,7 @@ class Emulator
     virtual void NMI() = 0;
     virtual void Interrupt(uint16_t vector = 0) = 0;
     virtual void Reset(int addr = -1);
+    virtual unsigned GetPC() const = 0;
 
     virtual void DumpStack(int count);
     virtual void DumpStack(const std::vector<uint16_t> & stack);
@@ -247,13 +248,15 @@ class Emulator
 
     void CalcCPUSpeed(double secs, uint64_t clocks);
 
+    void LoadGRZ();
+
   protected:  
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
 
     virtual uint8_t ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr);
     virtual void WriteIOMemoryInternal(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
 
-    const EmulatorInfo * m_info;
+    const EmulatorInfo * m_info = nullptr;
 
     std::vector<ReadMemoryBlockInfo> m_readMemoryBlocks;
     std::vector<WriteMemoryBlockInfo> m_writeMemoryBlocks;
@@ -263,10 +266,10 @@ class Emulator
 
     PollDefList m_pollers;
 
-    uint64_t m_cycleCounter;
+    uint64_t m_cycleCounter = 0;
 
-    int m_ramSize_bytes;
-    int m_ramMask;
+    int m_ramSize_bytes = 0;
+    int m_ramMask = 0;
 
     double m_targetCPUClock_Hz;
     double m_actualCPUClock_Hz;
