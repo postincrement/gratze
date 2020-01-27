@@ -13,6 +13,10 @@ using namespace std;
 
 static CommandLineArgs::Option g_options[] = {
   { 'h', "help",        ' ',   "display this help message" },
+  { 't', "type",        's',   "select processor type"},
+  { ' ', "list",        ' ',   "list supported processor types"},
+
+  { 'a', "assemble",    ' ',   "assemble file" },
   { 'l', "",            ' ',   "generate listing file as basename.lst" },
   { 'L', "listing",     's',   "generate listing as filename" },
   { 'O', "output",      's',   "generate output as filename instead of basename.out" },
@@ -28,8 +32,25 @@ static CommandLineArgs::Option g_options[] = {
   { 0, 0, 0, 0}
 };
 
+
+static Factory<ProcessorType, std::string> g_typeFactory;
+
+std::string ListProcessorTypes()
+{
+  std::vector<std::string> types;
+  g_typeFactory.GetKeys(types);
+
+  stringstream strm;
+  for (auto & r : types)
+    strm << r << endl;
+  return strm.str();  
+}
+
+
 int main(int argc, char *argv[])
 {
+  g_typeFactory.AddConcreteClass<S2650Processor>("2650");
+
   CommandLineArgs args;
   int opt = args.Parse(g_options, argc, argv);
   if ((opt < 0) || (argc < 2)) {
@@ -39,9 +60,31 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+  if (args.HasArg("--list")) {
+    cout << ListProcessorTypes();
+    return 0;
+  }
+
+  std::string type;
+  if (!args.GetValue("-t", type)) {
+    cerr << "error: must specify processor type." << endl;
+    cerr << ListProcessorTypes();
+    return -1;
+  }
+
+  ProcessorType * processor = g_typeFactory.CreateInstance(type);
+  if (processor == nullptr) {
+    cerr << "error: unknown processor '" << type << "'" << endl;
+    return -1;
+  }
+
   if (args.HasArg("--matrix")) {
-    S2650Disassembler disassembler;
-    disassembler.Matrix();
+    Disassembler * disassembler = processor->CreateDisassembler();
+    if (disassembler == nullptr) {
+      cerr << "error: processor '" << type << "' does not have a disassembler" << endl;
+      return -1;
+    }
+    disassembler->Matrix();
     return 0;
   }
 
@@ -51,32 +94,44 @@ int main(int argc, char *argv[])
   }
 
   if (args.HasArg("-d")) {
+    Disassembler * disassembler = processor->CreateDisassembler();
+    if (disassembler == nullptr) {
+      cerr << "error: processor '" << type << "' does not have a disassembler" << endl;
+      return -1;
+    }
     cerr << "disassembling '" << argv[opt] << "'" << endl;
-    S2650Disassembler disassembler;
-
-    if (!disassembler.Open(args, argv[opt])) {
+    if (!disassembler->Open(args, argv[opt])) {
       cerr << "error: " << /*disassembler.GetError() << */ endl;
       return -1;
     }
 
-    if (!disassembler.Run()) {
+    if (!disassembler->Run()) {
     }
-  }
-  else {
-    cerr << "assembling '" << argv[opt] << "'" << endl;
-    S2650Assembler assembler;
 
-    if (!assembler.Open(args, argv[opt])) {
-      cerr << "error: " << assembler.GetError() << endl;
+    return 0;
+  }
+  else if (args.HasArg("-a")) {
+    Assembler * assembler = processor->CreateAssembler();
+    if (assembler == nullptr) {
+      cerr << "error: processor '" << type << "' does not have an assembler" << endl;
+      return -1;
+    }
+    cerr << "assembling '" << argv[opt] << "'" << endl;
+    if (!assembler->Open(args, argv[opt])) {
+      cerr << "error: " << assembler->GetError() << endl;
       return -1;
     }
 
-    bool result = assembler.Parse();
-    cerr << assembler.GetLineCount() << " lines parsed" << endl;
+    bool result = assembler->Parse();
+    cerr << assembler->GetLineCount() << " lines parsed" << endl;
     if (result) {
-      assembler.WriteBinary();
+      assembler->WriteBinary();
       if (args.HasArg("-l") || args.HasArg("-L"))  
-        assembler.WriteListing();
+        assembler->WriteListing();
     }
+    return 0;
   }
+
+  cerr << "error: select -a, -d, or --matrix" << endl;
+  return -1;
 }

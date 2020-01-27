@@ -64,4 +64,15 @@ class XSsembler
     SymbolTable m_symbols;
 };
 
+class Assembler;
+class Disassembler;
+
+struct ProcessorType
+{
+  virtual Assembler * CreateAssembler() = 0;  
+  virtual Disassembler * CreateDisassembler() = 0;  
+};
+
+
+
 #endif // XSSEMBLER_H_

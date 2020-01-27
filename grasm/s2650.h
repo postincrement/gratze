@@ -41,5 +41,17 @@ class S2650Disassembler : public Disassembler
     virtual bool DecodeInstruction(DisasmInfo & disasm, int & len, unsigned address, const std::vector<uint8_t> & image, unsigned addr, bool & isTerm) override;
 };
 
+struct S2650Processor : public ProcessorType
+{
+  virtual Assembler * CreateAssembler() override
+  {
+    return new S2650Assembler();
+  }
+
+  virtual Disassembler * CreateDisassembler() override
+  {
+    return new S2650Disassembler();
+  }
+};
 
 #endif // S2650_H_
