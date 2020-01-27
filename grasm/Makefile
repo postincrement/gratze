@@ -5,7 +5,8 @@ DEPDIR = ./.deps
 SRCS	=	main.cc \
 				../common/cmdargs.cc \
 				xssembler.cc assembler.cc disassembler.cc \
-				s2650.cc opcode_2650.cc
+				s2650.cc opcode_2650.cc \
+				z80.cc opcode_z80.cc 
 
 FILENAMES := $(notdir $(basename $(SRCS)))
 OBJS	  := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))

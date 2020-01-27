@@ -8,6 +8,7 @@
 #include "common/factory.h"
 
 #include "s2650.h"
+#include "z80.h"
 
 using namespace std;
 
@@ -50,6 +51,7 @@ std::string ListProcessorTypes()
 int main(int argc, char *argv[])
 {
   g_typeFactory.AddConcreteClass<S2650Processor>("2650");
+  g_typeFactory.AddConcreteClass<Z80Processor>("z80");
 
   CommandLineArgs args;
   int opt = args.Parse(g_options, argc, argv);
