@@ -1,0 +1,3170 @@
+       bcta,un   L5800     ; 4000 1f 58 00         .X.    
+
+       db                  ; 4003 c4               .      
+       db                  ; 4004 02               .      
+L4005  db                  ; 4005 4d               M      
+       db                  ; 4006 03               .      
+
+L4007  eorz      r0        ; 4007 20               .      
+       lpsu                ; 4008 92               .      
+       lodi,r0   002h      ; 4009 04 02            ..     
+       lpsl                ; 400b 93               .      
+       lodi,r2   0ffh      ; 400c 06 ff            ..     
+L400e  loda,r2   L002e     ; 400e 0e 20 2e         ...    
+       comi,r0   0c6h      ; 4011 e4 c6            ..     
+       bcfa,z    L4064     ; 4013 9c 40 64         .@d    
+       lodi,r0   00dh      ; 4016 04 0d            ..     
+       bsta,un   *L5809    ; 4018 3f d8 09         ?..    
+       lodi,r0   00ah      ; 401b 04 0a            ..     
+       bsta,un   *L5809    ; 401d 3f d8 09         ?..    
+       loda,r2   L002e     ; 4020 0e 20 2e         ...    
+       strz      r1        ; 4023 c1               .      
+L4024  loda,r2   L002e     ; 4024 0e 20 2e         ...    
+       bsta,un   *L5809    ; 4027 3f d8 09         ?..    
+       bdrr,gt   L4024     ; 402a f9 78            .x     
+       bctr,un   L400e     ; 402c 1b 60            .`     
+
+       stri,r2   01ch      ; 402e c6 1c            ..     
+       anda,r1   L0963     ; 4030 4d 69 63         Mic    
+       redd      r2        ; 4033 72 6f            ro     
+       rede      r3        ; 4035 57 6f            Wo     
+       redd      r2        ; 4037 72 6c            rl     
+       iori,r0   020h      ; 4039 64 20            d.     
+       andz      r2        ; 403b 42               B      
+       iorz      r1        ; 403c 61               a      
+       redd      r3        ; 403d 73 69            si     
+       iorz      r3        ; 403f 63               c      
+       eorz      r0        ; 4040 20               .      
+       iorr,r1   L4031     ; 4041 69 6e            in     
+       cpsu      065h      ; 4043 74 65            te     
+       redd      r2        ; 4045 72 70            rp     
+       redd      r2        ; 4047 72 65            re     
+       cpsu      065h      ; 4049 74 65            te     
+       redd      r2        ; 404b 72 c6            r.     
+       retc      lt        ; 404d 16               .      
+       ppsu      065h      ; 404e 76 65            ve     
+       redd      r2        ; 4050 72 20            r.     
+       redc      r0        ; 4052 30 36            06     
+       eora,r0   L0062     ; 4054 2c 20 62         ,.b    
+       bsnr,r1   L4079     ; 4057 79 20            y.     
+       andi,r2   02eh      ; 4059 46 2e            F.     
+       rrr       r0        ; 405b 50               P      
+       eora,r2   L0038     ; 405c 2e 20 38         ..8    
+       redc      r3        ; 405f 33 31            31     
+       redc      r2        ; 4061 32 32            22     
+       rete      r0        ; 4063 34               4      
+L4064  lodi,r2   024h      ; 4064 06 24            .$     
+       eorz      r0        ; 4066 20               .      
+L4067  stra,r2   L1f49     ; 4067 ce 5f 49         ._I    
+       brnr,r2   L4067     ; 406a 5a 7b            Z{     
+L406c  eorz      r0        ; 406c 20               .      
+       lpsu                ; 406d 92               .      
+       lodi,r0   002h      ; 406e 04 02            ..     
+       lpsl                ; 4070 93               .      
+       lodi,r2   002h      ; 4071 06 02            ..     
+L4073  loda,r2   L1805     ; 4073 0e 58 05         .X.    
+       stra,r2   L1f49     ; 4076 ce 7f 49         ..I    
+L4079  brnr,r2   L4073     ; 4079 5a 78            Zx     
+       lodi,r0   020h      ; 407b 04 20            ..     
+       bsta,un   L4204     ; 407d 3f 42 04         ?B.    
+       bstr,un   L409d     ; 4080 3b 1b            ;.     
+       lodi,r0   03eh      ; 4082 04 3e            .>     
+       stra,r0   L1f69     ; 4084 cc 1f 69         ..i    
+       bsta,un   L4c7d     ; 4087 3f 4c 7d         ?L}    
+       bsta,un   L4127     ; 408a 3f 41 27         ?A'    
+       bcfa,lt   L4d0f     ; 408d 9e 4d 0f         .M.    
+       bsta,un   L421c     ; 4090 3f 42 1c         ?B.    
+       loda,r0   L1f6c     ; 4093 0c 1f 6c         ..l    
+       iori,r0   001h      ; 4096 64 01            d.     
+       stra,r0   L1f6c     ; 4098 cc 1f 6c         ..l    
+       bctr,un   L406c     ; 409b 1b 4f            .O     
+
+L409d  lodi,r3   004h      ; 409d 07 04            ..     
+L409f  loda,r3   L1807     ; 409f 0f 58 07         .X.    
+       stra,r3   L1dd0     ; 40a2 cf 7d d0         .}.    
+       brnr,r3   L409f     ; 40a5 5b 78            [x     
+       stra,r1   L1db8     ; 40a7 cd 1d b8         ...    
+       stra,r1   L1dbc     ; 40aa cd 1d bc         ...    
+       stra,r1   L1fea     ; 40ad cd 1f ea         ...    
+       retc      un        ; 40b0 17               .      
+
+L40b1  bstr,un   L40e8     ; 40b1 3b 35            ;5     
+       loda,r2   L1f49     ; 40b3 0e 7f 49         ..I    
+       stra,r3   L1f49     ; 40b6 cf 7f 49         ..I    
+       loda,r2   L1f49     ; 40b9 0e 3f 49         .?I    
+       stra,r3   L1f49     ; 40bc cf 3f 49         .?I    
+       cpsl      010h      ; 40bf 75 10            u.     
+       retc      un        ; 40c1 17               .      
+
+L40c2  ppsl      012h      ; 40c2 77 12            w.     
+       bstr,un   L40ea     ; 40c4 3b 24            ;$     
+       loda,r2   L1f49     ; 40c6 0e 7f 49         ..I    
+       coma,r3   L1f49     ; 40c9 ef 7f 49         ..I    
+       bcfr,z    L40d4     ; 40cc 98 06            ..     
+       loda,r2   L1f49     ; 40ce 0e 3f 49         .?I    
+       coma,r3   L1f49     ; 40d1 ef 3f 49         .?I    
+L40d4  cpsl      010h      ; 40d4 75 10            u.     
+       retc      un        ; 40d6 17               .      
+
+L40d7  bstr,un   L40e8     ; 40d7 3b 0f            ;.     
+       loda,r2   L0d73     ; 40d9 0e 6d 73         .ms    
+       stra,r3   L1f49     ; 40dc cf 7f 49         ..I    
+       loda,r2   L0d73     ; 40df 0e 2d 73         .-s    
+       stra,r3   L1f49     ; 40e2 cf 3f 49         .?I    
+       cpsl      010h      ; 40e5 75 10            u.     
+       retc      un        ; 40e7 17               .      
+
+L40e8  ppsl      010h      ; 40e8 77 10            w.     
+L40ea  strz      r2        ; 40ea c2               .      
+       andi,r0   0f0h      ; 40eb 44 f0            D.     
+       andi,r2   00fh      ; 40ed 46 0f            F.     
+       rrr       r0        ; 40ef 50               P      
+       rrr       r0        ; 40f0 50               P      
+       rrr       r0        ; 40f1 50               P      
+       rrl       r2        ; 40f2 d2               .      
+       strz      r3        ; 40f3 c3               .      
+       retc      un        ; 40f4 17               .      
+
+L40f5  bstr,un   L40e8     ; 40f5 3b 71            ;q     
+       loda,r2   L1f49     ; 40f7 0e 3f 49         .?I    
+       adda,r3   L1f49     ; 40fa 8f 3f 49         .?I    
+       stra,r3   L1f49     ; 40fd cf 7f 49         ..I    
+       ppsl      008h      ; 4100 77 08            w.     
+       loda,r2   L1f49     ; 4102 0e 5f 49         ._I    
+       adda,r3   L1f49     ; 4105 8f 5f 49         ._I    
+       stra,r3   L1f49     ; 4108 cf 7f 49         ..I    
+       cpsl      018h      ; 410b 75 18            u.     
+       retc      un        ; 410d 17               .      
+
+L410e  bstr,un   L40e8     ; 410e 3b 58            ;X     
+       ppsl      009h      ; 4110 77 09            w.     
+       loda,r3   L1f49     ; 4112 0f 3f 49         .?I    
+       suba,r2   L1f49     ; 4115 ae 3f 49         .?I    
+       stra,r3   L1f49     ; 4118 cf 7f 49         ..I    
+       loda,r3   L1f49     ; 411b 0f 5f 49         ._I    
+       suba,r2   L1f49     ; 411e ae 5f 49         ._I    
+       stra,r3   L1f49     ; 4121 cf 7f 49         ..I    
+       cpsl      019h      ; 4124 75 19            u.     
+       retc      un        ; 4126 17               .      
+
+L4127  lodi,r0   020h      ; 4127 04 20            ..     
+       lodi,r2   050h      ; 4129 06 50            .P     
+L412b  stra,r2   L1d00     ; 412b ce 5d 00         .].    
+       brnr,r2   L412b     ; 412e 5a 7b            Z{     
+       loda,r0   L1f69     ; 4130 0c 1f 69         ..i    
+       bsta,un   *L5dd2    ; 4133 3f dd d2         ?..    
+       lodi,r0   020h      ; 4136 04 20            ..     
+L4138  bsta,un   *L5dd2    ; 4138 3f dd d2         ?..    
+L413b  bsta,un   *L5dd0    ; 413b 3f dd d0         ?..    
+       comi,r0   01bh      ; 413e e4 1b            ..     
+       retc      z         ; 4140 14               .      
+       comi,r0   018h      ; 4141 e4 18            ..     
+       bctr,z    L417c     ; 4143 18 37            .7     
+       comi,r0   008h      ; 4145 e4 08            ..     
+       bcfr,z    L4151     ; 4147 98 08            ..     
+       comi,r2   000h      ; 4149 e6 00            ..     
+       bctr,z    L413b     ; 414b 18 6e            .n     
+       subi,r2   001h      ; 414d a6 01            ..     
+       bctr,un   L4138     ; 414f 1b 67            .g     
+
+L4151  comi,r0   00dh      ; 4151 e4 0d            ..     
+       bctr,z    L416d     ; 4153 18 18            ..     
+       adda,r2   L1db8     ; 4155 8e 1d b8         ...    
+       comi,r2   03bh      ; 4158 e6 3b            .;     
+       retc      gt        ; 415a 15               .      
+       suba,r2   L1db8     ; 415b ae 1d b8         ...    
+       comi,r0   015h      ; 415e e4 15            ..     
+       bcfr,z    L4165     ; 4160 98 03            ..     
+       loda,r2   L1d00     ; 4162 0e 7d 00         .}.    
+L4165  comi,r0   020h      ; 4165 e4 20            ..     
+       bctr,lt   L413b     ; 4167 1a 52            .R     
+       comi,r0   07eh      ; 4169 e4 7e            .~     
+       bctr,gt   L413b     ; 416b 19 4e            .N     
+L416d  stra,r2   L1d00     ; 416d ce 7d 00         .}.    
+       addi,r2   001h      ; 4170 86 01            ..     
+       comi,r0   00dh      ; 4172 e4 0d            ..     
+       bcfr,z    L4138     ; 4174 98 42            .B     
+       stra,r2   L1f6a     ; 4176 ce 1f 6a         ..j    
+       ppsl      080h      ; 4179 77 80            w.     
+       retc      un        ; 417b 17               .      
+
+L417c  adda,r2   L1db8     ; 417c 8e 1d b8         ...    
+L417f  comi,r2   03ah      ; 417f e6 3a            .:     
+       bctr,lt   L418a     ; 4181 1a 07            ..     
+       lodi,r0   008h      ; 4183 04 08            ..     
+       bsta,un   *L5dd2    ; 4185 3f dd d2         ?..    
+       bdrr,lt   L417f     ; 4188 fa 75            .u     
+L418a  lodi,r2   003h      ; 418a 06 03            ..     
+L418c  lodi,r0   02ah      ; 418c 04 2a            .*     
+       bsta,un   *L5dd2    ; 418e 3f dd d2         ?..    
+       bdrr,lt   L418c     ; 4191 fa 79            .y     
+       bsta,un   L4c7d     ; 4193 3f 4c 7d         ?L}    
+       bcta,un   L4127     ; 4196 1f 41 27         .A'    
+
+L4199  eorz      r0        ; 4199 20               .      
+       strz      r1        ; 419a c1               .      
+       strz      r3        ; 419b c3               .      
+L419c  loda,r2   *L1f51    ; 419c 0e ff 51         ..Q    
+       subi,r0   030h      ; 419f a4 30            .0     
+       bctr,lt   L41bc     ; 41a1 1a 19            ..     
+       comi,r0   009h      ; 41a3 e4 09            ..     
+       bctr,gt   L41bc     ; 41a5 19 15            ..     
+       ppsl      008h      ; 41a7 77 08            w.     
+       cpsl      001h      ; 41a9 75 01            u.     
+       rrl       r3        ; 41ab d3               .      
+       rrl       r1        ; 41ac d1               .      
+       rrl       r3        ; 41ad d3               .      
+       rrl       r1        ; 41ae d1               .      
+       rrl       r3        ; 41af d3               .      
+       rrl       r1        ; 41b0 d1               .      
+       rrl       r3        ; 41b1 d3               .      
+       rrl       r1        ; 41b2 d1               .      
+       iorz      r3        ; 41b3 63               c      
+       strz      r3        ; 41b4 c3               .      
+       cpsl      008h      ; 41b5 75 08            u.     
+       bsta,un   L4381     ; 41b7 3f 43 81         ?C.    
+       bctr,un   L419c     ; 41ba 1b 60            .`     
+
+L41bc  stra,r1   L1f55     ; 41bc cd 1f 55         ..U    
+       stra,r3   L1f56     ; 41bf cf 1f 56         ..V    
+       retc      un        ; 41c2 17               .      
+
+L41c3  loda,r0   L1f4d     ; 41c3 0c 1f 4d         ..M    
+       stra,r0   L1f51     ; 41c6 cc 1f 51         ..Q    
+       eorz      r0        ; 41c9 20               .      
+       stra,r0   L1f52     ; 41ca cc 1f 52         ..R    
+       loda,r2   L1f4e     ; 41cd 0e 1f 4e         ..N    
+       retc      un        ; 41d0 17               .      
+
+L41d1  bstr,un   L41c3     ; 41d1 3b 70            ;p     
+L41d3  bsta,un   L4381     ; 41d3 3f 43 81         ?C.    
+       loda,r2   *L1f51    ; 41d6 0e ff 51         ..Q    
+       comi,r0   003h      ; 41d9 e4 03            ..     
+       retc      z         ; 41db 14               .      
+       comi,r0   00dh      ; 41dc e4 0d            ..     
+       bcfr,z    L41d3     ; 41de 98 73            .s     
+L41e0  loda,r0   L1f51     ; 41e0 0c 1f 51         ..Q    
+       stra,r0   L1f4d     ; 41e3 cc 1f 4d         ..M    
+       stra,r2   L1f4e     ; 41e6 ce 1f 4e         ..N    
+       ppsl      080h      ; 41e9 77 80            w.     
+       retc      un        ; 41eb 17               .      
+
+L41ec  bsta,un   L4c7d     ; 41ec 3f 4c 7d         ?L}    
+L41ef  bsta,un   L4381     ; 41ef 3f 43 81         ?C.    
+       loda,r2   *L1f51    ; 41f2 0e ff 51         ..Q    
+       comi,r0   003h      ; 41f5 e4 03            ..     
+       retc      z         ; 41f7 14               .      
+       comi,r0   00dh      ; 41f8 e4 0d            ..     
+       bctr,z    L4201     ; 41fa 18 05            ..     
+       bsta,un   *L5dd2    ; 41fc 3f dd d2         ?..    
+       bctr,un   L41ef     ; 41ff 1b 6e            .n     
+
+L4201  ppsl      080h      ; 4201 77 80            w.     
+       retc      un        ; 4203 17               .      
+
+L4204  lodi,r1   001h      ; 4204 05 01            ..     
+L4206  bsta,un   L40ea     ; 4206 3f 40 ea         ?@.    
+       loda,r2   L1f49     ; 4209 0e 3f 49         .?I    
+       addz      r1        ; 420c 81               .      
+       stra,r3   L1f49     ; 420d cf 3f 49         .?I    
+       ppsl      008h      ; 4210 77 08            w.     
+       eorz      r0        ; 4212 20               .      
+       adda,r2   L1f49     ; 4213 8e 5f 49         ._I    
+       stra,r3   L1f49     ; 4216 cf 5f 49         ._I    
+       cpsl      008h      ; 4219 75 08            u.     
+       retc      un        ; 421b 17               .      
+
+L421c  lodi,r0   040h      ; 421c 04 40            .@     
+       bsta,un   L40d7     ; 421e 3f 40 d7         ?@.    
+       lodi,r2   000h      ; 4221 06 00            ..     
+       loda,r0   L1d00     ; 4223 0c 1d 00         ...    
+       comi,r0   039h      ; 4226 e4 39            .9     
+       bcta,gt   L426f     ; 4228 1d 42 6f         .Bo    
+       loda,r0   L1f6c     ; 422b 0c 1f 6c         ..l    
+       bcta,z    L4d03     ; 422e 1c 4d 03         .M.    
+       andi,r0   00fh      ; 4231 44 0f            D.     
+       stra,r0   L1f6c     ; 4233 cc 1f 6c         ..l    
+       bsta,un   L4199     ; 4236 3f 41 99         ?A.    
+       lodz      r1        ; 4239 01               .      
+       iorz      r3        ; 423a 63               c      
+       bcta,z    L4d00     ; 423b 1c 4d 00         .M.    
+       loda,r2   *L1f51    ; 423e 0e ff 51         ..Q    
+       stra,r0   L1da0     ; 4241 cc 1d a0         ...    
+       bstr,un   L4252     ; 4244 3b 0c            ;.     
+       bsta,z    L4335     ; 4246 3c 43 35         <C5    
+       loda,r0   L1da0     ; 4249 0c 1d a0         ...    
+       comi,r0   00dh      ; 424c e4 0d            ..     
+       bcta,gt   L43f4     ; 424e 1d 43 f4         .C.    
+       retc      un        ; 4251 17               .      
+
+L4252  lodi,r0   076h      ; 4252 04 76            .v     
+       bsta,un   L40b1     ; 4254 3f 40 b1         ?@.    
+       bsta,un   L41c3     ; 4257 3f 41 c3         ?A.    
+L425a  bsta,un   L4381     ; 425a 3f 43 81         ?C.    
+       bsta,un   L4199     ; 425d 3f 41 99         ?A.    
+       lodi,r0   076h      ; 4260 04 76            .v     
+       bsta,un   L40c2     ; 4262 3f 40 c2         ?@.    
+       retc      gt        ; 4265 15               .      
+       retc      z         ; 4266 14               .      
+       bsta,un   L41d1     ; 4267 3f 41 d1         ?A.    
+       bcfr,z    L425a     ; 426a 98 6e            .n     
+       ppsl      080h      ; 426c 77 80            w.     
+       retc      un        ; 426e 17               .      
+
+L426f  bsta,un   L4c7d     ; 426f 3f 4c 7d         ?L}    
+       lodi,r3   007h      ; 4272 07 07            ..     
+L4274  loda,r3   L1d00     ; 4274 0f 5d 00         .].    
+       stra,r3   L1da1     ; 4277 cf 7d a1         .}.    
+       brnr,r3   L4274     ; 427a 5b 78            [x     
+       bsta,un   L4557     ; 427c 3f 45 57         ?EW    
+       brna,r1   L4474     ; 427f 5d 44 74         ]Dt    
+       loda,r0   L1d00     ; 4282 0c 1d 00         ...    
+       comi,r0   04fh      ; 4285 e4 4f            .O     
+       bctr,z    L429d     ; 4287 18 14            ..     
+       comi,r0   04eh      ; 4289 e4 4e            .N     
+       bcfr,z    L42b4     ; 428b 98 27            .'     
+       lodi,r0   002h      ; 428d 04 02            ..     
+       strz      r1        ; 428f c1               .      
+       stra,r0   *L1f49    ; 4290 cc 9f 49         ..I    
+       lodi,r0   00dh      ; 4293 04 0d            ..     
+       stra,r0   *L1f4d    ; 4295 cc 9f 4d         ..M    
+       lodi,r0   003h      ; 4298 04 03            ..     
+       stra,r1   *L1f49    ; 429a cd ff 49         ..I    
+L429d  loda,r0   *L1f49    ; 429d 0c 9f 49         ..I    
+       comi,r0   002h      ; 42a0 e4 02            ..     
+       bcfa,z    L4d03     ; 42a2 9c 4d 03         .M.    
+L42a5  bsta,un   L41d1     ; 42a5 3f 41 d1         ?A.    
+       bcfr,z    L42a5     ; 42a8 98 7b            .{     
+       loda,r0   L1f51     ; 42aa 0c 1f 51         ..Q    
+       stra,r0   L1f4b     ; 42ad cc 1f 4b         ..K    
+       stra,r2   L1f4c     ; 42b0 ce 1f 4c         ..L    
+       retc      un        ; 42b3 17               .      
+
+L42b4  comi,r0   04ch      ; 42b4 e4 4c            .L     
+       bcfr,z    L42c5     ; 42b6 98 0d            ..     
+       loda,r1   L1d01     ; 42b8 0d 1d 01         ...    
+       comi,r1   04fh      ; 42bb e5 4f            .O     
+       bcfr,z    L42c5     ; 42bd 98 06            ..     
+       bsta,un   *L5817    ; 42bf 3f d8 17         ?..    
+       bcta,un   L429d     ; 42c2 1f 42 9d         .B.    
+
+L42c5  loda,r1   L1f6c     ; 42c5 0d 1f 6c         ..l    
+       bcta,z    L4d03     ; 42c8 1c 4d 03         .M.    
+       comi,r0   04ch      ; 42cb e4 4c            .L     
+       bcfa,z    L4435     ; 42cd 9c 44 35         .D5    
+L42d0  loda,r2   *L1f51    ; 42d0 0e bf 51         ..Q    
+       comi,r0   041h      ; 42d3 e4 41            .A     
+       bcfr,lt   L42d0     ; 42d5 9a 79            .y     
+       bsta,un   L4571     ; 42d7 3f 45 71         ?Eq    
+       bsta,un   L4a0b     ; 42da 3f 4a 0b         ?J.    
+       comi,r0   031h      ; 42dd e4 31            .1     
+       bctr,lt   L4305     ; 42df 1a 24            .$     
+       bsta,un   L4199     ; 42e1 3f 41 99         ?A.    
+       stra,r2   L1da0     ; 42e4 ce 1d a0         ...    
+       bsta,un   L4252     ; 42e7 3f 42 52         ?BR    
+       lodi,r0   040h      ; 42ea 04 40            .@     
+       bsta,un   L40d7     ; 42ec 3f 40 d7         ?@.    
+       loda,r2   L1da0     ; 42ef 0e 1d a0         ...    
+       loda,r2   *L1f51    ; 42f2 0e ff 51         ..Q    
+       comi,r0   020h      ; 42f5 e4 20            ..     
+       bctr,lt   L430d     ; 42f7 1a 14            ..     
+       addi,r2   001h      ; 42f9 86 01            ..     
+       bsta,un   L4199     ; 42fb 3f 41 99         ?A.    
+       lodi,r0   076h      ; 42fe 04 76            .v     
+       bsta,un   L40b1     ; 4300 3f 40 b1         ?@.    
+       bctr,un   L430d     ; 4303 1b 08            ..     
+
+L4305  lodi,r0   099h      ; 4305 04 99            ..     
+       stra,r0   L1f57     ; 4307 cc 1f 57         ..W    
+       stra,r0   L1f58     ; 430a cc 1f 58         ..X    
+L430d  bsta,un   L41c3     ; 430d 3f 41 c3         ?A.    
+L4310  bsta,un   *L581b    ; 4310 3f d8 1b         ?..    
+       tmi,???   07fh      ; 4313 f4               .      
+       bsna,r3   L1806     ; 4314 7f 18 06         ...    
+       bsta,un   *L5807    ; 4317 3f d8 07         ?..    
+       comi,r0   01bh      ; 431a e4 1b            ..     
+       retc      z         ; 431c 14               .      
+       bsta,un   L4381     ; 431d 3f 43 81         ?C.    
+       bsta,un   L4199     ; 4320 3f 41 99         ?A.    
+       lodi,r0   076h      ; 4323 04 76            .v     
+       bsta,un   L40c2     ; 4325 3f 40 c2         ?@.    
+       retc      gt        ; 4328 15               .      
+       bsta,un   L41c3     ; 4329 3f 41 c3         ?A.    
+       bsta,un   L41ec     ; 432c 3f 41 ec         ?A.    
+       retc      z         ; 432f 14               .      
+       bsta,un   L41e0     ; 4330 3f 41 e0         ?A.    
+       bctr,un   L4310     ; 4333 1b 5b            .[     
+
+L4335  lodi,r0   072h      ; 4335 04 72            .r     
+       bsta,un   L40b1     ; 4337 3f 40 b1         ?@.    
+       lodi,r0   032h      ; 433a 04 32            .2     
+       bsta,un   L40b1     ; 433c 3f 40 b1         ?@.    
+       bsta,un   L41d1     ; 433f 3f 41 d1         ?A.    
+       lodi,r0   042h      ; 4342 04 42            .B     
+       bsta,un   L40b1     ; 4344 3f 40 b1         ?@.    
+       lodi,r0   051h      ; 4347 04 51            .Q     
+       bsta,un   L40b1     ; 4349 3f 40 b1         ?@.    
+       bstr,un   L4353     ; 434c 3b 05            ;.     
+       lodi,r0   027h      ; 434e 04 27            .'     
+       bcta,un   L40b1     ; 4350 1f 40 b1         .@.    
+
+L4353  bstr,un   L438c     ; 4353 3b 37            ;7     
+       bctr,z    L436b     ; 4355 18 14            ..     
+L4357  loda,r2   *L1f51    ; 4357 0e ff 51         ..Q    
+       stra,r3   *L1f4f    ; 435a cf ff 4f         ..O    
+L435d  birr,r3   L4367     ; 435d db 08            ..     
+       loda,r0   L1f4f     ; 435f 0c 1f 4f         ..O    
+       addi,r0   001h      ; 4362 84 01            ..     
+       stra,r0   L1f4f     ; 4364 cc 1f 4f         ..O    
+L4367  bstr,un   L4381     ; 4367 3b 18            ;.     
+       bdrr,gt   L4357     ; 4369 f9 6c            .l     
+L436b  loda,r0   L1f53     ; 436b 0c 1f 53         ..S    
+       coma,r0   L1f51     ; 436e ec 1f 51         ..Q    
+       bcfr,z    L4357     ; 4371 98 64            .d     
+       loda,r2   *L1f51    ; 4373 0e ff 51         ..Q    
+       stra,r3   *L1f4f    ; 4376 cf ff 4f         ..O    
+       stra,r3   L1f50     ; 4379 cf 1f 50         ..P    
+L437c  lodi,r0   013h      ; 437c 04 13            ..     
+       bcta,un   L40b1     ; 437e 1f 40 b1         .@.    
+
+L4381  birr,r2   L438b     ; 4381 da 08            ..     
+L4383  loda,r0   L1f51     ; 4383 0c 1f 51         ..Q    
+       addi,r0   001h      ; 4386 84 01            ..     
+       stra,r0   L1f51     ; 4388 cc 1f 51         ..Q    
+L438b  retc      un        ; 438b 17               .      
+
+L438c  cpsl      008h      ; 438c 75 08            u.     
+       loda,r2   L1f52     ; 438e 0e 1f 52         ..R    
+       loda,r3   L1f50     ; 4391 0f 1f 50         ..P    
+       eorz      r0        ; 4394 20               .      
+       stra,r0   L1f52     ; 4395 cc 1f 52         ..R    
+       stra,r0   L1f50     ; 4398 cc 1f 50         ..P    
+       loda,r0   L1f54     ; 439b 0c 1f 54         ..T    
+       subz      r2        ; 439e a2               .      
+       strz      r1        ; 439f c1               .      
+       retc      un        ; 43a0 17               .      
+
+L43a1  lodi,r0   041h      ; 43a1 04 41            .A     
+       bsta,un   L40b1     ; 43a3 3f 40 b1         ?@.    
+       loda,r0   *L1f4f    ; 43a6 0c 9f 4f         ..O    
+       eori,r0   0ffh      ; 43a9 24 ff            $.     
+       stra,r0   *L1f4f    ; 43ab cc 9f 4f         ..O    
+       coma,r0   *L1f4f    ; 43ae ec 9f 4f         ..O    
+       bcfa,z    L4cf8     ; 43b1 9c 4c f8         .L.    
+       lodi,r0   013h      ; 43b4 04 13            ..     
+       bsta,un   L40b1     ; 43b6 3f 40 b1         ?@.    
+       bstr,un   L438c     ; 43b9 3b 51            ;Q     
+       bcfr,z    L43c4     ; 43bb 98 07            ..     
+       loda,r0   L1f53     ; 43bd 0c 1f 53         ..S    
+       coma,r0   L1f51     ; 43c0 ec 1f 51         ..Q    
+       retc      z         ; 43c3 14               .      
+L43c4  loda,r2   *L1f51    ; 43c4 0e ff 51         ..Q    
+       stra,r3   *L1f4f    ; 43c7 cf ff 4f         ..O    
+       bctr,un   L43db     ; 43ca 1b 0f            ..     
+
+L43cc  loda,r2   *L1f51    ; 43cc 0e df 51         ..Q    
+       stra,r3   *L1f4f    ; 43cf cf df 4f         ..O    
+       birr,r1   L43db     ; 43d2 d9 07            ..     
+       loda,r0   L1f53     ; 43d4 0c 1f 53         ..S    
+       coma,r0   L1f51     ; 43d7 ec 1f 51         ..Q    
+       retc      z         ; 43da 14               .      
+L43db  brnr,r3   L43e5     ; 43db 5b 08            [.     
+       loda,r0   L1f4f     ; 43dd 0c 1f 4f         ..O    
+       subi,r0   001h      ; 43e0 a4 01            ..     
+       stra,r0   L1f4f     ; 43e2 cc 1f 4f         ..O    
+L43e5  brnr,r2   L43cc     ; 43e5 5a 65            Ze     
+       bstr,un   L43eb     ; 43e7 3b 02            ;.     
+       bctr,un   L43cc     ; 43e9 1b 61            .a     
+
+L43eb  loda,r0   L1f51     ; 43eb 0c 1f 51         ..Q    
+       subi,r0   001h      ; 43ee a4 01            ..     
+       stra,r0   L1f51     ; 43f0 cc 1f 51         ..Q    
+       retc      un        ; 43f3 17               .      
+
+L43f4  loda,r1   L1f6a     ; 43f4 0d 1f 6a         ..j    
+       retc      z         ; 43f7 14               .      
+       lodi,r0   031h      ; 43f8 04 31            .1     
+       bsta,un   L4206     ; 43fa 3f 42 06         ?B.    
+       lodi,r0   052h      ; 43fd 04 52            .R     
+       bsta,un   L40b1     ; 43ff 3f 40 b1         ?@.    
+       bsta,un   L43a1     ; 4402 3f 43 a1         ?C.    
+       loda,r1   L1f6a     ; 4405 0d 1f 6a         ..j    
+       lodi,r3   0ffh      ; 4408 07 ff            ..     
+       bsta,un   L41c3     ; 440a 3f 41 c3         ?A.    
+L440d  bsta,un   L4381     ; 440d 3f 43 81         ?C.    
+       loda,r3   L1d00     ; 4410 0f 3d 00         .=.    
+       stra,r2   *L1f51    ; 4413 ce ff 51         ..Q    
+       bdrr,gt   L440d     ; 4416 f9 75            .u     
+       retc      un        ; 4418 17               .      
+
+L4419  bsta,un   L40b1     ; 4419 3f 40 b1         ?@.    
+       lodi,r0   060h      ; 441c 04 60            .`     
+       bsta,un   L410e     ; 441e 3f 41 0e         ?A.    
+       bsta,un   L51aa     ; 4421 3f 51 aa         ?Q.    
+       bsta,un   L4aa3     ; 4424 3f 4a a3         ?J.    
+       loda,r1   L1f6a     ; 4427 0d 1f 6a         ..j    
+       lodi,r3   0ffh      ; 442a 07 ff            ..     
+L442c  loda,r3   L1d00     ; 442c 0f 3d 00         .=.    
+       bsta,un   *L5dd2    ; 442f 3f dd d2         ?..    
+       bdrr,gt   L442c     ; 4432 f9 78            .x     
+       retc      un        ; 4434 17               .      
+
+L4435  comi,r0   053h      ; 4435 e4 53            .S     
+       bcfr,z    L4450     ; 4437 98 17            ..     
+       loda,r0   L1d01     ; 4439 0c 1d 01         ...    
+       comi,r0   041h      ; 443c e4 41            .A     
+       bcta,z    *L5819    ; 443e 1c d8 19         ...    
+       bsta,un   L4c7d     ; 4441 3f 4c 7d         ?L}    
+       lodi,r0   061h      ; 4444 04 61            .a     
+       bstr,un   L4419     ; 4446 3b 51            ;Q     
+       lodi,r0   06dh      ; 4448 04 6d            .m     
+       loda,r1   L1f6c     ; 444a 0d 1f 6c         ..l    
+       bctr,lt   L4419     ; 444d 1a 4a            .J     
+       retc      un        ; 444f 17               .      
+
+L4450  comi,r0   043h      ; 4450 e4 43            .C     
+       bcfr,z    L446c     ; 4452 98 18            ..     
+       loda,r0   L1f6c     ; 4454 0c 1f 6c         ..l    
+       tmi,???   040h      ; 4457 f4               .      
+       halt                ; 4458 40               @      
+       bcfa,z    L4d0b     ; 4459 9c 4d 0b         .M.    
+       lodi,r0   02bh      ; 445c 04 2b            .+     
+       bsta,un   L40b1     ; 445e 3f 40 b1         ?@.    
+       lodi,r0   01dh      ; 4461 04 1d            ..     
+       bsta,un   L40b1     ; 4463 3f 40 b1         ?@.    
+       bsta,un   L41c3     ; 4466 3f 41 c3         ?A.    
+       bcta,un   L4516     ; 4469 1f 45 16         .E.    
+
+L446c  comi,r0   052h      ; 446c e4 52            .R     
+       bcfa,z    L4d00     ; 446e 9c 4d 00         .M.    
+       bcta,un   L44a0     ; 4471 1f 44 a0         .D.    
+
+L4474  loda,r0   L1f6c     ; 4474 0c 1f 6c         ..l    
+       bcta,z    L4d03     ; 4477 1c 4d 03         .M.    
+       lodi,r0   021h      ; 447a 04 21            .!     
+       bsta,un   L40d7     ; 447c 3f 40 d7         ?@.    
+       lodi,r0   003h      ; 447f 04 03            ..     
+       loda,r1   L1f6a     ; 4481 0d 1f 6a         ..j    
+       birr,r1   L4489     ; 4484 d9 03            ..     
+L4486  loda,r1   L1cff     ; 4486 0d 7c ff         .|.    
+L4489  stra,r1   L1d50     ; 4489 cd 7d 50         .}P    
+       bdrr,gt   L4486     ; 448c f9 78            .x     
+       lodi,r0   00dh      ; 448e 04 0d            ..     
+       stra,r0   L1d50     ; 4490 cc 1d 50         ..P    
+       loda,r0   L1f6c     ; 4493 0c 1f 6c         ..l    
+       bctr,gt   L44a0     ; 4496 19 08            ..     
+       lodi,r0   01dh      ; 4498 04 1d            ..     
+       bsta,un   L40b1     ; 449a 3f 40 b1         ?@.    
+       bcta,un   L44dc     ; 449d 1f 44 dc         .D.    
+
+L44a0  eorz      r0        ; 44a0 20               .      
+       stra,r0   L1f6f     ; 44a1 cc 1f 6f         ..o    
+       lodi,r1   004h      ; 44a4 05 04            ..     
+L44a6  stra,r1   L1db8     ; 44a6 cd 5d b8         .].    
+       brnr,r1   L44a6     ; 44a9 59 7b            Y{     
+L44ab  stra,r1   L1e00     ; 44ab cd 7e 00         .~.    
+       stra,r1   L1e49     ; 44ae cd 7e 49         .~I    
+       birr,r1   L44ab     ; 44b1 d9 78            .x     
+       lodi,r3   02dh      ; 44b3 07 2d            .-     
+       lodi,r0   040h      ; 44b5 04 40            .@     
+L44b7  stra,r1   L1e00     ; 44b7 cd 7e 00         .~.    
+       addi,r1   004h      ; 44ba 85 04            ..     
+       bdrr,un   L44b7     ; 44bc fb 79            .y     
+       lodi,r1   004h      ; 44be 05 04            ..     
+       lodi,r0   011h      ; 44c0 04 11            ..     
+       bsta,un   L4206     ; 44c2 3f 42 06         ?B.    
+       loda,r0   L1f4c     ; 44c5 0c 1f 4c         ..L    
+       andi,r0   0fch      ; 44c8 44 fc            D.     
+       stra,r0   L1f4c     ; 44ca cc 1f 4c         ..L    
+       lodi,r0   081h      ; 44cd 04 81            ..     
+       bsta,un   L40b1     ; 44cf 3f 40 b1         ?@.    
+       lodi,r0   0c1h      ; 44d2 04 c1            ..     
+       bsta,un   L40b1     ; 44d4 3f 40 b1         ?@.    
+       lodi,r0   090h      ; 44d7 04 90            ..     
+       bsta,un   L4204     ; 44d9 3f 42 04         ?B.    
+L44dc  bsta,un   L4c7d     ; 44dc 3f 4c 7d         ?L}    
+       bctr,un   L44fc     ; 44df 1b 1b            ..     
+
+L44e1  bsta,un   L41c3     ; 44e1 3f 41 c3         ?A.    
+L44e4  bstr,un   L44eb     ; 44e4 3b 05            ;.     
+       bctr,un   L44ff     ; 44e6 1b 17            ..     
+
+L44e8  bsta,un   L41c3     ; 44e8 3f 41 c3         ?A.    
+L44eb  loda,r2   *L1f51    ; 44eb 0e ff 51         ..Q    
+       comi,r0   00dh      ; 44ee e4 0d            ..     
+       retc      z         ; 44f0 14               .      
+       comi,r0   03ah      ; 44f1 e4 3a            .:     
+       retc      z         ; 44f3 14               .      
+       bsta,un   L4381     ; 44f4 3f 43 81         ?C.    
+       bctr,un   L44eb     ; 44f7 1b 72            .r     
+
+L44f9  bsta,un   L41d1     ; 44f9 3f 41 d1         ?A.    
+L44fc  bsta,un   L41c3     ; 44fc 3f 41 c3         ?A.    
+L44ff  bsta,un   L4e4e     ; 44ff 3f 4e 4e         ?NN    
+       bctr,z    L44ff     ; 4502 18 7b            .{     
+L4504  bsta,un   *L581b    ; 4504 3f d8 1b         ?..    
+       tmi,???   07fh      ; 4507 f4               .      
+       bsna,r3   L1808     ; 4508 7f 18 08         ...    
+       bsta,un   *L5807    ; 450b 3f d8 07         ?..    
+       comi,r0   01bh      ; 450e e4 1b            ..     
+       bcta,z    L49ce     ; 4510 1c 49 ce         .I.    
+       bsta,un   L41e0     ; 4513 3f 41 e0         ?A.    
+L4516  loda,r2   *L1f51    ; 4516 0e ff 51         ..Q    
+       comi,r0   003h      ; 4519 e4 03            ..     
+       bcta,z    L4cc9     ; 451b 1c 4c c9         .L.    
+       eorz      r0        ; 451e 20               .      
+       stra,r0   L1fea     ; 451f cc 1f ea         ...    
+       lodi,r1   0ffh      ; 4522 05 ff            ..     
+       lodi,r3   007h      ; 4524 07 07            ..     
+L4526  loda,r2   *L1f51    ; 4526 0e ff 51         ..Q    
+       stra,r1   L1da1     ; 4529 cd 3d a1         .=.    
+       bsta,un   L4381     ; 452c 3f 43 81         ?C.    
+       bdrr,un   L4526     ; 452f fb 75            .u     
+       loda,r0   L1da2     ; 4531 0c 1d a2         ...    
+       comi,r0   041h      ; 4534 e4 41            .A     
+       bcfr,lt   L4541     ; 4536 9a 09            ..     
+       bsta,un   L41c3     ; 4538 3f 41 c3         ?A.    
+       loda,r2   *L1f51    ; 453b 0e ff 51         ..Q    
+       bcta,un   L47b1     ; 453e 1f 47 b1         .G.    
+
+L4541  bstr,un   L4557     ; 4541 3b 14            ;.     
+       stra,r3   L1dbc     ; 4543 cf 1d bc         ...    
+       bsta,un   L41c3     ; 4546 3f 41 c3         ?A.    
+       lodz      r1        ; 4549 01               .      
+       bcta,z    L4c8b     ; 454a 1c 4c 8b         .L.    
+L454d  bsta,un   L4381     ; 454d 3f 43 81         ?C.    
+       bdrr,gt   L454d     ; 4550 f9 7b            .{     
+       bstr,un   L4571     ; 4552 3b 1d            ;.     
+       bcfa,un   L45e5     ; 4554 9f 45 e5         .E.    
+L4557  lodi,r3   0ffh      ; 4557 07 ff            ..     
+L4559  lodi,r1   000h      ; 4559 05 00            ..     
+L455b  loda,r3   L0581     ; 455b 0f 25 81         .%.    
+       retc      z         ; 455e 14               .      
+       bctr,lt   L456d     ; 455f 1a 0c            ..     
+       coma,r1   L1da0     ; 4561 ed 3d a0         .=.    
+       bctr,z    L455b     ; 4564 18 75            .u     
+L4566  loda,r3   L0581     ; 4566 0f 25 81         .%.    
+       bcfr,lt   L4566     ; 4569 9a 7b            .{     
+       bctr,un   L4559     ; 456b 1b 6c            .l     
+
+L456d  andi,r0   07fh      ; 456d 44 7f            D.     
+       strz      r3        ; 456f c3               .      
+       retc      un        ; 4570 17               .      
+
+L4571  loda,r2   *L1f51    ; 4571 0e ff 51         ..Q    
+       comi,r0   020h      ; 4574 e4 20            ..     
+       retc      lt        ; 4576 16               .      
+L4577  retc      gt        ; 4577 15               .      
+L4578  birr,r2   L4571     ; 4578 da 77            .w     
+       bsta,un   L4383     ; 457a 3f 43 83         ?C.    
+       bctr,un   L4571     ; 457d 1b 72            .r     
+
+       stri,r2   064h      ; 457f c6 64            .d     
+       anda,r2   L0558     ; 4581 4e 45 58         NEX    
+       rede      r0        ; 4584 54 80            T.     
+       andi,r3   04fh      ; 4586 47 4f            GO     
+       rede      r0        ; 4588 54 4f            TO     
+       addz      r3        ; 458a 83               .      
+       rede      r0        ; 458b 54 48            TH     
+       andi,r1   04eh      ; 458d 45 4e            EN     
+       addi,r2   050h      ; 458f 86 50            .P     
+       rrr       r2        ; 4591 52               R      
+       andr,r1   L4562     ; 4592 49 4e            IN     
+       rede      r0        ; 4594 54 89            T.     
+       andi,r2   04fh      ; 4596 46 4f            FO     
+       rrr       r2        ; 4598 52               R      
+       adda,r0   L0c45     ; 4599 8c 4c 45         .LE    
+       rede      r0        ; 459c 54 8f            T.     
+       andr,r1   L4566     ; 459e 49 46            IF     
+       lpsu                ; 45a0 92               .      
+L45a1  andi,r3   04fh      ; 45a1 47 4f            GO     
+       rrr       r3        ; 45a3 53               S      
+       rede      r1        ; 45a4 55 42            UB     
+
+       db                  ; 45a6 95               .      
+
+       rrr       r2        ; 45a7 52               R      
+       andi,r1   054h      ; 45a8 45 54            ET     
+       rede      r1        ; 45aa 55 52            UR     
+       anda,r2   *L1850    ; 45ac 4e 98 50         N.P    
+       anda,r3   L0b45     ; 45af 4f 4b 45         OKE    
+       bcfr,un   L4577     ; 45b2 9b 43            .C     
+       andz      r1        ; 45b4 41               A      
+       anda,r0   L0c9e     ; 45b5 4c 4c 9e         LL.    
+       rrr       r2        ; 45b8 52               R      
+       andi,r1   041h      ; 45b9 45 41            EA     
+       andi,r0   0a1h      ; 45bb 44 a1            D.     
+       rrr       r2        ; 45bd 52               R      
+       andi,r1   053h      ; 45be 45 53            ES     
+       rede      r0        ; 45c0 54 4f            TO     
+       rrr       r2        ; 45c2 52               R      
+       andi,r1   0a4h      ; 45c3 45 a4            E.     
+       andi,r0   041h      ; 45c5 44 41            DA     
+       rede      r0        ; 45c7 54 41            TA     
+       subi,r3   044h      ; 45c9 a7 44            .D     
+       andr,r1   L459a     ; 45cb 49 4d            IM     
+       subr,r2   L45a1     ; 45cd aa 52            .R     
+       andi,r1   04dh      ; 45cf 45 4d            EM     
+       suba,r1   L1354     ; 45d1 ad 53 54         .ST    
+       anda,r3   L10b0     ; 45d4 4f 50 b0         OP.    
+       andi,r1   04eh      ; 45d7 45 4e            EN     
+       andi,r0   0b3h      ; 45d9 44 b3            D.     
+       rrr       r0        ; 45db 50               P      
+       rrr       r2        ; 45dc 52               R      
+       tpsu      049h      ; 45dd b6 49            .I     
+       anda,r2   L1055     ; 45df 4e 50 55         NPU    
+       rede      r0        ; 45e2 54 b9            T.     
+       lodz      r0        ; 45e4 00               .      
+L45e5  bcta,un   L4761     ; 45e5 1f 47 61         .Ga    
+
+       bcta,un   L4627     ; 45e8 1f 46 27         .F'    
+
+       bcta,un   L4621     ; 45eb 1f 46 21         .F!    
+
+       bcta,un   L4a3b     ; 45ee 1f 4a 3b         .J;    
+
+       bcta,un   L4722     ; 45f1 1f 47 22         .G"    
+
+       bcta,un   L47b1     ; 45f4 1f 47 b1         .G.    
+
+       bcta,un   L467a     ; 45f7 1f 46 7a         .Fz    
+
+       bcta,un   L4642     ; 45fa 1f 46 42         .FB    
+
+       bcta,un   L464f     ; 45fd 1f 46 4f         .FO    
+
+       bcta,un   L49de     ; 4600 1f 49 de         .I.    
+
+       bcta,un   L49fd     ; 4603 1f 49 fd         .I.    
+
+       bcta,un   L4c3f     ; 4606 1f 4c 3f         .L?    
+
+       bcta,un   L46f5     ; 4609 1f 46 f5         .F.    
+
+       bcta,un   L44f9     ; 460c 1f 44 f9         .D.    
+
+       bcta,un   L492a     ; 460f 1f 49 2a         .I*    
+
+       bcta,un   L44f9     ; 4612 1f 44 f9         .D.    
+
+       bcta,un   L49c6     ; 4615 1f 49 c6         .I.    
+
+       bcta,un   L4cc9     ; 4618 1f 4c c9         .L.    
+
+       bcta,un   L4a3b     ; 461b 1f 4a 3b         .J;    
+
+       bcta,un   L4b55     ; 461e 1f 4b 55         .KU    
+
+L4621  bsta,un   L4e53     ; 4621 3f 4e 53         ?NS    
+       bcfa,z    L4504     ; 4624 9c 45 04         .E.    
+L4627  bsta,un   L4199     ; 4627 3f 41 99         ?A.    
+L462a  lodi,r0   052h      ; 462a 04 52            .R     
+       bsta,un   L40b1     ; 462c 3f 40 b1         ?@.    
+       lodi,r0   020h      ; 462f 04 20            ..     
+       bsta,un   L4204     ; 4631 3f 42 04         ?B.    
+       bsta,un   L4252     ; 4634 3f 42 52         ?BR    
+       bcta,z    L44fc     ; 4637 1c 44 fc         .D.    
+       lodi,r0   025h      ; 463a 04 25            .%     
+       bsta,un   L40b1     ; 463c 3f 40 b1         ?@.    
+       bcta,un   L4c9f     ; 463f 1f 4c 9f         .L.    
+
+L4642  lodi,r0   0ffh      ; 4642 04 ff            ..     
+       stra,r0   L1f67     ; 4644 cc 1f 67         ..g    
+       bsta,un   L4199     ; 4647 3f 41 99         ?A.    
+       bsta,un   L474e     ; 464a 3f 47 4e         ?GN    
+       bctr,un   L462a     ; 464d 1b 5b            .[     
+
+L464f  lodi,r0   032h      ; 464f 04 32            .2     
+       bsta,un   L40d7     ; 4651 3f 40 d7         ?@.    
+       loda,r3   L1f6f     ; 4654 0f 1f 6f         ..o    
+       bctr,z    L4666     ; 4657 18 0d            ..     
+L4659  bsta,un   L4827     ; 4659 3f 48 27         ?H'    
+       loda,r0   L1f67     ; 465c 0c 1f 67         ..g    
+       comi,r0   0ffh      ; 465f e4 ff            ..     
+       bcta,z    L47a9     ; 4661 1c 47 a9         .G.    
+       brnr,r3   L4659     ; 4664 5b 73            [s     
+L4666  bcta,un   L4ca3     ; 4666 1f 4c a3         .L.    
+
+L4669  comi,r0   03eh      ; 4669 e4 3e            .>     
+       bcta,z    L4d7c     ; 466b 1c 4d 7c         .M|    
+       comi,r0   03ch      ; 466e e4 3c            .<     
+       bcta,z    L4d7c     ; 4670 1c 4d 7c         .M|    
+       comi,r0   03dh      ; 4673 e4 3d            .=     
+       bcta,z    L4d7c     ; 4675 1c 4d 7c         .M|    
+       eorz      r0        ; 4678 20               .      
+       retc      un        ; 4679 17               .      
+
+L467a  bsta,un   L4d93     ; 467a 3f 4d 93         ?M.    
+       loda,r0   L1db2     ; 467d 0c 1d b2         ...    
+       stra,r0   L1da7     ; 4680 cc 1d a7         ...    
+       bcfr,z    L4695     ; 4683 98 10            ..     
+       loda,r3   L1f6a     ; 4685 0f 1f 6a         ..j    
+       stra,r3   L1da9     ; 4688 cf 1d a9         ...    
+       bctr,z    L4695     ; 468b 18 08            ..     
+L468d  loda,r3   L1d00     ; 468d 0f 5d 00         .].    
+       stra,r3   L1d50     ; 4690 cf 7d 50         .}P    
+       brnr,r3   L468d     ; 4693 5b 78            [x     
+L4695  bsta,un   L4571     ; 4695 3f 45 71         ?Eq    
+       bstr,un   L4669     ; 4698 3b 4f            ;O     
+       bcta,z    L4c8b     ; 469a 1c 4c 8b         .L.    
+       bsta,un   L4578     ; 469d 3f 45 78         ?Ex    
+       bsta,un   L4669     ; 46a0 3f 46 69         ?Fi    
+       bsfa,z    L4578     ; 46a3 bc 45 78         .Ex    
+       bsta,un   L4d93     ; 46a6 3f 4d 93         ?M.    
+       loda,r0   L1da7     ; 46a9 0c 1d a7         ...    
+       bctr,z    L46b9     ; 46ac 18 0b            ..     
+       loda,r0   L1db2     ; 46ae 0c 1d b2         ...    
+       bcta,z    L4caf     ; 46b1 1c 4c af         .L.    
+       bsta,un   L5550     ; 46b4 3f 55 50         ?UP    
+       bctr,un   L46db     ; 46b7 1b 22            ."     
+
+L46b9  loda,r0   L1db2     ; 46b9 0c 1d b2         ...    
+       bcfa,z    L4caf     ; 46bc 9c 4c af         .L.    
+       lodi,r3   000h      ; 46bf 07 00            ..     
+L46c1  coma,r3   L1da9     ; 46c1 ef 1d a9         ...    
+       bctr,z    L46d5     ; 46c4 18 0f            ..     
+       coma,r3   L1f6a     ; 46c6 ef 1f 6a         ..j    
+       bctr,z    L46d5     ; 46c9 18 0a            ..     
+       loda,r3   L1d50     ; 46cb 0f 7d 50         .}P    
+       coma,r3   L1d00     ; 46ce ef 7d 00         .}.    
+       bcfr,z    L46db     ; 46d1 98 08            ..     
+       birr,r3   L46c1     ; 46d3 db 6c            .l     
+L46d5  loda,r0   L1da9     ; 46d5 0c 1d a9         ...    
+       coma,r0   L1f6a     ; 46d8 ec 1f 6a         ..j    
+L46db  bcfr,lt   L46e1     ; 46db 9a 04            ..     
+       lodi,r1   03ch      ; 46dd 05 3c            .<     
+       bctr,un   L46e9     ; 46df 1b 08            ..     
+
+L46e1  bctr,z    L46e7     ; 46e1 18 04            ..     
+       lodi,r1   03eh      ; 46e3 05 3e            .>     
+       bctr,un   L46e9     ; 46e5 1b 02            ..     
+
+L46e7  lodi,r1   03dh      ; 46e7 05 3d            .=     
+L46e9  bsta,un   L4d89     ; 46e9 3f 4d 89         ?M.    
+       comz      r1        ; 46ec e1               .      
+       bcta,z    L4504     ; 46ed 1c 45 04         .E.    
+       brnr,r3   L46e9     ; 46f0 5b 77            [w     
+       bcta,un   L44f9     ; 46f2 1f 44 f9         .D.    
+
+L46f5  lodi,r0   090h      ; 46f5 04 90            ..     
+       bsta,un   L4204     ; 46f7 3f 42 04         ?B.    
+       bcta,un   L44e1     ; 46fa 1f 44 e1         .D.    
+
+       stri,r2   00dh      ; 46fd c6 0d            ..     
+       lodz      r2        ; 46ff 02               .      
+       rede      r0        ; 4700 54 4f            TO     
+       lodi,r0   053h      ; 4702 04 53            .S     
+       rede      r0        ; 4704 54 45            TE     
+       rrr       r0        ; 4706 50               P      
+       lodi,r0   044h      ; 4707 04 44            .D     
+       andz      r1        ; 4709 41               A      
+       rede      r0        ; 470a 54 41            TA     
+L470c  bsta,un   L4571     ; 470c 3f 45 71         ?Eq    
+       loda,r3   L06ff     ; 470f 0f 66 ff         .f.    
+       strz      r1        ; 4712 c1               .      
+L4713  loda,r2   *L1f51    ; 4713 0e ff 51         ..Q    
+       coma,r3   L06ff     ; 4716 ef 26 ff         .&.    
+       retc      gt        ; 4719 15               .      
+       retc      lt        ; 471a 16               .      
+       bsta,un   L4381     ; 471b 3f 43 81         ?C.    
+       bdrr,gt   L4713     ; 471e f9 73            .s     
+       eorz      r0        ; 4720 20               .      
+       retc      un        ; 4721 17               .      
+
+L4722  bsta,un   L47b6     ; 4722 3f 47 b6         ?G.    
+       lodi,r0   0f3h      ; 4725 04 f3            ..     
+       bsta,un   L40b1     ; 4727 3f 40 b1         ?@.    
+       lodi,r3   000h      ; 472a 07 00            ..     
+       bstr,un   L470c     ; 472c 3b 5e            ;^     
+       bcfa,z    L4c8b     ; 472e 9c 4c 8b         .L.    
+       bsta,un   L4d93     ; 4731 3f 4d 93         ?M.    
+       lodi,r3   004h      ; 4734 07 04            ..     
+       bsta,un   L4836     ; 4736 3f 48 36         ?H6    
+       lodi,r3   003h      ; 4739 07 03            ..     
+       bstr,un   L470c     ; 473b 3b 4f            ;O     
+       bctr,z    L4746     ; 473d 18 07            ..     
+       lodi,r1   003h      ; 473f 05 03            ..     
+       bsta,un   L54ec     ; 4741 3f 54 ec         ?T.    
+       bctr,un   L4749     ; 4744 1b 03            ..     
+
+L4746  bsta,un   L4d93     ; 4746 3f 4d 93         ?M.    
+L4749  bstr,un   L474e     ; 4749 3b 03            ;.     
+       bcta,un   L44fc     ; 474b 1f 44 fc         .D.    
+
+L474e  bsta,un   L44e8     ; 474e 3f 44 e8         ?D.    
+       bsta,un   L41e0     ; 4751 3f 41 e0         ?A.    
+       lodi,r0   0e2h      ; 4754 04 e2            ..     
+       bsta,un   L40b1     ; 4756 3f 40 b1         ?@.    
+       lodi,r0   072h      ; 4759 04 72            .r     
+       bsta,un   L40d7     ; 475b 3f 40 d7         ?@.    
+       bcta,un   L4842     ; 475e 1f 48 42         .HB    
+
+L4761  bsta,un   L489c     ; 4761 3f 48 9c         ?H.    
+       lodi,r0   032h      ; 4764 04 32            .2     
+       bsta,un   L40d7     ; 4766 3f 40 d7         ?@.    
+       bsta,un   L4827     ; 4769 3f 48 27         ?H'    
+       lodi,r0   07fh      ; 476c 04 7f            ..     
+       bsta,un   L40c2     ; 476e 3f 40 c2         ?@.    
+       bcfa,z    L4c97     ; 4771 9c 4c 97         .L.    
+       lodi,r3   0f8h      ; 4774 07 f8            ..     
+       bsta,un   L4836     ; 4776 3f 48 36         ?H6    
+       bsta,un   L4842     ; 4779 3f 48 42         ?HB    
+       lodi,r3   004h      ; 477c 07 04            ..     
+       bsta,un   L4836     ; 477e 3f 48 36         ?H6    
+       bsta,un   L55d9     ; 4781 3f 55 d9         ?U.    
+       loda,r3   L1f6c     ; 4784 0f 7f 6c         ..l    
+       bcfr,lt   L4791     ; 4787 9a 08            ..     
+       bsta,un   L5550     ; 4789 3f 55 50         ?UP    
+       bcfr,gt   L4797     ; 478c 99 09            ..     
+       bcta,un   L44e1     ; 478e 1f 44 e1         .D.    
+
+L4791  bsta,un   L5550     ; 4791 3f 55 50         ?UP    
+       bcta,lt   L44e1     ; 4794 1e 44 e1         .D.    
+L4797  lodi,r3   008h      ; 4797 07 08            ..     
+       bsta,un   L4836     ; 4799 3f 48 36         ?H6    
+       lodi,r0   037h      ; 479c 04 37            .7     
+       bsta,un   L40b1     ; 479e 3f 40 b1         ?@.    
+       bsta,un   L4827     ; 47a1 3f 48 27         ?H'    
+       lodi,r3   00ch      ; 47a4 07 0c            ..     
+       bsta,un   L4836     ; 47a6 3f 48 36         ?H6    
+L47a9  lodi,r0   02eh      ; 47a9 04 2e            ..     
+       bsta,un   L40b1     ; 47ab 3f 40 b1         ?@.    
+       bcta,un   L44fc     ; 47ae 1f 44 fc         .D.    
+
+L47b1  bstr,un   L47b6     ; 47b1 3b 03            ;.     
+       bcta,un   L44e4     ; 47b3 1f 44 e4         .D.    
+
+L47b6  bsta,un   L489c     ; 47b6 3f 48 9c         ?H.    
+       bsta,un   L4571     ; 47b9 3f 45 71         ?Eq    
+       comi,r0   03dh      ; 47bc e4 3d            .=     
+       bcfa,z    L4c8b     ; 47be 9c 4c 8b         .L.    
+       bsta,un   L49f7     ; 47c1 3f 49 f7         ?I.    
+       loda,r0   L1da7     ; 47c4 0c 1d a7         ...    
+       eora,r0   L1db2     ; 47c7 2c 1d b2         ,..    
+       bctr,z    L47d4     ; 47ca 18 08            ..     
+       comi,r0   0fbh      ; 47cc e4 fb            ..     
+       bcta,z    L4827     ; 47ce 1c 48 27         .H'    
+       bcta,un   L4caf     ; 47d1 1f 4c af         .L.    
+
+L47d4  bsta,un   L41e0     ; 47d4 3f 41 e0         ?A.    
+L47d7  lodi,r0   072h      ; 47d7 04 72            .r     
+       bsta,un   L40b1     ; 47d9 3f 40 b1         ?@.    
+       lodi,r0   02fh      ; 47dc 04 2f            ./     
+       bsta,un   L40b1     ; 47de 3f 40 b1         ?@.    
+       loda,r1   *L1f65    ; 47e1 0d 9f 65         ..e    
+       bctr,z    L47fa     ; 47e4 18 14            ..     
+       addi,r1   001h      ; 47e6 85 01            ..     
+       lodi,r0   042h      ; 47e8 04 42            .B     
+       bsta,un   L4206     ; 47ea 3f 42 06         ?B.    
+       lodi,r0   032h      ; 47ed 04 32            .2     
+       bsta,un   L4204     ; 47ef 3f 42 04         ?B.    
+       lodi,r0   051h      ; 47f2 04 51            .Q     
+       bsta,un   L40b1     ; 47f4 3f 40 b1         ?@.    
+       bsta,un   L57e4     ; 47f7 3f 57 e4         ?W.    
+L47fa  bsta,un   L43f4     ; 47fa 3f 43 f4         ?C.    
+       lodi,r0   027h      ; 47fd 04 27            .'     
+       bsta,un   L40b1     ; 47ff 3f 40 b1         ?@.    
+       bsta,un   L41c3     ; 4802 3f 41 c3         ?A.    
+       loda,r0   L1db1     ; 4805 0c 1d b1         ...    
+       bcfr,z    L4820     ; 4808 98 16            ..     
+       loda,r1   L1f6a     ; 480a 0d 1f 6a         ..j    
+       suba,r1   *L1f65    ; 480d ad 9f 65         ..e    
+       ppsl      008h      ; 4810 77 08            w.     
+       subz      r0        ; 4812 a0               .      
+       cpsl      008h      ; 4813 75 08            u.     
+       stra,r0   L1f57     ; 4815 cc 1f 57         ..W    
+       stra,r1   L1f58     ; 4818 cd 1f 58         ..X    
+       lodi,r0   0c7h      ; 481b 04 c7            ..     
+       bsta,un   L40f5     ; 481d 3f 40 f5         ?@.    
+L4820  loda,r0   L1f6a     ; 4820 0c 1f 6a         ..j    
+       stra,r0   *L1f65    ; 4823 cc 9f 65         ..e    
+       retc      un        ; 4826 17               .      
+
+L4827  lodi,r1   004h      ; 4827 05 04            ..     
+       loda,r3   L1f6f     ; 4829 0f 1f 6f         ..o    
+L482c  loda,r3   L1f70     ; 482c 0f 5f 70         ._p    
+       stra,r1   *L1f4f    ; 482f cd df 4f         ..O    
+       brnr,r1   L482c     ; 4832 59 78            Yx     
+       bctr,un   L4839     ; 4834 1b 03            ..     
+
+L4836  adda,r3   L1f6f     ; 4836 8f 1f 6f         ..o    
+L4839  comi,r3   07bh      ; 4839 e7 7b            .{     
+       bcta,gt   L4c8f     ; 483b 1d 4c 8f         .L.    
+       stra,r3   L1f6f     ; 483e cf 1f 6f         ..o    
+       retc      un        ; 4841 17               .      
+
+L4842  lodi,r1   004h      ; 4842 05 04            ..     
+       lodi,r3   004h      ; 4844 07 04            ..     
+       bstr,un   L4836     ; 4846 3b 6e            ;n     
+L4848  loda,r1   *L1f57    ; 4848 0d df 57         ..W    
+       stra,r3   L1f70     ; 484b cf 5f 70         ._p    
+       brnr,r1   L4848     ; 484e 59 78            Yx     
+       retc      un        ; 4850 17               .      
+
+       stri,r0   002h      ; 4851 c4 02            ..     
+       brna,r2   L0008     ; 4853 5e 00 08         ^..    
+       bsna,r0   *L4c1f    ; 4856 7c cc 1f         |..    
+       rede      r3        ; 4859 57 20            W.     
+       stra,r0   L1daa     ; 485b cc 1d aa         ...    
+       lodz      r3        ; 485e 03               .      
+       addi,r3   001h      ; 485f 87 01            ..     
+       strz      r1        ; 4861 c1               .      
+L4862  comi,r1   02dh      ; 4862 e5 2d            .-     
+       bctr,lt   L486a     ; 4864 1a 04            ..     
+       subi,r1   02dh      ; 4866 a5 2d            .-     
+       bctr,un   L4862     ; 4868 1b 78            .x     
+
+L486a  loda,r1   L1eb4     ; 486a 0d 7e b4         .~.    
+       bctr,z    L4883     ; 486d 18 14            ..     
+       comz      r3        ; 486f e3               .      
+       bctr,z    L4887     ; 4870 18 15            ..     
+       addi,r1   019h      ; 4872 85 19            ..     
+       loda,r0   L1daa     ; 4874 0c 1d aa         ...    
+       addi,r0   001h      ; 4877 84 01            ..     
+       stra,r0   L1daa     ; 4879 cc 1d aa         ...    
+       comi,r0   02dh      ; 487c e4 2d            .-     
+       bcfr,z    L4862     ; 487e 98 62            .b     
+       bcta,un   L4c93     ; 4880 1f 4c 93         .L.    
+
+L4883  lodz      r3        ; 4883 03               .      
+       stra,r1   L1eb4     ; 4884 cd 7e b4         .~.    
+L4887  lodz      r1        ; 4887 01               .      
+       addz      r0        ; 4888 80               .      
+       addz      r0        ; 4889 80               .      
+       stra,r0   L1f58     ; 488a cc 1f 58         ..X    
+       retc      un        ; 488d 17               .      
+
+L488e  comi,r0   007h      ; 488e e4 07            ..     
+       bcta,gt   L4c8b     ; 4890 1d 4c 8b         .L.    
+       addi,r0   001h      ; 4893 84 01            ..     
+L4895  addi,r3   01ah      ; 4895 87 1a            ..     
+       bdrr,z    L4895     ; 4897 f8 7c            .|     
+       bcta,un   L4381     ; 4899 1f 43 81         .C.    
+
+L489c  subi,r0   041h      ; 489c a4 41            .A     
+       strz      r3        ; 489e c3               .      
+       bsta,un   L4e4e     ; 489f 3f 4e 4e         ?NN    
+       bctr,z    L48ac     ; 48a2 18 08            ..     
+       comi,r0   028h      ; 48a4 e4 28            .(     
+       bctr,z    L48bb     ; 48a6 18 13            ..     
+       comi,r0   024h      ; 48a8 e4 24            .$     
+       bctr,z    L48e4     ; 48aa 18 38            .8     
+L48ac  bstr,z    L488e     ; 48ac 38 60            8`     
+       bsta,un   L4855     ; 48ae 3f 48 55         ?HU    
+       lodi,r0   037h      ; 48b1 04 37            .7     
+       bsta,un   L40b1     ; 48b3 3f 40 b1         ?@.    
+       lodi,r0   0ffh      ; 48b6 04 ff            ..     
+       bcta,un   L490d     ; 48b8 1f 49 0d         .I.    
+
+L48bb  rrl       r3        ; 48bb d3               .      
+       loda,r3   L1efb     ; 48bc 0f 7e fb         .~.    
+       bctr,z    L48dd     ; 48bf 18 1c            ..     
+       stra,r0   L1f4f     ; 48c1 cc 1f 4f         ..O    
+       loda,r3   L1efb     ; 48c4 0f 3e fb         .>.    
+       stra,r0   L1f50     ; 48c7 cc 1f 50         ..P    
+       bsta,un   L4d93     ; 48ca 3f 4d 93         ?M.    
+       bsta,un   L5134     ; 48cd 3f 51 34         ?Q4    
+       bsta,un   L5193     ; 48d0 3f 51 93         ?Q.    
+       lodi,r0   036h      ; 48d3 04 36            .6     
+       bsta,un   L40f5     ; 48d5 3f 40 f5         ?@.    
+       lodi,r0   083h      ; 48d8 04 83            ..     
+       bsta,un   L40c2     ; 48da 3f 40 c2         ?@.    
+L48dd  bcfa,lt   L4cab     ; 48dd 9e 4c ab         .L.    
+       lodi,r0   0ffh      ; 48e0 04 ff            ..     
+       bctr,un   L490d     ; 48e2 1b 29            .)     
+
+L48e4  bsta,un   L4578     ; 48e4 3f 45 78         ?Ex    
+       comi,r0   028h      ; 48e7 e4 28            .(     
+       bctr,z    L4911     ; 48e9 18 26            .&     
+       lodi,r0   0e3h      ; 48eb 04 e3            ..     
+       bsta,un   L40d7     ; 48ed 3f 40 d7         ?@.    
+       lodz      r3        ; 48f0 03               .      
+       ppsl      010h      ; 48f1 77 10            w.     
+       strz      r1        ; 48f3 c1               .      
+       lodi,r0   0eeh      ; 48f4 04 ee            ..     
+       bsna,r1   L4206     ; 48f6 7d 42 06         }B.    
+       bsta,un   L4f94     ; 48f9 3f 4f 94         ?O.    
+       stra,r3   L1f68     ; 48fc cf 1f 68         ..h    
+       loda,r0   L1f57     ; 48ff 0c 1f 57         ..W    
+       stra,r0   L1f67     ; 4902 cc 1f 67         ..g    
+       cpsl      010h      ; 4905 75 10            u.     
+       lodi,r0   0ffh      ; 4907 04 ff            ..     
+L4909  stra,r0   L1db1     ; 4909 cc 1d b1         ...    
+       eorz      r0        ; 490c 20               .      
+L490d  stra,r0   L1da7     ; 490d cc 1d a7         ...    
+       retc      un        ; 4910 17               .      
+
+L4911  stra,r3   L1dd5     ; 4911 cf 1d d5         ...    
+       bsta,un   L4d93     ; 4914 3f 4d 93         ?M.    
+       loda,r3   L1dd5     ; 4917 0f 1d d5         ...    
+       bsta,un   L5115     ; 491a 3f 51 15         ?Q.    
+       lodi,r0   0e6h      ; 491d 04 e6            ..     
+       bsta,un   L40b1     ; 491f 3f 40 b1         ?@.    
+       lodi,r0   0f7h      ; 4922 04 f7            ..     
+       bsta,un   L40b1     ; 4924 3f 40 b1         ?@.    
+       eorz      r0        ; 4927 20               .      
+       bctr,un   L4909     ; 4928 1b 5f            ._     
+
+L492a  subi,r0   041h      ; 492a a4 41            .A     
+       strz      r3        ; 492c c3               .      
+       bsta,un   L4578     ; 492d 3f 45 78         ?Ex    
+       comi,r0   024h      ; 4930 e4 24            .$     
+       bctr,z    L494c     ; 4932 18 18            ..     
+       lodz      r3        ; 4934 03               .      
+       addz      r0        ; 4935 80               .      
+       strz      r3        ; 4936 c3               .      
+       loda,r3   L1efb     ; 4937 0f 7e fb         .~.    
+       bcfr,z    L4952     ; 493a 98 16            ..     
+       loda,r0   L1f59     ; 493c 0c 1f 59         ..Y    
+       stra,r3   L1efb     ; 493f cf 7e fb         .~.    
+       loda,r0   L1f5a     ; 4942 0c 1f 5a         ..Z    
+       stra,r3   L1efb     ; 4945 cf 3e fb         .>.    
+       lodi,r3   0ffh      ; 4948 07 ff            ..     
+       bctr,un   L4955     ; 494a 1b 09            ..     
+
+L494c  bsta,un   L4381     ; 494c 3f 43 81         ?C.    
+       loda,r3   L1f2f     ; 494f 0f 7f 2f         ../    
+L4952  bcfa,z    L4cab     ; 4952 9c 4c ab         .L.    
+L4955  stra,r3   L1da7     ; 4955 cf 1d a7         ...    
+       bsta,un   L4d93     ; 4958 3f 4d 93         ?M.    
+       eorz      r0        ; 495b 20               .      
+       stra,r0   L1f55     ; 495c cc 1f 55         ..U    
+       stra,r0   L1f55     ; 495f cc 3f 55         .?U    
+       bsta,un   L513b     ; 4962 3f 51 3b         ?Q;    
+       loda,r3   L1da7     ; 4965 0f 1d a7         ...    
+       bcfr,lt   L4974     ; 4968 9a 0a            ..     
+       bsta,un   L5193     ; 496a 3f 51 93         ?Q.    
+       lodi,r0   058h      ; 496d 04 58            .X     
+       bsta,un   L40b1     ; 496f 3f 40 b1         ?@.    
+       bctr,un   L4982     ; 4972 1b 0e            ..     
+
+L4974  loda,r0   L1f56     ; 4974 0c 1f 56         ..V    
+       stra,r3   L1f2f     ; 4977 cf 7f 2f         ../    
+       bsta,un   L50f5     ; 497a 3f 50 f5         ?P.    
+       lodi,r0   057h      ; 497d 04 57            .W     
+       bsta,un   L40b1     ; 497f 3f 40 b1         ?@.    
+L4982  lodi,r0   031h      ; 4982 04 31            .1     
+       bsta,un   L40b1     ; 4984 3f 40 b1         ?@.    
+       lodi,r0   036h      ; 4987 04 36            .6     
+       bsta,un   L40f5     ; 4989 3f 40 f5         ?@.    
+       bsta,un   L41e0     ; 498c 3f 41 e0         ?A.    
+       bsta,un   L43a1     ; 498f 3f 43 a1         ?C.    
+       bsta,un   L41c3     ; 4992 3f 41 c3         ?A.    
+       loda,r3   L1da7     ; 4995 0f 1d a7         ...    
+       bcfr,lt   L49b2     ; 4998 9a 18            ..     
+       lodi,r0   086h      ; 499a 04 86            ..     
+       bsta,un   L40f5     ; 499c 3f 40 f5         ?@.    
+L499f  lodi,r0   0c6h      ; 499f 04 c6            ..     
+       bsta,un   L40f5     ; 49a1 3f 40 f5         ?@.    
+       loda,r2   *L1f51    ; 49a4 0e ff 51         ..Q    
+       comi,r0   02ch      ; 49a7 e4 2c            .,     
+       bcfa,z    L44e4     ; 49a9 9c 44 e4         .D.    
+       bsta,un   L4578     ; 49ac 3f 45 78         ?Ex    
+       bcta,un   L492a     ; 49af 1f 49 2a         .I*    
+
+L49b2  loda,r1   L1f56     ; 49b2 0d 1f 56         ..V    
+L49b5  ppsl      010h      ; 49b5 77 10            w.     
+       eorz      r0        ; 49b7 20               .      
+       stra,r0   *L1f57    ; 49b8 cc 9f 57         ..W    
+       lodi,r0   077h      ; 49bb 04 77            .w     
+       bsta,un   L4204     ; 49bd 3f 42 04         ?B.    
+       cpsl      010h      ; 49c0 75 10            u.     
+       bdrr,gt   L49b5     ; 49c2 f9 71            .q     
+       bctr,un   L499f     ; 49c4 1b 59            .Y     
+
+L49c6  bsta,un   L44eb     ; 49c6 3f 44 eb         ?D.    
+L49c9  bsta,un   L4e4e     ; 49c9 3f 4e 4e         ?NN    
+       bctr,z    L49c9     ; 49cc 18 7b            .{     
+L49ce  bsta,un   L41e0     ; 49ce 3f 41 e0         ?A.    
+       lodi,r0   0b2h      ; 49d1 04 b2            ..     
+       bsta,un   L40b1     ; 49d3 3f 40 b1         ?@.    
+       lodi,r0   0c1h      ; 49d6 04 c1            ..     
+       stra,r0   L1f6c     ; 49d8 cc 1f 6c         ..l    
+       bcta,un   L4cc9     ; 49db 1f 4c c9         .L.    
+
+L49de  bstr,un   L49f7     ; 49de 3b 17            ;.     
+       bstr,un   L49f7     ; 49e0 3b 15            ;.     
+       bsta,un   L5134     ; 49e2 3f 51 34         ?Q4    
+       loda,r0   L1f56     ; 49e5 0c 1f 56         ..V    
+       stra,r0   L1dac     ; 49e8 cc 1d ac         ...    
+       bsta,un   L5134     ; 49eb 3f 51 34         ?Q4    
+       loda,r0   L1dac     ; 49ee 0c 1d ac         ...    
+       stra,r0   *L1f55    ; 49f1 cc 9f 55         ..U    
+       bcta,un   L44e4     ; 49f4 1f 44 e4         .D.    
+
+L49f7  bsta,un   L4578     ; 49f7 3f 45 78         ?Ex    
+       bcta,un   L4d93     ; 49fa 1f 4d 93         .M.    
+
+L49fd  bstr,un   L49f7     ; 49fd 3b 78            ;x     
+       bsta,un   L5134     ; 49ff 3f 51 34         ?Q4    
+       bsta,un   L41e0     ; 4a02 3f 41 e0         ?A.    
+       bsta,un   *L5f55    ; 4a05 3f df 55         ?.U    
+       bcta,un   L44e1     ; 4a08 1f 44 e1         .D.    
+
+L4a0b  lodi,r3   000h      ; 4a0b 07 00            ..     
+       comi,r0   023h      ; 4a0d e4 23            .#     
+       bcfr,z    L4a23     ; 4a0f 98 12            ..     
+       bstr,un   L49f7     ; 4a11 3b 64            ;d     
+       bsta,un   L5134     ; 4a13 3f 51 34         ?Q4    
+       loda,r2   *L1f51    ; 4a16 0e ff 51         ..Q    
+       comi,r0   02ch      ; 4a19 e4 2c            .,     
+       bsta,z    L4381     ; 4a1b 3c 43 81         <C.    
+       loda,r3   L1f56     ; 4a1e 0f 1f 56         ..V    
+       andi,r3   003h      ; 4a21 47 03            G.     
+L4a23  stra,r3   L1dd4     ; 4a23 cf 1d d4         ...    
+       loda,r3   L1db8     ; 4a26 0f 7d b8         .}.    
+       stra,r0   L1db8     ; 4a29 cc 1d b8         ...    
+       rrl       r3        ; 4a2c d3               .      
+       rrl       r3        ; 4a2d d3               .      
+       lodi,r1   0fch      ; 4a2e 05 fc            ..     
+L4a30  loda,r3   L1806     ; 4a30 0f 38 06         .8.    
+       stra,r1   L1cd4     ; 4a33 cd 7c d4         .|.    
+       birr,r1   L4a30     ; 4a36 d9 78            .x     
+       bcta,un   L4571     ; 4a38 1f 45 71         .Eq    
+
+L4a3b  bstr,un   L4a0b     ; 4a3b 3b 4e            ;N     
+       bcta,lt   L4a94     ; 4a3d 1e 4a 94         .J.    
+       comi,r0   03ah      ; 4a40 e4 3a            .:     
+       bcta,z    L4a94     ; 4a42 1c 4a 94         .J.    
+L4a45  bsta,un   L4d93     ; 4a45 3f 4d 93         ?M.    
+       loda,r0   L1db2     ; 4a48 0c 1d b2         ...    
+       bsfa,z    L4aa3     ; 4a4b bc 4a a3         .J.    
+       loda,r1   L1f6a     ; 4a4e 0d 1f 6a         ..j    
+       bctr,z    L4a64     ; 4a51 18 11            ..     
+       lodz      r1        ; 4a53 01               .      
+       adda,r0   L1db8     ; 4a54 8c 1d b8         ...    
+       stra,r0   L1db8     ; 4a57 cc 1d b8         ...    
+       lodi,r3   0ffh      ; 4a5a 07 ff            ..     
+L4a5c  loda,r3   L1d00     ; 4a5c 0f 3d 00         .=.    
+       bsta,un   *L5dd2    ; 4a5f 3f dd d2         ?..    
+       bdrr,gt   L4a5c     ; 4a62 f9 78            .x     
+L4a64  loda,r2   *L1f51    ; 4a64 0e ff 51         ..Q    
+       comi,r0   03bh      ; 4a67 e4 3b            .;     
+       bctr,z    L4a88     ; 4a69 18 1d            ..     
+       comi,r0   02ch      ; 4a6b e4 2c            .,     
+       bcfr,z    L4a94     ; 4a6d 98 25            .%     
+       lodi,r3   0f3h      ; 4a6f 07 f3            ..     
+L4a71  addi,r3   00dh      ; 4a71 87 0d            ..     
+       coma,r3   L1db8     ; 4a73 ef 1d b8         ...    
+       bctr,lt   L4a71     ; 4a76 1a 79            .y     
+       bctr,z    L4a88     ; 4a78 18 0e            ..     
+       lodz      r3        ; 4a7a 03               .      
+       suba,r3   L1db8     ; 4a7b af 1d b8         ...    
+       stra,r0   L1db8     ; 4a7e cc 1d b8         ...    
+L4a81  lodi,r0   020h      ; 4a81 04 20            ..     
+       bsta,un   *L5dd2    ; 4a83 3f dd d2         ?..    
+       bdrr,un   L4a81     ; 4a86 fb 79            .y     
+L4a88  bsta,un   L4578     ; 4a88 3f 45 78         ?Ex    
+       bctr,lt   L4a97     ; 4a8b 1a 0a            ..     
+       comi,r0   03ah      ; 4a8d e4 3a            .:     
+       bctr,z    L4a97     ; 4a8f 18 06            ..     
+       bcta,un   L4a45     ; 4a91 1f 4a 45         .JE    
+
+L4a94  bsta,un   L4c7d     ; 4a94 3f 4c 7d         ?L}    
+L4a97  loda,r3   L1dd4     ; 4a97 0f 1d d4         ...    
+       loda,r0   L1db8     ; 4a9a 0c 1d b8         ...    
+       stra,r3   L1db8     ; 4a9d cf 7d b8         .}.    
+       bcta,un   L44e4     ; 4aa0 1f 44 e4         .D.    
+
+L4aa3  lodi,r1   000h      ; 4aa3 05 00            ..     
+       ppsl      010h      ; 4aa5 77 10            w.     
+       loda,r3   L1f6f     ; 4aa7 0f 1f 6f         ..o    
+       lodi,r2   000h      ; 4aaa 06 00            ..     
+       lodi,r1   006h      ; 4aac 05 06            ..     
+L4aae  loda,r3   L1f70     ; 4aae 0f 5f 70         ._p    
+       bstr,un   L4af1     ; 4ab1 3b 3e            ;>     
+       loda,r3   L1f70     ; 4ab3 0f 7f 70         ..p    
+       rrr       r0        ; 4ab6 50               P      
+       rrr       r0        ; 4ab7 50               P      
+       rrr       r0        ; 4ab8 50               P      
+       rrr       r0        ; 4ab9 50               P      
+       bstr,un   L4af1     ; 4aba 3b 35            ;5     
+       brnr,r1   L4aae     ; 4abc 59 70            Yp     
+       loda,r3   L1f70     ; 4abe 0f 5f 70         ._p    
+       bsta,un   L4839     ; 4ac1 3f 48 39         ?H9    
+       strz      r1        ; 4ac4 c1               .      
+       lodz      r1        ; 4ac5 01               .      
+       bctr,lt   L4acc     ; 4ac6 1a 04            ..     
+       lodi,r0   020h      ; 4ac8 04 20            ..     
+       bctr,un   L4ace     ; 4aca 1b 02            ..     
+
+L4acc  lodi,r0   02dh      ; 4acc 04 2d            .-     
+L4ace  bsta,un   L4b13     ; 4ace 3f 4b 13         ?K.    
+       andi,r1   07fh      ; 4ad1 45 7f            E.     
+       comi,r1   040h      ; 4ad3 e5 40            .@     
+       bctr,z    L4aec     ; 4ad5 18 15            ..     
+       comi,r1   006h      ; 4ad7 e5 06            ..     
+       bcfr,gt   L4ae3     ; 4ad9 99 08            ..     
+       lodi,r1   001h      ; 4adb 05 01            ..     
+       lodi,r2   005h      ; 4add 06 05            ..     
+       bstr,un   L4afc     ; 4adf 3b 1b            ;.     
+       bctr,un   L4b1e     ; 4ae1 1b 3b            .;     
+
+L4ae3  lodz      r1        ; 4ae3 01               .      
+       bctr,z    L4aec     ; 4ae4 18 06            ..     
+       subi,r0   001h      ; 4ae6 a4 01            ..     
+       comz      r2        ; 4ae8 e2               .      
+       bctr,lt   L4aec     ; 4ae9 1a 01            ..     
+       strz      r2        ; 4aeb c2               .      
+L4aec  bstr,un   L4afc     ; 4aec 3b 0e            ;.     
+       cpsl      010h      ; 4aee 75 10            u.     
+       retc      un        ; 4af0 17               .      
+
+L4af1  andi,r0   00fh      ; 4af1 44 0f            D.     
+       stra,r1   L1da1     ; 4af3 cd 5d a1         .].    
+       retc      z         ; 4af6 14               .      
+       lodz      r1        ; 4af7 01               .      
+       comz      r2        ; 4af8 e2               .      
+       retc      lt        ; 4af9 16               .      
+       strz      r2        ; 4afa c2               .      
+       retc      un        ; 4afb 17               .      
+
+L4afc  lodi,r3   0ffh      ; 4afc 07 ff            ..     
+       lodz      r1        ; 4afe 01               .      
+       bctr,z    L4b0d     ; 4aff 18 0c            ..     
+L4b01  loda,r3   L1da1     ; 4b01 0f 3d a1         .=.    
+       iori,r0   030h      ; 4b04 64 30            d0     
+       bstr,un   L4b13     ; 4b06 3b 0b            ;.     
+       lodz      r3        ; 4b08 03               .      
+       comz      r2        ; 4b09 e2               .      
+       retc      z         ; 4b0a 14               .      
+       bdrr,gt   L4b01     ; 4b0b f9 74            .t     
+L4b0d  lodi,r0   02eh      ; 4b0d 04 2e            ..     
+       bstr,un   L4b13     ; 4b0f 3b 02            ;.     
+       bctr,un   L4b01     ; 4b11 1b 6e            .n     
+
+L4b13  cpsl      010h      ; 4b13 75 10            u.     
+       stra,r1   L1cff     ; 4b15 cd 3c ff         .<.    
+       stra,r1   L1f6a     ; 4b18 cd 1f 6a         ..j    
+       ppsl      010h      ; 4b1b 77 10            w.     
+       retc      un        ; 4b1d 17               .      
+
+L4b1e  lodi,r0   045h      ; 4b1e 04 45            .E     
+       bstr,un   L4b13     ; 4b20 3b 71            ;q     
+       loda,r3   L1f6f     ; 4b22 0f 1f 6f         ..o    
+       loda,r3   L1f70     ; 4b25 0f 7f 70         ..p    
+       andi,r0   07fh      ; 4b28 44 7f            D.     
+       subi,r0   001h      ; 4b2a a4 01            ..     
+       strz      r2        ; 4b2c c2               .      
+
+       db                  ; 4b2d f6               .      
+
+       halt                ; 4b2e 40               @      
+       bctr,z    L4b35     ; 4b2f 18 04            ..     
+       lodi,r0   02bh      ; 4b31 04 2b            .+     
+       bctr,un   L4b3b     ; 4b33 1b 06            ..     
+
+L4b35  lodi,r0   080h      ; 4b35 04 80            ..     
+       subz      r2        ; 4b37 a2               .      
+       strz      r2        ; 4b38 c2               .      
+       lodi,r0   02dh      ; 4b39 04 2d            .-     
+L4b3b  bstr,un   L4b13     ; 4b3b 3b 56            ;V     
+       eorz      r0        ; 4b3d 20               .      
+L4b3e  subi,r2   00ah      ; 4b3e a6 0a            ..     
+       bctr,lt   L4b44     ; 4b40 1a 02            ..     
+       birr,r0   L4b3e     ; 4b42 d8 7a            .z     
+L4b44  addi,r2   00ah      ; 4b44 86 0a            ..     
+       iorz      r0        ; 4b46 60               `      
+       bctr,z    L4b4d     ; 4b47 18 04            ..     
+       addi,r0   030h      ; 4b49 84 30            .0     
+       bstr,un   L4b13     ; 4b4b 3b 46            ;F     
+L4b4d  lodz      r2        ; 4b4d 02               .      
+       addi,r0   030h      ; 4b4e 84 30            .0     
+       bstr,un   L4b13     ; 4b50 3b 41            ;A     
+       cpsl      010h      ; 4b52 75 10            u.     
+       retc      un        ; 4b54 17               .      
+
+L4b55  bsta,un   L4a0b     ; 4b55 3f 4a 0b         ?J.    
+       comi,r0   022h      ; 4b58 e4 22            ."     
+       bcfr,z    L4b76     ; 4b5a 98 1a            ..     
+       bsta,un   L4d93     ; 4b5c 3f 4d 93         ?M.    
+       loda,r1   L1f6a     ; 4b5f 0d 1f 6a         ..j    
+       lodz      r1        ; 4b62 01               .      
+       adda,r0   L1db8     ; 4b63 8c 1d b8         ...    
+       stra,r0   L1db8     ; 4b66 cc 1d b8         ...    
+       lodi,r3   0ffh      ; 4b69 07 ff            ..     
+L4b6b  loda,r3   L1d00     ; 4b6b 0f 3d 00         .=.    
+       bsta,un   *L5dd2    ; 4b6e 3f dd d2         ?..    
+       bdrr,gt   L4b6b     ; 4b71 f9 78            .x     
+       bsta,un   L4578     ; 4b73 3f 45 78         ?Ex    
+L4b76  bsta,un   L41e0     ; 4b76 3f 41 e0         ?A.    
+L4b79  lodi,r0   03fh      ; 4b79 04 3f            .?     
+       stra,r0   L1f69     ; 4b7b cc 1f 69         ..i    
+       lodi,r0   0a0h      ; 4b7e 04 a0            ..     
+       bsta,un   L40d7     ; 4b80 3f 40 d7         ?@.    
+       bsta,un   L4127     ; 4b83 3f 41 27         ?A'    
+       bcta,z    L4cc9     ; 4b86 1c 4c c9         .L.    
+       bctr,gt   L4b9a     ; 4b89 19 0f            ..     
+       bstr,un   L4ba4     ; 4b8b 3b 17            ;.     
+L4b8d  bcta,z    L4a94     ; 4b8d 1c 4a 94         .J.    
+       loda,r1   L1da7     ; 4b90 0d 1d a7         ...    
+       bctr,z    L4b9f     ; 4b93 18 0a            ..     
+       lodi,r0   025h      ; 4b95 04 25            .%     
+       bsta,un   L40b1     ; 4b97 3f 40 b1         ?@.    
+L4b9a  bsta,un   L4c7d     ; 4b9a 3f 4c 7d         ?L}    
+       bctr,un   L4b79     ; 4b9d 1b 5a            .Z     
+
+L4b9f  bsta,un   L4c27     ; 4b9f 3f 4c 27         ?L'    
+       bctr,un   L4b8d     ; 4ba2 1b 69            .i     
+
+L4ba4  bsta,un   L41c3     ; 4ba4 3f 41 c3         ?A.    
+       lodi,r0   052h      ; 4ba7 04 52            .R     
+       bsta,un   L40b1     ; 4ba9 3f 40 b1         ?@.    
+       loda,r2   *L1f51    ; 4bac 0e ff 51         ..Q    
+       comi,r0   00dh      ; 4baf e4 0d            ..     
+       retc      z         ; 4bb1 14               .      
+       comi,r0   03ah      ; 4bb2 e4 3a            .:     
+       retc      z         ; 4bb4 14               .      
+       bsta,un   L489c     ; 4bb5 3f 48 9c         ?H.    
+       bsta,un   L4571     ; 4bb8 3f 45 71         ?Eq    
+       comi,r0   02ch      ; 4bbb e4 2c            .,     
+       bsta,z    L4578     ; 4bbd 3c 45 78         <Ex    
+       bsta,un   L41e0     ; 4bc0 3f 41 e0         ?A.    
+       bstr,un   L4bf4     ; 4bc3 3b 2f            ;/     
+       stra,r0   L1db3     ; 4bc5 cc 1d b3         ...    
+       loda,r2   *L1f51    ; 4bc8 0e ff 51         ..Q    
+       comi,r0   00dh      ; 4bcb e4 0d            ..     
+       bcfr,z    L4bd1     ; 4bcd 98 02            ..     
+       iorz      r0        ; 4bcf 60               `      
+       retc      un        ; 4bd0 17               .      
+
+L4bd1  loda,r0   L1da7     ; 4bd1 0c 1d a7         ...    
+       bctr,z    L4c08     ; 4bd4 18 32            .2     
+       bsta,un   L4d93     ; 4bd6 3f 4d 93         ?M.    
+       loda,r0   L1db2     ; 4bd9 0c 1d b2         ...    
+       bctr,z    L4be1     ; 4bdc 18 03            ..     
+       loda,r0   L1db3     ; 4bde 0c 1d b3         ...    
+L4be1  bcta,z    L4caf     ; 4be1 1c 4c af         .L.    
+       bsta,un   L4571     ; 4be4 3f 45 71         ?Eq    
+       comi,r0   02ch      ; 4be7 e4 2c            .,     
+       bsta,z    L4578     ; 4be9 3c 45 78         <Ex    
+       bstr,un   L4bfe     ; 4bec 3b 10            ;.     
+       bsta,un   L4827     ; 4bee 3f 48 27         ?H'    
+       bcta,un   L4ba4     ; 4bf1 1f 4b a4         .K.    
+
+L4bf4  loda,r0   L1f5d     ; 4bf4 0c 1f 5d         ..]    
+       stra,r0   L1f51     ; 4bf7 cc 1f 51         ..Q    
+       loda,r2   L1f5e     ; 4bfa 0e 1f 5e         ..^    
+       retc      un        ; 4bfd 17               .      
+
+L4bfe  stra,r2   L1f5e     ; 4bfe ce 1f 5e         ..^    
+       loda,r0   L1f51     ; 4c01 0c 1f 51         ..Q    
+       stra,r0   L1f5d     ; 4c04 cc 1f 5d         ..]    
+       retc      un        ; 4c07 17               .      
+
+L4c08  bsta,un   L4571     ; 4c08 3f 45 71         ?Eq    
+       comi,r0   022h      ; 4c0b e4 22            ."     
+       bctr,z    L4c32     ; 4c0d 18 23            .#     
+       lodi,r1   000h      ; 4c0f 05 00            ..     
+L4c11  loda,r2   *L1f51    ; 4c11 0e ff 51         ..Q    
+       comi,r0   02ch      ; 4c14 e4 2c            .,     
+       bctr,z    L4c24     ; 4c16 18 0c            ..     
+       comi,r0   00dh      ; 4c18 e4 0d            ..     
+       bctr,z    L4c27     ; 4c1a 18 0b            ..     
+       stra,r1   L1cff     ; 4c1c cd 3c ff         .<.    
+L4c1f  bsta,un   L4381     ; 4c1f 3f 43 81         ?C.    
+       bctr,un   L4c11     ; 4c22 1b 6d            .m     
+
+L4c24  bsta,un   L4381     ; 4c24 3f 43 81         ?C.    
+L4c27  stra,r1   L1f6a     ; 4c27 cd 1f 6a         ..j    
+L4c2a  bstr,un   L4bfe     ; 4c2a 3b 52            ;R     
+       bsta,un   L47d7     ; 4c2c 3f 47 d7         ?G.    
+       bcta,un   L4ba4     ; 4c2f 1f 4b a4         .K.    
+
+L4c32  bsta,un   L4d93     ; 4c32 3f 4d 93         ?M.    
+       bsta,un   L4571     ; 4c35 3f 45 71         ?Eq    
+       comi,r0   02ch      ; 4c38 e4 2c            .,     
+       bsta,z    L4578     ; 4c3a 3c 45 78         <Ex    
+       bctr,un   L4c2a     ; 4c3d 1b 6b            .k     
+
+L4c3f  lodi,r0   0a9h      ; 4c3f 04 a9            ..     
+       bsta,un   L40b1     ; 4c41 3f 40 b1         ?@.    
+       bsta,un   L41e0     ; 4c44 3f 41 e0         ?A.    
+L4c47  bsta,un   L4ba4     ; 4c47 3f 4b a4         ?K.    
+       bctr,z    L4c75     ; 4c4a 18 29            .)     
+       lodi,r0   025h      ; 4c4c 04 25            .%     
+       bsta,un   L40b1     ; 4c4e 3f 40 b1         ?@.    
+       bsta,un   L4bf4     ; 4c51 3f 4b f4         ?K.    
+L4c54  bsta,un   L4e4e     ; 4c54 3f 4e 4e         ?NN    
+       bctr,z    L4c54     ; 4c57 18 7b            .{     
+       lodi,r3   008h      ; 4c59 07 08            ..     
+       bsta,un   L470c     ; 4c5b 3f 47 0c         ?G.    
+       bcfr,z    L4c65     ; 4c5e 98 05            ..     
+       bsta,un   L4bfe     ; 4c60 3f 4b fe         ?K.    
+       bctr,un   L4c47     ; 4c63 1b 62            .b     
+
+L4c65  loda,r2   *L1f51    ; 4c65 0e ff 51         ..Q    
+       comi,r0   00dh      ; 4c68 e4 0d            ..     
+       bctr,z    L4c54     ; 4c6a 18 68            .h     
+       comi,r0   003h      ; 4c6c e4 03            ..     
+       bctr,z    L4ca7     ; 4c6e 18 37            .7     
+       bsta,un   L4381     ; 4c70 3f 43 81         ?C.    
+       bctr,un   L4c65     ; 4c73 1b 70            .p     
+
+L4c75  lodi,r0   09ah      ; 4c75 04 9a            ..     
+       bsta,un   L40b1     ; 4c77 3f 40 b1         ?@.    
+       bcta,un   L44e4     ; 4c7a 1f 44 e4         .D.    
+
+L4c7d  lodi,r0   00dh      ; 4c7d 04 0d            ..     
+       bsta,un   *L5dd2    ; 4c7f 3f dd d2         ?..    
+       eorz      r0        ; 4c82 20               .      
+       stra,r0   L1db8     ; 4c83 cc 1d b8         ...    
+       lodi,r0   00ah      ; 4c86 04 0a            ..     
+       bcta,un   *L5dd2    ; 4c88 1f dd d2         ...    
+
+L4c8b  lodi,r0   000h      ; 4c8b 04 00            ..     
+       bctr,un   L4cb1     ; 4c8d 1b 22            ."     
+
+L4c8f  lodi,r0   007h      ; 4c8f 04 07            ..     
+       bctr,un   L4cb1     ; 4c91 1b 1e            ..     
+
+L4c93  lodi,r0   00dh      ; 4c93 04 0d            ..     
+       bctr,un   L4cb1     ; 4c95 1b 1a            ..     
+
+L4c97  lodi,r0   016h      ; 4c97 04 16            ..     
+       bctr,un   L4cb1     ; 4c99 1b 16            ..     
+
+L4c9b  lodi,r0   01bh      ; 4c9b 04 1b            ..     
+       bctr,un   L4cb1     ; 4c9d 1b 12            ..     
+
+L4c9f  lodi,r0   01fh      ; 4c9f 04 1f            ..     
+       bctr,un   L4cb1     ; 4ca1 1b 0e            ..     
+
+L4ca3  lodi,r0   024h      ; 4ca3 04 24            .$     
+       bctr,un   L4cb1     ; 4ca5 1b 0a            ..     
+
+L4ca7  lodi,r0   02bh      ; 4ca7 04 2b            .+     
+       bctr,un   L4cb1     ; 4ca9 1b 06            ..     
+
+L4cab  lodi,r0   043h      ; 4cab 04 43            .C     
+       bctr,un   L4cb1     ; 4cad 1b 02            ..     
+
+L4caf  lodi,r0   047h      ; 4caf 04 47            .G     
+L4cb1  bstr,un   L4ce1     ; 4cb1 3b 2e            ;.     
+       eorz      r0        ; 4cb3 20               .      
+       stra,r0   L1f6f     ; 4cb4 cc 1f 6f         ..o    
+       bsta,un   L41c3     ; 4cb7 3f 41 c3         ?A.    
+L4cba  brnr,r2   L4cbf     ; 4cba 5a 03            Z.     
+       bsta,un   L43eb     ; 4cbc 3f 43 eb         ?C.    
+L4cbf  loda,r2   *L1f51    ; 4cbf 0e df 51         ..Q    
+       comi,r0   00dh      ; 4cc2 e4 0d            ..     
+       bctr,gt   L4cba     ; 4cc4 19 74            .t     
+       bsta,un   L41ec     ; 4cc6 3f 41 ec         ?A.    
+L4cc9  lodi,r0   0d1h      ; 4cc9 04 d1            ..     
+       bsta,un   L40b1     ; 4ccb 3f 40 b1         ?@.    
+       loda,r0   L1f6c     ; 4cce 0c 1f 6c         ..l    
+       iori,r0   080h      ; 4cd1 64 80            d.     
+L4cd3  stra,r0   L1f6c     ; 4cd3 cc 1f 6c         ..l    
+       lodi,r0   020h      ; 4cd6 04 20            ..     
+       bsta,un   L4204     ; 4cd8 3f 42 04         ?B.    
+       bsta,un   L42a5     ; 4cdb 3f 42 a5         ?B.    
+       bcta,un   L406c     ; 4cde 1f 40 6c         .@l    
+
+L4ce1  cpsl      018h      ; 4ce1 75 18            u.     
+       strz      r1        ; 4ce3 c1               .      
+       bsta,un   L409d     ; 4ce4 3f 40 9d         ?@.    
+       bsta,un   L4c7d     ; 4ce7 3f 4c 7d         ?L}    
+       bstr,un   L4cee     ; 4cea 3b 02            ;.     
+       lodi,r1   052h      ; 4cec 05 52            .R     
+L4cee  loda,r1   L0d18     ; 4cee 0d 6d 18         .m.    
+       retc      z         ; 4cf1 14               .      
+       bsta,un   *L5dd2    ; 4cf2 3f dd d2         ?..    
+       birr,r1   L4cee     ; 4cf5 d9 77            .w     
+       retc      un        ; 4cf7 17               .      
+
+L4cf8  lodi,r0   03ch      ; 4cf8 04 3c            .<     
+       bstr,un   L4ce1     ; 4cfa 3b 65            ;e     
+       lodi,r0   001h      ; 4cfc 04 01            ..     
+       bctr,un   L4cd3     ; 4cfe 1b 53            .S     
+
+L4d00  eorz      r0        ; 4d00 20               .      
+       bctr,un   L4d11     ; 4d01 1b 0e            ..     
+
+L4d03  eorz      r0        ; 4d03 20               .      
+       stra,r0   L1f6c     ; 4d04 cc 1f 6c         ..l    
+       lodi,r0   030h      ; 4d07 04 30            .0     
+       bctr,un   L4d11     ; 4d09 1b 06            ..     
+
+L4d0b  lodi,r0   04ch      ; 4d0b 04 4c            .L     
+       bctr,un   L4d11     ; 4d0d 1b 02            ..     
+
+L4d0f  lodi,r0   035h      ; 4d0f 04 35            .5     
+L4d11  bstr,un   L4ce1     ; 4d11 3b 4e            ;N     
+       bcta,un   L406c     ; 4d13 1f 40 6c         .@l    
+
+       stri,r2   059h      ; 4d16 c6 59            .Y     
+       rrr       r3        ; 4d18 53               S      
+       brnr,r1   L4ce9     ; 4d19 59 4e            YN     
+       rede      r0        ; 4d1b 54 41            TA     
+       brnr,r0   L4d1f     ; 4d1d 58 00            X.     
+L4d1f  rrr       r3        ; 4d1f 53               S      
+       rede      r0        ; 4d20 54 41            TA     
+       andz      r3        ; 4d22 43               C      
+       andr,r3   L4d45     ; 4d23 4b 20            K.     
+       anda,r3   L1645     ; 4d25 4f 56 45         OVE    
+       rrr       r2        ; 4d28 52               R      
+       andi,r2   04ch      ; 4d29 46 4c            FL     
+       anda,r3   L1700     ; 4d2b 4f 57 00         OW.    
+       anda,r2   L0558     ; 4d2e 4e 45 58         NEX    
+       rede      r0        ; 4d31 54 00            T.     
+       andz      r1        ; 4d33 41               A      
+       rrr       r2        ; 4d34 52               R      
+       andi,r3   000h      ; 4d35 47 00            G.     
+       anda,r2   L0f47     ; 4d37 4e 4f 47         NOG    
+       anda,r3   L0052     ; 4d3a 4f 00 52         O.R    
+       andi,r1   054h      ; 4d3d 45 54            ET     
+       rede      r1        ; 4d3f 55 52            UR     
+       anda,r2   L0044     ; 4d41 4e 00 44         N.D    
+       andz      r1        ; 4d44 41               A      
+L4d45  rede      r0        ; 4d45 54 41            TA     
+       lodz      r0        ; 4d47 00               .      
+       andi,r2   049h      ; 4d48 46 49            FI     
+       anda,r0   L0500     ; 4d4a 4c 45 00         LE.    
+       andz      r2        ; 4d4d 42               B      
+       rede      r1        ; 4d4e 55 46            UF     
+       andi,r2   045h      ; 4d50 46 45            FE     
+       rrr       r2        ; 4d52 52               R      
+       lodz      r0        ; 4d53 00               .      
+       anda,r1   L054d     ; 4d54 4d 45 4d         MEM    
+       anda,r3   L1259     ; 4d57 4f 52 59         ORY    
+       lodz      r0        ; 4d5a 00               .      
+       andi,r0   049h      ; 4d5b 44 49            DI     
+       anda,r1   L0054     ; 4d5d 4d 00 54         M.T    
+       brnr,r1   L4d32     ; 4d60 59 50            YP     
+       andi,r1   000h      ; 4d62 45 00            E.     
+       andz      r3        ; 4d64 43               C      
+       anda,r3   L0e54     ; 4d65 4f 4e 54         ONT    
+       eora,r2   L0020     ; 4d68 2e 00 20         ...    
+       andi,r1   052h      ; 4d6b 45 52            ER     
+       rrr       r2        ; 4d6d 52               R      
+       anda,r3   L1200     ; 4d6e 4f 52 00         OR.    
+       stri,r0   008h      ; 4d71 c4 08            ..     
+       brna,r1   L005d     ; 4d73 5d 00 5d         ].]    
+       rrr       r0        ; 4d76 50               P      
+       brna,r3   L655e     ; 4d77 5f 65 5e         _e^    
+       comz      r1        ; 4d7a e1               .      
+L4d7b  eorz      r0        ; 4d7b 20               .      
+L4d7c  loda,r3   L1fea     ; 4d7c 0f 1f ea         ...    
+       comi,r3   014h      ; 4d7f e7 14            ..     
+       bcta,gt   L4c8f     ; 4d81 1d 4c 8f         .L.    
+       stra,r3   L1feb     ; 4d84 cf 7f eb         ...    
+       birr,r3   L4d8f     ; 4d87 db 06            ..     
+L4d89  loda,r3   L1fea     ; 4d89 0f 1f ea         ...    
+       loda,r3   L1feb     ; 4d8c 0f 5f eb         ._.    
+L4d8f  stra,r3   L1fea     ; 4d8f cf 1f ea         ...    
+       retc      un        ; 4d92 17               .      
+
+L4d93  bstr,un   L4d7b     ; 4d93 3b 66            ;f     
+       stra,r0   L1f6a     ; 4d95 cc 1f 6a         ..j    
+       loda,r0   L1f6f     ; 4d98 0c 1f 6f         ..o    
+       stra,r0   L1db2     ; 4d9b cc 1d b2         ...    
+       bctr,un   L4da5     ; 4d9e 1b 05            ..     
+
+L4da0  bstr,un   L4d7c     ; 4da0 3b 5a            ;Z     
+       bsta,un   L4381     ; 4da2 3f 43 81         ?C.    
+L4da5  bstr,un   L4d7b     ; 4da5 3b 54            ;T     
+       bsta,un   L4571     ; 4da7 3f 45 71         ?Eq    
+       comi,r0   02dh      ; 4daa e4 2d            .-     
+       bcfr,z    L4db5     ; 4dac 98 07            ..     
+       lodi,r0   049h      ; 4dae 04 49            .I     
+L4db0  bstr,un   L4d7c     ; 4db0 3b 4a            ;J     
+       bsta,un   L4381     ; 4db2 3f 43 81         ?C.    
+L4db5  bstr,un   L4d7b     ; 4db5 3b 44            ;D     
+       bctr,un   L4dbf     ; 4db7 1b 06            ..     
+
+L4db9  bsta,un   L4d7c     ; 4db9 3f 4d 7c         ?M|    
+       bsta,un   L4381     ; 4dbc 3f 43 81         ?C.    
+L4dbf  bsta,un   L4e53     ; 4dbf 3f 4e 53         ?NS    
+       bcta,z    L4e64     ; 4dc2 1c 4e 64         .Nd    
+       comi,r0   02eh      ; 4dc5 e4 2e            ..     
+       bcta,z    L4e64     ; 4dc7 1c 4e 64         .Nd    
+       comi,r0   028h      ; 4dca e4 28            .(     
+       bcta,z    L4da0     ; 4dcc 1c 4d a0         .M.    
+       comi,r0   022h      ; 4dcf e4 22            ."     
+       bcta,z    L500f     ; 4dd1 1c 50 0f         .P.    
+       comi,r0   041h      ; 4dd4 e4 41            .A     
+       bctr,lt   L4ddd     ; 4dd6 1a 05            ..     
+       comi,r0   05ah      ; 4dd8 e4 5a            .Z     
+       bcfa,gt   L4f45     ; 4dda 9d 4f 45         .OE    
+L4ddd  bcta,un   L4c8b     ; 4ddd 1f 4c 8b         .L.    
+
+L4de0  bsta,un   L4f11     ; 4de0 3f 4f 11         ?O.    
+L4de3  bsta,un   L4d89     ; 4de3 3f 4d 89         ?M.    
+       comi,r0   02ah      ; 4de6 e4 2a            .*     
+       bsta,z    L5734     ; 4de8 3c 57 34         <W4    
+       comi,r0   02fh      ; 4deb e4 2f            ./     
+       bsta,z    L5724     ; 4ded 3c 57 24         <W$    
+       loda,r2   *L1f51    ; 4df0 0e ff 51         ..Q    
+       comi,r0   02ah      ; 4df3 e4 2a            .*     
+       bctr,z    L4db9     ; 4df5 18 42            .B     
+       comi,r0   02fh      ; 4df7 e4 2f            ./     
+       bcta,z    L4db9     ; 4df9 1c 4d b9         .M.    
+       bsta,un   L4d89     ; 4dfc 3f 4d 89         ?M.    
+       comi,r0   02bh      ; 4dff e4 2b            .+     
+       bsta,z    L55d9     ; 4e01 3c 55 d9         <U.    
+       comi,r0   02dh      ; 4e04 e4 2d            .-     
+       bsta,z    L55cc     ; 4e06 3c 55 cc         <U.    
+       comi,r0   049h      ; 4e09 e4 49            .I     
+       bstr,z    L4e40     ; 4e0b 38 33            83     
+       loda,r2   *L1f51    ; 4e0d 0e ff 51         ..Q    
+       comi,r0   02bh      ; 4e10 e4 2b            .+     
+       bcta,z    L4db0     ; 4e12 1c 4d b0         .M.    
+       comi,r0   02dh      ; 4e15 e4 2d            .-     
+       bcta,z    L4db0     ; 4e17 1c 4d b0         .M.    
+L4e1a  bsta,un   L4d89     ; 4e1a 3f 4d 89         ?M.    
+       bcfr,z    L4e29     ; 4e1d 98 0a            ..     
+       loda,r0   L1f6f     ; 4e1f 0c 1f 6f         ..o    
+       suba,r0   L1db2     ; 4e22 ac 1d b2         ...    
+       stra,r0   L1db2     ; 4e25 cc 1d b2         ...    
+       retc      un        ; 4e28 17               .      
+
+L4e29  comi,r0   028h      ; 4e29 e4 28            .(     
+       bcta,z    L4de0     ; 4e2b 1c 4d e0         .M.    
+       tmi,???   0c0h      ; 4e2e f4               .      
+       nop                 ; 4e2f c0               .      
+       bcta,z    L4f22     ; 4e30 1c 4f 22         .O"    
+       iorz      r0        ; 4e33 60               `      
+       bcfa,lt   L4c8b     ; 4e34 9e 4c 8b         .L.    
+       andi,r0   01fh      ; 4e37 44 1f            D.     
+       strz      r3        ; 4e39 c3               .      
+       addz      r3        ; 4e3a 83               .      
+       addz      r3        ; 4e3b 83               .      
+       strz      r3        ; 4e3c c3               .      
+       bcfa,un   L51f2     ; 4e3d 9f 51 f2         .Q.    
+L4e40  loda,r3   L1f6f     ; 4e40 0f 1f 6f         ..o    
+       loda,r3   L1f6c     ; 4e43 0f 7f 6c         ..l    
+       eori,r0   080h      ; 4e46 24 80            $.     
+       stra,r3   L1f6c     ; 4e48 cf 7f 6c         ..l    
+       bcta,un   L4d89     ; 4e4b 1f 4d 89         .M.    
+
+L4e4e  birr,r2   L4e53     ; 4e4e da 03            ..     
+       bsta,un   L4383     ; 4e50 3f 43 83         ?C.    
+L4e53  loda,r2   *L1f51    ; 4e53 0e ff 51         ..Q    
+       comi,r0   020h      ; 4e56 e4 20            ..     
+       bctr,z    L4e4e     ; 4e58 18 74            .t     
+       comi,r0   039h      ; 4e5a e4 39            .9     
+       retc      gt        ; 4e5c 15               .      
+       comi,r0   030h      ; 4e5d e4 30            .0     
+       retc      lt        ; 4e5f 16               .      
+       subi,r0   030h      ; 4e60 a4 30            .0     
+       comz      r0        ; 4e62 e0               .      
+       retc      un        ; 4e63 17               .      
+
+L4e64  eorz      r0        ; 4e64 20               .      
+       lodi,r1   006h      ; 4e65 05 06            ..     
+L4e67  stra,r1   L1da1     ; 4e67 cd 5d a1         .].    
+       brnr,r1   L4e67     ; 4e6a 59 7b            Y{     
+       strz      r3        ; 4e6c c3               .      
+       lodi,r0   001h      ; 4e6d 04 01            ..     
+       stra,r0   L1da8     ; 4e6f cc 1d a8         ...    
+       bstr,un   L4e53     ; 4e72 3b 5f            ;_     
+       bctr,un   L4e78     ; 4e74 1b 02            ..     
+
+L4e76  bstr,un   L4e4e     ; 4e76 3b 56            ;V     
+L4e78  bctr,z    L4e89     ; 4e78 18 0f            ..     
+       comi,r0   045h      ; 4e7a e4 45            .E     
+       bctr,z    L4ea4     ; 4e7c 18 26            .&     
+       comi,r0   02eh      ; 4e7e e4 2e            ..     
+       bcfa,z    L4ed0     ; 4e80 9c 4e d0         .N.    
+       eorz      r0        ; 4e83 20               .      
+       stra,r0   L1da8     ; 4e84 cc 1d a8         ...    
+       bctr,un   L4e76     ; 4e87 1b 6d            .m     
+
+L4e89  brnr,r0   L4e96     ; 4e89 58 0b            X.     
+       brnr,r1   L4e96     ; 4e8b 59 09            Y.     
+       loda,r0   L1da8     ; 4e8d 0c 1d a8         ...    
+       bcfr,z    L4e76     ; 4e90 98 64            .d     
+       lodi,r0   0ffh      ; 4e92 04 ff            ..     
+       bctr,un   L4ea0     ; 4e94 1b 0a            ..     
+
+L4e96  comi,r1   006h      ; 4e96 e5 06            ..     
+       bctr,z    L4e9d     ; 4e98 18 03            ..     
+       stra,r1   L1da0     ; 4e9a cd 3d a0         .=.    
+L4e9d  loda,r0   L1da8     ; 4e9d 0c 1d a8         ...    
+L4ea0  addz      r3        ; 4ea0 83               .      
+       strz      r3        ; 4ea1 c3               .      
+       bctr,un   L4e76     ; 4ea2 1b 52            .R     
+
+L4ea4  bsta,un   L4e4e     ; 4ea4 3f 4e 4e         ?NN    
+       bctr,z    L4eba     ; 4ea7 18 11            ..     
+       comi,r0   02bh      ; 4ea9 e4 2b            .+     
+       bctr,z    L4eb4     ; 4eab 18 07            ..     
+       comi,r0   02dh      ; 4ead e4 2d            .-     
+       bcfa,z    L4c8b     ; 4eaf 9c 4c 8b         .L.    
+       iori,r3   080h      ; 4eb2 67 80            g.     
+L4eb4  bsta,un   L4e4e     ; 4eb4 3f 4e 4e         ?NN    
+       bcfa,z    L4c8b     ; 4eb7 9c 4c 8b         .L.    
+L4eba  strz      r1        ; 4eba c1               .      
+       bsta,un   L4e4e     ; 4ebb 3f 4e 4e         ?NN    
+       bcfr,z    L4ec8     ; 4ebe 98 08            ..     
+L4ec0  addi,r0   00ah      ; 4ec0 84 0a            ..     
+       bdrr,gt   L4ec0     ; 4ec2 f9 7c            .|     
+       strz      r1        ; 4ec4 c1               .      
+       bsta,un   L4578     ; 4ec5 3f 45 78         ?Ex    
+L4ec8  lodz      r3        ; 4ec8 03               .      
+       bctr,lt   L4ece     ; 4ec9 1a 03            ..     
+       addz      r1        ; 4ecb 81               .      
+       bctr,un   L4ecf     ; 4ecc 1b 01            ..     
+
+L4ece  subz      r1        ; 4ece a1               .      
+L4ecf  strz      r3        ; 4ecf c3               .      
+L4ed0  lodi,r0   07fh      ; 4ed0 04 7f            ..     
+       andz      r3        ; 4ed2 43               C      
+       bstr,un   L4ed8     ; 4ed3 3b 03            ;.     
+       bcta,un   L4de3     ; 4ed5 1f 4d e3         .M.    
+
+L4ed8  loda,r3   L1f6f     ; 4ed8 0f 1f 6f         ..o    
+       brnr,r1   L4edf     ; 4edb 59 02            Y.     
+       lodi,r0   040h      ; 4edd 04 40            .@     
+L4edf  lodi,r1   0ffh      ; 4edf 05 ff            ..     
+       bctr,un   L4ef1     ; 4ee1 1b 0e            ..     
+
+L4ee3  comi,r1   005h      ; 4ee3 e5 05            ..     
+       bctr,z    L4ef6     ; 4ee5 18 0f            ..     
+       loda,r1   L1da1     ; 4ee7 0d 3d a1         .=.    
+       rrl       r0        ; 4eea d0               .      
+       rrl       r0        ; 4eeb d0               .      
+       rrl       r0        ; 4eec d0               .      
+       rrl       r0        ; 4eed d0               .      
+       iora,r1   L1da1     ; 4eee 6d 3d a1         m=.    
+L4ef1  stra,r3   L1f70     ; 4ef1 cf 7f 70         ..p    
+       birr,r3   L4ee3     ; 4ef4 db 6d            .m     
+L4ef6  bcta,un   L4839     ; 4ef6 1f 48 39         .H9    
+
+L4ef9  andi,r0   01fh      ; 4ef9 44 1f            D.     
+       strz      r3        ; 4efb c3               .      
+       bsta,un   L5115     ; 4efc 3f 51 15         ?Q.    
+       loda,r0   *L1f55    ; 4eff 0c 9f 55         ..U    
+       stra,r0   L1dab     ; 4f02 cc 1d ab         ...    
+       eorz      r0        ; 4f05 20               .      
+       loda,r3   L1f58     ; 4f06 0f 1f 58         ..X    
+       stra,r0   L1f58     ; 4f09 cc 1f 58         ..X    
+       bstr,un   L4f11     ; 4f0c 3b 03            ;.     
+       bcta,un   L4fcb     ; 4f0e 1f 4f cb         .O.    
+
+L4f11  loda,r2   *L1f51    ; 4f11 0e ff 51         ..Q    
+       comi,r0   029h      ; 4f14 e4 29            .)     
+       bcfa,z    L4c8b     ; 4f16 9c 4c 8b         .L.    
+       bcta,un   L4578     ; 4f19 1f 45 78         .Ex    
+
+L4f1c  lodz      r1        ; 4f1c 01               .      
+       iori,r0   0c0h      ; 4f1d 64 c0            d.     
+       bcta,un   L4da0     ; 4f1f 1f 4d a0         .M.    
+
+L4f22  tmi,???   0e0h      ; 4f22 f4               .      
+       comz      r0        ; 4f23 e0               .      
+       bctr,z    L4ef9     ; 4f24 18 53            .S     
+       andi,r0   01fh      ; 4f26 44 1f            D.     
+       addz      r0        ; 4f28 80               .      
+       strz      r3        ; 4f29 c3               .      
+       loda,r3   L1efb     ; 4f2a 0f 7e fb         .~.    
+       stra,r0   L1f57     ; 4f2d cc 1f 57         ..W    
+       loda,r3   L1efb     ; 4f30 0f 3e fb         .>.    
+       stra,r0   L1f58     ; 4f33 cc 1f 58         ..X    
+       bsta,un   L5134     ; 4f36 3f 51 34         ?Q4    
+       bsta,un   L5193     ; 4f39 3f 51 93         ?Q.    
+       lodi,r0   076h      ; 4f3c 04 76            .v     
+       bsta,un   L40f5     ; 4f3e 3f 40 f5         ?@.    
+       bstr,un   L4f11     ; 4f41 3b 4e            ;N     
+       bctr,un   L4f70     ; 4f43 1b 2b            .+     
+
+L4f45  subi,r0   041h      ; 4f45 a4 41            .A     
+       strz      r1        ; 4f47 c1               .      
+       strz      r3        ; 4f48 c3               .      
+       eorz      r0        ; 4f49 20               .      
+       stra,r0   L1db3     ; 4f4a cc 1d b3         ...    
+       stra,r2   L1f58     ; 4f4d ce 1f 58         ..X    
+       loda,r0   L1f51     ; 4f50 0c 1f 51         ..Q    
+       stra,r0   L1f57     ; 4f53 cc 1f 57         ..W    
+       bsta,un   L4381     ; 4f56 3f 43 81         ?C.    
+       loda,r2   *L1f51    ; 4f59 0e ff 51         ..Q    
+       comi,r0   020h      ; 4f5c e4 20            ..     
+       bcfr,gt   L4f6d     ; 4f5e 99 0d            ..     
+       comi,r0   037h      ; 4f60 e4 37            .7     
+       bctr,gt   L4f84     ; 4f62 19 20            ..     
+       comi,r0   030h      ; 4f64 e4 30            .0     
+       bctr,lt   L4f84     ; 4f66 1a 1c            ..     
+       subi,r0   030h      ; 4f68 a4 30            .0     
+       bsta,un   L488e     ; 4f6a 3f 48 8e         ?H.    
+L4f6d  bsta,un   L4855     ; 4f6d 3f 48 55         ?HU    
+L4f70  bsta,un   L4842     ; 4f70 3f 48 42         ?HB    
+       bsta,un   L4571     ; 4f73 3f 45 71         ?Eq    
+       bcta,un   L4de3     ; 4f76 1f 4d e3         .M.    
+
+L4f79  loda,r2   *L1f51    ; 4f79 0e ff 51         ..Q    
+       subi,r0   041h      ; 4f7c a4 41            .A     
+       strz      r3        ; 4f7e c3               .      
+       bsta,un   L4381     ; 4f7f 3f 43 81         ?C.    
+       bctr,un   L4f6d     ; 4f82 1b 69            .i     
+
+L4f84  comi,r0   028h      ; 4f84 e4 28            .(     
+       bcta,z    L4f1c     ; 4f86 1c 4f 1c         .O.    
+       comi,r0   041h      ; 4f89 e4 41            .A     
+       bcfa,lt   L5026     ; 4f8b 9e 50 26         .P&    
+       comi,r0   024h      ; 4f8e e4 24            .$     
+       bctr,z    L4fb6     ; 4f90 18 24            .$     
+       bctr,un   L4f6d     ; 4f92 1b 59            .Y     
+
+L4f94  eorz      r0        ; 4f94 20               .      
+       stra,r0   L1f58     ; 4f95 cc 1f 58         ..X    
+       loda,r0   L1f61     ; 4f98 0c 1f 61         ..a    
+       loda,r3   L1f62     ; 4f9b 0f 1f 62         ..b    
+       stra,r0   L1f57     ; 4f9e cc 1f 57         ..W    
+       lodz      r1        ; 4fa1 01               .      
+       retc      z         ; 4fa2 14               .      
+L4fa3  loda,r1   L1ee1     ; 4fa3 0d 5e e1         .^.    
+       addz      r3        ; 4fa6 83               .      
+       strz      r3        ; 4fa7 c3               .      
+       ppsl      008h      ; 4fa8 77 08            w.     
+       eorz      r0        ; 4faa 20               .      
+       adda,r0   L1f57     ; 4fab 8c 1f 57         ..W    
+       stra,r0   L1f57     ; 4fae cc 1f 57         ..W    
+       cpsl      008h      ; 4fb1 75 08            u.     
+       brnr,r1   L4fa3     ; 4fb3 59 6e            Yn     
+       retc      un        ; 4fb5 17               .      
+
+L4fb6  bsta,un   L4578     ; 4fb6 3f 45 78         ?Ex    
+       comi,r0   028h      ; 4fb9 e4 28            .(     
+       bcfr,z    L4fc3     ; 4fbb 98 06            ..     
+       lodz      r1        ; 4fbd 01               .      
+       iori,r0   0e0h      ; 4fbe 64 e0            d.     
+       bcta,un   L4da0     ; 4fc0 1f 4d a0         .M.    
+
+L4fc3  loda,r1   L1ee1     ; 4fc3 0d 7e e1         .~.    
+       stra,r0   L1dab     ; 4fc6 cc 1d ab         ...    
+       bstr,un   L4f94     ; 4fc9 3b 49            ;I     
+L4fcb  loda,r1   L1f6a     ; 4fcb 0d 1f 6a         ..j    
+       loda,r0   L1dab     ; 4fce 0c 1d ab         ...    
+       addz      r1        ; 4fd1 81               .      
+       stra,r0   L1f6a     ; 4fd2 cc 1f 6a         ..j    
+L4fd5  coma,r1   L1f6a     ; 4fd5 ed 1f 6a         ..j    
+       bcfr,lt   L4fef     ; 4fd8 9a 15            ..     
+       birr,r3   L4fe4     ; 4fda db 08            ..     
+       loda,r0   L1f57     ; 4fdc 0c 1f 57         ..W    
+       addi,r0   001h      ; 4fdf 84 01            ..     
+       stra,r0   L1f57     ; 4fe1 cc 1f 57         ..W    
+L4fe4  loda,r3   *L1f57    ; 4fe4 0f ff 57         ..W    
+       stra,r1   L1cff     ; 4fe7 cd 3c ff         .<.    
+       bctr,un   L4fd5     ; 4fea 1b 69            .i     
+
+L4fec  bsta,un   L4f11     ; 4fec 3f 4f 11         ?O.    
+L4fef  stra,r1   L1f6a     ; 4fef cd 1f 6a         ..j    
+       comi,r1   0a0h      ; 4ff2 e5 a0            ..     
+       bcta,gt   L4c93     ; 4ff4 1d 4c 93         .L.    
+       loda,r2   *L1f51    ; 4ff7 0e ff 51         ..Q    
+       comi,r0   02bh      ; 4ffa e4 2b            .+     
+       bctr,z    L5009     ; 4ffc 18 0b            ..     
+       loda,r0   L1fea     ; 4ffe 0c 1f ea         ...    
+       subi,r0   002h      ; 5001 a4 02            ..     
+       stra,r0   L1fea     ; 5003 cc 1f ea         ...    
+       bcta,un   L4e1a     ; 5006 1f 4e 1a         .N.    
+
+L5009  bsta,un   L4578     ; 5009 3f 45 78         ?Ex    
+       bcta,un   L4dbf     ; 500c 1f 4d bf         .M.    
+
+L500f  loda,r1   L1f6a     ; 500f 0d 1f 6a         ..j    
+L5012  bsta,un   L4381     ; 5012 3f 43 81         ?C.    
+       loda,r2   *L1f51    ; 5015 0e ff 51         ..Q    
+       comi,r0   022h      ; 5018 e4 22            ."     
+       bctr,z    L5021     ; 501a 18 05            ..     
+       stra,r1   L1d00     ; 501c cd 7d 00         .}.    
+       birr,r1   L5012     ; 501f d9 71            .q     
+L5021  bsta,un   L4578     ; 5021 3f 45 78         ?Ex    
+       bctr,un   L4fef     ; 5024 1b 49            .I     
+
+L5026  lodi,r3   0ffh      ; 5026 07 ff            ..     
+       lodi,r1   001h      ; 5028 05 01            ..     
+L502a  loda,r2   L1f58     ; 502a 0e 1f 58         ..X    
+       loda,r0   L1f57     ; 502d 0c 1f 57         ..W    
+       stra,r0   L1f51     ; 5030 cc 1f 51         ..Q    
+       bctr,un   L5038     ; 5033 1b 03            ..     
+
+L5035  bsta,un   L4381     ; 5035 3f 43 81         ?C.    
+L5038  loda,r3   L1059     ; 5038 0f 30 59         .0Y    
+       bctr,z    L5049     ; 503b 18 0c            ..     
+       coma,r2   *L1f51    ; 503d ee ff 51         ..Q    
+       bctr,z    L5035     ; 5040 18 73            .s     
+L5042  loda,r3   L1059     ; 5042 0f 30 59         .0Y    
+       bcfr,z    L5042     ; 5045 98 7b            .{     
+       birr,r1   L502a     ; 5047 d9 61            .a     
+L5049  comi,r3   051h      ; 5049 e7 51            .Q     
+L504b  bcta,z    L4f79     ; 504b 1c 4f 79         .Oy    
+       bsta,un   L4571     ; 504e 3f 45 71         ?Eq    
+       lodz      r1        ; 5051 01               .      
+       iori,r0   080h      ; 5052 64 80            d.     
+       bcta,un   L4da0     ; 5054 1f 4d a0         .M.    
+
+       stri,r2   052h      ; 5057 c6 52            .R     
+L5059  andr,r1   L5029     ; 5059 49 4e            IN     
+       rede      r0        ; 505b 54 00            T.     
+       andz      r1        ; 505d 41               A      
+       andz      r2        ; 505e 42               B      
+       rrr       r3        ; 505f 53               S      
+       lodz      r0        ; 5060 00               .      
+       andz      r3        ; 5061 43               C      
+       andr,r0   L5036     ; 5062 48 52            HR     
+       eori,r0   000h      ; 5064 24 00            $.     
+       rrr       r2        ; 5066 52               R      
+       anda,r2   L0400     ; 5067 4e 44 00         ND.    
+       rede      r0        ; 506a 54 41            TA     
+       andz      r2        ; 506c 42               B      
+       lodz      r0        ; 506d 00               .      
+       anda,r0   L054e     ; 506e 4c 45 4e         LEN    
+       lodz      r0        ; 5071 00               .      
+       rrr       r3        ; 5072 53               S      
+       rrr       r1        ; 5073 51               Q      
+       rrr       r2        ; 5074 52               R      
+       lodz      r0        ; 5075 00               .      
+       anda,r0   L0546     ; 5076 4c 45 46         LEF    
+       rede      r0        ; 5079 54 24            T$     
+       lodz      r0        ; 507b 00               .      
+       anda,r1   L0944     ; 507c 4d 49 44         MID    
+       eori,r0   000h      ; 507f 24 00            $.     
+       rrr       r2        ; 5081 52               R      
+       andr,r1   L504b     ; 5082 49 47            IG     
+       andr,r0   L505a     ; 5084 48 54            HT     
+       eori,r0   000h      ; 5086 24 00            $.     
+       rrr       r3        ; 5088 53               S      
+       andr,r1   L5059     ; 5089 49 4e            IN     
+       lodz      r0        ; 508b 00               .      
+       andz      r3        ; 508c 43               C      
+       anda,r3   L1300     ; 508d 4f 53 00         OS.    
+       andz      r1        ; 5090 41               A      
+       rrr       r3        ; 5091 53               S      
+       andz      r3        ; 5092 43               C      
+       lodz      r0        ; 5093 00               .      
+       rrr       r3        ; 5094 53               S      
+       rede      r0        ; 5095 54 52            TR     
+       eori,r0   000h      ; 5097 24 00            $.     
+       rede      r2        ; 5099 56 41            VA     
+       anda,r0   L0050     ; 509b 4c 00 50         L.P    
+       andi,r1   045h      ; 509e 45 45            EE     
+       andr,r3   L50a2     ; 50a0 4b 00            K.     
+L50a2  andi,r1   058h      ; 50a2 45 58            EX     
+       rrr       r0        ; 50a4 50               P      
+       lodz      r0        ; 50a5 00               .      
+       anda,r0   L0f47     ; 50a6 4c 4f 47         LOG    
+       lodz      r0        ; 50a9 00               .      
+       lodz      r0        ; 50aa 00               .      
+L50ab  eorz      r0        ; 50ab 20               .      
+       loda,r1   L1f59     ; 50ac 0d 1f 59         ..Y    
+       loda,r3   L1f5a     ; 50af 0f 1f 5a         ..Z    
+       ppsl      019h      ; 50b2 77 19            w.     
+       loda,r2   L1f56     ; 50b4 0e 1f 56         ..V    
+       suba,r2   L1f5a     ; 50b7 ae 1f 5a         ..Z    
+       loda,r1   L1f55     ; 50ba 0d 1f 55         ..U    
+       stra,r1   L1f57     ; 50bd cd 1f 57         ..W    
+       suba,r1   L1f59     ; 50c0 ad 1f 59         ..Y    
+       loda,r3   L1f56     ; 50c3 0f 1f 56         ..V    
+       stra,r0   L1f58     ; 50c6 cc 1f 58         ..X    
+       brnr,r2   L50d6     ; 50c9 5a 0b            Z.     
+       brnr,r1   L50d8     ; 50cb 59 0b            Y.     
+L50cd  cpsl      018h      ; 50cd 75 18            u.     
+       stra,r1   L1f57     ; 50cf cd 1f 57         ..W    
+       stra,r3   L1f58     ; 50d2 cf 1f 58         ..X    
+       retc      un        ; 50d5 17               .      
+
+L50d6  birr,r1   L50d8     ; 50d6 d9 00            ..     
+L50d8  brnr,r3   L50e2     ; 50d8 5b 08            [.     
+       loda,r0   L1f57     ; 50da 0c 1f 57         ..W    
+       bdrr,z    L50df     ; 50dd f8 00            ..     
+L50df  stra,r0   L1f57     ; 50df cc 1f 57         ..W    
+L50e2  loda,r3   *L1f57    ; 50e2 0f df 57         ..W    
+       bctr,z    L50ef     ; 50e5 18 08            ..     
+       cpsl      011h      ; 50e7 75 11            u.     
+       addz      r3        ; 50e9 83               .      
+       strz      r3        ; 50ea c3               .      
+       addi,r1   000h      ; 50eb 85 00            ..     
+       ppsl      010h      ; 50ed 77 10            w.     
+L50ef  bdrr,lt   L50d8     ; 50ef fa 67            .g     
+       bdrr,gt   L50d8     ; 50f1 f9 65            .e     
+       bctr,un   L50cd     ; 50f3 1b 58            .X     
+
+L50f5  lodi,r0   078h      ; 50f5 04 78            .x     
+       bsta,un   L40b1     ; 50f7 3f 40 b1         ?@.    
+       bctr,un   L5112     ; 50fa 1b 16            ..     
+
+L50fc  loda,r3   L1f2f     ; 50fc 0f 5f 2f         ._/    
+       bctr,z    L5112     ; 50ff 18 11            ..     
+       adda,r0   L1f58     ; 5101 8c 1f 58         ..X    
+       stra,r0   L1f58     ; 5104 cc 1f 58         ..X    
+       ppsl      008h      ; 5107 77 08            w.     
+       eorz      r0        ; 5109 20               .      
+       adda,r0   L1f57     ; 510a 8c 1f 57         ..W    
+       stra,r0   L1f57     ; 510d cc 1f 57         ..W    
+       cpsl      008h      ; 5110 75 08            u.     
+L5112  brnr,r3   L50fc     ; 5112 5b 68            [h     
+       retc      un        ; 5114 17               .      
+
+L5115  stra,r3   L1dd5     ; 5115 cf 1d d5         ...    
+       bstr,un   L50f5     ; 5118 3b 5b            ;[     
+       bstr,un   L5134     ; 511a 3b 18            ;.     
+       loda,r3   L1dd5     ; 511c 0f 1d d5         ...    
+       loda,r3   L1f2f     ; 511f 0f 7f 2f         ../    
+       coma,r0   L1f56     ; 5122 ec 1f 56         ..V    
+       bcfa,gt   L4cab     ; 5125 9d 4c ab         .L.    
+       lodi,r0   067h      ; 5128 04 67            .g     
+       bsta,un   L40f5     ; 512a 3f 40 f5         ?@.    
+       bsta,un   L50ab     ; 512d 3f 50 ab         ?P.    
+       lodi,r3   01ah      ; 5130 07 1a            ..     
+       bctr,un   L50fc     ; 5132 1b 48            .H     
+
+L5134  eorz      r0        ; 5134 20               .      
+       stra,r0   L1f56     ; 5135 cc 1f 56         ..V    
+       stra,r0   L1f55     ; 5138 cc 1f 55         ..U    
+L513b  lodi,r1   006h      ; 513b 05 06            ..     
+       loda,r3   L1f6f     ; 513d 0f 1f 6f         ..o    
+       bcta,z    L4caf     ; 5140 1c 4c af         .L.    
+L5143  loda,r3   L1f70     ; 5143 0f 5f 70         ._p    
+       andi,r0   00fh      ; 5146 44 0f            D.     
+       stra,r1   L1da1     ; 5148 cd 5d a1         .].    
+       loda,r3   L1f70     ; 514b 0f 7f 70         ..p    
+       rrr       r0        ; 514e 50               P      
+       rrr       r0        ; 514f 50               P      
+       rrr       r0        ; 5150 50               P      
+       rrr       r0        ; 5151 50               P      
+       andi,r0   00fh      ; 5152 44 0f            D.     
+       stra,r1   L1da1     ; 5154 cd 5d a1         .].    
+       brnr,r1   L5143     ; 5157 59 6a            Yj     
+       loda,r3   L1f70     ; 5159 0f 5f 70         ._p    
+       stra,r3   L1f6f     ; 515c cf 1f 6f         ..o    
+       bcta,lt   L4c8b     ; 515f 1e 4c 8b         .L.    
+       bctr,z    L5190     ; 5162 18 2c            .,     
+       tmi,???   040h      ; 5164 f4               .      
+       halt                ; 5165 40               @      
+       bctr,z    L5190     ; 5166 18 28            .(     
+       ppsl      018h      ; 5168 77 18            w.     
+       lodi,r2   0ffh      ; 516a 06 ff            ..     
+       strz      r3        ; 516c c3               .      
+L516d  loda,r2   L1da1     ; 516d 0e 3d a1         .=.    
+       bctr,z    L518e     ; 5170 18 1c            ..     
+       strz      r1        ; 5172 c1               .      
+L5173  cpsl      001h      ; 5173 75 01            u.     
+       loda,r0   L1f56     ; 5175 0c 1f 56         ..V    
+       adda,r3   L11ef     ; 5178 8f 71 ef         .q.    
+       stra,r0   L1f56     ; 517b cc 1f 56         ..V    
+       loda,r0   L1f55     ; 517e 0c 1f 55         ..U    
+       adda,r3   L11ea     ; 5181 8f 71 ea         .q.    
+       stra,r0   L1f55     ; 5184 cc 1f 55         ..U    
+       tpsu      001h      ; 5187 b5 01            ..     
+       bcta,z    L4c93     ; 5189 1c 4c 93         .L.    
+       bdrr,gt   L5173     ; 518c f9 65            .e     
+L518e  bdrr,un   L516d     ; 518e fb 5d            .]     
+L5190  cpsl      018h      ; 5190 75 18            u.     
+       retc      un        ; 5192 17               .      
+
+L5193  loda,r3   L1f56     ; 5193 0f 1f 56         ..V    
+       loda,r1   L1f55     ; 5196 0d 1f 55         ..U    
+       cpsl      001h      ; 5199 75 01            u.     
+       ppsl      008h      ; 519b 77 08            w.     
+       rrl       r3        ; 519d d3               .      
+       rrl       r1        ; 519e d1               .      
+       rrl       r3        ; 519f d3               .      
+       rrl       r1        ; 51a0 d1               .      
+       cpsl      008h      ; 51a1 75 08            u.     
+       stra,r3   L1f56     ; 51a3 cf 1f 56         ..V    
+       stra,r1   L1f55     ; 51a6 cd 1f 55         ..U    
+       retc      un        ; 51a9 17               .      
+
+L51aa  eorz      r0        ; 51aa 20               .      
+       stra,r0   L1da8     ; 51ab cc 1d a8         ...    
+       lodi,r1   006h      ; 51ae 05 06            ..     
+L51b0  stra,r1   L1da1     ; 51b0 cd 5d a1         .].    
+       brnr,r1   L51b0     ; 51b3 59 7b            Y{     
+       lodi,r3   005h      ; 51b5 07 05            ..     
+L51b7  lodi,r1   000h      ; 51b7 05 00            ..     
+       loda,r3   L11eb     ; 51b9 0f 51 eb         .Q.    
+       stra,r0   L1f53     ; 51bc cc 1f 53         ..S    
+       loda,r3   L11f0     ; 51bf 0f 71 f0         .q.    
+       stra,r0   L1f54     ; 51c2 cc 1f 54         ..T    
+L51c5  lodi,r0   065h      ; 51c5 04 65            .e     
+       bsta,un   L40c2     ; 51c7 3f 40 c2         ?@.    
+       bctr,gt   L51d3     ; 51ca 19 07            ..     
+       lodi,r0   065h      ; 51cc 04 65            .e     
+       bsta,un   L410e     ; 51ce 3f 41 0e         ?A.    
+       birr,r1   L51c5     ; 51d1 d9 72            .r     
+L51d3  lodz      r1        ; 51d3 01               .      
+       loda,r1   L1da8     ; 51d4 0d 1d a8         ...    
+L51d7  brnr,r0   L51e1     ; 51d7 58 08            X.     
+       brnr,r1   L51e1     ; 51d9 59 06            Y.     
+L51db  brnr,r3   L51b7     ; 51db 5b 5a            [Z     
+       lodz      r1        ; 51dd 01               .      
+       bcta,un   L4ed8     ; 51de 1f 4e d8         .N.    
+
+L51e1  stra,r1   L1da0     ; 51e1 cd 3d a0         .=.    
+       stra,r1   L1da8     ; 51e4 cd 1d a8         ...    
+       bctr,un   L51db     ; 51e7 1b 72            .r     
+
+       stri,r1   00ah      ; 51e9 c5 0a            ..     
+       lodz      r0        ; 51eb 00               .      
+       lodz      r0        ; 51ec 00               .      
+       lodz      r0        ; 51ed 00               .      
+       lodz      r3        ; 51ee 03               .      
+       eori,r3   001h      ; 51ef 27 01            '.     
+       lodr,r2   L51d7     ; 51f1 0a 64            .d     
+       comr,r0   L5205     ; 51f3 e8 10            ..     
+       bcta,un   L52ce     ; 51f5 1f 52 ce         .R.    
+
+       bcta,un   L52c0     ; 51f8 1f 52 c0         .R.    
+
+       bcta,un   L5308     ; 51fb 1f 53 08         .S.    
+
+       bcta,un   L5295     ; 51fe 1f 52 95         .R.    
+
+       bcta,un   L5316     ; 5201 1f 53 16         .S.    
+
+       bcta,un   L52d3     ; 5204 1f 52 d3         .R.    
+
+       bcta,un   L5237     ; 5207 1f 52 37         .R7    
+
+       bcta,un   L537c     ; 520a 1f 53 7c         .S|    
+
+       bcta,un   L5386     ; 520d 1f 53 86         .S.    
+
+       bcta,un   L5381     ; 5210 1f 53 81         .S.    
+
+       bcta,un   L5492     ; 5213 1f 54 92         .T.    
+
+       bcta,un   L5486     ; 5216 1f 54 86         .T.    
+
+       bcta,un   L52e2     ; 5219 1f 52 e2         .R.    
+
+       bcta,un   L532f     ; 521c 1f 53 2f         .S/    
+
+       bcta,un   L538f     ; 521f 1f 53 8f         .S.    
+
+       bcta,un   L52f6     ; 5222 1f 52 f6         .R.    
+
+       bcta,un   L53a6     ; 5225 1f 53 a6         .S.    
+
+       bcta,un   L540d     ; 5228 1f 54 0d         .T.    
+
+       bcta,un   L5337     ; 522b 1f 53 37         .S7    
+
+       bcta,un   L5364     ; 522e 1f 53 64         .Sd    
+
+       bcta,un   L5346     ; 5231 1f 53 46         .SF    
+
+       bcta,un   L52f1     ; 5234 1f 52 f1         .R.    
+
+L5237  loda,r3   L1f6f     ; 5237 0f 1f 6f         ..o    
+       loda,r3   L1f6c     ; 523a 0f 7f 6c         ..l    
+       bcta,lt   L4c9b     ; 523d 1e 4c 9b         .L.    
+       comi,r0   040h      ; 5240 e4 40            .@     
+       bcta,z    L4de0     ; 5242 1c 4d e0         .M.    
+       bctr,lt   L5249     ; 5245 1a 02            ..     
+       iori,r0   080h      ; 5247 64 80            d.     
+L5249  strz      r1        ; 5249 c1               .      
+       andi,r1   001h      ; 524a 45 01            E.     
+       subz      r1        ; 524c a1               .      
+       rrr       r0        ; 524d 50               P      
+       stra,r0   L1dac     ; 524e cc 1d ac         ...    
+       lodz      r1        ; 5251 01               .      
+       stra,r3   L1f6c     ; 5252 cf 7f 6c         ..l    
+       bsta,un   L54a6     ; 5255 3f 54 a6         ?T.    
+       lodi,r1   003h      ; 5258 05 03            ..     
+       bsta,un   L54ec     ; 525a 3f 54 ec         ?T.    
+       lodi,r1   005h      ; 525d 05 05            ..     
+L525f  stra,r1   L1dab     ; 525f cd 1d ab         ...    
+       bsta,un   L54ab     ; 5262 3f 54 ab         ?T.    
+       lodi,r1   004h      ; 5265 05 04            ..     
+L5267  loda,r3   L1f67     ; 5267 0f 3f 67         .?g    
+       stra,r3   L1f6f     ; 526a cf 7f 6f         ..o    
+       bdrr,gt   L5267     ; 526d f9 78            .x     
+       bsta,un   L4839     ; 526f 3f 48 39         ?H9    
+       bsta,un   L5724     ; 5272 3f 57 24         ?W$    
+       bsta,un   L55d9     ; 5275 3f 55 d9         ?U.    
+       lodi,r1   033h      ; 5278 05 33            .3     
+       bsta,un   L54ec     ; 527a 3f 54 ec         ?T.    
+       bsta,un   L5734     ; 527d 3f 57 34         ?W4    
+       loda,r1   L1dab     ; 5280 0d 1d ab         ...    
+       bdrr,gt   L525f     ; 5283 f9 5a            .Z     
+       loda,r0   L1dac     ; 5285 0c 1d ac         ...    
+       loda,r3   L1f6f     ; 5288 0f 1f 6f         ..o    
+       adda,r3   L1f6c     ; 528b 8f 7f 6c         ..l    
+       andi,r0   07fh      ; 528e 44 7f            D.     
+       stra,r3   L1f6c     ; 5290 cf 7f 6c         ..l    
+       bctr,un   L52cb     ; 5293 1b 36            .6     
+
+L5295  bsta,un   L54a6     ; 5295 3f 54 a6         ?T.    
+       loda,r3   L1f6e     ; 5298 0f 1f 6e         ..n    
+       loda,r0   L1f6d     ; 529b 0c 1f 6d         ..m    
+       addz      r3        ; 529e 83               .      
+       addi,r3   071h      ; 529f 87 71            .q     
+       tpsu      001h      ; 52a1 b5 01            ..     
+       bcfr,z    L52a5     ; 52a3 98 00            ..     
+L52a5  addi,r0   001h      ; 52a5 84 01            ..     
+       stra,r0   L1f6d     ; 52a7 cc 1f 6d         ..m    
+       stra,r3   L1f6e     ; 52aa cf 1f 6e         ..n    
+       stra,r0   L1f55     ; 52ad cc 1f 55         ..U    
+       stra,r3   L1f56     ; 52b0 cf 1f 56         ..V    
+       bsta,un   L51aa     ; 52b3 3f 51 aa         ?Q.    
+       lodi,r1   0ffh      ; 52b6 05 ff            ..     
+       bsta,un   L54ec     ; 52b8 3f 54 ec         ?T.    
+       bsta,un   L5724     ; 52bb 3f 57 24         ?W$    
+       bctr,un   L52cb     ; 52be 1b 0b            ..     
+
+L52c0  loda,r3   L1f6f     ; 52c0 0f 1f 6f         ..o    
+       loda,r3   L1f6c     ; 52c3 0f 7f 6c         ..l    
+       andi,r0   07fh      ; 52c6 44 7f            D.     
+       stra,r3   L1f6c     ; 52c8 cf 7f 6c         ..l    
+L52cb  bcta,un   L4de0     ; 52cb 1f 4d e0         .M.    
+
+L52ce  bsta,un   L57c9     ; 52ce 3f 57 c9         ?W.    
+       bctr,un   L52cb     ; 52d1 1b 78            .x     
+
+L52d3  loda,r0   L1f6a     ; 52d3 0c 1f 6a         ..j    
+       stra,r0   L1f56     ; 52d6 cc 1f 56         ..V    
+       eorz      r0        ; 52d9 20               .      
+       stra,r0   L1f55     ; 52da cc 1f 55         ..U    
+       bsta,un   L51aa     ; 52dd 3f 51 aa         ?Q.    
+       bctr,un   L52cb     ; 52e0 1b 69            .i     
+
+L52e2  loda,r0   L1d00     ; 52e2 0c 1d 00         ...    
+       stra,r0   L1f56     ; 52e5 cc 1f 56         ..V    
+       eorz      r0        ; 52e8 20               .      
+       stra,r0   L1f55     ; 52e9 cc 1f 55         ..U    
+       bsta,un   L51aa     ; 52ec 3f 51 aa         ?Q.    
+       bctr,un   L52cb     ; 52ef 1b 5a            .Z     
+
+L52f1  bsta,un   L41c3     ; 52f1 3f 41 c3         ?A.    
+       bctr,un   L52cb     ; 52f4 1b 55            .U     
+
+L52f6  bsta,un   L5134     ; 52f6 3f 51 34         ?Q4    
+       loda,r0   *L1f55    ; 52f9 0c 9f 55         ..U    
+       stra,r0   L1f56     ; 52fc cc 1f 56         ..V    
+       eorz      r0        ; 52ff 20               .      
+       stra,r0   L1f55     ; 5300 cc 1f 55         ..U    
+       bsta,un   L51aa     ; 5303 3f 51 aa         ?Q.    
+       bctr,un   L52cb     ; 5306 1b 43            .C     
+
+L5308  bsta,un   L5134     ; 5308 3f 51 34         ?Q4    
+       loda,r0   L1f56     ; 530b 0c 1f 56         ..V    
+       loda,r1   L1f6a     ; 530e 0d 1f 6a         ..j    
+       stra,r1   L1cff     ; 5311 cd 3c ff         .<.    
+       bctr,un   L532c     ; 5314 1b 16            ..     
+
+L5316  bsta,un   L5134     ; 5316 3f 51 34         ?Q4    
+       loda,r0   L1f56     ; 5319 0c 1f 56         ..V    
+       lodi,r1   000h      ; 531c 05 00            ..     
+       suba,r0   L1db8     ; 531e ac 1d b8         ...    
+       bcfr,gt   L532c     ; 5321 99 09            ..     
+       strz      r1        ; 5323 c1               .      
+       strz      r3        ; 5324 c3               .      
+       lodi,r0   020h      ; 5325 04 20            ..     
+L5327  stra,r3   L1d00     ; 5327 cf 5d 00         .].    
+       brnr,r3   L5327     ; 532a 5b 7b            [{     
+L532c  bcta,un   L4fec     ; 532c 1f 4f ec         .O.    
+
+L532f  bsta,un   L4aa3     ; 532f 3f 4a a3         ?J.    
+       loda,r1   L1f6a     ; 5332 0d 1f 6a         ..j    
+       bctr,un   L532c     ; 5335 1b 75            .u     
+
+L5337  bsta,un   L5134     ; 5337 3f 51 34         ?Q4    
+       loda,r1   L1f56     ; 533a 0d 1f 56         ..V    
+       loda,r0   L1f6a     ; 533d 0c 1f 6a         ..j    
+       comz      r1        ; 5340 e1               .      
+       bctr,gt   L5344     ; 5341 19 01            ..     
+       strz      r1        ; 5343 c1               .      
+L5344  bctr,un   L532c     ; 5344 1b 66            .f     
+
+L5346  bsta,un   L5134     ; 5346 3f 51 34         ?Q4    
+       lodi,r1   000h      ; 5349 05 00            ..     
+       loda,r3   L1f6a     ; 534b 0f 1f 6a         ..j    
+       suba,r3   L1f56     ; 534e af 1f 56         ..V    
+       bcfr,lt   L5355     ; 5351 9a 02            ..     
+       lodi,r3   000h      ; 5353 07 00            ..     
+L5355  addi,r3   001h      ; 5355 87 01            ..     
+L5357  coma,r3   L1f6a     ; 5357 ef 1f 6a         ..j    
+       bctr,gt   L532c     ; 535a 19 50            .P     
+       loda,r3   L1cff     ; 535c 0f 7c ff         .|.    
+       stra,r1   L1cff     ; 535f cd 3c ff         .<.    
+       birr,r3   L5357     ; 5362 db 73            .s     
+L5364  bsta,un   L5134     ; 5364 3f 51 34         ?Q4    
+       loda,r3   L1f56     ; 5367 0f 1f 56         ..V    
+       lodi,r1   000h      ; 536a 05 00            ..     
+L536c  coma,r3   L1f6a     ; 536c ef 1f 6a         ..j    
+       bctr,gt   L5379     ; 536f 19 08            ..     
+       loda,r3   L1cff     ; 5371 0f 7c ff         .|.    
+       stra,r1   L1cff     ; 5374 cd 3c ff         .<.    
+       birr,r3   L536c     ; 5377 db 73            .s     
+L5379  stra,r1   L1f6a     ; 5379 cd 1f 6a         ..j    
+L537c  lodi,r0   093h      ; 537c 04 93            ..     
+       bcta,un   L4da0     ; 537e 1f 4d a0         .M.    
+
+L5381  lodi,r0   095h      ; 5381 04 95            ..     
+       bcta,un   L4da0     ; 5383 1f 4d a0         .M.    
+
+L5386  lodi,r0   094h      ; 5386 04 94            ..     
+       bcta,un   L4da0     ; 5388 1f 4d a0         .M.    
+
+       stri,r0   002h      ; 538b c4 02            ..     
+L538d  brna,r0   *L7f0f    ; 538d 5c ff 0f         \..    
+       bcta,un   L6a04     ; 5390 1f 6a 04         .j.    
+
+       loda,r1   *L0f7d    ; 5393 0d cf 7d         ..}    
+       lodz      r0        ; 5396 00               .      
+       bsta,un   L41e0     ; 5397 3f 41 e0         ?A.    
+       lodr,r0   L538d     ; 539a 08 71            .q     
+       stra,r0   L1f51     ; 539c cc 1f 51         ..Q    
+       lodr,r2   L538e     ; 539f 0a 6d            .m     
+       lodi,r0   096h      ; 53a1 04 96            ..     
+       bcta,un   L4da0     ; 53a3 1f 4d a0         .M.    
+
+L53a6  bsta,un   L54bb     ; 53a6 3f 54 bb         ?T.    
+       bsta,un   L54ab     ; 53a9 3f 54 ab         ?T.    
+       loda,r3   L1f6f     ; 53ac 0f 1f 6f         ..o    
+       loda,r3   L1f6c     ; 53af 0f 7f 6c         ..l    
+       bctr,lt   L53c5     ; 53b2 1a 11            ..     
+       bsta,un   L5134     ; 53b4 3f 51 34         ?Q4    
+       loda,r0   L1f56     ; 53b7 0c 1f 56         ..V    
+       stra,r0   L1dac     ; 53ba cc 1d ac         ...    
+       bsta,un   L51aa     ; 53bd 3f 51 aa         ?Q.    
+       bsta,un   L55cc     ; 53c0 3f 55 cc         ?U.    
+       bctr,un   L53e1     ; 53c3 1b 1c            ..     
+
+L53c5  andi,r0   07fh      ; 53c5 44 7f            D.     
+       stra,r3   L1f6c     ; 53c7 cf 7f 6c         ..l    
+       eorz      r0        ; 53ca 20               .      
+       stra,r0   L1f55     ; 53cb cc 1f 55         ..U    
+       stra,r0   L1f55     ; 53ce cc 3f 55         .?U    
+       bsta,un   L513b     ; 53d1 3f 51 3b         ?Q;    
+       eorz      r0        ; 53d4 20               .      
+       suba,r0   L1f56     ; 53d5 ac 1f 56         ..V    
+       stra,r0   L1dac     ; 53d8 cc 1d ac         ...    
+       bsta,un   L51aa     ; 53db 3f 51 aa         ?Q.    
+       bsta,un   L55d9     ; 53de 3f 55 d9         ?U.    
+L53e1  bsta,un   L54bb     ; 53e1 3f 54 bb         ?T.    
+       lodi,r1   04bh      ; 53e4 05 4b            .K     
+       lodi,r0   005h      ; 53e6 04 05            ..     
+       bsta,un   L54c9     ; 53e8 3f 54 c9         ?T.    
+       lodi,r1   003h      ; 53eb 05 03            ..     
+       bsta,un   L54ec     ; 53ed 3f 54 ec         ?T.    
+       bsta,un   L55d9     ; 53f0 3f 55 d9         ?U.    
+       bsta,un   L54bb     ; 53f3 3f 54 bb         ?T.    
+       bsta,un   L54ab     ; 53f6 3f 54 ab         ?T.    
+       bsta,un   L5734     ; 53f9 3f 57 34         ?W4    
+       loda,r3   L1f6f     ; 53fc 0f 1f 6f         ..o    
+       loda,r3   L1f6c     ; 53ff 0f 7f 6c         ..l    
+       adda,r0   L1dac     ; 5402 8c 1d ac         ...    
+       andi,r0   07fh      ; 5405 44 7f            D.     
+       stra,r3   L1f6c     ; 5407 cf 7f 6c         ..l    
+       bcta,un   L4de0     ; 540a 1f 4d e0         .M.    
+
+L540d  loda,r3   L1f6f     ; 540d 0f 1f 6f         ..o    
+       loda,r3   L1f6c     ; 5410 0f 7f 6c         ..l    
+       bcta,lt   L4c9b     ; 5413 1e 4c 9b         .L.    
+       comi,r0   040h      ; 5416 e4 40            .@     
+       bcta,z    L4c9b     ; 5418 1c 4c 9b         .L.    
+       stra,r0   L1dac     ; 541b cc 1d ac         ...    
+       lodi,r0   001h      ; 541e 04 01            ..     
+       stra,r3   L1f6c     ; 5420 cf 7f 6c         ..l    
+       bsta,un   L54bb     ; 5423 3f 54 bb         ?T.    
+       lodi,r1   01bh      ; 5426 05 1b            ..     
+       bsta,un   L54ec     ; 5428 3f 54 ec         ?T.    
+       bsta,un   L55cc     ; 542b 3f 55 cc         ?U.    
+       bsta,un   L54ab     ; 542e 3f 54 ab         ?T.    
+       lodi,r1   01bh      ; 5431 05 1b            ..     
+       bsta,un   L54ec     ; 5433 3f 54 ec         ?T.    
+       bsta,un   L55d9     ; 5436 3f 55 d9         ?U.    
+       bsta,un   L5724     ; 5439 3f 57 24         ?W$    
+       bsta,un   L54bb     ; 543c 3f 54 bb         ?T.    
+       bsta,un   L54ab     ; 543f 3f 54 ab         ?T.    
+       bsta,un   L54ab     ; 5442 3f 54 ab         ?T.    
+       bsta,un   L5734     ; 5445 3f 57 34         ?W4    
+       bsta,un   L54a6     ; 5448 3f 54 a6         ?T.    
+       lodi,r1   02fh      ; 544b 05 2f            ./     
+       lodi,r0   004h      ; 544d 04 04            ..     
+       bsta,un   L54c9     ; 544f 3f 54 c9         ?T.    
+       lodi,r1   033h      ; 5452 05 33            .3     
+       bsta,un   L54ec     ; 5454 3f 54 ec         ?T.    
+       bsta,un   L55d9     ; 5457 3f 55 d9         ?U.    
+       eorz      r0        ; 545a 20               .      
+       stra,r0   L1f55     ; 545b cc 1f 55         ..U    
+       loda,r1   L1dac     ; 545e 0d 1d ac         ...    
+       bctr,z    L5478     ; 5461 18 15            ..     
+
+       db                  ; 5463 f5               .      
+
+       halt                ; 5464 40               @      
+       bctr,z    L5475     ; 5465 18 0e            ..     
+       subi,r1   001h      ; 5467 a5 01            ..     
+       stra,r1   L1f56     ; 5469 cd 1f 56         ..V    
+       bsta,un   L51aa     ; 546c 3f 51 aa         ?Q.    
+       bsta,un   L55d9     ; 546f 3f 55 d9         ?U.    
+       bcta,un   L4de0     ; 5472 1f 4d e0         .M.    
+
+L5475  lodi,r0   080h      ; 5475 04 80            ..     
+       subz      r1        ; 5477 a1               .      
+L5478  addi,r0   001h      ; 5478 84 01            ..     
+       stra,r0   L1f56     ; 547a cc 1f 56         ..V    
+       bsta,un   L51aa     ; 547d 3f 51 aa         ?Q.    
+       bsta,un   L55cc     ; 5480 3f 55 cc         ?U.    
+       bcta,un   L4de0     ; 5483 1f 4d e0         .M.    
+
+L5486  bstr,un   L54a6     ; 5486 3b 1e            ;.     
+       lodi,r1   017h      ; 5488 05 17            ..     
+       bsta,un   L54ec     ; 548a 3f 54 ec         ?T.    
+       bstr,un   L54ab     ; 548d 3b 1c            ;.     
+       bsta,un   L55cc     ; 548f 3f 55 cc         ?U.    
+L5492  bstr,un   L54bb     ; 5492 3b 27            ;'     
+       bstr,un   L54ab     ; 5494 3b 15            ;.     
+       bstr,un   L54ab     ; 5496 3b 13            ;.     
+       bsta,un   L5734     ; 5498 3f 57 34         ?W4    
+       bstr,un   L54a6     ; 549b 3b 09            ;.     
+       lodi,r1   013h      ; 549d 05 13            ..     
+       lodi,r0   004h      ; 549f 04 04            ..     
+       bstr,un   L54c9     ; 54a1 3b 26            ;&     
+       bcta,un   L4de0     ; 54a3 1f 4d e0         .M.    
+
+L54a6  bstr,un   L54bb     ; 54a6 3b 13            ;.     
+       bcta,un   L4839     ; 54a8 1f 48 39         .H9    
+
+L54ab  lodi,r1   0fch      ; 54ab 05 fc            ..     
+       loda,r3   L1f6f     ; 54ad 0f 1f 6f         ..o    
+L54b0  loda,r1   L1cb1     ; 54b0 0d 7c b1         .|.    
+       stra,r3   L1f6f     ; 54b3 cf 3f 6f         .?o    
+       birr,r1   L54b0     ; 54b6 d9 78            .x     
+       bcta,un   L4839     ; 54b8 1f 48 39         .H9    
+
+L54bb  lodi,r1   004h      ; 54bb 05 04            ..     
+       loda,r3   L1f6f     ; 54bd 0f 1f 6f         ..o    
+L54c0  loda,r3   L1f70     ; 54c0 0f 5f 70         ._p    
+       stra,r1   L1dad     ; 54c3 cd 5d ad         .].    
+       brnr,r1   L54c0     ; 54c6 59 78            Yx     
+       retc      un        ; 54c8 17               .      
+
+L54c9  stra,r1   L1dab     ; 54c9 cd 1d ab         ...    
+       stra,r2   L1da0     ; 54cc ce 1d a0         ...    
+       strz      r2        ; 54cf c2               .      
+       bstr,un   L54ec     ; 54d0 3b 1a            ;.     
+L54d2  bstr,un   L54ab     ; 54d2 3b 57            ;W     
+       bsta,un   L5734     ; 54d4 3f 57 34         ?W4    
+       loda,r1   L1dab     ; 54d7 0d 1d ab         ...    
+       subi,r1   004h      ; 54da a5 04            ..     
+       stra,r1   L1dab     ; 54dc cd 1d ab         ...    
+       bstr,un   L54ec     ; 54df 3b 0b            ;.     
+       bsta,un   L55d9     ; 54e1 3f 55 d9         ?U.    
+       bdrr,lt   L54d2     ; 54e4 fa 6c            .l     
+       loda,r2   L1da0     ; 54e6 0e 1d a0         ...    
+       bcta,un   L5734     ; 54e9 1f 57 34         .W4    
+
+L54ec  loda,r3   L1f6f     ; 54ec 0f 1f 6f         ..o    
+       bctr,un   L54f6     ; 54ef 1b 05            ..     
+
+L54f1  db                  ; 54f1 f5               .      
+
+       lodz      r3        ; 54f2 03               .      
+       bcta,z    L4839     ; 54f3 1c 48 39         .H9    
+L54f6  loda,r1   L1500     ; 54f6 0d 35 00         .5.    
+       stra,r3   L1f70     ; 54f9 cf 7f 70         ..p    
+       birr,r3   L54f1     ; 54fc db 73            .s     
+       stri,r1   050h      ; 54fe c5 50            .P     
+       lodi,r1   065h      ; 5500 05 65            .e     
+       rrr       r3        ; 5502 53               S      
+       rrr       r0        ; 5503 50               P      
+       lodz      r1        ; 5504 01               .      
+
+       db                  ; 5505 10               .      
+
+       lodz      r0        ; 5506 00               .      
+       lodz      r0        ; 5507 00               .      
+       addz      r0        ; 5508 80               .      
+       retc      lt        ; 5509 16               .      
+       iori,r2   067h      ; 550a 66 67            fg     
+       bsna,r2   *L0333    ; 550c 7e 83 33         ~.3    
+       lodz      r3        ; 550f 03               .      
+       bdra,gt   L1980     ; 5510 fd 19 80         ...    
+       cpsu      07bh      ; 5513 74 7b            t{     
+       eori,r2   001h      ; 5515 26 01            &.     
+       addr,r1   L551a     ; 5517 89 01            ..     
+       retc      gt        ; 5519 15               .      
+L551a  redd      r0        ; 551a 70 80            p.     
+       lodz      r1        ; 551c 01               .      
+       redc      r1        ; 551d 31 62            1b     
+       eorr,r0   L5521     ; 551f 28 00            (.     
+L5521  addi,r2   085h      ; 5521 86 85            ..     
+       lpsu                ; 5523 92               .      
+       lodz      r0        ; 5524 00               .      
+       eorr,r0   L553a     ; 5525 28 93            (.     
+       rete      r2        ; 5527 36               6      
+       lodz      r0        ; 5528 00               .      
+       retc      un        ; 5529 17               .      
+
+       cpsl      022h      ; 552a 75 22            u"     
+       bsna,r3   *L1437    ; 552c 7f 94 37         ..7    
+       iori,r1   000h      ; 552f 65 00            e.     
+       bctr,gt   L5546     ; 5531 19 13            ..     
+       bstr,z    L5535     ; 5533 38 00            8.     
+L5535  rrr       r0        ; 5535 50               P      
+       lodz      r0        ; 5536 00               .      
+       lodz      r0        ; 5537 00               .      
+       lodz      r1        ; 5538 01               .      
+
+       db                  ; 5539 11               .      
+
+L553a  rrr       r1        ; 553a 51               Q      
+       eorr,r1   L553d     ; 553b 29 00            ).     
+L553d  iori,r2   028h      ; 553d 66 28            f(     
+       andz      r3        ; 553f 43               C      
+       lodz      r0        ; 5540 00               .      
+       eori,r1   036h      ; 5541 25 36            %6     
+       lodz      r3        ; 5543 03               .      
+       bsna,r3   L7546     ; 5544 7f 75 46         .uF    
+       cpsl      07fh      ; 5547 75 7f            u.     
+       spsl                ; 5549 13               .      
+       andz      r2        ; 554a 42               B      
+L554b  lodr,r1   L554b     ; 554b 09 7e            .~     
+       rede      r2        ; 554d 56 54            VT     
+
+       db                  ; 554f 90               .      
+
+L5550  bstr,un   L5582     ; 5550 3b 30            ;0     
+       cpsl      002h      ; 5552 75 02            u.     
+       loda,r0   L1dc4     ; 5554 0c 1d c4         ...    
+       coma,r0   L1dbe     ; 5557 ec 1d be         ...    
+       bcfr,z    L556f     ; 555a 98 13            ..     
+       loda,r0   L1dc3     ; 555c 0c 1d c3         ...    
+       coma,r0   L1dbd     ; 555f ec 1d bd         ...    
+       bcfr,z    L556b     ; 5562 98 07            ..     
+       ppsl      002h      ; 5564 77 02            w.     
+       bsta,un   L5648     ; 5566 3f 56 48         ?VH    
+       bctr,z    L556f     ; 5569 18 04            ..     
+L556b  spsl                ; 556b 13               .      
+       eora,r0   L1dc4     ; 556c 2c 1d c4         ,..    
+L556f  cpsl      010h      ; 556f 75 10            u.     
+       ppsl      002h      ; 5571 77 02            w.     
+       retc      un        ; 5573 17               .      
+
+       stri,r0   004h      ; 5574 c4 04            ..     
+       brna,r1   *L435d    ; 5576 5d c3 5d         ].]    
+       bsfa,gt   L7710     ; 5579 bd 77 10         .w.    
+       lodi,r3   001h      ; 557c 07 01            ..     
+       lodi,r1   002h      ; 557e 05 02            ..     
+       bctr,un   L5588     ; 5580 1b 06            ..     
+
+L5582  ppsl      010h      ; 5582 77 10            w.     
+       lodi,r3   002h      ; 5584 07 02            ..     
+       lodi,r1   004h      ; 5586 05 04            ..     
+L5588  lodi,r2   002h      ; 5588 06 02            ..     
+L558a  loda,r1   L1576     ; 558a 0d 55 76         .Uv    
+       stra,r2   L1dcd     ; 558d ce 5d cd         .].    
+       brnr,r2   L558a     ; 5590 5a 78            Zx     
+       loda,r2   L1f6f     ; 5592 0e 1f 6f         ..o    
+L5595  lodi,r1   004h      ; 5595 05 04            ..     
+L5597  loda,r2   L1f70     ; 5597 0e 5f 70         ._p    
+       stra,r1   *L1dcd    ; 559a cd fd cd         ...    
+       bdrr,gt   L5597     ; 559d f9 78            .x     
+       andi,r0   080h      ; 559f 44 80            D.     
+       stra,r1   *L1dcd    ; 55a1 cd bd cd         ...    
+       loda,r2   L1f70     ; 55a4 0e 7f 70         ..p    
+       andi,r0   07fh      ; 55a7 44 7f            D.     
+       tmi,???   040h      ; 55a9 f4               .      
+       halt                ; 55aa 40               @      
+       bcfr,z    L55af     ; 55ab 98 02            ..     
+       iori,r0   080h      ; 55ad 64 80            d.     
+L55af  stra,r0   *L1dcd    ; 55af cc 9d cd         ...    
+       lodi,r0   0c3h      ; 55b2 04 c3            ..     
+       stra,r0   L1dce     ; 55b4 cc 1d ce         ...    
+       bdrr,un   L5595     ; 55b7 fb 5c            .\     
+       lodz      r2        ; 55b9 02               .      
+       bcta,lt   L4caf     ; 55ba 1e 4c af         .L.    
+       stra,r2   L1f6f     ; 55bd ce 1f 6f         ..o    
+       lodi,r1   005h      ; 55c0 05 05            ..     
+       eorz      r0        ; 55c2 20               .      
+       stra,r0   L1dc2     ; 55c3 cc 1d c2         ...    
+L55c6  stra,r1   L1dc8     ; 55c6 cd 5d c8         .].    
+       brnr,r1   L55c6     ; 55c9 59 7b            Y{     
+       retc      un        ; 55cb 17               .      
+
+L55cc  bsta,un   L5582     ; 55cc 3f 55 82         ?U.    
+       loda,r0   L1dbe     ; 55cf 0c 1d be         ...    
+       eori,r0   080h      ; 55d2 24 80            $.     
+       stra,r0   L1dbe     ; 55d4 cc 1d be         ...    
+       bctr,un   L55dc     ; 55d7 1b 03            ..     
+
+L55d9  bsta,un   L5582     ; 55d9 3f 55 82         ?U.    
+L55dc  cpsl      003h      ; 55dc 75 03            u.     
+       loda,r1   L1dc3     ; 55de 0d 1d c3         ...    
+       coma,r1   L1dbd     ; 55e1 ed 1d bd         ...    
+       ppsl      00ah      ; 55e4 77 0a            w.     
+       bctr,lt   L55f6     ; 55e6 1a 0e            ..     
+       bctr,z    L55fa     ; 55e8 18 10            ..     
+       lodi,r1   0bdh      ; 55ea 05 bd            ..     
+L55ec  lodi,r2   005h      ; 55ec 06 05            ..     
+       bsta,un   L57a3     ; 55ee 3f 57 a3         ?W.    
+       bsta,un   L57be     ; 55f1 3f 57 be         ?W.    
+       bctr,un   L55dc     ; 55f4 1b 66            .f     
+
+L55f6  lodi,r1   0c3h      ; 55f6 05 c3            ..     
+       bctr,un   L55ec     ; 55f8 1b 72            .r     
+
+L55fa  loda,r0   L1dbe     ; 55fa 0c 1d be         ...    
+       coma,r0   L1dc4     ; 55fd ec 1d c4         ...    
+       bcfr,z    L5610     ; 5600 98 0e            ..     
+       bstr,un   L5631     ; 5602 3b 2d            ;-     
+       lodi,r2   006h      ; 5604 06 06            ..     
+       lodi,r1   0c3h      ; 5606 05 c3            ..     
+       bsta,un   L57a3     ; 5608 3f 57 a3         ?W.    
+       bsta,un   L57be     ; 560b 3f 57 be         ?W.    
+       bctr,un   L562e     ; 560e 1b 1e            ..     
+
+L5610  ppsl      001h      ; 5610 77 01            w.     
+       bstr,un   L5648     ; 5612 3b 34            ;4     
+       bctr,lt   L561a     ; 5614 1a 04            ..     
+       bstr,un   L5655     ; 5616 3b 3d            ;=     
+       bctr,un   L562e     ; 5618 1b 14            ..     
+
+L561a  loda,r0   L1dbe     ; 561a 0c 1d be         ...    
+       stra,r0   L1dc4     ; 561d cc 1d c4         ...    
+       lodi,r2   004h      ; 5620 06 04            ..     
+L5622  loda,r2   L1dbf     ; 5622 0e 5d bf         .].    
+       suba,r2   L1dc5     ; 5625 ae 7d c5         .}.    
+       dar       ???       ; 5628 94               .      
+       stra,r2   L1dc5     ; 5629 ce 7d c5         .}.    
+       brnr,r2   L5622     ; 562c 5a 74            Zt     
+L562e  bcta,un   L568e     ; 562e 1f 56 8e         .V.    
+
+L5631  cpsl      001h      ; 5631 75 01            u.     
+       lodi,r1   000h      ; 5633 05 00            ..     
+       lodi,r2   004h      ; 5635 06 04            ..     
+L5637  rrr       r1        ; 5637 51               Q      
+       loda,r2   L1dc5     ; 5638 0e 5d c5         .].    
+       addi,r0   066h      ; 563b 84 66            .f     
+       rrl       r1        ; 563d d1               .      
+       adda,r2   L1dbf     ; 563e 8e 7d bf         .}.    
+       dar       ???       ; 5641 94               .      
+       stra,r2   L1dc5     ; 5642 ce 7d c5         .}.    
+       brnr,r2   L5637     ; 5645 5a 70            Zp     
+       retc      un        ; 5647 17               .      
+
+L5648  lodi,r2   0fch      ; 5648 06 fc            ..     
+L564a  loda,r2   L1cc9     ; 564a 0e 7c c9         .|.    
+       coma,r2   L1cc3     ; 564d ee 7c c3         .|.    
+       bcfr,z    L5654     ; 5650 98 02            ..     
+       birr,r2   L564a     ; 5652 da 76            .v     
+L5654  retc      un        ; 5654 17               .      
+
+L5655  ppsl      001h      ; 5655 77 01            w.     
+       lodi,r2   004h      ; 5657 06 04            ..     
+L5659  loda,r2   L1dc5     ; 5659 0e 5d c5         .].    
+       suba,r2   L1dbf     ; 565c ae 7d bf         .}.    
+       dar       ???       ; 565f 94               .      
+       stra,r2   L1dc5     ; 5660 ce 7d c5         .}.    
+       brnr,r2   L5659     ; 5663 5a 74            Zt     
+       retc      un        ; 5665 17               .      
+
+L5666  lodi,r3   007h      ; 5666 07 07            ..     
+L5668  lodi,r1   000h      ; 5668 05 00            ..     
+L566a  bstr,un   L5648     ; 566a 3b 5c            ;\     
+       bctr,lt   L5675     ; 566c 1a 07            ..     
+       bstr,un   L5655     ; 566e 3b 65            ;e     
+       addi,r1   066h      ; 5670 85 66            .f     
+
+       db                  ; 5672 95               .      
+
+       bctr,un   L566a     ; 5673 1b 75            .u     
+
+L5675  adda,r1   L1dcc     ; 5675 8d 1d cc         ...    
+       stra,r1   L1dcc     ; 5678 cd 1d cc         ...    
+       lodi,r1   0c3h      ; 567b 05 c3            ..     
+       lodi,r2   00ah      ; 567d 06 0a            ..     
+       bsta,un   L56fe     ; 567f 3f 56 fe         ?V.    
+       bdrr,un   L5668     ; 5682 fb 64            .d     
+       bsta,un   L57be     ; 5684 3f 57 be         ?W.    
+       lodi,r3   007h      ; 5687 07 07            ..     
+L5689  bsta,un   L5704     ; 5689 3f 57 04         ?W.    
+       bdrr,un   L5689     ; 568c fb 7b            .{     
+L568e  lodi,r1   0c3h      ; 568e 05 c3            ..     
+       lodi,r2   007h      ; 5690 06 07            ..     
+       bstr,un   L56cd     ; 5692 3b 39            ;9     
+       bsta,un   L578c     ; 5694 3f 57 8c         ?W.    
+       cpsl      00ah      ; 5697 75 0a            u.     
+       loda,r0   L1dc3     ; 5699 0c 1d c3         ...    
+       comi,r0   03fh      ; 569c e4 3f            .?     
+       bcta,gt   L4c93     ; 569e 1d 4c 93         .L.    
+       comi,r0   0c0h      ; 56a1 e4 c0            ..     
+L56a3  bstr,lt   L56c2     ; 56a3 3a 1d            :.     
+       andi,r0   07fh      ; 56a5 44 7f            D.     
+       iora,r0   L1dc4     ; 56a7 6c 1d c4         l..    
+       loda,r2   L1f6f     ; 56aa 0e 1f 6f         ..o    
+       lodi,r1   0ffh      ; 56ad 05 ff            ..     
+L56af  comi,r1   003h      ; 56af e5 03            ..     
+       bctr,z    L56bb     ; 56b1 18 08            ..     
+       stra,r2   L1f70     ; 56b3 ce 7f 70         ..p    
+       loda,r1   L1dc5     ; 56b6 0d 3d c5         .=.    
+       birr,r2   L56af     ; 56b9 da 74            .t     
+L56bb  stra,r2   L1f6f     ; 56bb ce 1f 6f         ..o    
+       lodi,r0   002h      ; 56be 04 02            ..     
+       lpsl                ; 56c0 93               .      
+       retc      un        ; 56c1 17               .      
+
+L56c2  eorz      r0        ; 56c2 20               .      
+       lodi,r1   004h      ; 56c3 05 04            ..     
+L56c5  stra,r1   L1dc3     ; 56c5 cd 7d c3         .}.    
+       bdrr,gt   L56c5     ; 56c8 f9 7b            .{     
+       lodi,r0   0c0h      ; 56ca 04 c0            ..     
+       retc      un        ; 56cc 17               .      
+
+L56cd  stra,r2   L1dcf     ; 56cd ce 1d cf         ...    
+       stra,r1   L1dce     ; 56d0 cd 1d ce         ...    
+       lodi,r3   000h      ; 56d3 07 00            ..     
+       lodi,r1   001h      ; 56d5 05 01            ..     
+       cpsl      001h      ; 56d7 75 01            u.     
+L56d9  loda,r1   *L1dcd    ; 56d9 0d bd cd         ...    
+       bcfr,z    L56ef     ; 56dc 98 11            ..     
+       addi,r3   002h      ; 56de 87 02            ..     
+       comi,r1   005h      ; 56e0 e5 05            ..     
+       bcfr,z    L56d9     ; 56e2 98 75            .u     
+       strz      r1        ; 56e4 c1               .      
+       lodi,r0   0c0h      ; 56e5 04 c0            ..     
+       stra,r0   *L1dcd    ; 56e7 cc 9d cd         ...    
+       eorz      r0        ; 56ea 20               .      
+       stra,r1   *L1dcd    ; 56eb cd bd cd         ...    
+       retc      un        ; 56ee 17               .      
+
+L56ef  andi,r0   0f0h      ; 56ef 44 f0            D.     
+       bcfr,z    L56f5     ; 56f1 98 02            ..     
+       addi,r3   001h      ; 56f3 87 01            ..     
+L56f5  lodz      r3        ; 56f5 03               .      
+       retc      z         ; 56f6 14               .      
+L56f7  bstr,un   L5704     ; 56f7 3b 0b            ;.     
+       bstr,un   L5719     ; 56f9 3b 1e            ;.     
+       bdrr,un   L56f7     ; 56fb fb 7a            .z     
+       retc      un        ; 56fd 17               .      
+
+L56fe  stra,r2   L1dcf     ; 56fe ce 1d cf         ...    
+       stra,r1   L1dce     ; 5701 cd 1d ce         ...    
+L5704  lodi,r1   004h      ; 5704 05 04            ..     
+L5706  loda,r2   L1dcf     ; 5706 0e 1d cf         ...    
+       cpsl      001h      ; 5709 75 01            u.     
+L570b  loda,r2   *L1dcd    ; 570b 0e dd cd         ...    
+       rrl       r0        ; 570e d0               .      
+       stra,r2   *L1dcd    ; 570f ce fd cd         ...    
+       comi,r2   002h      ; 5712 e6 02            ..     
+       bcfr,z    L570b     ; 5714 98 75            .u     
+       bdrr,gt   L5706     ; 5716 f9 6e            .n     
+       retc      un        ; 5718 17               .      
+
+L5719  loda,r0   *L1dcd    ; 5719 0c 9d cd         ...    
+       ppsl      001h      ; 571c 77 01            w.     
+       subi,r0   001h      ; 571e a4 01            ..     
+       stra,r0   *L1dcd    ; 5720 cc 9d cd         ...    
+       retc      un        ; 5723 17               .      
+
+L5724  bsta,un   L5582     ; 5724 3f 55 82         ?U.    
+       lodi,r3   080h      ; 5727 07 80            ..     
+       ppsl      001h      ; 5729 77 01            w.     
+       eorz      r0        ; 572b 20               .      
+       suba,r0   L1dbd     ; 572c ac 1d bd         ...    
+       stra,r0   L1dbd     ; 572f cc 1d bd         ...    
+       bctr,un   L5739     ; 5732 1b 05            ..     
+
+L5734  bsta,un   L5582     ; 5734 3f 55 82         ?U.    
+       lodi,r3   000h      ; 5737 07 00            ..     
+L5739  ppsl      00bh      ; 5739 77 0b            w.     
+       lodz      r3        ; 573b 03               .      
+       bctr,z    L5744     ; 573c 18 06            ..     
+       loda,r0   L1dbf     ; 573e 0c 1d bf         ...    
+       bcta,z    L4c9b     ; 5741 1c 4c 9b         .L.    
+L5744  loda,r0   L1dc4     ; 5744 0c 1d c4         ...    
+       coma,r0   L1dbe     ; 5747 ec 1d be         ...    
+       bctr,z    L5750     ; 574a 18 04            ..     
+       lodi,r0   080h      ; 574c 04 80            ..     
+       bctr,un   L5751     ; 574e 1b 01            ..     
+
+L5750  eorz      r0        ; 5750 20               .      
+L5751  stra,r0   L1dc4     ; 5751 cc 1d c4         ...    
+       cpsl      001h      ; 5754 75 01            u.     
+       loda,r0   L1dbd     ; 5756 0c 1d bd         ...    
+       adda,r0   L1dc3     ; 5759 8c 1d c3         ...    
+       stra,r0   L1dc3     ; 575c cc 1d c3         ...    
+       cpsl      001h      ; 575f 75 01            u.     
+       lodi,r1   0bdh      ; 5761 05 bd            ..     
+       lodi,r2   005h      ; 5763 06 05            ..     
+       bstr,un   L57a3     ; 5765 3b 3c            ;<     
+       brna,r3   L5666     ; 5767 5f 56 66         _Vf    
+       lodi,r3   008h      ; 576a 07 08            ..     
+L576c  lodi,r1   0c3h      ; 576c 05 c3            ..     
+       lodi,r2   009h      ; 576e 06 09            ..     
+       bstr,un   L57a3     ; 5770 3b 31            ;1     
+       bdrr,un   L576c     ; 5772 fb 78            .x     
+       lodi,r3   006h      ; 5774 07 06            ..     
+L5776  bstr,un   L57a9     ; 5776 3b 31            ;1     
+L5778  loda,r0   L1dcc     ; 5778 0c 1d cc         ...    
+       bctr,z    L5787     ; 577b 18 0a            ..     
+       subi,r0   00fh      ; 577d a4 0f            ..     
+       stra,r0   L1dcc     ; 577f cc 1d cc         ...    
+       bsta,un   L5631     ; 5782 3f 56 31         ?V1    
+       bctr,un   L5778     ; 5785 1b 71            .q     
+
+L5787  bdrr,un   L5776     ; 5787 fb 6d            .m     
+       bcta,un   L568e     ; 5789 1f 56 8e         .V.    
+
+L578c  lodi,r0   0b6h      ; 578c 04 b6            ..     
+       lodi,r1   004h      ; 578e 05 04            ..     
+L5790  adda,r1   L1dc5     ; 5790 8d 5d c5         .].    
+       dar       ???       ; 5793 94               .      
+       stra,r1   L1dc5     ; 5794 cd 7d c5         .}.    
+       lodi,r0   066h      ; 5797 04 66            .f     
+       brnr,r1   L5790     ; 5799 59 75            Yu     
+       tpsu      001h      ; 579b b5 01            ..     
+       retc      lt        ; 579d 16               .      
+       bstr,un   L57a9     ; 579e 3b 09            ;.     
+       bstr,un   L57be     ; 57a0 3b 1c            ;.     
+       retc      un        ; 57a2 17               .      
+
+L57a3  stra,r2   L1dcf     ; 57a3 ce 1d cf         ...    
+       stra,r1   L1dce     ; 57a6 cd 1d ce         ...    
+L57a9  lodi,r1   004h      ; 57a9 05 04            ..     
+L57ab  lodi,r2   001h      ; 57ab 06 01            ..     
+L57ad  loda,r2   *L1dcd    ; 57ad 0e bd cd         ...    
+       rrr       r0        ; 57b0 50               P      
+       stra,r2   *L1dcd    ; 57b1 ce fd cd         ...    
+       coma,r2   L1dcf     ; 57b4 ee 1d cf         ...    
+       bcfr,z    L57ad     ; 57b7 98 74            .t     
+       cpsl      001h      ; 57b9 75 01            u.     
+       bdrr,gt   L57ab     ; 57bb f9 6e            .n     
+       retc      un        ; 57bd 17               .      
+
+L57be  loda,r0   *L1dcd    ; 57be 0c 9d cd         ...    
+       cpsl      001h      ; 57c1 75 01            u.     
+       addi,r0   001h      ; 57c3 84 01            ..     
+       stra,r0   *L1dcd    ; 57c5 cc 9d cd         ...    
+       retc      un        ; 57c8 17               .      
+
+L57c9  bsta,un   L557a     ; 57c9 3f 55 7a         ?Uz    
+       lodi,r0   004h      ; 57cc 04 04            ..     
+       stra,r0   L1dcf     ; 57ce cc 1d cf         ...    
+       loda,r0   L1dc3     ; 57d1 0c 1d c3         ...    
+       bcta,lt   L56a3     ; 57d4 1e 56 a3         .V.    
+       ppsl      008h      ; 57d7 77 08            w.     
+L57d9  comi,r0   006h      ; 57d9 e4 06            ..     
+       bcfa,lt   L568e     ; 57db 9e 56 8e         .V.    
+       bstr,un   L57a9     ; 57de 3b 49            ;I     
+       bstr,un   L57be     ; 57e0 3b 5c            ;\     
+       bctr,un   L57d9     ; 57e2 1b 75            .u     
+
+L57e4  loda,r1   L1f52     ; 57e4 0d 1f 52         ..R    
+       loda,r0   L1f51     ; 57e7 0c 1f 51         ..Q    
+       suba,r1   L1f54     ; 57ea ad 1f 54         ..T    
+       ppsl      008h      ; 57ed 77 08            w.     
+       suba,r0   L1f53     ; 57ef ac 1f 53         ..S    
+       cpsl      008h      ; 57f2 75 08            u.     
+L57f4  bcfa,z    L4353     ; 57f4 9c 43 53         .CS    
+       bdra,gt   L4353     ; 57f7 fd 43 53         .CS    
+       bcta,un   L437c     ; 57fa 1f 43 7c         .C|    
+
+       lodz      r0        ; 57fd 00               .      
+       lodz      r0        ; 57fe 00               .      
+       lodz      r0        ; 57ff 00               .      
+L5800  bcta,un   L4007     ; 5800 1f 40 07         .@.    
+
+       stri,r0   018h      ; 5803 c4 18            ..     
+       eorz      r0        ; 5805 20               .      
+       lodz      r0        ; 5806 00               .      
+L5807  lodz      r0        ; 5807 00               .      
+
+       db                  ; 5808 08               .      
+
+L5809  lodz      r0        ; 5809 00               .      
+       lodi,r1   000h      ; 580a 05 00            ..     
+       lodr,r0   L580e     ; 580c 08 00            ..     
+L580e  lodi,r1   000h      ; 580e 05 00            ..     
+       lodr,r0   L5812     ; 5810 08 00            ..     
+L5812  lodi,r1   000h      ; 5812 05 00            ..     
+       lodr,r0   L5816     ; 5814 08 00            ..     
+L5816  lodi,r1   059h      ; 5816 05 59            .Y     
+       lodi,r0   058h      ; 5818 04 58            .X     
+       eorr,r0   L57f4     ; 581a 28 58            (X     
+       bcta,gt   *L3b14    ; 581c 1d bb 14         ...    
+       comi,r0   01bh      ; 581f e4 1b            ..     
+       retc      z         ; 5821 14               .      
+       comi,r0   020h      ; 5822 e4 20            ..     
+       retc      z         ; 5824 14               .      
+       lodi,r0   07fh      ; 5825 04 7f            ..     
+       retc      un        ; 5827 17               .      
+
+       loda,r1   L1805     ; 5828 0d 18 05         ...    
+       loda,r2   L1806     ; 582b 0e 18 06         ...    
+L582e  stra,r1   L1cfc     ; 582e cd 1c fc         ...    
+L5831  stra,r2   L1cfd     ; 5831 ce 1c fd         ...    
+       loda,r0   *L1cfc    ; 5834 0c 9c fc         ...    
+       comi,r0   003h      ; 5837 e4 03            ..     
+       bctr,z    L5846     ; 5839 18 0b            ..     
+       birr,r2   L5831     ; 583b da 74            .t     
+       birr,r1   L582e     ; 583d d9 6f            .o     
+       bcta,un   *L4005    ; 583f 1f c0 05         ...    
+
+       stri,r0   002h      ; 5842 c4 02            ..     
+       brna,r0   *L7cda    ; 5844 5c fc da         \..    
+       lodz      r2        ; 5847 02               .      
+       birr,r1   L584a     ; 5848 d9 00            ..     
+L584a  suba,r2   L1806     ; 584a ae 18 06         ...    
+       ppsl      008h      ; 584d 77 08            w.     
+       suba,r1   L1805     ; 584f ad 18 05         ...    
+       cpsl      008h      ; 5852 75 08            u.     
+       stra,r1   L1cfc     ; 5854 cd 1c fc         ...    
+       stra,r2   L1cfd     ; 5857 ce 1c fd         ...    
+       lodi,r3   002h      ; 585a 07 02            ..     
+L585c  loda,r3   L1844     ; 585c 0f 58 44         .XD    
+       stra,r3   L1cfe     ; 585f cf 7c fe         .|.    
+       brnr,r3   L585c     ; 5862 5b 78            [x     
+       lodi,r0   000h      ; 5864 04 00            ..     
+       lodi,r1   000h      ; 5866 05 00            ..     
+       lodi,r2   002h      ; 5868 06 02            ..     
+       lodi,r3   000h      ; 586a 07 00            ..     
+       bstr,un   L5882     ; 586c 3b 14            ;.     
+       lodi,r3   002h      ; 586e 07 02            ..     
+L5870  loda,r3   L1805     ; 5870 0f 58 05         .X.    
+       stra,r3   L1cfe     ; 5873 cf 7c fe         .|.    
+       brnr,r3   L5870     ; 5876 5b 78            [x     
+       lodi,r0   040h      ; 5878 04 40            .@     
+       loda,r1   L1cfc     ; 587a 0d 1c fc         ...    
+       loda,r2   L1cfd     ; 587d 0e 1c fd         ...    
+       lodi,r3   000h      ; 5880 07 00            ..     
+L5882  ppsl      010h      ; 5882 77 10            w.     
+L5884  lodi,r1   01ah      ; 5884 05 1a            ..     
+       lodi,r2   04eh      ; 5886 06 4e            .N     
+       bctr,un   L588d     ; 5888 1b 03            ..     
+
+L588a  lodi,r2   050h      ; 588a 06 50            .P     
+       iorz      r0        ; 588c 60               `      
+L588d  bdrr,lt   L588d     ; 588d fa 7e            .~     
+       ppsu      060h      ; 588f 76 60            v`     
+       lodi,r2   051h      ; 5891 06 51            .Q     
+       iorz      r0        ; 5893 60               `      
+L5894  bdrr,lt   L5894     ; 5894 fa 7e            .~     
+       cpsu      040h      ; 5896 74 40            t@     
+       bdrr,gt   L588a     ; 5898 f9 70            .p     
+       bdrr,z    L5884     ; 589a f8 68            .h     
+       nop                 ; 589c c0               .      
+       lodi,r1   014h      ; 589d 05 14            ..     
+       bstr,un   L58c9     ; 589f 3b 28            ;(     
+       lodi,r3   0ffh      ; 58a1 07 ff            ..     
+       lodi,r1   00ch      ; 58a3 05 0c            ..     
+       cpsl      010h      ; 58a5 75 10            u.     
+L58a7  loda,r3   *L1cfe    ; 58a7 0f fc fe         ...    
+       ppsl      010h      ; 58aa 77 10            w.     
+       bstr,un   L58c7     ; 58ac 3b 19            ;.     
+       lodi,r1   002h      ; 58ae 05 02            ..     
+       bstr,un   L58ea     ; 58b0 3b 38            ;8     
+       iorz      r0        ; 58b2 60               `      
+       bcfr,z    L58a7     ; 58b3 98 72            .r     
+       ppsl      010h      ; 58b5 77 10            w.     
+       lodz      r3        ; 58b7 03               .      
+       lodi,r3   019h      ; 58b8 07 19            ..     
+       lodi,r1   002h      ; 58ba 05 02            ..     
+L58bc  bstr,un   L58c7     ; 58bc 3b 09            ;.     
+       eorz      r0        ; 58be 20               .      
+       lodi,r1   012h      ; 58bf 05 12            ..     
+       iorz      r0        ; 58c1 60               `      
+       bdrr,un   L58bc     ; 58c2 fb 78            .x     
+       cpsl      010h      ; 58c4 75 10            u.     
+       rete      r3        ; 58c6 37               7      
+L58c7  lodi,r2   007h      ; 58c7 06 07            ..     
+L58c9  bdrr,gt   L58c9     ; 58c9 f9 7e            .~     
+       iorz      r0        ; 58cb 60               `      
+       bcfr,lt   L58d2     ; 58cc 9a 04            ..     
+       lodi,r1   01bh      ; 58ce 05 1b            ..     
+L58d0  bdrr,gt   L58d0     ; 58d0 f9 7e            .~     
+L58d2  ppsu      040h      ; 58d2 76 40            v@     
+       iorz      r0        ; 58d4 60               `      
+       bctr,lt   L58db     ; 58d5 1a 04            ..     
+       lodi,r1   017h      ; 58d7 05 17            ..     
+       bctr,un   L58dd     ; 58d9 1b 02            ..     
+
+L58db  lodi,r1   034h      ; 58db 05 34            .4     
+L58dd  bdrr,gt   L58dd     ; 58dd f9 7e            .~     
+       nop                 ; 58df c0               .      
+       cpsu      040h      ; 58e0 74 40            t@     
+       rrl       r0        ; 58e2 d0               .      
+       subi,r2   001h      ; 58e3 a6 01            ..     
+       retc      lt        ; 58e5 16               .      
+       lodi,r1   015h      ; 58e6 05 15            ..     
+       bctr,un   L58c9     ; 58e8 1b 5f            ._     
+
+L58ea  eorz      r3        ; 58ea 23               #      
+       strz      r3        ; 58eb c3               .      
+       lodi,r0   00ah      ; 58ec 04 0a            ..     
+       lpsl                ; 58ee 93               .      
+       addi,r3   001h      ; 58ef 87 01            ..     
+       loda,r0   L1cfe     ; 58f1 0c 1c fe         ...    
+       addi,r0   000h      ; 58f4 84 00            ..     
+       stra,r0   L1cfe     ; 58f6 cc 1c fe         ...    
+       cpsl      001h      ; 58f9 75 01            u.     
+       subi,r2   000h      ; 58fb a6 00            ..     
+       subi,r1   000h      ; 58fd a5 00            ..     
+       cpsl      008h      ; 58ff 75 08            u.     
+       lodz      r1        ; 5901 01               .      
+       iorz      r2        ; 5902 62               b      
+       retc      un        ; 5903 17               .      
+
+       lodi,r3   002h      ; 5904 07 02            ..     
+L5906  loda,r3   L1844     ; 5906 0f 58 44         .XD    
+       stra,r3   L1cfe     ; 5909 cf 7c fe         .|.    
+       brnr,r3   L5906     ; 590c 5b 78            [x     
+       lodi,r1   000h      ; 590e 05 00            ..     
+       lodi,r2   002h      ; 5910 06 02            ..     
+       lodi,r3   000h      ; 5912 07 00            ..     
+       bstr,un   L5928     ; 5914 3b 12            ;.     
+       lodi,r3   002h      ; 5916 07 02            ..     
+L5918  loda,r3   L1805     ; 5918 0f 58 05         .X.    
+       stra,r3   L1cfe     ; 591b cf 7c fe         .|.    
+       brnr,r3   L5918     ; 591e 5b 78            [x     
+       loda,r1   L1cfc     ; 5920 0d 1c fc         ...    
+       loda,r2   L1cfd     ; 5923 0e 1c fd         ...    
+       lodi,r3   000h      ; 5926 07 00            ..     
+L5928  ppsl      010h      ; 5928 77 10            w.     
+       lodi,r3   0ffh      ; 592a 07 ff            ..     
+       lodi,r1   020h      ; 592c 05 20            ..     
+L592e  tpsu      080h      ; 592e b4 80            ..     
+       bcfr,z    L5934     ; 5930 98 02            ..     
+       bdrr,gt   L592e     ; 5932 f9 7a            .z     
+L5934  bstr,un   L5963     ; 5934 3b 2d            ;-     
+       bcfr,lt   L5934     ; 5936 9a 7c            .|     
+L5938  bstr,un   L5954     ; 5938 3b 1a            ;.     
+       cpsl      010h      ; 593a 75 10            u.     
+       stra,r3   *L1cfe    ; 593c cf fc fe         ...    
+       ppsl      010h      ; 593f 77 10            w.     
+       bsta,un   L58ea     ; 5941 3f 58 ea         ?X.    
+       ppsl      010h      ; 5944 77 10            w.     
+       bcfr,z    L5938     ; 5946 98 70            .p     
+       bstr,un   L5954     ; 5948 3b 0a            ;.     
+       eorz      r3        ; 594a 23               #      
+       bcfr,z    L5975     ; 594b 98 28            .(     
+       cpsl      010h      ; 594d 75 10            u.     
+L594f  bdrr,gt   L594f     ; 594f f9 7e            .~     
+       bdrr,z    L594f     ; 5951 f8 7c            .|     
+       retc      un        ; 5953 17               .      
+
+L5954  lodi,r2   007h      ; 5954 06 07            ..     
+       eorz      r0        ; 5956 20               .      
+L5957  rrl       r0        ; 5957 d0               .      
+       bstr,un   L5963     ; 5958 3b 09            ;.     
+       bctr,lt   L595e     ; 595a 1a 02            ..     
+       iori,r0   001h      ; 595c 64 01            d.     
+L595e  subi,r2   001h      ; 595e a6 01            ..     
+       retc      lt        ; 5960 16               .      
+       bctr,un   L5957     ; 5961 1b 74            .t     
+
+L5963  lodi,r1   0e0h      ; 5963 05 e0            ..     
+L5965  tpsu      080h      ; 5965 b4 80            ..     
+       bctr,z    L596d     ; 5967 18 04            ..     
+       birr,r1   L5965     ; 5969 d9 7a            .z     
+       bctr,un   L5975     ; 596b 1b 08            ..     
+
+L596d  lodi,r1   0e0h      ; 596d 05 e0            ..     
+L596f  tpsu      080h      ; 596f b4 80            ..     
+       bcfr,z    L597a     ; 5971 98 07            ..     
+       birr,r1   L596f     ; 5973 d9 7a            .z     
+L5975  cpsl      018h      ; 5975 75 18            u.     
+       bcta,un   *L4005    ; 5977 1f c0 05         ...    
+
+L597a  addi,r1   014h      ; 597a 85 14            ..     
+       retc      un        ; 597c 17               .      
+
+       stri,r3   005h      ; 597d c7 05            ..     
+       andi,r1   04eh      ; 597f 45 4e            EN     
+       andi,r0   049h      ; 5981 44 49            DI     
+       anda,r3   L0000     ; 5983 4f 00 00         O..    

@@ -7,6 +7,11 @@
 //////////////////////////////////////////////////////////////////
 
 enum class Z80Mode {
+  eD,    // direct register addressing
+  eRR,   // register to register move
+  eDW,   // direct word register addressing
+  eR,    // relative addressing
+  eO,    // other
 
   eTerm = XSsembler::eTerm   // terminating instruction
 };

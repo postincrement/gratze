@@ -1,8 +1,8 @@
 
 #include "s2650.h"
 
-static const char * g_regs[] = { "r0", "r1", "r2", "r3" }; 
-static const char * g_cond[] = {  "z", "gt", "lt", "un" }; 
+static const char * g_regs[] = { "r0", "r1", "r2", "r3", 0 }; 
+static const char * g_cond[] = {  "z", "gt", "lt", "un", 0 }; 
 
 XSsembler::OpCodeInfo g_2650_opcodes[] = {
   { "lodz", (int)S2650Mode::eZ,  0x00, 0xfc, 1, g_regs },

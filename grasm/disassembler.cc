@@ -18,6 +18,46 @@ Disassembler::Disassembler(const FormatInfo & format)
   : XSsembler(format)
 {}
 
+
+std::string GetMnemonic(const Disassembler::OpCodeInfo * info, uint8_t opcode)
+{
+  std::string mnem = info->m_mnemonic;
+  if (info->m_bitInfo == 0)
+    return mnem;
+
+  int mask = info->m_mask;
+  std::string extra;
+  if (mask == 0xff) {
+    extra = (const char *)info->m_bitInfo;
+  }
+  else {
+    const char ** strings = (const char **)info->m_bitInfo;
+
+    // count number of strings
+    int stringCount = 0;
+    while (strings[stringCount] != 0)
+      ++stringCount;
+
+    int bitsUsed
+    while ()  
+
+    // shift opcode down so mask is zero
+    int bits = 0;
+    while ((mask & 0x01) != 0) {
+      mask = (mask >> 1) | 0x80;
+      opcode = opcode >> 1;
+      bits++;
+    }
+
+    extra = ((const char **)info->m_bitInfo)[opcode & ~mask];
+    if (!extra.empty())
+      mnem += " " + extra;
+  }
+
+  return mnem;
+}
+
+
 void Disassembler::Matrix()
 {
   const OpCodeInfo * opcodes = GetOpcodes();
@@ -38,6 +78,8 @@ void Disassembler::Matrix()
       uint8_t opcode = (col * 16) + row;
       const OpCodeInfo * info = nullptr;
       const OpCodeInfo * ptr = GetOpcodes();
+
+      // find best match
       while (ptr->m_mnemonic != 0) {
         if (
           ((opcode & ptr->m_mask) == ptr->m_opcode) &&
@@ -47,28 +89,10 @@ void Disassembler::Matrix()
         ptr++;     
       }
 
-      if (info == nullptr) {
-        cols[col+1].push_back(" ");
-      }
-      else {
-        std::string mnem = info->m_mnemonic;
-        if (info->m_bitInfo != 0) {
-          int mask = info->m_mask;
-          std::string extra;
-          if (mask == 0xff) {
-            extra = (const char *)info->m_bitInfo;
-          }
-          else {
-            // move mask down to bit 0
-            while ((mask & 0x01) != 0)
-              mask = (mask >> 1) | 0x80;
-            extra = ((const char **)info->m_bitInfo)[opcode & ~mask];  
-          }
-          if (!extra.empty())
-            mnem += " " + extra;
-        }  
-        cols[col+1].push_back(mnem);
-      }
+      std::string mnem;
+      if (info != nullptr)
+        mnem = GetMnemonic(info, opcode);
+      cols[col+1].push_back(mnem);
     }
   }
 
