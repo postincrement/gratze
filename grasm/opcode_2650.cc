@@ -26,7 +26,7 @@ XSsembler::OpCodeInfo g_2650_opcodes[] = {
   { "eorr", (int)S2650Mode::eR,  0x28, 0xfc, 2, g_regs },
   { "eora", (int)S2650Mode::eA,  0x2c, 0xfc, 3, g_regs },
 
-  { "redc", (int)S2650Mode::eZ,  0x30, 0xfc, 2, g_regs },
+  { "redc", (int)S2650Mode::eZ,  0x30, 0xfc, 1, g_regs },
 
   { "rete", (int)S2650Mode::eZ,  0x34, 0xfc, 1, g_regs },
 
@@ -44,7 +44,7 @@ XSsembler::OpCodeInfo g_2650_opcodes[] = {
 
   { "rrr",  (int)S2650Mode::eZ,  0x50, 0xfc, 1, g_regs },
 
-  { "rede", (int)S2650Mode::eZ,  0x54, 0xfc, 2, g_regs },
+  { "rede", (int)S2650Mode::eI,  0x54, 0xfc, 2, g_regs },
 
   { "brnr", (int)S2650Mode::eR,  0x58, 0xfc, 2, g_regs },
   { "brna", (int)S2650Mode::eB,  0x5c, 0xfc, 3, g_regs },
@@ -54,7 +54,7 @@ XSsembler::OpCodeInfo g_2650_opcodes[] = {
   { "iorr", (int)S2650Mode::eR,  0x68, 0xfc, 2, g_regs },
   { "iora", (int)S2650Mode::eA,  0x6c, 0xfc, 3, g_regs },
 
-  { "redd", (int)S2650Mode::eZ,  0x70, 0xfc, 2, g_regs },
+  { "redd", (int)S2650Mode::eZ,  0x70, 0xfc, 1, g_regs },
 
   { "cpsu", (int)S2650Mode::eIn, 0x74, 0xff, 2 },
   { "cpsl", (int)S2650Mode::eIn, 0x75, 0xff, 2 },

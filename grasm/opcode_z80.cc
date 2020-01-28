@@ -12,35 +12,42 @@ static const char * g_dregNames[] = {
   0
 };
 
+static std::string ld_regs(uint8_t opcode)
+{
+  int from = opcode & 0x7;
+  int to   = (opcode >> 3) & 0x7;
+  return std::string(g_regNames[to]) + "," + g_regNames[from]; 
+}
 
 XSsembler::OpCodeInfo g_z80_opcodes[] = {
-  { "nop",  (int)Z80Mode::eO,  0x00, 0xff, 1  },
+  { "nop",  (int)Z80Mode::eO,     0x00, 0xff, 1  },
 
-  { "inc",  (int)Z80Mode::eDW, 0x03, 0xcf, 1, (void *)g_dregNames},
+  { "inc",  (int)Z80Mode::eDW,    0x03, 0xcf, 1, (void *)g_dregNames},
 
-  { "inc",  (int)Z80Mode::eD,  0x04, 0xc7, 1, (void *)g_regNames},
-  { "dec",  (int)Z80Mode::eD,  0x05, 0xc7, 1, (void *)g_regNames},
+  { "inc",  (int)Z80Mode::eD,     0x04, 0xc7, 1, (void *)g_regNames},
+  { "dec",  (int)Z80Mode::eD,     0x05, 0xc7, 1, (void *)g_regNames},
 
-  { "dec",  (int)Z80Mode::eDW, 0x0b, 0xcf, 1, (void *)g_dregNames},
+  { "dec",  (int)Z80Mode::eDW,    0x0b, 0xcf, 1, (void *)g_dregNames},
+  { "djnz", (int)Z80Mode::eR,     0x10, 0xff, 2  },
 
-  { "ld",   (int)Z80Mode::eRR, 0x40, 0xc0, 1, (void *)g_regNames},
-  { "halt", (int)Z80Mode::eO,  0x76, 0xff, 1  },
+  { "jrnz", (int)Z80Mode::eR,     0x20, 0xff, 2  },
 
-  { "add",  (int)Z80Mode::eD,  0x80, 0xf8, 1, (void *)g_regNames},
-  { "adc",  (int)Z80Mode::eD,  0x88, 0xf8, 1, (void *)g_regNames},
+  { "ld",   (int)Z80Mode::eRR | 
+            (int)Z80Mode::eFunc,  0x40, 0xc0, 1, (void *)&ld_regs},
 
-  { "sub",  (int)Z80Mode::eD,  0x90, 0xf8, 1, (void *)g_regNames},
-  { "sbc",  (int)Z80Mode::eD,  0x98, 0xf8, 1, (void *)g_regNames},
+  { "halt", (int)Z80Mode::eO,     0x76, 0xff, 1  },
 
-  { "and",  (int)Z80Mode::eD,  0xa0, 0xf8, 1, (void *)g_regNames},
-  { "xor",  (int)Z80Mode::eD,  0xa8, 0xf8, 1, (void *)g_regNames},
+  { "add",  (int)Z80Mode::eD,     0x80, 0xf8, 1, (void *)g_regNames},
+  { "adc",  (int)Z80Mode::eD,     0x88, 0xf8, 1, (void *)g_regNames},
 
-  { "or",   (int)Z80Mode::eD,  0xb0, 0xf8, 1, (void *)g_regNames},
-  { "cp",   (int)Z80Mode::eD,  0xb8, 0xf8, 1, (void *)g_regNames},
+  { "sub",  (int)Z80Mode::eD,     0x90, 0xf8, 1, (void *)g_regNames},
+  { "sbc",  (int)Z80Mode::eD,     0x98, 0xf8, 1, (void *)g_regNames},
 
-  { "djnz", (int)Z80Mode::eR,  0x10, 0xff, 2  },
-  { "jrnz", (int)Z80Mode::eR,  0x20, 0xff, 2  },
+  { "and",  (int)Z80Mode::eD,     0xa0, 0xf8, 1, (void *)g_regNames},
+  { "xor",  (int)Z80Mode::eD,     0xa8, 0xf8, 1, (void *)g_regNames},
 
+  { "or",   (int)Z80Mode::eD,     0xb0, 0xf8, 1, (void *)g_regNames},
+  { "cp",   (int)Z80Mode::eD,     0xb8, 0xf8, 1, (void *)g_regNames},
 
   { 0, 0, 0, 0 }
 };

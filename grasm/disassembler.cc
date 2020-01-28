@@ -30,6 +30,11 @@ std::string GetMnemonic(const Disassembler::OpCodeInfo * info, uint8_t opcode)
   if (mask == 0xff) {
     extra = (const char *)info->m_bitInfo;
   }
+  else if (info->m_mode & XSsembler::eFunc) {
+    typedef std::string (* Func)(uint8_t);
+    Func func = (Func)info->m_bitInfo;
+    mnem += " " + (*func)(opcode);
+  } 
   else {
     const char ** strings = (const char **)info->m_bitInfo;
 
@@ -37,9 +42,6 @@ std::string GetMnemonic(const Disassembler::OpCodeInfo * info, uint8_t opcode)
     int stringCount = 0;
     while (strings[stringCount] != 0)
       ++stringCount;
-
-    int bitsUsed
-    while ()  
 
     // shift opcode down so mask is zero
     int bits = 0;
@@ -49,7 +51,8 @@ std::string GetMnemonic(const Disassembler::OpCodeInfo * info, uint8_t opcode)
       bits++;
     }
 
-    extra = ((const char **)info->m_bitInfo)[opcode & ~mask];
+    // get string, making sure not to go past the end
+    extra = ((const char **)info->m_bitInfo)[(opcode & ~mask) % stringCount];
     if (!extra.empty())
       mnem += " " + extra;
   }
@@ -137,14 +140,16 @@ bool Disassembler::Open(const CommandLineArgs & args, const std::string & fn)
 
 bool Disassembler::Run()
 {
+  std::stringstream strm;
 
+  // two passes through the source
   for (m_pass = 1; m_pass <= 2; ++m_pass) {
     unsigned offset = 0;
     bool wasDb = false;
     bool wasTerm = false;
+    strm.str("");
     while (offset < m_image.size()) {
       int insLen = 0;
-      std::stringstream strm;
       std::string text;
       bool forced = m_forceDb.count(m_origin + offset);
 
@@ -196,12 +201,22 @@ bool Disassembler::Run()
 
       strm << disasm[4] << endl;
 
-      if (m_pass == 2)
-        cout << strm.str();
       offset += insLen;
-
     }
   }
+
+  // output symbols not in range of the binary
+  for (auto & r : m_reverseSymbols) {
+    unsigned addr      = r.first;
+    std::string symbol = r.second;
+//    if ((addr < m_origin) || (addr >= (m_origin + m_image.size()))) {
+      strm << symbol << std::string(std::max((int)(m_format.m_symColWidth - symbol.length()), 1), ' '); 
+      strm << "equ"  << std::string(std::max((int)(m_format.m_mnemColWidth - 3), 1), ' ');
+      strm << "0"    << setw(4) << setfill('0') << addr << "h" << endl;
+//    }  
+  }
+
+  cout << strm.str();
 
   return false;
 }

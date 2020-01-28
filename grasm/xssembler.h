@@ -51,7 +51,8 @@ class XSsembler
 
     enum {
       eModeMask = 0x0ff,
-      eTerm     = 0x800
+      eFunc     = 0x400,  // use function for matrix
+      eTerm     = 0x800   // terminating instruction (ret, jmp etc)
     };
 
     virtual void AssignSymbol(const std::string & sym, unsigned val);

@@ -13,6 +13,7 @@ enum class Z80Mode {
   eR,    // relative addressing
   eO,    // other
 
+  eFunc = XSsembler::eFunc,  // use function for matrix
   eTerm = XSsembler::eTerm   // terminating instruction
 };
 

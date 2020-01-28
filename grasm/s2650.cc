@@ -18,7 +18,7 @@ struct XSsembler::FormatInfo g_2650Format = {
   5,    // number of bytes in listing file
   7,    // number of chars for symbol in listing file (if generated)
   10,   // number of chars for mnemonic column in listing file (if generated)
-  10    // number of chars for argument column in listing file (if generated)
+  13    // number of chars for argument column in listing file (if generated)
 };
 
 struct Token
@@ -219,6 +219,7 @@ bool S2650Assembler::ParseExpr(unsigned int & val, const std::string & str, size
 
   unsigned lhs;
   if (!ResolveIntegerValue(lhs, token1, m_address, m_symbols)) {
+    error = "cannot resolve expected integer value '" + token1.m_lexeme + "'";
     return (m_pass == 1);
   }
 
@@ -238,6 +239,7 @@ bool S2650Assembler::ParseExpr(unsigned int & val, const std::string & str, size
   // get rhs
   unsigned rhs;
   if (!ParseExpr(rhs, str, pos, error)) {
+    error = "cannot resolve expected integer value '" + token1.m_lexeme + "'";
     return (m_pass == 1);
   }
 
@@ -496,15 +498,15 @@ bool S2650Assembler::ParseLine()
     case S2650Mode::eZ: // r0
       if (!value.empty()) {
         if (!ParseReg(reg, value)) {
-          return ParseError("mode 0 - unknown reg", m_value);
+          return ParseError("unknown reg", m_value);
         }    
       }
       else { 
         if (!ParseReg(reg, arg)) {
-          return ParseError("mode 0 - unknown reg", arg);
+          return ParseError("unknown reg", arg);
         }
       }
-      listing.m_ops[0] |= reg;
+      listing.m_ops[0] = (listing.m_ops[0] & 0xfc) | reg;
       break;
 
     case S2650Mode::eI: // immediate
@@ -512,9 +514,9 @@ bool S2650Assembler::ParseLine()
         return ParseError(m_error);
       }
       if (!ParseReg(reg, arg)) {
-        return ParseError("mode 1 - unknown reg", arg);
+        return ParseError("unknown reg", arg);
       }
-      listing.m_ops[0] |= reg;
+      listing.m_ops[0] = (listing.m_ops[0] & 0xfc) | reg;;
       break;
 
     case S2650Mode::eIn: // immediate with no arg
@@ -539,7 +541,7 @@ bool S2650Assembler::ParseLine()
         strm << "relative offset " << (int)offs << " is too large";
         return ParseError(strm.str());
       }
-      listing.m_ops[0] |= reg;
+      listing.m_ops[0] = (listing.m_ops[0] & 0xfc) | reg;;
       listing.m_ops[1] = (offs & 0x7f) | (indirect ? 0x80 : 0x00);
       break;
 
@@ -564,7 +566,7 @@ bool S2650Assembler::ParseLine()
         return ParseError(m_error);
       }
       addr &= 0x7fff;
-      listing.m_ops[0] |= reg;
+      listing.m_ops[0] = (listing.m_ops[0] & 0xfc) | reg;;
       listing.m_ops[1] = (addr >> 8) | (indirect ? 0x80 : 0x00);
       listing.m_ops[2] = (addr & 0xff);
       break;
@@ -625,9 +627,10 @@ bool S2650Disassembler::DecodeInstruction(DisasmInfo & disasm, int & len, unsign
 
   unsigned addr;
   signed relOffs;
+  uint8_t v;
   bool indirect;
   std::string symbol;
-
+  int mode;
   len  = info->m_opLen;
   isTerm = (info->m_mode & XSsembler::eTerm) != 0;
   stringstream strm;
@@ -646,22 +649,37 @@ bool S2650Disassembler::DecodeInstruction(DisasmInfo & disasm, int & len, unsign
 
     case S2650Mode::eR:    // relative addressing
       indirect = (m_image[offs+1] & 0x80) != 0;
-      relOffs = m_image[offs+1] & ~0x80;
-      if (relOffs > 63)
-        relOffs = relOffs - 128;
-      //cout << "rel val 0x" << hex << (int)m_image[offs+1] << " -> " << dec << (int)relOffs << endl;
+      v = m_image[offs+1] & 0x7f;
+      if (v > 63)
+        relOffs = v - 128;
+      else
+        relOffs = v;
+//      cout << "rel val 0x" << hex << (int)(m_image[offs+1] & 0x7f) << " -> " << dec << (int)relOffs << endl;
       addr = address + 2 + relOffs;
       addr &= 0x7fff;
       disasm[1] += "," + DecodeReg(opcode, info);
-      disasm[2] = CreateSymbol(addr);
+      disasm[2] = (indirect ? "*" : "") + CreateSymbol(addr);
       break;
 
     case S2650Mode::eA:    // absolute addressing (non-branch)
       indirect = (m_image[offs+1] & 0x80) != 0;
+      mode = (m_image[offs+1] >> 5) & 0x3;
       addr = (m_image[offs+1] << 8) + m_image[offs+2];
       addr &= 0x1fff;
-      disasm[1] += "," + DecodeReg(opcode, info);
       disasm[2] = (indirect ? "*" : "") + CreateSymbol(addr);
+      if (mode == 0) {
+        disasm[1] += "," + DecodeReg(opcode, info);
+      }
+      else {
+        disasm[1] += ",r0";
+        disasm[2] += "," + DecodeReg(opcode, info);
+        if (mode == 1) {
+          disasm[2] += ",+";
+        }
+        else if (mode == 2) {
+          disasm[2] += ",-";
+        }
+      }
       break;
 
     case S2650Mode::eB:    // absolute addressing (branch)
