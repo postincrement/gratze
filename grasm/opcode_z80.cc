@@ -19,18 +19,54 @@ static std::string ld_regs(uint8_t opcode)
   return std::string(g_regNames[to]) + "," + g_regNames[from]; 
 }
 
+static std::string ld_n(uint8_t opcode)
+{
+  int to   = (opcode >> 3) & 0x7;
+  return std::string(g_regNames[to]) + ",n"; 
+}
+
+static std::string ld_nn(uint8_t opcode)
+{
+  int to   = (opcode >> 4) & 0x3;
+  return std::string(g_dregNames[to]) + ",n"; 
+}
+
 XSsembler::OpCodeInfo g_z80_opcodes[] = {
   { "nop",  (int)Z80Mode::eO,     0x00, 0xff, 1  },
+
+  { "ld",   (int)Z80Mode::eDW | 
+            (int)Z80Mode::eFunc,  0x01, 0xcf, 3, (void *)&ld_nn},
 
   { "inc",  (int)Z80Mode::eDW,    0x03, 0xcf, 1, (void *)g_dregNames},
 
   { "inc",  (int)Z80Mode::eD,     0x04, 0xc7, 1, (void *)g_regNames},
   { "dec",  (int)Z80Mode::eD,     0x05, 0xc7, 1, (void *)g_regNames},
+  { "ld",   (int)Z80Mode::eI | 
+            (int)Z80Mode::eFunc,  0x06, 0xc7, 2, (void *)&ld_n},
+
+  { "rlca",     (int)Z80Mode::eO,     0x07, 0xff, 1  },
+  { "ex af,af", (int)Z80Mode::eO,     0x08, 0xff, 1  },
+
+  { "add hl,",  (int)Z80Mode::eDW,    0x09, 0xcf, 1, (void *)g_dregNames},
 
   { "dec",  (int)Z80Mode::eDW,    0x0b, 0xcf, 1, (void *)g_dregNames},
+
+  { "rrca", (int)Z80Mode::eO,     0x0f, 0xff, 1  },
+
   { "djnz", (int)Z80Mode::eR,     0x10, 0xff, 2  },
+  { "rla",  (int)Z80Mode::eO,     0x17, 0xff, 1  },
+  { "jr",   (int)Z80Mode::eR,     0x18, 0xff, 2  },
+  { "rra",  (int)Z80Mode::eO,     0x1f, 0xff, 1  },
 
   { "jrnz", (int)Z80Mode::eR,     0x20, 0xff, 2  },
+  { "daa",  (int)Z80Mode::eO,     0x27, 0xff, 1  },
+  { "jrz",  (int)Z80Mode::eR,     0x28, 0xff, 2  },
+  { "cpl",  (int)Z80Mode::eO,     0x2f, 0xff, 1  },
+
+  { "jrnc", (int)Z80Mode::eR,     0x30, 0xff, 2  },
+  { "scf",  (int)Z80Mode::eO,     0x37, 0xff, 1  },
+  { "jrc",  (int)Z80Mode::eR,     0x38, 0xff, 2  },
+  { "ccf",  (int)Z80Mode::eO,     0x3f, 0xff, 1  },
 
   { "ld",   (int)Z80Mode::eRR | 
             (int)Z80Mode::eFunc,  0x40, 0xc0, 1, (void *)&ld_regs},

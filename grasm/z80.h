@@ -11,6 +11,7 @@ enum class Z80Mode {
   eRR,   // register to register move
   eDW,   // direct word register addressing
   eR,    // relative addressing
+  eI,    // immediate addressing
   eO,    // other
 
   eFunc = XSsembler::eFunc,  // use function for matrix
