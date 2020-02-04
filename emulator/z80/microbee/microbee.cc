@@ -43,16 +43,16 @@ extern EmulatorInfo g_microbeeEmulatorInfo;
   /*
              p9  000 -----@ ........ G
             p10  001 -----H ........ O
-    MA9     p11  010 -----P ........ W 
+    MA9     p11  010 -----P ........ W
     MA8 --> p12  011 -----X ........ DEL
     MA7      p7  100 -----0 ........ 7
              p6  101 -----8 ........ /
              p5  110 ---ESC ........ SP
              p4  111 --CTRL ........ SHFT
-                            |||||||| 
-             p4  000 -------+|||||||  
+                            ||||||||
+             p4  000 -------+|||||||
              p3  001 --------+||||||
-    MA6      p2  010 ---------+|||||    
+    MA6      p2  010 ---------+|||||
     MA5 <--  p1  011 ----------+||||
     MA4     p15  100 -----------+|||
             p14  101 ------------+||
@@ -69,7 +69,7 @@ const KeyboardScanner::ScanCode keys[8*8] = {
   { "0" },      { "1" },          { "2" },    { "3" },    { "4"},       { "5" } ,       { "6" } ,     { "7" } ,
   { "8" },      { "9" },          { ":" },    { ";" },    { ","},       { "-" } ,       { "." } ,     { "/" } ,
   { "Escape" }, { "Backspace" },  { "Tab" },  { "LF" },   { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
-  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" } 
+  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" }
 };
 
 const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
@@ -80,7 +80,7 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
   { 0   },      { "!" },          { "\"" },   { "#" },    { "$"},       { "%" } ,       { "&" } ,     { "'" } ,
   { "(" },      { ")" },          { "*" },    { "+" },    { ","},       { "=" } ,       { "." } ,     { "?" } ,
   { "Escape" }, { "Backspace" },  { "Tab" },  { "LF" },   { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
-  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" } 
+  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" }
 };
 
 
@@ -88,7 +88,7 @@ static KeyboardScanner::ScanLayout g_microbeeKeys = {
   8, 8,
   keys,
   shiftedkeys,
-  { 0, 0 }
+  { }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +118,7 @@ FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
   FontChar ch = m_memory[loc & 0x7ff];
 
   //uint8_t attr = m_memory[0x400 + charAddr];
-  // switch to graphics 
+  // switch to graphics
   //ch += ((attr & 0x2) != 0) ? 0x100 : 0x000;
 
   return ch;
@@ -128,10 +128,10 @@ FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
 void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
   if (withCursor) {
-    m_font->RenderChar(ch, renderer, dstRect, bg, fg);  
+    m_font->RenderChar(ch, renderer, dstRect, bg, fg);
   }
   else {
-    m_font->RenderChar(ch, renderer, dstRect, fg, bg);  
+    m_font->RenderChar(ch, renderer, dstRect, fg, bg);
   }
 }
 
@@ -139,7 +139,7 @@ void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * rend
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 void Microbee_Emulator::Instantiate()
-{  
+{
   MemoryMappedScreen::AddType<MicrobeeVideo>("microbee");
 }
 
@@ -195,7 +195,7 @@ static int FindBitSet(uint8_t val)
   // XX -- ---rr rccc ----
 
 
-static std::string GetRowCol(uint16_t addr) 
+static std::string GetRowCol(uint16_t addr)
 {
   int row = (addr >> 7) & 0x7;
   int col = (addr >> 4) & 0x7;
@@ -203,7 +203,7 @@ static std::string GetRowCol(uint16_t addr)
   std::stringstream strm;
   strm << "addr " << HEXFORMAT0x4(addr) << " = col " << col << ", row " << row;
   return strm.str();
-}  
+}
 
 bool Microbee_Emulator::ScanKeyboard(uint16_t & addr)
 {
@@ -216,7 +216,7 @@ bool Microbee_Emulator::ScanKeyboard(uint16_t & addr)
       //cout << "mbee: scan row " << (1 << row) << " returned " << HEXFORMAT0x2(out) << " -> " << GetRowCol(addr) << endl;;
       return true;
     }
-    mask = mask << 1;  
+    mask = mask << 1;
   }
 
   return false;
@@ -269,7 +269,7 @@ void Microbee_Emulator::OnSetCursorShape(uint8_t start, uint8_t end, int blinkRa
   //cout << "mbee: cursor start row = " << (int)start << ", end = " << (int)end << ", rate = " << (int)blinkRate << endl;
   if (blinkRate < 0)
     m_screen->EnableCursor(false);
-  else {   
+  else {
     m_screen->EnableCursor(true);
   }
 }
@@ -312,7 +312,7 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-EmulatorInfo g_microbeeEmulatorInfo = 
+EmulatorInfo g_microbeeEmulatorInfo =
 {
   "mbee",                    // command line option
   "Microbee 32k",            // short name
@@ -328,7 +328,7 @@ EmulatorInfo g_microbeeEmulatorInfo =
     INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
     INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
     INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
-    INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545 
+    INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545
 
     INFO_SCREEN_MEMORY_MAPPED_FIXED("microbee", \
                             MICROBEE_VIDEO_START_ADDR, MICROBEE_VIDEO_END_ADDR, \
@@ -336,7 +336,7 @@ EmulatorInfo g_microbeeEmulatorInfo =
                             MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
                             MICROBEE_VIRTUAL_FONT_CHARS, \
                             &g_charGen_MotorolaMCM6574, \
-                            nullptr), 
+                            nullptr),
 
     INFO_MONITOR(12.0, 4.0, 3.0, ePAL),
 

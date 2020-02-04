@@ -41,7 +41,7 @@ const KeyboardScanner::ScanCode keys[8*8] = {
   { "0" },      { "1" },      { "2" },      { "3" },    { "4"},     { "5" } ,   { "6" } ,     { "7" } ,
   { "8" },      { "9" },      { ":" },      { ";" },    { ","},     { "-" } ,   { "." } ,     { "/" } ,
   { "Return" }, { "Clear" },  { "Break" },  { "Up" },   { "Down"},  { "Left" }, { "Right" },  { " " } ,
-  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 } 
+  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 }
 };
 
 const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
@@ -52,7 +52,7 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
   { "0" },      { "!" },      { "\"" },     { "#" },    { "$"},     { "%" } ,   { "&" } ,     { "/" } ,
   { "(" },      { ")" },      { "*" },      { "+" },    { "<"},     { "=" } ,   { ">" } ,     { "?" } ,
   { "Return" }, { "Clear" },  { "Break" },  { "Up" },   { "Down"},  { "Left" }, { "Right" },  { " " } ,
-  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 } 
+  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 }
 };
 
 static KeyboardScanner::ScanLayout g_trs80Keys = {
@@ -61,7 +61,6 @@ static KeyboardScanner::ScanLayout g_trs80Keys = {
   shiftedkeys,
   {
     { "Backspace", "Left" },
-    { 0, 0 }
   }
 };
 
@@ -69,7 +68,7 @@ static KeyboardScanner::ScanLayout g_trs80Keys = {
 /////////////////////////////////////////////////////////////
 
 void TRS80Emulator::Instantiate()
-{  
+{
   MemoryMappedScreen::AddType<TRS80Video>("trs80");
 }
 
@@ -82,7 +81,7 @@ TRS80Emulator::TRS80Emulator(const EmulatorInfo * info)
 
 bool TRS80Emulator::Open(const Options & options)
 {
-  cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl; 
+  cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl;
   if (m_fdcEnabled) {
     m_fdc.reset(new WD_FD1771());
     m_fdc->SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
@@ -104,7 +103,7 @@ bool TRS80Emulator::Open(const Options & options)
   m_cassette2        = false;
   m_32Col            = false;
 
-  cout << "info: RTC is " << (m_rtcEnabled ? "en" : "dis") << "abled" << endl; 
+  cout << "info: RTC is " << (m_rtcEnabled ? "en" : "dis") << "abled" << endl;
 
   return true;
 }
@@ -112,19 +111,19 @@ bool TRS80Emulator::Open(const Options & options)
 void TRS80Emulator::Reset(int addr)
 {
   Z80Emulator::Reset(addr);
-  
+
   using namespace std::placeholders;
   if (m_rtcEnabled) {
     AddRealTimePollDef(0.04, std::bind(&TRS80Emulator::RTCInterrupt, this));
   }
-  // init floppy drive 
-  InitFDC();  
+  // init floppy drive
+  InitFDC();
 }
 
 bool TRS80Emulator::CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
 {
   // basic font data already in memory
-  
+
   // set graphics from 0x80 to 0xbf
   uint8_t maskRight = (1 << (fontInfo.m_width / 2)) - 1;
   uint8_t maskLeft  = maskRight << (fontInfo.m_width / 2);
@@ -139,15 +138,15 @@ bool TRS80Emulator::CreatePixelFont(const Config::Font & fontInfo, std::vector<u
       if (val & 2)
         *dst |= maskRight;
       for (int z = 1; z < (fontInfo.m_height / 3); ++z)
-        dst[z] = dst[0];  
+        dst[z] = dst[0];
       dst += fontInfo.m_height / 3;
-      val = val >> 2;  
+      val = val >> 2;
     }
   }
 
   // duplicate graphics data from 0xc0 to 0xff
   memcpy(&fontData[(128 + 64) * fontInfo.m_height], &fontData[128 * fontInfo.m_height], 64 * fontInfo.m_height);
- 
+
   return true;
 }
 
@@ -340,7 +339,7 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
         // get name from data, if we can
         std::string filename = m_cassette->GetFilename();
         cerr << "CASS: filename is '" << filename << "'" << endl;
-
+/*
         nfd_SaveDialogExt extInfo;
         memset(&extInfo, 0, sizeof(extInfo));
         extInfo.filterList      = "cas;cpt;wav";
@@ -353,6 +352,7 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
           m_cassette->WriteClose(outPath);
         }
         free(outPath);
+*/
       }
       m_cassette.reset();
     }
@@ -401,7 +401,7 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
   if (m_cassetteTrigger) {
     cerr << "CASS: reading from cassette" << endl;
     m_cassetteTrigger = false;
-
+/*
     nfd_OpenDialogExt extInfo;
     memset(&extInfo, 0, sizeof(extInfo));
     extInfo.filterList      = "cas;cpt;wav";
@@ -411,7 +411,8 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
     if (NFD_OpenDialogExt(&extInfo, &outPath) == NFD_OKAY) {
       m_cassette.reset(new VirtualCassetteFile());
       m_cassette->ReadOpen(outPath);
-    } 
+    }
+*/
   }
 
   // peek inside the CPU
@@ -428,11 +429,11 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
     /*
         code:
 
-        0253   db ff      in a,(0ffh) 
-        0255   47         ld b,a     
-        0256   f1         pop af     
-        0257   cb 10      rl b        
-        0259   17         rla        
+        0253   db ff      in a,(0ffh)
+        0255   47         ld b,a
+        0256   f1         pop af
+        0257   cb 10      rl b
+        0259   17         rla
     */
 
     uint16_t sp = m_cpu.SP.W;
@@ -451,7 +452,7 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
       //DumpStack(5);
       uint8_t data = m_cassette->ReadByte();
       //cerr << "CASS: Read sync " << HEXFORMAT0x2(data) << endl;
-      WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0 
+      WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0
       //if (data == 0xa5)
       //  SetTrace(true);
       return (data << 7);       // shift bit 0 into bit 7
@@ -471,7 +472,7 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
         data = m_cassette->ReadByte();
         //cerr << "CASS: Read data " << HEXFORMAT0x2(data) << endl;
       }
-      WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0 
+      WriteMemory(sp + 1, data >> 1); // get A ready to accept new bit 0
       //SetTrace(true);
       return (data << 7);       // shift bit 0 into bit 7
     }
@@ -492,7 +493,7 @@ TRS80Video::TRS80Video(MainWindow & mainWindow, const Options & options, const C
 }
 
 void TRS80Video::Set32Col(bool val)
-{ 
+{
   if (val != m_32Col) {
     m_32Col = val;
     SetColScale(m_32Col ? 2 : 1);
@@ -504,6 +505,6 @@ void TRS80Video::WriteMemoryAtAddress(int addr, uint8_t ch)
 {
   if (ch < 0x20)
     ch += 0x40;
-    
+
   SingleColourMemoryMappedScreen::WriteMemoryAtAddress(addr, ch);
 }

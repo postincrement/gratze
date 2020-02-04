@@ -18,9 +18,9 @@ class VirtualDrive
 {
   public:
     VirtualDrive();
-    ~VirtualDrive();
+    virtual ~VirtualDrive();
 
-    struct SectorInfo 
+    struct SectorInfo
     {
       SectorInfo() = default;
       SectorInfo(const SectorInfo & obj) = default;
@@ -35,7 +35,7 @@ class VirtualDrive
       int m_size;
       uint8_t m_dam;
       uint8_t m_density;
-    };    
+    };
 
     virtual bool Open(const std::string & name, bool readOnly) = 0;
     virtual bool Mount(bool readOnly) = 0;
@@ -46,7 +46,7 @@ class VirtualDrive
     virtual int ReadSector(int track, int sector, SectorInfo & info, uint8_t * data, int len) = 0;
     virtual int WriteSector(int track, int sector, uint8_t * data, int len) = 0;
 
-  protected:  
+  protected:
     bool m_readOnly;
     std::string m_name;
 };
@@ -101,7 +101,7 @@ class WD_FDC
 
     void Reset();
 
-    typedef int (WD_FDC::*CommandFunction)(uint8_t cmd); 
+    typedef int (WD_FDC::*CommandFunction)(uint8_t cmd);
 
     struct CommandInfo
     {
@@ -122,7 +122,7 @@ class WD_FDC
     int HomeCommand(uint8_t cmd);
     int SeekCommand(uint8_t cmd);
     int StepCommand(uint8_t cmd);
-    int StepInCommand(uint8_t cmd); 
+    int StepInCommand(uint8_t cmd);
     int StepOutCommand(uint8_t cmd);
 
     // type II commands
@@ -190,7 +190,7 @@ class WD_FDC
     bool m_intOnNotReadyToReady;
 
 
- */   
+ */
 };
 
 class WD_FD1771 : public WD_FDC

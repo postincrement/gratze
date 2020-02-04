@@ -15,9 +15,9 @@ Model1_Emulator::Model1_Emulator(const EmulatorInfo * info)
 
 bool Model1_Emulator::Open(const Options & options)
 {
-  // do before ancestor Open so drives know they can work 
+  // do before ancestor Open so drives know they can work
   m_withEI = options.m_withEI;
-  cout << "info: expansion interface is " << (m_withEI ? "en" : "dis") << "abled" << endl; 
+  cout << "info: expansion interface is " << (m_withEI ? "en" : "dis") << "abled" << endl;
   m_rtcEnabled = m_withEI;
   m_fdcEnabled = m_withEI;
 
@@ -31,13 +31,13 @@ void Model1_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 {
   int reg = addr & 0x000f;
 
-  if (reg >= 0xc)  
+  if (reg >= 0xc)
     WriteFDC(addr, val);
   else if (reg == 1)
     WriteDrvSel(addr, val);
-  else if (reg == 8)  
+  else if (reg == 8)
     WritePrinter(addr, val);
-  else  
+  else
     cerr << "TRS WRITE MEM IO " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
 
@@ -45,15 +45,15 @@ uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
 {
   if (id == 2)
     return ReadKeyboard(addr);
-    
+
   int reg = addr & 0x000f;
-  if (reg >= 0xc)  
+  if (reg >= 0xc)
     return ReadFDC(addr);
   else if (reg == 0)
-    return ReadInterrupt(addr);  
+    return ReadInterrupt(addr);
   else if (reg == 1)
     return ReadDrvSel(addr);
-  else if (reg == 8)  
+  else if (reg == 8)
     return ReadPrinter(addr);
 
   cerr << "TRS READ MEM IO " << HEXFORMAT0x4(addr)<< endl;
@@ -65,7 +65,7 @@ uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
 extern unsigned char g_model1Level1ROM[4096];
 
 
-static struct EmulatorInfo g_level1EmulatorInfo = 
+static struct EmulatorInfo g_level1EmulatorInfo =
 {
   "m1-1",                         // command line option
   "Model 1 L1",                   // short name
@@ -120,13 +120,13 @@ static struct EmulatorInfo g_levelEmulatorInfo =
                               MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
                               256, &g_charGen_MotorolaMCM6674, TRS80Emulator::CreatePixelFont),
 
-    INFO_MONITOR(10.6445, 4.0, 3.0, ePAL),        
+    INFO_MONITOR(10.6445, 4.0, 3.0, ePAL),
 
     INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 
     INFO_IO_PORT_RW(0xff, 0xff, 1),
 
-    INFO_END()                  
+    INFO_END()
   }
 };
 

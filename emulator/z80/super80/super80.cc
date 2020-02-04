@@ -39,7 +39,7 @@ extern unsigned char g_super80_U42_ROM[4096];
 extern unsigned char g_2513ROM[2048];
 
 
-static EmulatorInfo g_emulatorInfo = 
+static EmulatorInfo g_emulatorInfo =
 {
   "super80",                      // command line option
   "Super-80",                     // short name
@@ -55,7 +55,7 @@ static EmulatorInfo g_emulatorInfo =
                          SUPER80_FONT_WIDTH, SUPER80_FONT_HEIGHT, \
                          64, &g_charGen_Signetics2513, nullptr),
 
-    INFO_MONITOR(6.0, 4.0, 3.0, ePAL),        
+    INFO_MONITOR(6.0, 4.0, 3.0, ePAL),
 
     INFO_IO_PORT_RW(0xf8, 0xfb, 1),    // PIO
     INFO_IO_PORT_RW(0xf1, 0xf1, 2),    // video page
@@ -80,7 +80,7 @@ const KeyboardScanner::ScanCode keys[8*8] = {
   { "D" }, { "L" }, { "T" },  { "\\" }, { "5"},  { "Break" } ,  {    "Return" } , {        0  } ,
   { "E" }, { "M" }, { "U" },  {  "]" }, { "6"},  {     "." } ,  {    "Escape" } , {        0  } ,
   { "F" }, { "N" }, { "V" },  {  "^" }, { "7"},  {     "/" } ,  {    "Delete" } , {        0  } ,
-  { "G" }, { "O" }, { "W" },  {  "-" }, { "8"},  {     "0" } ,  {    "Insert" } , {        0  } 
+  { "G" }, { "O" }, { "W" },  {  "-" }, { "8"},  {     "0" } ,  {    "Insert" } , {        0  }
 };
 
 const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
@@ -91,14 +91,14 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
   { "d" }, { "l" }, { "t" },  { "\\" }, {  "%"},  { "Break" } ,  {    "Return" } , {        0  } ,
   { "e" }, { "m" }, { "u" },  {  "}" }, {  "&"},  {     ">" } ,  {    "Escape" } , {        0  } ,
   { "f" }, { "n" }, { "v" },  {  "~" }, {  "'"},  {     "/" } ,  {    "Delete" } , {        0  } ,
-  { "g" }, { "o" }, { "w" },  {  "=" }, {  "("},  {     "0" } ,  {    "Insert" } , {        0  } 
+  { "g" }, { "o" }, { "w" },  {  "=" }, {  "("},  {     "0" } ,  {    "Insert" } , {        0  }
 };
 
 static KeyboardScanner::ScanLayout g_super80Keys = {
   8, 8,
   keys,
   shiftedkeys,
-  { 0, 0 }
+  { }
 };
 
 
@@ -128,14 +128,14 @@ FontChar Super80Video::GetCharAtPos(int x, int y)
 //    return ch - 0x60;
 //  else if (ch > 0x40)
 //    return ch - 0x40;
-  return ch;  
+  return ch;
 }
 
 
 //////////////////////////////////////////////////////////////////////////////////
 
 void Super80_Emulator::Instantiate()
-{  
+{
   MemoryMappedScreen::AddType<Super80Video>("super80");
 }
 
@@ -161,7 +161,7 @@ bool Super80_Emulator::Open(const Options & options)
 
   // 0xf  = jumble of chars with super-80 on second line   NO JUMPERS
   // 0xd  = screen full of @                               JUMPER B
-  // 0xe  = monitor?                                       JUMPER A   
+  // 0xe  = monitor?                                       JUMPER A
   m_options = 0xe;
   KeyboardScanner * kb = new KeyboardScanner();
   SetKeyboard(kb);
@@ -173,7 +173,7 @@ bool Super80_Emulator::Open(const Options & options)
   m_pio.SetInterruptHandler(std::bind(&Super80_Emulator::Interrupt, this, _1));
 
   // set read handler for keyboard
-  m_pio.SetReadHandler(1, std::bind(&Super80_Emulator::OnReadKeyboard, this));  
+  m_pio.SetReadHandler(1, std::bind(&Super80_Emulator::OnReadKeyboard, this));
 
   return true;
 }
@@ -201,9 +201,9 @@ uint8_t Super80_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t 
 {
   switch (info.m_id) {
     case 1:                            // 0xf8 - 0xfb PIO
-      return m_pio.Read(port & 0x3);   
+      return m_pio.Read(port & 0x3);
     case 2:                            // 0xf1  video page
-      return m_videoPage;              
+      return m_videoPage;
     case 3:                            // 0xf2  input
        return m_options << 4;
     //case 4:                          // 0xf0 not used - output
@@ -276,7 +276,7 @@ void Super80_Emulator::WriteMemory(uint16_t addr, uint8_t data)
     m_memMapScreen->WriteMemoryAtAddress(addr - m_videoStartAddr, data);
     //cout << "super80: write to video at " << HEXFORMAT0x4(m_videoStartAddr) << " " << HEXFORMAT0x2(data) << endl;
   }
-  Z80Emulator::WriteMemory(addr, data);  
+  Z80Emulator::WriteMemory(addr, data);
 }
 
 

@@ -10,7 +10,7 @@ DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 MINGW_ENABLED=@MINGW_ENABLED@
 
-ifneq ($(MINGW_ENABLED),)
+ifeq ($(MINGW_ENABLED),1)
 
 MING_ARCH=@MING_ARCH@
 MING_SDL_BUILD_TYPE=@MING_SDL_BUILD_TYPE@
@@ -136,8 +136,7 @@ SRCS_C = z80/trs80/model1/rom_level1.c \
 	z80/super80/rom_super80.c \
 	z80/microbee/rom_basic5_22e.c \
 	2650/eti685/rom_binbug_6_1.c \
-	2650/78up5/rom_pipbug.c \
-	2650/78up5/rom_mwbasic.c
+	2650/78up5/rom_pipbug.c 
 
 FILENAMES := $(notdir $(basename $(SRCS_C) $(SRCS_CC)))
 OBJS	  := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
@@ -169,7 +168,7 @@ include $(wildcard $(DEPFILES))
 #   MingW libraries
 #
 
-ifneq ($(MINGW_ENABLED),)
+ifeq ($(MINGW_ENABLED),1)
 
 #
 # MingW SDL
@@ -277,8 +276,6 @@ cereal:
 		git clone -b v1.3.0 https://github.com/USCiLab/cereal.git ; \
 	fi
 
-https://github.com/USCiLab/cereal.git
-
 ################################################################################################	
 #
 #  Native file dialogs
@@ -294,14 +291,11 @@ clean_nfd:
 	cd nativefiledialog/build/$(NFD_BUILD_DIR) && $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean"
 
 nfd: 
-	@if test \! -d nativefiledialog ; then \
+	if test \! -d nativefiledialog ; then \
 	  git clone https://github.com/postincrement/nativefiledialog.git ; \
-	  cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
-	  $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) clean && make config=$(NFD_BUILD_TYPE) nfd" ; \
-	else \
-	  cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
-	  $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE) nfd" ; \
 	fi
+	cd nativefiledialog/build/$(NFD_BUILD_DIR) && \
+	  $(NFD_BUILD_ENV) sh -c "make config=$(NFD_BUILD_TYPE)" ; \
 
 ################################################################################################	
 #

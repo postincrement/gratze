@@ -14,7 +14,7 @@ class KeyboardScanner : public VirtualKeyboard
       const char * m_name = 0;
       uint16_t m_mod = 0;
     };
-    struct ScanLayout 
+    struct ScanLayout
     {
       struct Equivalent
       {
@@ -28,7 +28,7 @@ class KeyboardScanner : public VirtualKeyboard
       const ScanCode * m_keyCodes;
       const ScanCode * m_shiftedKeyCodes;
 
-      const Equivalent m_equivalents[];
+      std::vector<Equivalent> m_equivalents;
     };
 
     struct KeyRowColInfo
@@ -39,7 +39,7 @@ class KeyboardScanner : public VirtualKeyboard
         , m_col(col)
         , m_shiftSource(shiftSource)
         , m_shiftOut(shiftOut)
-        { }  
+        { }
       int m_row = -1;
       int m_col = -1;
       bool m_shiftSource = false;
@@ -52,7 +52,7 @@ class KeyboardScanner : public VirtualKeyboard
 
     virtual void Reset() override;
 
-    uint8_t Read(uint16_t rowMask);
+    uint8_t Read(uint16_t rowMask) override;
 
     void Compile(const ScanLayout & scanLayout);
     void Compile(int row, int cols, const ScanCode * keyCodes, bool shifted);
@@ -71,7 +71,7 @@ class KeyboardScanner : public VirtualKeyboard
 
     int m_rows = -1;
     int m_cols = -1;
-  
+
     KeyRowColInfo m_shiftKey;
     KeyRowColInfo m_controlKey;
     KeyRowColInfo m_capsLockKey;

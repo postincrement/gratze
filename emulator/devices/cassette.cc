@@ -1,6 +1,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -18,7 +19,7 @@ using namespace std;
 Level 2 CSAVE format
 --------------------
   0x00 x 255    leader
-  0xa5          sync char 
+  0xa5          sync char
   0xd3 x 3      CSAVE ID
   0x??          filename (alphabetic char)
   ....          copy of BASIC data
@@ -27,21 +28,21 @@ Level 2 SYSTEM tape format
 --------------------------
   0x00 x 255    leader
   0xa5          sync char
-  0x55          SYSTEM ID 
+  0x55          SYSTEM ID
   0x?? x 6      filename (alphabetic char)
 
   ....zero or more blocks
 
   0x78          end ID
-  0x??          LSB of execute address 
-  0x??          MSB of execute address 
+  0x??          LSB of execute address
+  0x??          MSB of execute address
 
 SYSTEM tape data block
 -----------------
   0x3c          data ID
   0x??          length of block (0 = 256 bytes)
-  0x??          LSB of block address 
-  0x??          MSB of block address 
+  0x??          LSB of block address
+  0x??          MSB of block address
   ....          data (1 to 256 bytes)
   0x??          checksum (sum of LSB, MSB, and data)
 
@@ -65,7 +66,7 @@ VirtualCassetteFile::~VirtualCassetteFile()
 }
 
 VirtualCassetteFile::Format VirtualCassetteFile::FormatFromExtension(const std::string & name)
-{ 
+{
   Format format = Format::eUnknown;
   // identify the file format from the name
   std::string extension;
@@ -77,9 +78,9 @@ VirtualCassetteFile::Format VirtualCassetteFile::FormatFromExtension(const std::
 
     if (extension == "wav")
       format     = Format::eWAV;
-    else if (extension == "cpt")  
+    else if (extension == "cpt")
       format     = Format::eCPT;
-    else if (extension == "cas")  
+    else if (extension == "cas")
       format     = Format::eCAS;
   }
 
@@ -107,7 +108,7 @@ size_t VirtualCassetteFile::FindHeader() const
     cerr << "all header " << (int)len << endl;
     return std::string::npos;
   }
-  
+
   // it's all headers!
   if (m_rawFile[i] != 0xa5) {
     cerr << "no sync" << endl;
@@ -119,7 +120,7 @@ size_t VirtualCassetteFile::FindHeader() const
 
 std::string VirtualCassetteFile::GetFilename() const
 {
-  std:stringstream name;
+  std::stringstream name;
 
   size_t pos = FindHeader();
   if (pos != std::string::npos) {
@@ -138,7 +139,7 @@ std::string VirtualCassetteFile::GetFilename() const
         while (i < 6) {
           if (!isalnum(m_rawFile[pos+1+i]))
             break;
-          i++;  
+          i++;
         }
         if (i > 0) {
           name << std::string((char *)&m_rawFile[pos+1], i) << "_sys.cas";
@@ -162,8 +163,8 @@ bool VirtualCassetteFile::IsReading() const
 bool VirtualCassetteFile::WriteOpen()
 {
   m_reading = false;
-  m_rawFile.clear(); 
-  return true; 
+  m_rawFile.clear();
+  return true;
 }
 
 bool VirtualCassetteFile::ReadOpen(const std::string & name)

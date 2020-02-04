@@ -19,7 +19,7 @@ using namespace std;
 #define   JV3_SECTOR_COUNT  (2901 / 3)
 
 #define   SD_SECTOR_SIZE    256
-#define   SD_SECTOR_COUNT   10   
+#define   SD_SECTOR_COUNT   10
 
 // status for multiple types
 #define   STATUS_BUSY               (1 << 0)    // type I and II
@@ -45,7 +45,7 @@ using namespace std;
 // comand bits for type I
 #define   COMMAND_VERIFY            (1 << 2)      // type I
 #define   COMMAND_HEAD_LOAD_I         (1 << 3)      // type I
-#define   COMMAND_UPDATE            (1 << 4)      // type I  
+#define   COMMAND_UPDATE            (1 << 4)      // type I
 
 // comand bits for type II
 #define   COMMAND_DAM               (1 << 0)      // type II
@@ -184,7 +184,7 @@ WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd)
     info++;
  }
 
- return nullptr;   
+ return nullptr;
 }
 
 
@@ -197,7 +197,7 @@ void WD_FDC::Run()
       break;
 
     case 1:  // type 1
-      break;  
+      break;
   }
 }
 
@@ -274,7 +274,7 @@ uint8_t WD_FDC::ReadDataReg()
       //cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
       m_status |= STATUS_DRQ;
       break;
-    } 
+    }
     else if (m_currentCommand & COMMAND_MULT_RECS) {
       m_sector++;
       cerr << "FDC: read multiple moving to sector " << dec << (int)m_sector << endl;
@@ -334,14 +334,16 @@ int WD_FDC::SeekCommand(uint8_t cmd)
 
 int WD_FDC::StepInCommand(uint8_t cmd)
 {
-  m_directionIn = true; 
+  m_directionIn = true;
   SeekTrack(cmd, m_track-1, cmd & COMMAND_UPDATE);
+  return 0;
 }
 
 int WD_FDC::StepOutCommand(uint8_t cmd)
 {
-  m_directionIn = false; 
+  m_directionIn = false;
   SeekTrack(cmd, m_track-1, cmd & COMMAND_UPDATE);
+  return 0;
 }
 
 int WD_FDC::StepCommand(uint8_t cmd)
@@ -371,7 +373,7 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
     // "Bad CRC"            CRC_ERROR
     // "CRC, wrong track"   SEEK_ERROR
     // "valid"              no error
-    // 
+    //
     if (IsCurrentDriveAvailable()) {
       m_status = STATUS_SEEKERR;
     }
@@ -440,20 +442,21 @@ int WD_FDC::ReadCommand(uint8_t cmd)
       switch (info.m_dam) {
         case 0xf8:
           m_status |= 0x60;
-          break; 
+          break;
         case 0xf9:
           m_status |= 0x40;
-          break; 
+          break;
         case 0xfa:
           m_status |= 0x20;
-          break; 
+          break;
         case 0xfb:
           m_status |= 0x00;
-          break; 
+          break;
       }
       m_statusMask = STATUS_DAM_MASK;   // reset STATUS_BUSY
     }
   }
+  return 0;
 }
 
 
@@ -476,7 +479,7 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
     m_status &= !STATUS_BUSY;
     if (m_currentCommand < 0)
       cerr << "FDC: force int on busy with no command" << endl;
-    else { 
+    else {
       cerr << "FDC: force int on busy with command " << HEXFORMAT0x2(m_currentCommand) << endl;
     }
     if (cmd & COMMAND_FORCE_INT_NR2R)
@@ -486,12 +489,13 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
     cerr << "FDC: force int not busy with no command" << endl;
     SetTypeIStatus();
   }
+  return 0;
 }
 
 
 ////////////////////////////////////////////////////////////////
 //
-//  
+//
 //
 
 void WD_FDC::Write(uint16_t addr, uint8_t value)
@@ -534,7 +538,7 @@ uint8_t WD_FDC::Read(uint16_t addr)
       value = m_sector;
       break;
     case 3:
-      value = ReadDataReg(); 
+      value = ReadDataReg();
       break;
   }
 
@@ -604,7 +608,7 @@ bool VirtualDriveFile::Open(const std::string & name, bool readOnly)
 
   //if (m_readOnly)
     m_fd = ::open(name.c_str(), O_RDONLY | O_BINARY);
-  //else  
+  //else
   //  m_fd = ::open(name.c_str(), O_RDWR);
 
   if (m_fd < 0) {
@@ -623,9 +627,9 @@ bool VirtualDriveFile::Open(const std::string & name, bool readOnly)
     for (auto & r : extension) r = tolower(r);
     if (extension == "jv1")
       m_format     = Format::eJV1;
-    else if (extension == "jv3")  
+    else if (extension == "jv3")
       m_format     = Format::eJV3;
-    else if (extension == "dmk")  
+    else if (extension == "dmk")
       m_format     = Format::eDMK;
   }
   if (m_format != Format::eUnknown) {
@@ -634,7 +638,7 @@ bool VirtualDriveFile::Open(const std::string & name, bool readOnly)
   else {
     if ((len % (SD_SECTOR_SIZE * SD_SECTOR_COUNT)) == 0)
       m_format     = Format::eJV1;
-    else  
+    else
       m_format     = Format::eJV3;
     if (m_format != Format::eUnknown) {
       cerr << "info: file '" << name << "' set to format '" << g_formatNames[(int)m_format] << "' using inspection" << endl;
@@ -792,7 +796,7 @@ int VirtualDriveFile::ReadSector(int track, int sector, SectorInfo & info, uint8
     return -1;
   }
 
-  info = r->second;  
+  info = r->second;
 
   cout << "FDC: seek side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
 

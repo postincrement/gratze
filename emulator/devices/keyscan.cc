@@ -1,6 +1,6 @@
 #include <iostream>
 #include <map>
-#include <SDL_keyboard.h> 
+#include <SDL_keyboard.h>
 
 #include <strings.h>
 #include <string.h>
@@ -31,11 +31,8 @@ void KeyboardScanner::Compile(const ScanLayout & scanLayout)
   Compile(m_rows, m_cols, scanLayout.m_keyCodes,        false);
   Compile(m_rows, m_cols, scanLayout.m_shiftedKeyCodes, true);
 
-  const ScanLayout::Equivalent * equivalent = scanLayout.m_equivalents;
-  while ((equivalent != 0) && (equivalent->m_from != nullptr)) {
-    AddEquivalent(equivalent->m_from, equivalent->m_to);
-    ++equivalent;
-  }
+  for (auto & equivalent : scanLayout.m_equivalents)
+    AddEquivalent(equivalent.m_from, equivalent.m_to);
 }
 
 static struct VirtualKeyMap {
@@ -127,7 +124,7 @@ void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCo
   for (int row = 0; row < rowCount; ++row) {
     for (int col = 0; col < colCount; ++col) {
       const ScanCode * code = keyCodeMap++;
-      
+
       if (code->m_name == 0) {
         continue;
       }
@@ -191,7 +188,7 @@ void MaskDown(bool down, Type mask, Type & val)
   if (down)
     val |= mask;
   else
-    val &= !mask;  
+    val &= !mask;
 }
 
 
@@ -277,14 +274,14 @@ void KeyboardScanner::KeyAction(const SDL_Keysym & keysym, bool down)
     //cout << "kb: rec " << i << " has shift status " << r->second.m_shiftSource << " " <<  r->second.m_shiftOut << endl;
     if (r->second.m_shiftSource == ((m_shiftStatus & 3) != 0))
       break;
-    ++r;  
+    ++r;
   }
   if (i >= count) {
     //cerr << "warning: mapped keyboard " << (down ? "down" : "up") << " code " << HEXFORMAT0x8(keysym.sym) << " with unmatched shift state " << ((shiftDown ? "down" : "up")) << endl;
     return;
   }
 
-  // if shift status 
+  // if shift status
   KeyRowColInfo & rowCol = r->second;
 
   if (down) {

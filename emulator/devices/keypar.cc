@@ -1,6 +1,6 @@
 #include <iostream>
 #include <map>
-#include <SDL_keyboard.h> 
+#include <SDL_keyboard.h>
 
 #include <strings.h>
 #include <string.h>
@@ -35,6 +35,8 @@ static char g_shiftKeys[][2] = {
   { 0, 0 }
 };
 
+VirtualKeyboard::~VirtualKeyboard()
+{}
 
 ParallelKeyboard::ParallelKeyboard()
   : ParallelKeyboard(Mapping())
@@ -93,7 +95,7 @@ int ParallelKeyboard::ConvertKeySymToASCII(const SDL_Keysym & keysym)
           ascii = 'Z' - 0x40;
           break;
         default:
-        break;   
+        break;
       }
     }
 
@@ -104,7 +106,7 @@ int ParallelKeyboard::ConvertKeySymToASCII(const SDL_Keysym & keysym)
     if (m_mapping.m_deleteToBs && (keysym.sym == SDLK_DELETE)) {
       ascii = SDLK_BACKSPACE;
     }
-    
+
     if (m_mapping.m_shiftEnterToLF && (keysym.sym == SDLK_RETURN) && (keysym.mod & KMOD_SHIFT))
       ascii = 0x0a;
   }

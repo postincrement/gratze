@@ -40,21 +40,24 @@ VirtualScreen::VirtualScreen(MainWindow & mainWindow, const Options & options, i
   cout << "info: text window is " << m_cols << " x " << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 }
 
+VirtualScreen::~VirtualScreen()
+{}
+
 bool VirtualScreen::Open()
 {
   return true;
 }
 
 void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
-{ 
+{
   if (m_font) {
     SDL_Rect dstRect;
-    m_mainWindow.GetScreenCharRect(dstRect, 
-                                   (x * m_font->GetWidth()/* * m_colScale*/), 
-                                    y * m_font->GetHeight(), 
+    m_mainWindow.GetScreenCharRect(dstRect,
+                                   (x * m_font->GetWidth()/* * m_colScale*/),
+                                    y * m_font->GetHeight(),
                                     m_font->GetWidth()/* * m_colScale*/,
                                     m_font->GetHeight(),
-                                    m_hscale * m_colScale, 
+                                    m_hscale * m_colScale,
                                     m_vscale);
 
     SDL_Colour fg, bg;
@@ -73,7 +76,7 @@ void VirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * rend
   //cout << "render char " << HEXFORMAT0x2(ch) << " " << (isgraph(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
   if (withCursor)
     m_font->RenderChar(ch, renderer, dstRect, bg, fg);
-  else  
+  else
     m_font->RenderChar(ch, renderer, dstRect, fg, bg);
 }
 
@@ -82,7 +85,7 @@ void VirtualScreen::Update(bool hasChanged)
   if (!m_lazyUpdates) {
     if (!hasChanged || m_dirty)
       m_mainWindow.Update();
-    m_dirty = false;  
+    m_dirty = false;
     return;
   }
 
@@ -115,7 +118,7 @@ void VirtualScreen::EnableCursor(bool enable)
 }
 
 void VirtualScreen::SetCursorPos(int x, int y)
-{ 
+{
 //  if ((x == m_cursorX) && (y == m_cursorY))
 //    return;
 
@@ -124,7 +127,7 @@ void VirtualScreen::SetCursorPos(int x, int y)
 
   m_cursorX = x;
   m_cursorY = y;
-  
+
   if (m_cursorEnabled)
     RenderCharAtPos(m_cursorX, m_cursorY, true);
 }
@@ -161,17 +164,17 @@ bool VirtualScreen::ResizeScreen()
   int newHeight = m_rows * m_font->GetHeight();
 
   if ((m_width == 0) || (m_height == 0)) {
-    cout << "info: screen size set to " << newWidth << "x" << newHeight << endl; 
+    cout << "info: screen size set to " << newWidth << "x" << newHeight << endl;
   }
   else {
     if ((newHeight == m_height) && (newWidth == m_width))
       return false;
-    cout << "info: screen resize requested old: " << m_width << "x" << m_height << ", new: " << newWidth << "x" << newHeight << endl; 
+    cout << "info: screen resize requested old: " << m_width << "x" << m_height << ", new: " << newWidth << "x" << newHeight << endl;
   }
 
   m_width  = newWidth;
   m_height = newHeight;
-  
+
   m_mainWindow.Open(newWidth, newHeight);
   m_font->Open(m_mainWindow.GetRenderer());
 
@@ -205,7 +208,7 @@ bool VirtualScreen::MapLocToPos(int & x, int & y, int loc)
   if (m_colScale != 1) {
     if ((x % m_colScale) != 0)
       return false;
-    x /= m_colScale;  
+    x /= m_colScale;
   }
 
   y = loc / m_cols;
@@ -246,13 +249,13 @@ void VirtualScreen::GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg)
 
 /////////////////////////////////////////////////////////////////////////////////
 
-MemoryMappedScreen * MemoryMappedScreen::Create(MainWindow & mainWindow, 
-                                             const Options & options, 
+MemoryMappedScreen * MemoryMappedScreen::Create(MainWindow & mainWindow,
+                                             const Options & options,
                                        const Config::MemoryMappedScreen & info)
 {
   MemoryMappedScreen * screen = g_memoryMappedScreenFactory.CreateInstance(info.m_name, mainWindow, options, info);
   return screen;
-}  
+}
 
 MemoryMappedScreen::MemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
   : VirtualScreen(mainWindow, options, info.m_screenCols, info.m_screenRows)
@@ -328,6 +331,6 @@ void SingleColourMemoryMappedScreen::GetFontColour(SDL_Colour & fg, SDL_Colour &
 
 void SingleColourMemoryMappedScreen::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
 {
-  return GetFontColour(fg, bg);  
+  return GetFontColour(fg, bg);
 }
 

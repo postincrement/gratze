@@ -1,4 +1,4 @@
-#include <SDL.h> 
+#include <SDL.h>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -87,7 +87,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
 };
 
 extern "C"
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
   Init();
 
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
     VirtualDriveFile file;
     if (!file.Open(fn, true)) {
       cerr << "error: could not open diskette file '" << fn << "'" << endl;
-      return false;
+      return -1;
     }
     cerr << "file '" << fn << "' opened" << endl;
     return 0;
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("-f", options.m_font);
   options.m_args.GetValue("-F", options.m_fontSize);
 
-  cout << "info: using type '" << options.m_typeName << "'" << endl;  
+  cout << "info: using type '" << options.m_typeName << "'" << endl;
 
   // attempt to instantiate emulator
   std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(options.m_typeName));
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     cerr << "warning: emulator has no RAM defined" << endl;
   }
   else {
-    int ramSize_k = ((ram->m_endAddr - ram->m_startAddr) + 1) / 1024; 
+    int ramSize_k = ((ram->m_endAddr - ram->m_startAddr) + 1) / 1024;
     if (options.m_ramSize_k >= 0) {
       emulator->SetRAMSize_k(options.m_ramSize_k);
     }

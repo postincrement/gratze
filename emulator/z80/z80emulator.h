@@ -37,7 +37,7 @@ class Z80Emulator : public Emulator
 
     virtual int GetMemorySize() const override;
     virtual std::string GetName() const override;
-    virtual std::string DumpRegs() const;
+    virtual std::string DumpRegs() const override;
 
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;

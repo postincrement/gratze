@@ -36,8 +36,11 @@ Emulator::Emulator(const EmulatorInfo * info)
 {
 }
 
+Emulator::~Emulator()
+{}
+
 void Emulator::Instantiate()
-{  
+{
 }
 
 const EmulatorInfo & Emulator::GetInfo() const
@@ -67,7 +70,8 @@ bool Emulator::SetRAMSize_k(int len)
   m_ramMask = (m_ramSize_bytes - 1);
 
   cout << "info: RAM size " << len << " k, " << m_ramSize_bytes << " bytes, " << HEXFORMAT0x4(m_ramMask) << endl;
-} 
+  return true;
+}
 
 int Emulator::GetRAMSize_k() const
 {
@@ -190,7 +194,7 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     width  = pixelCols * options.m_videoScale;
     height = pixelRows * options.m_videoScale;
 
-    // create main window 
+    // create main window
     mainWindow.Open(width, height);
 
     m_memMapScreen.reset(MemoryMappedScreen::Create(mainWindow, options, *mmapScreenInfo));
@@ -245,7 +249,7 @@ void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, ui
 {
   if (addr > info.m_endAddr)
     cerr << "warning: bad video write" << endl;
-  else  
+  else
     m_memMapScreen->WriteMemoryAtAddress(addr - info.m_startAddr, data);
 }
 
@@ -255,7 +259,7 @@ uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr)
     cerr << "warning: bad video read" << endl;
     return 0x00;
   }
-  else  
+  else
     return m_memMapScreen->ReadMemoryAtAddress(addr - info.m_startAddr);
 }
 
@@ -288,13 +292,11 @@ void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 
 const Config::Block * Emulator::GetConfigBlock(Config::Type type) const
 {
-  const Config::Block * block = m_info->m_blocks;
-  for (;;) {
-    if (block->m_type == Config::Type::eEnd)
+  for (auto & block : m_info->m_blocks) {
+    if (block.m_type == Config::Type::eEnd)
       break;
-    if (block->m_type == type)
-      return block;
-    ++block;  
+    if (block.m_type == type)
+      return &block;
   }
   return nullptr;
 }
@@ -330,15 +332,14 @@ void Emulator::CompileConfigBlocks()
     cout << "debug: compiling config blocks" << endl;
   }
 
-  const Config::Block * block = m_info->m_blocks;
-  for (;;) {
+  for (const auto & block : m_info->m_blocks) {
 
-    if (block->m_type == Config::Type::eEnd)
+    if (block.m_type == Config::Type::eEnd)
       break;
 
     // add RAM
-    if ((block->m_type == Config::Type::eRAM) || (block->m_type == Config::Type::eMainRAM)) {
-      const Config::RAM & info = block->m_info.m_ram;
+    if ((block.m_type == Config::Type::eRAM) || (block.m_type == Config::Type::eMainRAM)) {
+      const Config::RAM & info = block.m_info.m_ram;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: RAM block has end address" << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
@@ -349,7 +350,7 @@ void Emulator::CompileConfigBlocks()
       uint8_t * memory;
       {
         WriteMemoryBlockInfo writeInfo;
-        writeInfo.m_type      = block->m_type;
+        writeInfo.m_type      = block.m_type;
         writeInfo.m_startAddr = info.m_startAddr;
         writeInfo.m_endAddr   = info.m_endAddr;
         memory = (uint8_t *)malloc(writeInfo.m_endAddr - writeInfo.m_startAddr + 1);
@@ -361,7 +362,7 @@ void Emulator::CompileConfigBlocks()
       }
       {
         ReadMemoryBlockInfo readInfo;
-        readInfo.m_type      = block->m_type;
+        readInfo.m_type      = block.m_type;
         readInfo.m_startAddr = info.m_startAddr;
         readInfo.m_endAddr   = info.m_endAddr;
         readInfo.m_memory    = memory;
@@ -373,17 +374,17 @@ void Emulator::CompileConfigBlocks()
     }
 
     // add ROM
-    else if (block->m_type == Config::Type::eROM) {
+    else if (block.m_type == Config::Type::eROM) {
       if (m_verbose) {
         cout << "debug: ROM block" << endl;
       }
-      const Config::ROM & info = block->m_info.m_rom;
+      const Config::ROM & info = block.m_info.m_rom;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: ROM block has end address " << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
       }
       ReadMemoryBlockInfo readInfo;
-      readInfo.m_type      = block->m_type;
+      readInfo.m_type      = block.m_type;
       readInfo.m_startAddr = info.m_startAddr;
       readInfo.m_endAddr   = info.m_endAddr;
       readInfo.m_memory    = info.m_data;
@@ -394,14 +395,14 @@ void Emulator::CompileConfigBlocks()
     }
 
     // add read memIO
-    else if (block->m_type == Config::Type::eMemIORead) {
-      const Config::MemIO & info = block->m_info.m_memIO;
+    else if (block.m_type == Config::Type::eMemIORead) {
+      const Config::MemIO & info = block.m_info.m_memIO;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: MemIO read block has end address " << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
       }
       ReadMemoryBlockInfo readInfo;
-      readInfo.m_type         = block->m_type;
+      readInfo.m_type         = block.m_type;
       readInfo.m_startAddr    = info.m_startAddr;
       readInfo.m_endAddr      = info.m_endAddr;
       readInfo.m_realFunction = &Emulator::ReadIOMemoryInternal;
@@ -411,19 +412,19 @@ void Emulator::CompileConfigBlocks()
       else {
         readInfo.m_function  = &Emulator::ReadIOMemoryInternal;
       }
-      readInfo.m_id        = info.m_id; 
+      readInfo.m_id        = info.m_id;
       m_readMemoryBlocks.push_back(readInfo);
     }
 
     // add write memIO
-    else if (block->m_type == Config::Type::eMemIOWrite) {
-      const Config::MemIO & info = block->m_info.m_memIO;
+    else if (block.m_type == Config::Type::eMemIOWrite) {
+      const Config::MemIO & info = block.m_info.m_memIO;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: MemIO write block has end address " << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
       }
       WriteMemoryBlockInfo writeInfo;
-      writeInfo.m_type         = block->m_type;
+      writeInfo.m_type         = block.m_type;
       writeInfo.m_startAddr    = info.m_startAddr;
       writeInfo.m_endAddr      = info.m_endAddr;
       writeInfo.m_realFunction = &Emulator::WriteIOMemoryInternal;
@@ -433,13 +434,13 @@ void Emulator::CompileConfigBlocks()
       else {
         writeInfo.m_function  = &Emulator::WriteIOMemoryInternal;
       }
-      writeInfo.m_id        = info.m_id; 
+      writeInfo.m_id        = info.m_id;
       m_writeMemoryBlocks.push_back(writeInfo);
     }
 
     // add video
-    else if (block->m_type == Config::Type::eMemoryMappedScreen) {
-      const Config::MemoryMappedScreen & info = block->m_info.m_memoryMappedScreen;
+    else if (block.m_type == Config::Type::eMemoryMappedScreen) {
+      const Config::MemoryMappedScreen & info = block.m_info.m_memoryMappedScreen;
       if (info.m_variable)
         continue;
       if (info.m_startAddr > info.m_endAddr) {
@@ -449,7 +450,7 @@ void Emulator::CompileConfigBlocks()
 
       {
         WriteMemoryBlockInfo writeInfo;
-        writeInfo.m_type      = block->m_type;
+        writeInfo.m_type      = block.m_type;
         writeInfo.m_startAddr = info.m_startAddr;
         writeInfo.m_endAddr   = info.m_endAddr;
         writeInfo.m_realFunction = &Emulator::WriteToVideo;
@@ -458,7 +459,7 @@ void Emulator::CompileConfigBlocks()
       }
       {
         ReadMemoryBlockInfo readInfo;
-        readInfo.m_type      = block->m_type;
+        readInfo.m_type      = block.m_type;
         readInfo.m_startAddr = info.m_startAddr;
         readInfo.m_endAddr   = info.m_endAddr;
         readInfo.m_realFunction = &Emulator::ReadFromVideo;
@@ -468,38 +469,36 @@ void Emulator::CompileConfigBlocks()
     }
 
     // add read block
-    if ((block->m_type == Config::Type::eIOPortRead) || (block->m_type == Config::Type::eIOPortRW)) {
-      const Config::IOPort & info = block->m_info.m_ioPort;
+    if ((block.m_type == Config::Type::eIOPortRead) || (block.m_type == Config::Type::eIOPortRW)) {
+      const Config::IOPort & info = block.m_info.m_ioPort;
       if (info.m_startPort > info.m_endPort) {
         cerr << "error: read IO port has end port" << HEXFORMAT0x2(info.m_startPort) << " < start address " << HEXFORMAT0x2(info.m_startPort) << endl;
         exit(-1);
       }
       ReadIOPortBlockInfo readInfo;
-      readInfo.m_type      = block->m_type;
+      readInfo.m_type      = block.m_type;
       readInfo.m_startPort = info.m_startPort;
       readInfo.m_endPort   = info.m_endPort;
       readInfo.m_function  = &Emulator::ReadIOPort;
-      readInfo.m_id        = info.m_id; 
+      readInfo.m_id        = info.m_id;
       m_readIOPortBlocks.push_back(readInfo);
     }
 
     // add write block
-    if ((block->m_type == Config::Type::eIOPortWrite) || (block->m_type == Config::Type::eIOPortRW)) {
-      const Config::IOPort & info = block->m_info.m_ioPort;
+    if ((block.m_type == Config::Type::eIOPortWrite) || (block.m_type == Config::Type::eIOPortRW)) {
+      const Config::IOPort & info = block.m_info.m_ioPort;
       if (info.m_startPort > info.m_endPort) {
         cerr << "error: write IO port has end port" << HEXFORMAT0x2(info.m_startPort) << " < start address " << HEXFORMAT0x2(info.m_startPort) << endl;
         exit(-1);
       }
       WriteIOPortBlockInfo writeInfo;
-      writeInfo.m_type      = block->m_type;
+      writeInfo.m_type      = block.m_type;
       writeInfo.m_startPort = info.m_startPort;
       writeInfo.m_endPort   = info.m_endPort;
       writeInfo.m_function   = &Emulator::WriteIOPort;
-      writeInfo.m_id        = info.m_id; 
+      writeInfo.m_id        = info.m_id;
       m_writeIOPortBlocks.push_back(writeInfo);
     }
-
-    ++block;
   }
 
   for (auto & r : m_writeMemoryBlocks) {
@@ -651,6 +650,7 @@ uint8_t Emulator::ReadPort(register uint16_t port)
     }
   }
   ReadIOPortLog(port);
+  return 0x00;
 }
 
 uint8_t Emulator::ReadNull(uint16_t)
@@ -733,10 +733,10 @@ std::string Emulator::DumpRegs() const
 void Emulator::MemoryDump() const
 {
   uint16_t addr;
-  std::vector<uint8_t> dump; 
+  std::vector<uint8_t> dump;
   dump.resize(GetMemorySize());
   VECTOR_ZERO(dump);
-  
+
   for (auto & r : m_readMemoryBlocks) {
     if (r.m_memory != nullptr) {
       memcpy(&dump[r.m_startAddr], r.m_memory, r.m_endAddr - r.m_startAddr + 1);
@@ -765,11 +765,11 @@ void Emulator::MemoryDump() const
         for (i = 0; i < len; ++i)
           file << " " << HEXFORMAT2(dump[p + i]);
         while (i < cols)
-          file << "   ";  
+          file << "   ";
         file << "   ";
         for (i = 0; i < len; ++i)
           file << (isgraph(dump[p + i]) ? (char)dump[p + i] : '.');
-        file << endl;  
+        file << endl;
         p += len;
       }
     }
@@ -834,9 +834,9 @@ int Emulator::Run(const Options & options)
 
   CompileConfigBlocks();
 
-  // initlialize SDL 
-  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) { 
-    printf("error initializing SDL: %s\n", SDL_GetError()); 
+  // initlialize SDL
+  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+    printf("error initializing SDL: %s\n", SDL_GetError());
     return -1;
   }
 
@@ -887,11 +887,11 @@ int Emulator::Run(const Options & options)
       }
     }
   }
- 
+
 #define GET_NOW_AS_DOUBLE() \
   std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
-  m_cycleCounter = 0;  
+  m_cycleCounter = 0;
   double now = GET_NOW_AS_DOUBLE();
 
   cout << "now = " << FIXEDFORMAT(3, now) << endl;
@@ -911,7 +911,7 @@ int Emulator::Run(const Options & options)
 
   bool displayCPUSpeed = false;
   options.m_args.GetValue("--displaySpeed", displayCPUSpeed);
-  
+
   // run emulator
   auto lastPoll  = std::chrono::system_clock::now();
   auto lastSpeed = std::chrono::system_clock::now();
@@ -982,6 +982,7 @@ void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)
 
 void Emulator::LoadGRZ()
 {
+  /*
   nfd_OpenDialogExt extInfo;
   memset(&extInfo, 0, sizeof(extInfo));
   extInfo.filterList      = "grz";
@@ -1021,7 +1022,7 @@ void Emulator::LoadGRZ()
       if (pos != std::string::npos)
         dir = dir.substr(0, pos+1);
 
-      std::string fn = dir + grz.m_filename; 
+      std::string fn = dir + grz.m_filename;
 
       int fd = ::open(fn.c_str(), O_RDONLY);
       if (fd < 0) {
@@ -1035,7 +1036,7 @@ void Emulator::LoadGRZ()
         cerr << "error: cannot get length of '" << fn << "'" << endl;
         return;
       }
-      
+
       // check offset
       unsigned offset = grz.m_hasOffs ? grz.m_offs : 0;
       if (grz.m_hasOffs && (len < offset)) {
@@ -1060,12 +1061,13 @@ void Emulator::LoadGRZ()
       // copy to memory
       unsigned addr = grz.m_addr;
       for (unsigned i = 0; i < length; ++i) {
-        WriteMemory(addr++, m_data[i]); 
+        WriteMemory(addr++, m_data[i]);
       }
 
-      cout << "info: loaded " << HEXFORMAT0x4(length) << " bytes to " << HEXFORMAT0x4(grz.m_addr) << endl; 
-    } 
+      cout << "info: loaded " << HEXFORMAT0x4(length) << " bytes to " << HEXFORMAT0x4(grz.m_addr) << endl;
+    }
   }
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1135,7 +1137,7 @@ void Emulator::LoadGRZ()
         m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
         if (m_cpuDelayRepeat < 1)
           m_cpuDelayRepeat = 1;
-        else if (m_cpuDelayRepeat > 600)  
+        else if (m_cpuDelayRepeat > 600)
           m_cpuDelayRepeat = 600;
       }
 

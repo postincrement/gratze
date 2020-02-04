@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <string>
 
-#include <SDL_keyboard.h> 
+#include <SDL_keyboard.h>
 
 #include "common/factory.h"
 #include "src/config.h"
@@ -25,11 +25,11 @@ class Emulator
     struct WriteIOPortBlockInfo;
     struct ReadIOPortBlockInfo;
 
-    typedef void (Emulator:: * MemoryWriteFunction)(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);   
-    typedef uint8_t (Emulator:: * MemoryReadFunction)(const ReadMemoryBlockInfo & info, uint16_t addr);   
+    typedef void (Emulator:: * MemoryWriteFunction)(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
+    typedef uint8_t (Emulator:: * MemoryReadFunction)(const ReadMemoryBlockInfo & info, uint16_t addr);
 
-    typedef void (Emulator:: * IOPortWriteFunction)(const WriteIOPortBlockInfo & info, uint16_t addr, uint8_t data);   
-    typedef uint8_t (Emulator:: * IOPortReadFunction)(const ReadIOPortBlockInfo & info, uint16_t addr);   
+    typedef void (Emulator:: * IOPortWriteFunction)(const WriteIOPortBlockInfo & info, uint16_t addr, uint8_t data);
+    typedef uint8_t (Emulator:: * IOPortReadFunction)(const ReadIOPortBlockInfo & info, uint16_t addr);
 
 
     /////////////////////////////////////////////
@@ -37,33 +37,33 @@ class Emulator
     //  read and write memory and IO records
     //
 
-    struct WriteMemoryBlockInfo 
+    struct WriteMemoryBlockInfo
     {
       WriteMemoryBlockInfo() = default;
       WriteMemoryBlockInfo(const WriteMemoryBlockInfo & obj) = default;
       Config::Type m_type = Config::Type::eEnd;
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
-      uint8_t * m_memory = nullptr; 
+      uint8_t * m_memory = nullptr;
       MemoryWriteFunction m_realFunction = nullptr;
       MemoryWriteFunction m_function = nullptr;
       int m_id;
     };
 
-    struct ReadMemoryBlockInfo 
+    struct ReadMemoryBlockInfo
     {
       ReadMemoryBlockInfo() = default;
       ReadMemoryBlockInfo(const ReadMemoryBlockInfo & obj) = default;
       Config::Type m_type = Config::Type::eEnd;
       uint16_t m_startAddr = 0;
       uint16_t m_endAddr = 0;
-      const uint8_t * m_memory = nullptr;    // may point to write memory 
+      const uint8_t * m_memory = nullptr;    // may point to write memory
       MemoryReadFunction m_realFunction = nullptr;
       MemoryReadFunction m_function = nullptr;
       int m_id;
     };
 
-    struct WriteIOPortBlockInfo 
+    struct WriteIOPortBlockInfo
     {
       WriteIOPortBlockInfo() = default;
       WriteIOPortBlockInfo(const WriteIOPortBlockInfo & obj) = default;
@@ -74,7 +74,7 @@ class Emulator
       int m_id;
     };
 
-    struct ReadIOPortBlockInfo 
+    struct ReadIOPortBlockInfo
     {
       ReadIOPortBlockInfo() = default;
       ReadIOPortBlockInfo(const ReadIOPortBlockInfo & obj) = default;
@@ -87,7 +87,7 @@ class Emulator
 
     typedef std::function<void (double, uint64_t)> PollHandler;
 
-    struct PollDef 
+    struct PollDef
     {
       PollDef(double interval, PollHandler handler)
         : m_timeInterval(interval)
@@ -130,12 +130,14 @@ class Emulator
         typedef std::map<int, PollDef> ListType;
         int Add(double secs, PollHandler handler)
         {
-          m_list.insert(ListType::value_type(m_index++, PollDef(secs, handler)));
+          m_list.insert(ListType::value_type(m_index, PollDef(secs, handler)));
+          return m_index++;
         }
 
         int Add(uint64_t clocks, PollHandler handler)
         {
-          m_list.insert(ListType::value_type(m_index++, PollDef(clocks, handler)));
+          m_list.insert(ListType::value_type(m_index, PollDef(clocks, handler)));
+          return m_index++;
         }
 
         void Remove(int index)
@@ -153,6 +155,8 @@ class Emulator
     //
 
     Emulator(const EmulatorInfo * info);
+    virtual ~Emulator();
+
     virtual void Instantiate();
 
     int Run(const Options & options);
@@ -168,7 +172,7 @@ class Emulator
     virtual const Config::MemoryMappedScreen * GetMemoryMappedInfo() const;
     virtual const Config::RAM * GetMainRAMInfo() const;
     virtual int GetRAMSize_k() const;
-    virtual bool SetRAMSize_k(int len);  
+    virtual bool SetRAMSize_k(int len);
 
     // CPU functions
     virtual double GetActualCPUSpeed_Hz() const;
@@ -250,7 +254,7 @@ class Emulator
 
     void LoadGRZ();
 
-  protected:  
+  protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
 
     virtual uint8_t ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr);
@@ -297,7 +301,7 @@ struct EmulatorInfo
   const char * m_name;     // short name
   const char * m_title;    // long name
 
-  Config::Block m_blocks[];
+  std::vector<Config::Block> m_blocks;
 };
 
 #endif // EMULATOR_H_

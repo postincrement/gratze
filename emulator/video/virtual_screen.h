@@ -7,7 +7,7 @@
 #include <memory>
 #include <chrono>
 
-#include <SDL.h> 
+#include <SDL.h>
 
 #include "common/factory.h"
 #include "src/options.h"
@@ -25,6 +25,7 @@ class VirtualScreen
 {
   public:
     VirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows);
+    virtual ~VirtualScreen();
 
     virtual bool Open();
 
@@ -53,11 +54,11 @@ class VirtualScreen
 
     virtual bool SetFont(Font * font);
 
-  private:  
+  private:
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
     virtual void RenderCharAtPos(int x, int y, bool withCursor);
 
-  protected:  
+  protected:
     MainWindow & m_mainWindow;
     Options m_options;
 
@@ -94,14 +95,14 @@ class MemoryMappedScreen : public VirtualScreen
 {
   public:
     MemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
-    ~MemoryMappedScreen();
+    virtual ~MemoryMappedScreen();
 
     // CPU access
     virtual void WriteMemoryAtAddress(int addr, uint8_t ch);
     virtual uint8_t ReadMemoryAtAddress(int addr) const;
 
     // overrides from VirtualScreen
-    virtual void GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg) = 0;
+    virtual void GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg) override = 0;
     virtual FontChar GetCharAtLoc(int loc) const override;
 
     // new functions
@@ -117,7 +118,7 @@ class MemoryMappedScreen : public VirtualScreen
         g_memoryMappedScreenFactory.AddConcreteClass<Type>(name);
     }
 
-  protected:  
+  protected:
     std::vector<uint8_t> m_memory;
     int m_memoryMask = 0;
     int m_offset;
@@ -136,7 +137,7 @@ class SingleColourMemoryMappedScreen : public MemoryMappedScreen
 
     virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg);
 
-  protected:  
+  protected:
     SDL_Color m_bgColour;
     SDL_Color m_fgColour;
 };

@@ -75,6 +75,16 @@ AC_SUBST(NFD_LIB_NAME)
 AC_SUBST(MINGW_ENABLED)
 
 case "$target" in
+        *-darwin*)
+                NFD_BUILD_DIR=gmake_macosx
+                NFD_LIBS="-lnfd" 
+                NFD_LIB_NAME=libnfd.a
+
+		SDL_INC=-I/opt/local/include/SDL2
+                SDL_LIBS="-lSDL2_ttf -lSDL2main -lSDL2"
+		SDL_LDFLAGS=-L/opt/local/lib
+		;;
+		
         *-mingw32)
                 MINGW_ENABLED=1
                 NFD_BUILD_DIR=gmake_windows
@@ -169,7 +179,7 @@ MFZ_CFLAGS="-DEXECZ80 -DLSB_FIRST"
 #
 CFLAGS="$SDL_INC $MFZ_CFLAGS -g"
 CXXFLAGS="$SDL_INC $MFZ_CFLAGS $NFD_CXXFLAGS -std=c++17 -Wno-register -g"
-LDFLAGS="$MING_LDFLAGS $NFD_LDFLAGS"
+LDFLAGS="$SDL_LDFLAGS $MING_LDFLAGS $NFD_LDFLAGS"
 LDLIBS="$NFD_LIBS $GTK_LIBS $MING_LDLIBS $SDL_LIBS"
 
 ##########################################################
