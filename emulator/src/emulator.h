@@ -301,7 +301,8 @@ struct EmulatorInfo
   const char * m_name;     // short name
   const char * m_title;    // long name
 
-  std::vector<Config::Block> m_blocks;
+  const Config::Block * m_blocks;
+  const size_t  m_blockCount;
 };
 
 #endif // EMULATOR_H_

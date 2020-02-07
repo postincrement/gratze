@@ -587,6 +587,10 @@ PACKAGE_URL='http://www.postincrement.com'
 ac_unique_file="src/main.cc"
 ac_subst_vars='LTLIBOBJS
 LIB@&t@OBJS
+MHASH_LIBS
+MHASH_CFLAGS
+GTK2_LIBS
+GTK2_CFLAGS
 FREETYPE_LIBS
 FREETYPE_CFLAGS
 SDL_ttf_LIBS
@@ -690,7 +694,11 @@ SDL_LIBS
 SDL_ttf_CFLAGS
 SDL_ttf_LIBS
 FREETYPE_CFLAGS
-FREETYPE_LIBS'
+FREETYPE_LIBS
+GTK2_CFLAGS
+GTK2_LIBS
+MHASH_CFLAGS
+MHASH_LIBS'
 
 
 # Initialize some variables set by options.
@@ -1337,6 +1345,11 @@ Some influential environment variables:
               C compiler flags for FREETYPE, overriding pkg-config
   FREETYPE_LIBS 
               linker flags for FREETYPE, overriding pkg-config
+  GTK2_CFLAGS C compiler flags for GTK2, overriding pkg-config
+  GTK2_LIBS   linker flags for GTK2, overriding pkg-config
+  MHASH_CFLAGS 
+              C compiler flags for MHASH, overriding pkg-config
+  MHASH_LIBS  linker flags for MHASH, overriding pkg-config
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -3093,6 +3106,16 @@ NFD_CXXFLAGS="-I$NFD_INCLUDE_DIR"
 
 
 case "$target" in
+        *-darwin*)
+                NFD_BUILD_DIR=gmake_macosx
+                NFD_LIBS="-lnfd" 
+                NFD_LIB_NAME=libnfd.a
+
+		SDL_INC=-I/opt/local/include/SDL2
+                SDL_LIBS="-lSDL2_ttf -lSDL2main -lSDL2"
+		SDL_LDFLAGS=-L/opt/local/lib
+		;;
+		
         *-mingw32)
                 MINGW_ENABLED=1
                 NFD_BUILD_DIR=gmake_windows
@@ -3449,11 +3472,11 @@ $as_echo "@%:@define HAVE_FREETYPE 1" >>confdefs.h
 fi
                 
 pkg_failed=no
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for FREETYPE" >&5
-$as_echo_n "checking for FREETYPE... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for GTK2" >&5
+$as_echo_n "checking for GTK2... " >&6; }
 
-if test -n "$FREETYPE_CFLAGS"; then
-    pkg_cv_FREETYPE_CFLAGS="$FREETYPE_CFLAGS"
+if test -n "$GTK2_CFLAGS"; then
+    pkg_cv_GTK2_CFLAGS="$GTK2_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
     { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"gtk+-3.0\""; } >&5
@@ -3461,7 +3484,7 @@ if test -n "$FREETYPE_CFLAGS"; then
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_FREETYPE_CFLAGS=`$PKG_CONFIG --cflags "gtk+-3.0" 2>/dev/null`
+  pkg_cv_GTK2_CFLAGS=`$PKG_CONFIG --cflags "gtk+-3.0" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes 
 else
   pkg_failed=yes
@@ -3469,8 +3492,8 @@ fi
  else
     pkg_failed=untried
 fi
-if test -n "$FREETYPE_LIBS"; then
-    pkg_cv_FREETYPE_LIBS="$FREETYPE_LIBS"
+if test -n "$GTK2_LIBS"; then
+    pkg_cv_GTK2_LIBS="$GTK2_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
     { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"gtk+-3.0\""; } >&5
@@ -3478,7 +3501,7 @@ if test -n "$FREETYPE_LIBS"; then
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_FREETYPE_LIBS=`$PKG_CONFIG --libs "gtk+-3.0" 2>/dev/null`
+  pkg_cv_GTK2_LIBS=`$PKG_CONFIG --libs "gtk+-3.0" 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes 
 else
   pkg_failed=yes
@@ -3499,12 +3522,12 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        FREETYPE_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "gtk+-3.0" 2>&1`
+	        GTK2_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "gtk+-3.0" 2>&1`
         else 
-	        FREETYPE_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "gtk+-3.0" 2>&1`
+	        GTK2_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "gtk+-3.0" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
-	echo "$FREETYPE_PKG_ERRORS" >&5
+	echo "$GTK2_PKG_ERRORS" >&5
 
 	as_fn_error $? "GTK+ 3.0 required. Install libgtk-3-0-dev" "$LINENO" 5
 elif test $pkg_failed = untried; then
@@ -3512,8 +3535,8 @@ elif test $pkg_failed = untried; then
 $as_echo "no" >&6; }
 	as_fn_error $? "GTK+ 3.0 required. Install libgtk-3-0-dev" "$LINENO" 5
 else
-	FREETYPE_CFLAGS=$pkg_cv_FREETYPE_CFLAGS
-	FREETYPE_LIBS=$pkg_cv_FREETYPE_LIBS
+	GTK2_CFLAGS=$pkg_cv_GTK2_CFLAGS
+	GTK2_LIBS=$pkg_cv_GTK2_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 	
@@ -3522,6 +3545,80 @@ $as_echo "@%:@define HAVE_GTK 1" >>confdefs.h
 fi
                 SDL_INC=`pkg-config --cflags-only-I sdl2 gtk+-3.0 SDL2_ttf freetype2 sdl2`
                 SDL_LIBS=`pkg-config --libs gtk+-3.0 SDL2_ttf freetype2 sdl2`
+                
+                
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for MHASH" >&5
+$as_echo_n "checking for MHASH... " >&6; }
+
+if test -n "$MHASH_CFLAGS"; then
+    pkg_cv_MHASH_CFLAGS="$MHASH_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"mhash\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "mhash") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_MHASH_CFLAGS=`$PKG_CONFIG --cflags "mhash" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes 
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$MHASH_LIBS"; then
+    pkg_cv_MHASH_LIBS="$MHASH_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"mhash\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "mhash") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_MHASH_LIBS=`$PKG_CONFIG --libs "mhash" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes 
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+        
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        MHASH_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "mhash" 2>&1`
+        else 
+	        MHASH_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "mhash" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$MHASH_PKG_ERRORS" >&5
+
+	as_fn_error $? "libmhash required. Install libmhash-dev" "$LINENO" 5
+elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	as_fn_error $? "libmhash required. Install libmhash-dev" "$LINENO" 5
+else
+	MHASH_CFLAGS=$pkg_cv_MHASH_CFLAGS
+	MHASH_LIBS=$pkg_cv_MHASH_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	
+$as_echo "@%:@define HAVE_MHASH 1" >>confdefs.h
+
+fi
                 ;;
 esac
 
@@ -3585,7 +3682,7 @@ MFZ_CFLAGS="-DEXECZ80 -DLSB_FIRST"
 #
 CFLAGS="$SDL_INC $MFZ_CFLAGS -g"
 CXXFLAGS="$SDL_INC $MFZ_CFLAGS $NFD_CXXFLAGS -std=c++17 -Wno-register -g"
-LDFLAGS="$MING_LDFLAGS $NFD_LDFLAGS"
+LDFLAGS="$SDL_LDFLAGS $MING_LDFLAGS $NFD_LDFLAGS"
 LDLIBS="$NFD_LIBS $GTK_LIBS $MING_LDLIBS $SDL_LIBS"
 
 ##########################################################

@@ -64,31 +64,31 @@ uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
 
 extern unsigned char g_model1Level1ROM[4096];
 
+INFO_START(model1Level1)
+{
+  INFO_CPU(MODEL1_CLOCK_SPEED, 0x0000),
+
+  INFO_MEM_IO_READ(0x37e0, 0x37ef,  1),
+  INFO_MEM_IO_WRITE(0x37e0, 0x37ef, 1),
+
+  INFO_ROM(0x0000, g_model1Level1ROM),
+  INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 4, 4, 16),
+  INFO_SCREEN_MEMORY_MAPPED_FIXED("trs80", \
+                            MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
+                            MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
+                            MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
+                            256, &g_charGen_MotorolaMCM6674, TRS80Emulator::CreatePixelFont),
+
+  INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
+}
+INFO_END(model1Level1)
 
 static struct EmulatorInfo g_level1EmulatorInfo =
 {
   "m1-1",                         // command line option
   "Model 1 L1",                   // short name
   "TRS-80 Model 1, Level 1",      // long name
-
-  {
-    INFO_CPU(MODEL1_CLOCK_SPEED, 0x0000),
-
-    INFO_MEM_IO_READ(0x37e0, 0x37ef,  1),
-    INFO_MEM_IO_WRITE(0x37e0, 0x37ef, 1),
-
-    INFO_ROM(0x0000, g_model1Level1ROM),
-    INFO_MAIN_RAM(MODEL1_RAM_START_ADDR, 4, 4, 16),
-    INFO_SCREEN_MEMORY_MAPPED_FIXED("trs80", \
-                             MODEL1_VIDEO_START_ADDR, MODEL1_VIDEO_END_ADDR, \
-                             MODEL1_SCREEN_WIDTH_CHARS, MODEL1_SCREEN_HEIGHT_CHARS, \
-                             MODEL1_FONT_WIDTH, MODEL4_FONT_HEIGHT, \
-                             256, &g_charGen_MotorolaMCM6674, TRS80Emulator::CreatePixelFont),
-
-    INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
-
-    INFO_END()
-  }
+  INFO_INSERT(model1Level1)
 };
 
 Model1Level1_Emulator::Model1Level1_Emulator()
@@ -100,13 +100,8 @@ Model1Level1_Emulator::Model1Level1_Emulator()
 
 extern unsigned char g_model1Level2ROM[12288];
 
-static struct EmulatorInfo g_levelEmulatorInfo =
+INFO_START(model1Level2)
 {
-  "m1",                           // command line option
-  "Model 1 L2",                   // short name
-  "TRS-80 Model 1, Level 2",      // long name
-
-  {
     INFO_CPU(MODEL1_CLOCK_SPEED, 0x0000),
 
     INFO_MEM_IO_READ(0x37e0, 0x37ef, 1),
@@ -125,9 +120,15 @@ static struct EmulatorInfo g_levelEmulatorInfo =
     INFO_MEM_IO_READ(MODEL1_KB_START_ADDR, MODEL1_KB_END_ADDR, 2),
 
     INFO_IO_PORT_RW(0xff, 0xff, 1),
+}
+INFO_END(model1Level2)
 
-    INFO_END()
-  }
+static struct EmulatorInfo g_levelEmulatorInfo =
+{
+  "m1",                           // command line option
+  "Model 1 L2",                   // short name
+  "TRS-80 Model 1, Level 2",      // long name
+  INFO_INSERT(model1Level2)
 };
 
 Model1Level2_Emulator::Model1Level2_Emulator()

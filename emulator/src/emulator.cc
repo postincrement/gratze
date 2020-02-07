@@ -292,7 +292,8 @@ void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 
 const Config::Block * Emulator::GetConfigBlock(Config::Type type) const
 {
-  for (auto & block : m_info->m_blocks) {
+  for (int p = 0; p < m_info->m_blockCount; ++p) {
+    const Config::Block & block = m_info->m_blocks[p];
     if (block.m_type == Config::Type::eEnd)
       break;
     if (block.m_type == type)
@@ -332,7 +333,8 @@ void Emulator::CompileConfigBlocks()
     cout << "debug: compiling config blocks" << endl;
   }
 
-  for (const auto & block : m_info->m_blocks) {
+  for (int p = 0; p < m_info->m_blockCount; ++p) {
+    const Config::Block & block = m_info->m_blocks[p];
 
     if (block.m_type == Config::Type::eEnd)
       break;

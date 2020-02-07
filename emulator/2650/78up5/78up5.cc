@@ -20,24 +20,39 @@ extern unsigned char g_rom_pipbug_300[1024];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+INFO_START(78up5_110)
+{
+  INFO_CPU(1, 0x0000),
+
+  INFO_ROM(0x0000, g_rom_pipbug_110),
+
+  INFO_MAIN_RAM(RAM_START_ADDR, 32-1, 1, 32-1),
+
+  INFO_TERMINAL(80, 24),
+}
+INFO_END(78up5_110);
+
 static EmulatorInfo g_pipbug110Info =
 {
   "78up5-110",                                            // command line option
   "78UP5 with PIPBUG at 100 baud",                        // short name
   "Electronics Australia 78UP5 with PIPBUG at 110 baud",  // long name
 
-  {
-    INFO_CPU(1, 0x0000),
-
-    INFO_ROM(0x0000, g_rom_pipbug_110),
-
-    INFO_MAIN_RAM(RAM_START_ADDR, 32-1, 1, 32-1),
-
-    INFO_TERMINAL(80, 24),
-
-    INFO_END()
-  }
+  INFO_INSERT(78up5_110)
 };
+
+INFO_START(78up5_300)
+{
+  INFO_CPU(1, 0x0000),
+
+  INFO_ROM(0x0000, g_rom_pipbug_300),
+
+  INFO_MAIN_RAM(RAM_START_ADDR, 32-1, 1, 32-1),
+
+  INFO_TERMINAL(80, 24)
+}
+INFO_END(78up5_300)
+
 
 static EmulatorInfo g_pipbug300Info =
 {
@@ -45,19 +60,8 @@ static EmulatorInfo g_pipbug300Info =
   "78UP5 with PIPBUG at 300 baud",                        // short name
   "Electronics Australia 78UP5 with PIPBUG at 300 baud",  // long name
 
-  {
-    INFO_CPU(1, 0x0000),
-
-    INFO_ROM(0x0000, g_rom_pipbug_300),
-
-    INFO_MAIN_RAM(RAM_START_ADDR, 32-1, 1, 32-1),
-
-    INFO_TERMINAL(80, 24),
-
-    INFO_END()
-  }
+  INFO_INSERT(78up5_300)
 };
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 

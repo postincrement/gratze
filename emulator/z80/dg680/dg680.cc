@@ -22,33 +22,35 @@ using namespace std;
 
 extern unsigned char g_dgos680_1_4ROM[DG680_ROM_END_ADDR - DG680_ROM_START_ADDR + 1];
 
+INFO_START(dg680)
+{
+  INFO_CPU(4, DG680_ROM_START_ADDR),
+
+  INFO_ROM(DG680_ROM_START_ADDR, g_dgos680_1_4ROM),
+
+  INFO_MAIN_RAM(0x0000, 48, 8, DG680_ROM_START_ADDR / 1024),
+  INFO_RAM(DG680_RAM_START_ADDR, DG680_RAM_END_ADDR),
+
+  INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
+  INFO_IO_PORT_RW(0x04, 0x07, 2),      // CTC
+
+  INFO_IO_PORT_RW(0x08, 0x08, 3),      // SWP
+
+  INFO_IO_PORT_READ(0x09, 0x09, 4),    // parallel port
+
+  INFO_IO_PORT_RW(0x0C, 0x0D, 5),      // PIC
+
+  DG640_VIDEO_DRIVER(DG680_VIDEO_START_ADDR)
+}
+INFO_END(dg680);
+
 static EmulatorInfo g_emulatorInfo = 
 {
   "dg680",                        // command line option
   "DG-680",                       // short name
   "DG-680 with DGOS",             // long name
 
-  {
-    INFO_CPU(4, DG680_ROM_START_ADDR),
-
-    INFO_ROM(DG680_ROM_START_ADDR, g_dgos680_1_4ROM),
-
-    INFO_MAIN_RAM(0x0000, 48, 8, DG680_ROM_START_ADDR / 1024),
-    INFO_RAM(DG680_RAM_START_ADDR, DG680_RAM_END_ADDR),
-
-    INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
-    INFO_IO_PORT_RW(0x04, 0x07, 2),      // CTC
-
-    INFO_IO_PORT_RW(0x08, 0x08, 3),      // SWP
-
-    INFO_IO_PORT_READ(0x09, 0x09, 4),    // parallel port
-
-    INFO_IO_PORT_RW(0x0C, 0x0D, 5),      // PIC
-
-    DG640_VIDEO_DRIVER(DG680_VIDEO_START_ADDR),
-
-    INFO_END()
-  }
+  INFO_INSERT(dg680)
 };
 
 void DG680_Emulator::Instantiate()

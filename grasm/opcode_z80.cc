@@ -12,6 +12,11 @@ static const char * g_dregNames[] = {
   0
 };
 
+static const char * g_adregNames[] = {
+  "bc", "de", "hl", "af",
+  0
+};
+
 static std::string ld_regs(uint8_t opcode)
 {
   int from = opcode & 0x7;
@@ -84,6 +89,21 @@ XSsembler::OpCodeInfo g_z80_opcodes[] = {
 
   { "or",   (int)Z80Mode::eD,     0xb0, 0xf8, 1, (void *)g_regNames},
   { "cp",   (int)Z80Mode::eD,     0xb8, 0xf8, 1, (void *)g_regNames},
+
+  { "pop",  (int)Z80Mode::eDW,    0xc1, 0xcf, 1, (void *)g_adregNames},
+  { "jp",   (int)Z80Mode::eA,     0xc3, 0xff, 3  },
+  { "push", (int)Z80Mode::eDW,    0xc5, 0xcf, 1, (void *)g_adregNames},
+  { "rst",  (int)Z80Mode::eI,     0xc7, 0xc7, 1  },
+  { "ret",  (int)Z80Mode::eO,     0xc9, 0xff, 3  },
+  { "call", (int)Z80Mode::eA,     0xcd, 0xff, 3, },
+
+  { "out",  (int)Z80Mode::eI,     0xd3, 0xff, 2, },
+  { "in",   (int)Z80Mode::eI,     0xdb, 0xff, 2, },
+
+  { "di",   (int)Z80Mode::eO,     0xf3, 0xff, 1  },
+  { "ei",   (int)Z80Mode::eO,     0xfb, 0xff, 1  },
+
+  { "ldir", (int)Z80Mode::eO,     0xed, 0xff, 2  },
 
   { 0, 0, 0, 0 }
 };

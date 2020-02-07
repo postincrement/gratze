@@ -349,6 +349,197 @@ bool Assembler::WriteBinary()
   file.close();
 }
 
-//////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Assembler::ResolveIntegerValue(unsigned & val, const Token & token, unsigned int currentAddr, Assembler::SymbolTable & symbolTable)
+{
+  switch (token.m_type) {
+    case Token::Type::eEOF:
+    case Token::Type::eOp:
+    case Token::Type::eString:
+      return false;
+
+    case Token::Type::eInteger:
+      val = token.m_value;
+      break;
+
+    case Token::Type::eCurrentAddr:
+      val = currentAddr;
+      break;
+
+    case Token::Type::eSymbol:
+      {
+        std::string str(token.m_lexeme);
+        if (symbolTable.count(str) == 0)
+          return false;
+        val = symbolTable[str].m_value;
+        symbolTable[str].m_used = true;
+      }
+      break;
+  }
+
+  return true;
+}
+
+bool Assembler::ParseByteExpr(uint8_t & val, const std::string & str, size_t pos, std::string & error)
+{
+  unsigned intVal;
+  if (!ParseExpr(intVal, str, pos, error))
+    return false;
+
+  if (intVal > 0xff) {
+    stringstream strm;
+    strm << "expression value 0x" << hex << intVal << " too large for destination"; 
+    error = strm.str();
+    return false;
+  }
+
+  val = intVal & 0xff;
+  return true;
+}
 
 
+bool Assembler::ParseExpr(unsigned int & val, const std::string & str, size_t pos, std::string & error)
+{
+  val = 0;
+  stringstream strm;
+
+  // get first token and resolve
+  Token token1;
+  if (token1.Parse(str, pos) == Token::Type::eEOF) {
+    return true;
+  }
+
+  unsigned lhs;
+  if (!ResolveIntegerValue(lhs, token1, m_address, m_symbols)) {
+    error = "cannot resolve expected integer value '" + token1.m_lexeme + "'";
+    return (m_pass == 1);
+  }
+
+  // get op - if none, then return lhs
+  Token token2;
+  if (token2.Parse(str, pos) == Token::Type::eEOF) {
+    val = lhs;
+    return true;
+  }
+  if (token2.m_type != Token::Type::eOp) {
+    stringstream strm;
+    strm << "expected operator, got '" << token2.m_lexeme << "'";
+    error = strm.str();
+    return false;
+  }
+
+  // get rhs
+  unsigned rhs;
+  if (!ParseExpr(rhs, str, pos, error)) {
+    error = "cannot resolve expected integer value '" + token1.m_lexeme + "'";
+    return (m_pass == 1);
+  }
+
+  switch (token2.m_lexeme[0]) {
+    case '+':
+      val = lhs + rhs;
+      break;
+    case '-':
+      val = lhs - rhs;
+      break;
+  }  
+
+  //cout << "expr: " << token1.m_lexeme << "(0x" << hex << lhs << ") " << token2.m_lexeme << " 0x" << hex << rhs << " = 0x" << hex << val << endl;
+
+  return true;
+}
+
+
+Assembler::Token::Type Assembler::Token::Parse(const std::string & str, size_t & pos)
+{
+  m_type = Type::eEOF;
+
+  // ignore spaces
+  while ((pos < str.length()) && isspace(str[pos]))
+    ++pos;
+
+  if (pos >= str.length()) {
+    return m_type;
+  }
+
+  char ch = str[pos++];
+
+  // character string
+  if (ch == '\'') {
+    size_t start = pos;
+    while (pos < str.length()) {
+      char ch = str[pos++];
+      if (ch == '\'')
+        break;
+      m_lexeme += ch;
+    }
+    if (m_lexeme.length() == 1) {
+      m_value = (int)m_lexeme[0];
+      m_type  = Type::eInteger;
+    }
+    else {
+      m_type = Token::Type::eString;
+    }
+  }
+
+  // operator
+  else if ((ch == '+') || (ch == '-')) {
+    m_type = Token::Type::eOp;
+    m_lexeme = ch;
+  }
+
+  // operator
+  else if (ch == '$') {
+    m_type = Token::Type::eCurrentAddr;
+    m_lexeme = ch;
+  }
+
+  // numeric/hex constant
+  else if (isdigit(ch)) {
+    m_lexeme = ch;
+    bool decimal = true;
+    size_t start = pos;
+    while (pos < str.length()) {
+      char ch = tolower(str[pos++]);
+      if (isdigit(ch)) {
+        m_lexeme += ch;
+      }
+      else if (ch >= 'a' && (ch <= 'f')) {
+        m_lexeme += ch;
+        decimal = false;
+      }
+      else if ((ch == 'x') && (pos == (start+1))) {
+        decimal = false;
+      }
+      else if ((ch == 'h') && (((pos - start) > 2) && (m_lexeme[1] != 'x'))) {
+        m_lexeme += ch;
+        decimal = false;
+        break;
+      }
+      else
+        break;
+    }
+    char * ptr;
+    m_value = strtoul(m_lexeme.c_str(), &ptr, decimal ? 10 : 16);
+    if (ptr == NULL) {
+      cerr << "error: cannot parse expression '" << str << "'" << endl;
+    }
+    else {
+      //cout << "'" << m_lexeme << "' converted to 0x" << hex << m_value << endl;
+      m_type = Type::eInteger;
+    }
+  }
+
+  // symbol
+  else if (isalpha(ch)) {
+    m_lexeme = ch;
+    size_t start = pos;
+    while ((pos < str.length()) && isalnum(str[pos])) {
+      m_lexeme += str[pos++];
+    }
+    m_type = Token::Type::eSymbol;
+  }
+
+  return m_type;;
+};

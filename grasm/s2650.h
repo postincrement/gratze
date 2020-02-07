@@ -28,8 +28,6 @@ class S2650Assembler : public Assembler
     virtual bool IsCommentStart(const char * str, size_t col) override;
 
   protected:
-    bool ParseExpr(unsigned int & val, const std::string & str, size_t pos, std::string & error);
-    bool ParseByteExpr(uint8_t & val, const std::string & str, size_t pos, std::string & error);
     bool ParseIndexExpr(uint8_t & reg, unsigned & addr, const std::string & arg, const std::string & str);
 };
 

@@ -17,6 +17,25 @@
 class Assembler : public XSsembler
 {
   public:
+    struct Token
+    {
+      enum class Type
+      {
+        eEOF,
+        eInteger,
+        eOp,
+        eString,
+        eSymbol,
+        eCurrentAddr
+      };
+
+      Type m_type;
+      std::string m_lexeme;
+      unsigned m_value;
+
+      Type Parse(const std::string & str, size_t & pos);
+    };
+
     Assembler(const FormatInfo & format);
 
     virtual bool Open(const CommandLineArgs & args, const std::string & fn);
@@ -45,6 +64,9 @@ class Assembler : public XSsembler
 
 
     std::string GetPageHeader(int & row, int & page);
+    bool ParseExpr(unsigned int & val, const std::string & str, size_t pos, std::string & error);
+    bool ParseByteExpr(uint8_t & val, const std::string & str, size_t pos, std::string & error);
+    bool ResolveIntegerValue(unsigned & val, const Token & token, unsigned int currentAddr, Assembler::SymbolTable & symbolTable);
 
   protected:   
     int m_lineNumber;

@@ -23,27 +23,29 @@ extern unsigned char g_rom_binbug6_1[1024];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+INFO_START(eti685)
+{
+  INFO_CPU(1, 0x0000),
+  INFO_ROM(0x0000, g_rom_binbug6_1),
+
+  //INFO_MAIN_RAM(BINBUG_RAM_START_ADDR, 16, 1, 32 - 1 - DG640_VIDEO_RAM_SIZE_K),
+  INFO_RAM(BINBUG_RAM_START_ADDR, BINBUG_RAM_END_ADDR),
+
+  INFO_IO_PORT_RW(0x30, 0x33, 2),       // 8255 PPI
+  INFO_IO_PORT_READ(0x35, 0x35, 1),     // keyboard read latch
+  INFO_IO_PORT_WRITE(0x36, 0x36, 1),    // keyboard reset latch
+
+  DG640_VIDEO_DRIVER(BINBUG_VIDEO_START_ADDR),
+}
+INFO_END(eti685)
+
 static EmulatorInfo g_emulatorInfo =
 {
   "eti685",                                // command line option
   "ETI-685 with BINBUG",                   // short name
   "ETI-685 2650 with DG-640 and BINBUG",   // long name
 
-  {
-    INFO_CPU(1, 0x0000),
-    INFO_ROM(0x0000, g_rom_binbug6_1),
-
-    //INFO_MAIN_RAM(BINBUG_RAM_START_ADDR, 16, 1, 32 - 1 - DG640_VIDEO_RAM_SIZE_K),
-    INFO_RAM(BINBUG_RAM_START_ADDR, BINBUG_RAM_END_ADDR),
-
-    INFO_IO_PORT_RW(0x30, 0x33, 2),       // 8255 PPI
-    INFO_IO_PORT_READ(0x35, 0x35, 1),     // keyboard read latch
-    INFO_IO_PORT_WRITE(0x36, 0x36, 1),    // keyboard reset latch
-
-    DG640_VIDEO_DRIVER(BINBUG_VIDEO_START_ADDR),
-
-    INFO_END()
-  }
+  INFO_INSERT(eti685)
 };
 
 void ETI685::Instantiate()

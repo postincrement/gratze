@@ -11,7 +11,11 @@ class Font;
 
 #define DEFAULT_TTF_FONT   "./fonts/UbuntuMono-R.ttf"
 
-#define INFO_END()                          { Config::Type::eEnd }    
+#define INFO_START(name)                    const struct Config::Block g_configInfo_##name[] = 
+#define INFO_END(name)                      ; const size_t g_configInfo_##name##_size = (sizeof(g_configInfo_##name) / sizeof(g_configInfo_##name[0]));
+
+#define INFO_INSERT(name)                   g_configInfo_##name, g_configInfo_##name##_size
+
 #define INFO_CPU(speed, addr)               { Config::Type::eCPU,         { .m_cpu={ speed, addr } } }
 #define INFO_ROM(addr, data)                { Config::Type::eROM,         { .m_rom={ addr, addr + sizeof(data) - 1, data } } }
 #define INFO_MAIN_RAM(start, k, min, max)   { Config::Type::eMainRAM,     { .m_ram={ start, start + (k)*1024 - 1, min, max } } }

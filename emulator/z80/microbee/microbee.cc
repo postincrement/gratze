@@ -312,40 +312,41 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+INFO_START(microbee)
+{
+  INFO_CPU(4, MICROBEE_ROM_START_ADDR),
+
+  INFO_ROM(MICROBEE_ROM_START_ADDR, g_microbeeBasic5_22e_ROM),
+
+  INFO_MAIN_RAM(MICROBEE_RAM_START_ADDR, 32, 16, MICROBEE_ROM_START_ADDR / 1024),
+
+  INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
+  INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
+  INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
+  INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545
+
+  INFO_SCREEN_MEMORY_MAPPED_FIXED("microbee", \
+                          MICROBEE_VIDEO_START_ADDR, MICROBEE_VIDEO_END_ADDR, \
+                          MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
+                          MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
+                          MICROBEE_VIRTUAL_FONT_CHARS, \
+                          &g_charGen_MotorolaMCM6574, \
+                          nullptr),
+
+  INFO_MONITOR(12.0, 4.0, 3.0, ePAL),
+
+  INFO_RAM(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR)
+}
+INFO_END(microbee);
+
 EmulatorInfo g_microbeeEmulatorInfo =
 {
   "mbee",                    // command line option
   "Microbee 32k",            // short name
   "Microbee 32k",            // long name
 
-  {
-    INFO_CPU(4, MICROBEE_ROM_START_ADDR),
-
-    INFO_ROM(MICROBEE_ROM_START_ADDR, g_microbeeBasic5_22e_ROM),
-
-    INFO_MAIN_RAM(MICROBEE_RAM_START_ADDR, 32, 16, MICROBEE_ROM_START_ADDR / 1024),
-
-    INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
-    INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
-    INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
-    INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545
-
-    INFO_SCREEN_MEMORY_MAPPED_FIXED("microbee", \
-                            MICROBEE_VIDEO_START_ADDR, MICROBEE_VIDEO_END_ADDR, \
-                            MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
-                            MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
-                            MICROBEE_VIRTUAL_FONT_CHARS, \
-                            &g_charGen_MotorolaMCM6574, \
-                            nullptr),
-
-    INFO_MONITOR(12.0, 4.0, 3.0, ePAL),
-
-    INFO_RAM(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR),
-
-    INFO_END()
-  }
+  INFO_INSERT(microbee)
 };
-
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 

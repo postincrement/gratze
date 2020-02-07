@@ -39,35 +39,37 @@ extern unsigned char g_super80_U42_ROM[4096];
 extern unsigned char g_2513ROM[2048];
 
 
+INFO_START(super80)
+{
+  INFO_CPU(2, SUPER80_ROM_U26_START_ADDR),
+
+  INFO_MAIN_RAM(SUPER80_RAM_START_ADDR, 48, 8, SUPER80_ROM_U26_START_ADDR / 1024),
+
+  INFO_SCREEN_MEMORY_MAPPED_VARIABLE("super80", SUPER80_VIDEO_CHARS, \
+                        SUPER80_VIDEO_COLS, SUPER80_VIDEO_ROWS, \
+                        SUPER80_FONT_WIDTH, SUPER80_FONT_HEIGHT, \
+                        64, &g_charGen_Signetics2513, nullptr),
+
+  INFO_MONITOR(6.0, 4.0, 3.0, ePAL),
+
+  INFO_IO_PORT_RW(0xf8, 0xfb, 1),    // PIO
+  INFO_IO_PORT_RW(0xf1, 0xf1, 2),    // video page
+  INFO_IO_PORT_RW(0xf2, 0xf2, 3),    // input
+  INFO_IO_PORT_RW(0xf0, 0xf0, 4),    // output
+
+  INFO_ROM(SUPER80_ROM_U26_START_ADDR, g_super80_U26_ROM)
+  //INFO_ROM(SUPER80_ROM_U33_START_ADDR, g_super80_U33_ROM),
+  //INFO_ROM(SUPER80_ROM_U42_START_ADDR, g_super80_U42_ROM),
+}
+INFO_END(super80);
+
 static EmulatorInfo g_emulatorInfo =
 {
   "super80",                      // command line option
   "Super-80",                     // short name
   "Dick Smith Super80",           // long name
 
-  {
-    INFO_CPU(2, SUPER80_ROM_U26_START_ADDR),
-
-    INFO_MAIN_RAM(SUPER80_RAM_START_ADDR, 48, 8, SUPER80_ROM_U26_START_ADDR / 1024),
-
-    INFO_SCREEN_MEMORY_MAPPED_VARIABLE("super80", SUPER80_VIDEO_CHARS, \
-                         SUPER80_VIDEO_COLS, SUPER80_VIDEO_ROWS, \
-                         SUPER80_FONT_WIDTH, SUPER80_FONT_HEIGHT, \
-                         64, &g_charGen_Signetics2513, nullptr),
-
-    INFO_MONITOR(6.0, 4.0, 3.0, ePAL),
-
-    INFO_IO_PORT_RW(0xf8, 0xfb, 1),    // PIO
-    INFO_IO_PORT_RW(0xf1, 0xf1, 2),    // video page
-    INFO_IO_PORT_RW(0xf2, 0xf2, 3),    // input
-    INFO_IO_PORT_RW(0xf0, 0xf0, 4),    // output
-
-    INFO_ROM(SUPER80_ROM_U26_START_ADDR, g_super80_U26_ROM),
-    //INFO_ROM(SUPER80_ROM_U33_START_ADDR, g_super80_U33_ROM),
-    //INFO_ROM(SUPER80_ROM_U42_START_ADDR, g_super80_U42_ROM),
-
-    INFO_END()
-  }
+  INFO_INSERT(super80)
 };
 
 //////////////////////////////////////////////////////////////////////////////////
