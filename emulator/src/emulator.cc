@@ -456,7 +456,12 @@ void Emulator::CompileConfigBlocks()
         writeInfo.m_startAddr = info.m_startAddr;
         writeInfo.m_endAddr   = info.m_endAddr;
         writeInfo.m_realFunction = &Emulator::WriteToVideo;
-        writeInfo.m_function     = &Emulator::WriteToVideo;
+        if (m_debugWriteVideo) {
+          writeInfo.m_function  = &Emulator::DebugWriteMemory;
+        }
+        else {
+          writeInfo.m_function     = &Emulator::WriteToVideo;
+        }
         m_writeMemoryBlocks.push_back(writeInfo);
       }
       {
@@ -465,7 +470,12 @@ void Emulator::CompileConfigBlocks()
         readInfo.m_startAddr = info.m_startAddr;
         readInfo.m_endAddr   = info.m_endAddr;
         readInfo.m_realFunction = &Emulator::ReadFromVideo;
-        readInfo.m_function     = &Emulator::ReadFromVideo;
+        if (m_debugReadVideo) {
+          readInfo.m_function = &Emulator::DebugReadMemory;
+        }
+        else {
+          readInfo.m_function = &Emulator::ReadFromVideo;
+        }
         m_readMemoryBlocks.push_back(readInfo);
       }
     }
@@ -564,16 +574,22 @@ uint8_t Emulator::DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t add
 
 void Emulator::DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
 {
+  stringstream strm;
+  strm << HEXFORMAT0x2(data) << " ";
+  if (isgraph((char)data) && (data != 0x20)) 
+    strm << (char)data;
+  else  
+    strm << ".";
   if (info.m_realFunction != nullptr) {
-    cout << "debug: writing via fn to " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
+    cout << "debug: writing " << strm.str() << " via fn to " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
     std::invoke(info.m_realFunction, *this, info, addr, data);
     return;
   }
   if (info.m_memory == nullptr) {
-    cout << "debug: writing to " << HEXFORMAT0x4(addr) << " failed with no memory" << endl;
+    cout << "debug: writing " << strm.str() << " to " << HEXFORMAT0x4(addr) << " failed with no memory" << endl;
     return;
   }
-  cout << "debug: writing to " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
+  cout << "debug: writing " << strm.str() << " to " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
   info.m_memory[addr - info.m_startAddr] = data;
 }
 
@@ -796,8 +812,10 @@ void Emulator::MemoryDump() const
 int Emulator::Run(const Options & options)
 {
   m_verbose = options.m_verbose;
-  m_debugWriteMemory = options.m_writeDebug;
-  m_debugReadMemory  = options.m_readDebug;
+  m_debugWriteMemory = options.m_writeMemory;
+  m_debugReadMemory  = options.m_readMemory;
+  m_debugWriteVideo  = options.m_writeVideo;
+  m_debugReadVideo   = options.m_readVideo;
   m_keyboardDebug    = options.m_keyboardDebug;
   m_turbo            = options.m_turbo;
 

@@ -16,6 +16,7 @@
 #include "z80/dg680/dg680.h"
 #include "z80/super80/super80.h"
 #include "z80/microbee/microbee.h"
+#include "z80/sorcerer/sorcerer.h"
 #include "2650/eti685/eti685.h"
 #include "2650/78up5/78up5.h"
 
@@ -50,6 +51,7 @@ void Init()
   AddEmulator<ETI685>();
   AddEmulator<Super80_Emulator>();
   AddEmulator<Microbee_Emulator>();
+  AddEmulator<Sorcerer_Emulator>();
   AddEmulator<EA78UP5_PIPBUG_110>();
   AddEmulator<EA78UP5_PIPBUG_300>();
 
@@ -74,8 +76,10 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "diskette",    's', "test virtual drive file"},
   { ' ', "cassette",    's', "test virtual cassette file"},
   { 't', "type",        's', "look for model" },
-  { ' ', "readdebug",   'b', "turn read debugging on or off" },
-  { ' ', "writedebug",  'b', "turn write debugging on or off" },
+  { ' ', "readmemory",  ' ', "turn on memory read debugging" },
+  { ' ', "writememory", ' ', "turn on memory write debugging" },
+  { ' ', "readvideo",   ' ', "turn on video read debugging" },
+  { ' ', "writevideo",  ' ', "turn on memory write debugging" },
   { ' ', "ei",          'b', "enable/disable Model 1 Expansion Interface" },
   { 'v', "verbose",     '+', "enable verbose logging" },
   { ' ', "videotest",   ' ', "display video test before starting" },
@@ -148,12 +152,14 @@ int main(int argc, char *argv[])
   if (!options.m_args.GetValue("-t", options.m_typeName))
     options.m_typeName = "m1";
 
-  options.m_args.GetValue("-r",           options.m_romFn);
-  options.m_args.GetValue("--ram",        options.m_ramSize_k);
-  options.m_args.GetValue("-s",           options.m_videoScale);
-  options.m_args.GetValue("-v",           options.m_verbose);
-  options.m_args.GetValue("--readdebug",  options.m_readDebug);
-  options.m_args.GetValue("--writedebug", options.m_writeDebug);
+  options.m_args.GetValue("-r",              options.m_romFn);
+  options.m_args.GetValue("--ram",           options.m_ramSize_k);
+  options.m_args.GetValue("-s",              options.m_videoScale);
+  options.m_args.GetValue("-v",              options.m_verbose);
+  options.m_args.GetValue("--readmemory",    options.m_readMemory);
+  options.m_args.GetValue("--writememory",   options.m_writeMemory);
+  options.m_args.GetValue("--readvideo",     options.m_readVideo);
+  options.m_args.GetValue("--writevideo",    options.m_writeVideo);
   options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
   options.m_args.GetValue("--turbo",         options.m_turbo);
 

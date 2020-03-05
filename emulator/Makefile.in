@@ -119,6 +119,8 @@ SRCS_CC = src/main.cc \
 	z80/trs80/model3/chargen_model3.cc \
 	z80/trs80/model4/model4.cc \
 	z80/microbee/microbee.cc \
+	z80/sorcerer/sorcerer.cc \
+	z80/sorcerer/chargen_sorcerer.cc \
 	z80/dg680/dg680.cc \
 	z80/super80/super80.cc \
 	2650/2650emulator.cc \
@@ -130,11 +132,12 @@ SRCS_C = z80/trs80/model1/rom_level1.c \
 	z80/trs80/model1/rom_level2.c \
 	z80/trs80/model3/rom_model3.c \
 	SDL_FontCache/SDL_FontCache.c \
-        z80/mfz80/Z80.c \
+  z80/mfz80/Z80.c \
 	z80/mfz80/Debug.c \
 	z80/dg680/rom_dgos1_4.c \
 	z80/super80/rom_super80.c \
 	z80/microbee/rom_basic5_22e.c \
+	z80/sorcerer/rom_sorcerer.c \
 	2650/eti685/rom_binbug_6_1.c \
 	2650/78up5/rom_pipbug.c 
 

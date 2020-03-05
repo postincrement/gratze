@@ -40,4 +40,4 @@ class Super80_Emulator : public Z80Emulator
     uint8_t m_options;
 };
 
-#endif // DG680_H_
+#endif // SUPER80_H_

@@ -29,8 +29,10 @@ struct Options
   std::string m_font;
   unsigned m_fontSize = -1;
 
-  bool m_readDebug = false;
-  bool m_writeDebug = false;
+  bool m_readMemory = false;
+  bool m_writeMemory = false;
+  bool m_readVideo = false;
+  bool m_writeVideo = false;
 
   // set breakpoint (not used yet)
   int m_breakpoint = -1;

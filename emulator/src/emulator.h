@@ -280,6 +280,8 @@ class Emulator
 
     bool m_debugWriteMemory = false;
     bool m_debugReadMemory = false;
+    bool m_debugWriteVideo = false;
+    bool m_debugReadVideo = false;
     bool m_keyboardDebug = false;
     bool m_turbo = false;
 
