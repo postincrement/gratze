@@ -41,7 +41,7 @@ void Model1_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
     cerr << "TRS WRITE MEM IO " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
 
-uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr)
+uint8_t Model1_Emulator::ReadIOMemory(int id, uint16_t addr) const
 {
   if (id == 2)
     return ReadKeyboard(addr);

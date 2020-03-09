@@ -27,7 +27,7 @@ typedef unsigned short word;  /* This type is exactly 2 bytes */
 static int PrintHex;          /* Print hexadecimal codes      */
 static unsigned long Counter; /* Address counter              */
 
-static int DAsm(char *S,byte *A);
+int DAsm(char *S,byte *A);
     /* This function will disassemble a single command and    */
     /* return the number of bytes disassembled.               */
 

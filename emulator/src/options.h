@@ -48,6 +48,9 @@ struct Options
 
   // do not limit CPU speed
   bool m_turbo = false;
+
+  // maintain backtrace queue
+  unsigned m_traceLength = 0;
 };
 
 #endif // OPTIONS_H_

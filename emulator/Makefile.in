@@ -134,6 +134,7 @@ SRCS_C = z80/trs80/model1/rom_level1.c \
 	SDL_FontCache/SDL_FontCache.c \
   z80/mfz80/Z80.c \
 	z80/mfz80/Debug.c \
+	z80/mfz80/dasm.c \
 	z80/dg680/rom_dgos1_4.c \
 	z80/super80/rom_super80.c \
 	z80/microbee/rom_basic5_22e.c \

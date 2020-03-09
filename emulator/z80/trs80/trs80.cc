@@ -164,14 +164,14 @@ void TRS80Emulator::RTCInterrupt()
 
 /////////////////////////////////////////////////////////////
 
-uint8_t TRS80Emulator::ReadNull(uint16_t)
+uint8_t TRS80Emulator::ReadNull(uint16_t) const
 {
   return 0xff;
 }
 
 /////////////////////////////////////////////////////////////
 
-uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr)
+uint8_t TRS80Emulator::ReadKeyboard(uint16_t addr) const
 {
   return m_keyboard->Read(addr);
 }
@@ -183,7 +183,7 @@ void TRS80Emulator::WritePrinter(uint16_t addr, uint8_t val)
   cerr << "PRINTER: " << HEXFORMAT0x2(val) << ' ' << (isgraph(val) ? (char)val : '.') << endl;
 }
 
-uint8_t TRS80Emulator::ReadPrinter(uint16_t addr)
+uint8_t TRS80Emulator::ReadPrinter(uint16_t addr) const
 {
   //  BUSY          = 0x80
   // *OUT_OF_PAPPER = 0x40
@@ -232,7 +232,7 @@ void TRS80Emulator::WriteFDC(uint16_t addr, uint8_t val)
     m_fdc->Write(addr, val);
 }
 
-uint8_t TRS80Emulator::ReadFDC(uint16_t addr)
+uint8_t TRS80Emulator::ReadFDC(uint16_t addr) const
 {
   if (!m_fdcEnabled)
     return ReadNull(addr);
@@ -266,7 +266,7 @@ void TRS80Emulator::WriteDrvSel(uint16_t, uint8_t val)
   m_fdc->SelectDrive(sel);
 }
 
-uint8_t TRS80Emulator::ReadDrvSel(uint16_t addr)
+uint8_t TRS80Emulator::ReadDrvSel(uint16_t addr) const
 {
   if (!m_fdcEnabled || !m_fdc)
     return ReadNull(addr);
@@ -274,7 +274,7 @@ uint8_t TRS80Emulator::ReadDrvSel(uint16_t addr)
   return m_drvSel;
 }
 
-uint8_t TRS80Emulator::ReadInterrupt(uint16_t addr)
+uint8_t TRS80Emulator::ReadInterrupt(uint16_t addr) const
 {
   if (!m_fdcEnabled && !m_rtcEnabled)
     return ReadNull(addr);

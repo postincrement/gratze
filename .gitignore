@@ -33,3 +33,5 @@ tools/asm2650/pipbug.lst
 tools/grasm/grasm
 grasm/extract.bin
 grasm/grasm
+emulator/Makefile
+emulator/Makefile

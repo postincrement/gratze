@@ -29,11 +29,14 @@ using namespace std;
 #define REBOOT_SYM  SDLK_F12
 
 
+Emulator * Emulator::m_instance = nullptr;
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 Emulator::Emulator(const EmulatorInfo * info)
   : m_info(info)
 {
+  m_instance = this;
 }
 
 Emulator::~Emulator()
@@ -253,7 +256,7 @@ void Emulator::WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, ui
     m_memMapScreen->WriteMemoryAtAddress(addr - info.m_startAddr, data);
 }
 
-uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr)
+uint8_t Emulator::ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr) const
 {
   if (addr > info.m_endAddr) {
     cerr << "warning: bad video read" << endl;
@@ -528,7 +531,7 @@ void Emulator::CompileConfigBlocks()
   }
 }
 
-uint8_t Emulator::ReadMemory(uint16_t addr)
+uint8_t Emulator::ReadMemory(uint16_t addr) const
 {
   for (auto & r : m_readMemoryBlocks) {
     if ((addr >= r.m_startAddr) && (addr <= r.m_endAddr)) {
@@ -557,7 +560,7 @@ void Emulator::WriteMemory(uint16_t addr, uint8_t data)
   WriteLog(addr, data);
 }
 
-uint8_t Emulator::DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t addr)
+uint8_t Emulator::DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t addr) const
 {
   if (info.m_realFunction != nullptr) {
     cout << "debug: reading via fn from " << HEXFORMAT0x4(addr) << " in memory block " << HEXFORMAT0x4(info.m_startAddr) << " - " << HEXFORMAT0x4(info.m_endAddr) << endl;
@@ -593,7 +596,7 @@ void Emulator::DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr
   info.m_memory[addr - info.m_startAddr] = data;
 }
 
-uint8_t Emulator::DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr)
+uint8_t Emulator::DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr) const
 {
   cout << "debug: reading IO memory " << HEXFORMAT0x4(addr) << endl;
   if (info.m_realFunction != nullptr) {
@@ -610,7 +613,7 @@ void Emulator::DebugWriteIOMemory(const WriteMemoryBlockInfo & info, uint16_t ad
   //}
 }
 
-uint8_t Emulator::ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr)
+uint8_t Emulator::ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr) const
 {
   return ReadIOMemory(info.m_id, addr);
 }
@@ -620,7 +623,7 @@ void Emulator::WriteIOMemoryInternal(const WriteMemoryBlockInfo & info, uint16_t
   WriteIOMemory(info.m_id, addr, data);
 }
 
-uint8_t Emulator::ReadIOMemory(int, uint16_t)
+uint8_t Emulator::ReadIOMemory(int, uint16_t) const
 {
   return 0xff;
 }
@@ -671,7 +674,7 @@ uint8_t Emulator::ReadPort(register uint16_t port)
   return 0x00;
 }
 
-uint8_t Emulator::ReadNull(uint16_t)
+uint8_t Emulator::ReadNull(uint16_t) const
 {
   return 0x00;
 }
@@ -680,24 +683,24 @@ void Emulator::WriteNull(uint16_t, uint8_t)
 {
 }
 
-uint8_t Emulator::ReadLog(uint16_t addr)
+uint8_t Emulator::ReadLog(uint16_t addr) const
 {
   cerr << "READ " << HEXFORMAT0x4(addr) << endl;
   return 0x00;
 }
 
-void Emulator::WriteLog(uint16_t addr, uint8_t val)
+void Emulator::WriteLog(uint16_t addr, uint8_t val) const
 {
   cerr << "WRITE " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
 
-uint8_t Emulator::ReadIOPortLog(uint16_t addr)
+uint8_t Emulator::ReadIOPortLog(uint16_t addr) const
 {
   cerr << "READ IO PORT " << HEXFORMAT0x2(addr) << endl;
   return 0x00;
 }
 
-void Emulator::WriteIoPortLog(uint16_t addr, uint8_t val)
+void Emulator::WriteIoPortLog(uint16_t addr, uint8_t val) const
 {
   cerr << "WRITE IO PORT " << HEXFORMAT0x2(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
@@ -818,6 +821,7 @@ int Emulator::Run(const Options & options)
   m_debugReadVideo   = options.m_readVideo;
   m_keyboardDebug    = options.m_keyboardDebug;
   m_turbo            = options.m_turbo;
+  m_traceLength      = options.m_traceLength;
 
   // set target CPU speed
   const Config::CPU * cpu = GetCPUInfo();
@@ -1088,6 +1092,49 @@ void Emulator::LoadGRZ()
     }
   }
   */
+}
+
+unsigned Emulator::GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const
+{
+  return 0;
+}
+
+std::string Emulator::Disassemble(std::vector<uint8_t> & code) const
+{
+  return "";
+}
+
+void Emulator::AddTraceInfo(unsigned addr)
+{
+  if (m_traceLength == 0) {
+    return;
+  }
+
+  m_traceQueue.push_front(addr);
+  if (m_traceQueue.size() > m_traceLength) {
+    m_traceQueue.pop_back();
+  }
+}
+
+void Emulator::DisplayTraceInfo()
+{
+  if (m_traceQueue.size() == 0)
+    return;
+
+  cout << "Backtrace of " << m_traceQueue.size() << " entries" << endl;  
+  for (int i = m_traceQueue.size()-1; i >= 0; --i) {
+    unsigned addr = m_traceQueue[i];
+    cout << HEXFORMAT0x4(addr);
+    std::vector<uint8_t> opcodes;
+    GetOpcode(addr, opcodes);
+    for (auto & r : opcodes) {
+      cout << " " << HEXFORMAT2(r);
+    }
+    cout << std::string((5-opcodes.size())*3, ' ');
+    cout << Disassemble(opcodes);
+    cout << endl;  
+  }
+  getchar();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -80,6 +80,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "writememory", ' ', "turn on memory write debugging" },
   { ' ', "readvideo",   ' ', "turn on video read debugging" },
   { ' ', "writevideo",  ' ', "turn on memory write debugging" },
+  { ' ', "trace",       'u', "set length of backtrace queue" },
   { ' ', "ei",          'b', "enable/disable Model 1 Expansion Interface" },
   { 'v', "verbose",     '+', "enable verbose logging" },
   { ' ', "videotest",   ' ', "display video test before starting" },
@@ -163,8 +164,11 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
   options.m_args.GetValue("--turbo",         options.m_turbo);
 
-  options.m_args.GetValue("-f", options.m_font);
-  options.m_args.GetValue("-F", options.m_fontSize);
+  options.m_args.GetValue("-f",      options.m_font);
+  options.m_args.GetValue("-F",      options.m_fontSize);
+  options.m_args.GetValue("--trace", options.m_traceLength);
+
+  cout << "info: backtrace queue is " << options.m_traceLength << endl;
 
   cout << "info: using type '" << options.m_typeName << "'" << endl;
 

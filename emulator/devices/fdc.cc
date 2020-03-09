@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "src/emulator.h"
 #include "common/misc.h"
 #include "devices/fdc.h"
 
@@ -44,7 +45,7 @@ using namespace std;
 
 // comand bits for type I
 #define   COMMAND_VERIFY            (1 << 2)      // type I
-#define   COMMAND_HEAD_LOAD_I         (1 << 3)      // type I
+#define   COMMAND_HEAD_LOAD_I       (1 << 3)      // type I
 #define   COMMAND_UPDATE            (1 << 4)      // type I
 
 // comand bits for type II
@@ -72,11 +73,14 @@ static WD_FDC::CommandInfo g_commands[] = {
   { 0xe3, 0x80, "read",       2, &WD_FDC::ReadCommand },
   { 0xe0, 0xa0, "write",      2, 0 },
 
-  { 0xff, 0xc0, "readAddr",   3, 0 },
+  { 0xf4, 0xc4, "readAddr",   3, 0 },
   { 0xfe, 0xe4, "readTrack",  3, 0 },
-  { 0xff, 0xf4, "writeTrack", 3, 0 },
+  { 0xff, 0xf4, "writeTrack", 3, &WD_FDC::WriteTrackCommand },
 
-  { 0xf0, 0xd0, "forceInt",   4, &WD_FDC::ForceIntCommand }
+  { 0xf0, 0xd0, "forceInt",   4, &WD_FDC::ForceIntCommand },
+
+  { 0xff, 0xfe, "enable1771", 0, &WD_FDC::PercomCommand },
+  { 0xff, 0xff, "enable1791", 0, &WD_FDC::PercomCommand }
 };
 
 ///////////////////////////////////////////////////////////
@@ -222,6 +226,12 @@ void WD_FDC::WriteCmdReg(int8_t command)
 
   switch (info->m_type) {
 
+    case 0:  // Undocumented commands
+      m_setInterrupt   = false;
+      m_currentCommand = -1;
+      std::invoke(info->m_function, this, command);
+      break;
+
     case 1:  // TYPE I
       m_setInterrupt   = false;
       // all type I commands finish immediately - no BUSY required
@@ -238,10 +248,13 @@ void WD_FDC::WriteCmdReg(int8_t command)
       break;
 
     case 3:  // TYPE III
-      cerr << "FDC: " << info->m_name << " command not supported" << endl;
+      m_setInterrupt   = false;
+      m_status         = STATUS_BUSY;
+      m_currentCommand = command;
+      std::invoke(info->m_function, this, command);
       break;
 
-    case 4:  // TYPE IV
+    case 4:  // TYPE IV - 
       std::invoke(info->m_function, this, command);
       break;
 
@@ -415,12 +428,12 @@ int WD_FDC::ReadCommand(uint8_t cmd)
     VirtualDrive::SectorInfo info;
     int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
-      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
+      cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
       m_status = STATUS_RECORDNOTFOUND;  // resets STATUS_BUSY
       m_setInterrupt = true;
     }
     else {
-      cerr << "FDC: read track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
+      cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
       m_bufferPtr = 0;
       m_bufferLen = bufferLen;
       m_reading   = true;
@@ -465,6 +478,22 @@ int WD_FDC::ReadCommand(uint8_t cmd)
 //  TYPE III commands
 //
 
+int WD_FDC::WriteTrackCommand(uint8_t cmd)
+{
+  LoadHead(cmd & COMMAND_HEAD_LOAD_I);
+
+  if (!IsCurrentDriveAvailable()) {
+    m_status = STATUS_SEEKERR;
+    m_setInterrupt = true;
+  }
+  else {
+    cerr << "FDC: setting write protected" << endl;
+    m_status = STATUS_WR_PROT; // STATUS_LOST_DATA;  
+    m_setInterrupt = true;
+  }
+  return 0;
+}
+
 ////////////////////////////////////////////////////////////////
 //
 //  TYPE IV commands
@@ -492,6 +521,16 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
   return 0;
 }
 
+////////////////////////////////////////////////////////////////
+//
+//  Undocumented commands
+//
+
+int WD_FDC::PercomCommand(uint8_t cmd)
+{
+  cerr << "FDC: Percom select " << ((cmd == 0xfe) ? "1771" : "1791") << endl;
+  return 0;
+}
 
 ////////////////////////////////////////////////////////////////
 //

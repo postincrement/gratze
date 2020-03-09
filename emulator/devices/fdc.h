@@ -128,8 +128,14 @@ class WD_FDC
     // type II commands
     int ReadCommand(uint8_t cmd);
 
+    // type III commands
+    int WriteTrackCommand(uint8_t cmd);
+
     // type IV commands
     int ForceIntCommand(uint8_t cmd);
+
+    // undocumented commands
+    int PercomCommand(uint8_t cmd);
 
   protected:
     virtual CommandInfo * GetCommand(uint8_t cmd);

@@ -81,7 +81,7 @@ class TRS80Emulator : public Z80Emulator
     virtual bool Open(const Options & options) override;
     virtual void Reset(int addr = -1) override;
 
-    virtual uint8_t ReadNull(uint16_t) override;
+    virtual uint8_t ReadNull(uint16_t) const override;
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
@@ -89,22 +89,22 @@ class TRS80Emulator : public Z80Emulator
     // new functions
     void WriteVideoChar(unsigned int offset, uint8_t ch);
 
-    uint8_t ReadKeyboard(uint16_t addr);
+    uint8_t ReadKeyboard(uint16_t addr) const;
 
-    uint8_t ReadPrinter(uint16_t addr);
+    uint8_t ReadPrinter(uint16_t addr) const;
     void WritePrinter(uint16_t addr, uint8_t val);
 
     void WriteDrvSel(uint16_t, uint8_t val);
-    uint8_t ReadDrvSel(uint16_t);
+    uint8_t ReadDrvSel(uint16_t) const;
 
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly) override;;
     void InitFDC();
-    uint8_t ReadFDC(uint16_t addr);
+    uint8_t ReadFDC(uint16_t addr) const;
     void WriteFDC(uint16_t addr, uint8_t val);
     void FDCInterrupt();
     void RTCInterrupt();
 
-    uint8_t ReadInterrupt(uint16_t);
+    uint8_t ReadInterrupt(uint16_t) const;
 
     void WriteFF(register uint16_t, register uint8_t val);
     uint8_t ReadFF(register uint16_t);
@@ -116,12 +116,12 @@ class TRS80Emulator : public Z80Emulator
 
   protected:  
     bool m_fdcEnabled = false;
-    int m_fdcPending = false;
+    mutable int m_fdcPending = false;
     uint8_t m_drvSel;
-    std::unique_ptr<WD_FDC> m_fdc;
+    mutable std::unique_ptr<WD_FDC> m_fdc;
 
     bool m_rtcEnabled = false;
-    bool m_rtcPending = false;
+    mutable bool m_rtcPending = false;
     std::chrono::system_clock::time_point m_rtcTimer;
 
     bool m_cassette2 = false;

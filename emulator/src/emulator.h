@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <string>
+#include <deque>
 
 #include <SDL_keyboard.h>
 
@@ -26,11 +27,10 @@ class Emulator
     struct ReadIOPortBlockInfo;
 
     typedef void (Emulator:: * MemoryWriteFunction)(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
-    typedef uint8_t (Emulator:: * MemoryReadFunction)(const ReadMemoryBlockInfo & info, uint16_t addr);
+    typedef uint8_t (Emulator:: * MemoryReadFunction)(const ReadMemoryBlockInfo & info, uint16_t addr) const;
 
     typedef void (Emulator:: * IOPortWriteFunction)(const WriteIOPortBlockInfo & info, uint16_t addr, uint8_t data);
     typedef uint8_t (Emulator:: * IOPortReadFunction)(const ReadIOPortBlockInfo & info, uint16_t addr);
-
 
     /////////////////////////////////////////////
     //
@@ -194,26 +194,40 @@ class Emulator
     virtual std::string GetName() const = 0;
     virtual std::string DumpRegs() const;
 
+    virtual void MemoryDump() const;
+
+    void CalcCPUSpeed(double secs, uint64_t clocks);
+
+    void AddTraceInfo(unsigned addr);
+
+    void DisplayTraceInfo();
+
+    static Emulator * GetInstance() 
+    { return m_instance; }
+
+    virtual unsigned GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const;
+    virtual std::string Disassemble(std::vector<uint8_t> & code) const;
+
     void CompileConfigBlocks();
 
     // memory functions
-    virtual uint8_t ReadMemory(uint16_t);
+    virtual uint8_t ReadMemory(uint16_t) const;
     virtual void WriteMemory(uint16_t, uint8_t data);
 
-    virtual uint8_t ReadIOMemory(int id, uint16_t);
+    virtual uint8_t ReadIOMemory(int id, uint16_t) const;
     virtual void WriteIOMemory(int id, uint16_t, uint8_t data);
 
-    virtual uint8_t DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t addr);
+    virtual uint8_t DebugReadMemory(const ReadMemoryBlockInfo & info, uint16_t addr) const;
     virtual void DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
 
-    virtual uint8_t DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr);
+    virtual uint8_t DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr) const;
     virtual void DebugWriteIOMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
 
-    virtual uint8_t ReadNull(uint16_t);
+    virtual uint8_t ReadNull(uint16_t) const;
     virtual void WriteNull(uint16_t, uint8_t);
 
-    virtual uint8_t ReadLog(uint16_t);
-    virtual void WriteLog(uint16_t, uint8_t);
+    virtual uint8_t ReadLog(uint16_t) const;
+    virtual void WriteLog(uint16_t, uint8_t) const;
 
     virtual uint16_t ReadMemoryWord(uint16_t addr) = 0;
 
@@ -224,8 +238,8 @@ class Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t);
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data);
 
-    virtual uint8_t ReadIOPortLog(uint16_t addr);
-    virtual void WriteIoPortLog(uint16_t addr, uint8_t val);
+    virtual uint8_t ReadIOPortLog(uint16_t addr) const;
+    virtual void WriteIoPortLog(uint16_t addr, uint8_t val) const;
 
     // keyboard functions
     virtual void OnKeyDown(const SDL_Keysym & keysym);
@@ -237,27 +251,25 @@ class Emulator
     // Video functions
     void CreateScreen(MainWindow & mainWindow, const Options & options);
     virtual void WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
-    virtual uint8_t ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr);
+    virtual uint8_t ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr) const;
     virtual void ChangeVideoColour();
 
     // Floppy/hard drive functions
     virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
-
-    virtual void MemoryDump() const;
 
     void SetKeyboard(VirtualKeyboard * keyboard);
 
     int AddRealTimePollDef(double seconds, PollHandler handler);
     int AddCPUTimePollDef(uint64_t cycles, PollHandler handler);
 
-    void CalcCPUSpeed(double secs, uint64_t clocks);
-
     void LoadGRZ();
 
   protected:
+    static Emulator * m_instance;
+
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
 
-    virtual uint8_t ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr);
+    virtual uint8_t ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr) const;
     virtual void WriteIOMemoryInternal(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
 
     const EmulatorInfo * m_info = nullptr;
@@ -290,6 +302,9 @@ class Emulator
     std::shared_ptr<VirtualScreen>      m_screen;
     std::shared_ptr<MemoryMappedScreen> m_memMapScreen;
     std::shared_ptr<Terminal>           m_terminal;
+
+    unsigned m_traceLength = 0;
+    std::deque<unsigned> m_traceQueue;
 };
 
 struct EmulatorInfo
