@@ -161,7 +161,8 @@ class WD_FDC
     uint8_t m_realTrack;
 
     int m_currentCommand;  // currently active command, or -1
-    uint8_t m_statusMask;  // how to mask the status reg at the end of the command
+    uint8_t m_readDAM;     // DAM for status register at the end of the read
+    bool m_pulseIndex = false;
 
     // copies of registers
     uint8_t m_status;

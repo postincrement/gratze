@@ -150,7 +150,7 @@ bool WD_FDC::SelectDrive(int driveNum)
 
   bool ret = false;
   if (driveNum >= MAX_DRIVE) {
-    cerr << "FDC: Canonot selected drive " << dec << driveNum << endl;
+    cerr << "FDC: Cannot select drive " << dec << driveNum << endl;
     driveNum = -1;
   }
 
@@ -223,6 +223,7 @@ void WD_FDC::WriteCmdReg(int8_t command)
   }
 
   cerr << "FDC: command " << HEXFORMAT0x2(command) << " " << info->m_name << " is type " << (int)info->m_type << endl;
+  m_pulseIndex = false;
 
   switch (info->m_type) {
 
@@ -272,6 +273,9 @@ void WD_FDC::WriteCmdReg(int8_t command)
 uint8_t WD_FDC::ReadStatusReg()
 {
   UpdateInterrupt(false);
+  if (m_pulseIndex)
+    m_status ^= STATUS_INDEX;
+  //cerr << "FDC: read status " << HEXFORMAT0x2(m_status) << endl;
   return m_status;
 }
 
@@ -294,9 +298,9 @@ uint8_t WD_FDC::ReadDataReg()
       ReadCommand(m_currentCommand);
     }
     else {
-      cerr << "FDC: read ended" << endl;
+      cerr << "FDC: single read ended" << endl;
       m_currentCommand = -1;
-      m_status &= m_statusMask;  // resets STATUS_BUSY
+      m_status = m_readDAM;  // resets STATUS_BUSY
       m_reading = false;
       UpdateInterrupt(true);
       break;
@@ -317,8 +321,9 @@ void WD_FDC::UpdateInterrupt(bool interruptOn)
     return;
 
   m_interrupt = interruptOn;
-  if (interruptOn && m_interruptHandler)
+  if (interruptOn && m_interruptHandler) {
     m_interruptHandler();
+  }
 }
 
 void WD_FDC::LoadHead(bool loadHead)
@@ -407,6 +412,7 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
 void WD_FDC::SetTypeIStatus()
 {
   // set track 0 bit
+  m_pulseIndex = true;
   m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
 }
 
@@ -437,36 +443,26 @@ int WD_FDC::ReadCommand(uint8_t cmd)
       m_bufferPtr = 0;
       m_bufferLen = bufferLen;
       m_reading   = true;
-      /*
-      {
-        int i;
-        for (i = 0; i < bufferLen; ++i) {
-          if ((i % 16) == 0)
-            cout << HEXFORMAT0x4(i) << "  ";
-          cout << ' ' << HEXFORMAT2(m_buffer[i]);
-          if ((i % 16) == 15)
-            cout << endl;
-        }
-        if ((i % 16) != 15)
-          cout << endl;
-      }
-      */
       m_status |= STATUS_DRQ;
-      switch (info.m_dam) {
+      uint8_t dam = info.m_dam;
+      if (dam == 0xfa)
+        dam = 0xf8;
+      // TODO: DAM translation here
+      switch (dam) {
         case 0xf8:
-          m_status |= 0x60;
+          m_readDAM = 0x60;
           break;
         case 0xf9:
-          m_status |= 0x40;
+          m_readDAM = 0x40;
           break;
         case 0xfa:
-          m_status |= 0x20;
+          m_readDAM = 0x20;
           break;
         case 0xfb:
-          m_status |= 0x00;
+          m_readDAM = 0x00;
           break;
       }
-      m_statusMask = STATUS_DAM_MASK;   // reset STATUS_BUSY
+      cerr << "FDC: DAM mask = " << HEXFORMAT0x4(info.m_dam) << " => " << HEXFORMAT0x2(m_readDAM) << endl;
     }
   }
   return 0;
@@ -506,12 +502,13 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
     m_bufferPtr = 0;
     m_reading = false;
     m_status &= !STATUS_BUSY;
-    if (m_currentCommand < 0)
+    if (m_currentCommand < 0) {
       cerr << "FDC: force int on busy with no command" << endl;
+    }
     else {
       cerr << "FDC: force int on busy with command " << HEXFORMAT0x2(m_currentCommand) << endl;
     }
-    if (cmd & COMMAND_FORCE_INT_NR2R)
+    if (cmd & (COMMAND_FORCE_INT_NR2R | COMMAND_FORCE_INT_INDEX))
       UpdateInterrupt(true);
   }
   else {
@@ -724,6 +721,7 @@ void VirtualDriveFile::ReadJV1(off_t len, std::stringstream & formatError)
   off_t offs = 0;
   for (int track = 0; track < m_trackCount; ++track) {
     for (int sector = 1; sector <= SD_SECTOR_COUNT; ++sector) {
+      // directory tracks are 0xFA, all other tracks 0xFB
       m_sectorMap.emplace(sector + (track << 16), SectorInfo(offs, SD_SECTOR_SIZE, (track == 17) ? 0xfa : 0xfb, 0));
       offs += SD_SECTOR_SIZE;
     }
