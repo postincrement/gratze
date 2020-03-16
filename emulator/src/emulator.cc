@@ -846,8 +846,8 @@ int Emulator::Run(const Options & options)
   // get the drives
   for (auto &r : options.m_driveFns) {
     std::string fn(r.second);
-    VirtualDriveFile *drive = new VirtualDriveFile();
-    if (!drive->Open(fn, true))
+    VirtualDrive * drive = VirtualDrive::Open(fn, false);
+    if (drive == nullptr)
       return false;
     if (!MountDrive(r.first, drive, true)) {
       cerr << "error: cannot mount drive " << r.first << " with " << r.second << endl;

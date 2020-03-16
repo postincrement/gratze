@@ -8,6 +8,8 @@ template<class Abstract, class KeyType, class ... Args>
 class Factory
 {
   public:
+    using KeyList = std::vector<KeyType>;
+
     Factory()
     { }
 
@@ -42,7 +44,7 @@ class Factory
       return m_workers.count(key) != 0;
     }
 
-    size_t GetKeys(std::vector<KeyType> & keys)
+    size_t GetKeys(KeyList & keys)
     {
       keys.clear();
       for (auto & r : m_workers)

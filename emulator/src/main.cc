@@ -31,7 +31,6 @@ static EmulatorFactory g_emulatorFactory;
 
 /////////////////////////////////////////////////////
 
-
 template <class Type>
 void AddEmulator()
 {
@@ -62,6 +61,8 @@ void Init()
     std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(r));
     emulator->Instantiate();
   }
+
+  VirtualDrive::Init();
 }
 
 static CommandLineArgs::Option g_commandLineOptions[] = {
@@ -130,8 +131,8 @@ int main(int argc, char *argv[])
 
   std::string fn;
   if (options.m_args.GetValue("--diskette", fn)) {
-    VirtualDriveFile file;
-    if (!file.Open(fn, true)) {
+    VirtualDrive * file = VirtualDrive::Open(fn, true);
+    if (file == nullptr) {
       cerr << "error: could not open diskette file '" << fn << "'" << endl;
       return -1;
     }
