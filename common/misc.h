@@ -23,6 +23,7 @@ inline void VECTOR_FILL(Type & v, const typename Type::value_type & val) { v.ass
 template<class Type>
 inline void VECTOR_ZERO(Type & v) { VECTOR_FILL<Type>(v, 0); }
 
+std::string DumpMemory(const uint8_t * memory, int memoryLen);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 

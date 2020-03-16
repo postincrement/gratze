@@ -98,6 +98,7 @@ SRCS_CC = src/main.cc \
 	src/mainwindow.cc \
 	src/emulator.cc \
 	../common/cmdargs.cc \
+	../common/misc.cc \
   devices/fdc.cc \
 	devices/cassette.cc \
 	devices/keyscan.cc \

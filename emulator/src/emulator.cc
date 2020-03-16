@@ -776,23 +776,7 @@ void Emulator::MemoryDump() const
     }
     else {
       file << DumpRegs();
-
-      int cols = 32;
-      int p = 0;
-      while (p < dump.size()) {
-        file << HEXFORMAT0x4(p) << "  ";
-        int len = std::min((int)dump.size(), cols);
-        int i;
-        for (i = 0; i < len; ++i)
-          file << " " << HEXFORMAT2(dump[p + i]);
-        while (i < cols)
-          file << "   ";
-        file << "   ";
-        for (i = 0; i < len; ++i)
-          file << (isgraph(dump[p + i]) ? (char)dump[p + i] : '.');
-        file << endl;
-        p += len;
-      }
+      file << DumpMemory(&dump[0], dump.size());
     }
     cout << "memory dumped to " << filename << endl;
   }
