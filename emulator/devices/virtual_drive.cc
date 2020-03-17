@@ -135,7 +135,7 @@ VirtualDrive * VirtualDrive::Open(const std::string & fn, bool readOnly)
   
     // see if file extensions matches
     if (extension == drive->GetExtension()) {
-      if (drive->OpenFile(fd, hdrLen, header, sizeof(header))) {
+      if (drive->OpenFile(fd, len, header, sizeof(header))) {
         cerr << "info: file '" << fn << "' set to format '" << drive->GetName() << "' using file extension" << endl;
         break;
       }

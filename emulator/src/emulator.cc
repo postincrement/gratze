@@ -62,7 +62,7 @@ void Emulator::Reset(int addr)
 
   using namespace std::placeholders;
   AddRealTimePollDef(1.0,   std::bind(&Emulator::CalcCPUSpeed,  this, _1, _2));
-  AddRealTimePollDef(0.1,   std::bind(&Emulator::CheckKeyboard, this));
+  AddRealTimePollDef(0.01,  std::bind(&Emulator::CheckKeyboard, this));
   AddCPUTimePollDef(100000, std::bind(&Emulator::UpdateScreen,  this));
 }
 
@@ -99,7 +99,7 @@ void Emulator::CheckKeyboard()
     switch (event.type) {
 
       case SDL_QUIT:
-        return;
+        exit(0);
         break;
 
       case SDL_KEYDOWN:
