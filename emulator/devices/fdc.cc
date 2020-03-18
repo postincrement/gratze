@@ -438,8 +438,8 @@ int WD_FDC::ReadCommand(uint8_t cmd)
       m_reading   = true;
       m_status |= STATUS_DRQ;
       uint8_t dam = info.m_dam;
-      if (dam == 0xfa)
-        dam = 0xf8;
+      //if (dam == 0xfa)
+      //  dam = 0xf8;
       // TODO: DAM translation here
       switch (dam) {
         case 0xf8:

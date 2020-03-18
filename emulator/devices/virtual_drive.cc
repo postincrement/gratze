@@ -216,10 +216,8 @@ int VirtualDriveFile::ReadSector(int track, int sector, SectorInfo & info, uint8
   }
 
   int rlen = ::read(m_fd, data, len);
-
-  if (rlen > 0)
-    cout << DumpMemory((const uint8_t *)data, rlen);
-
+  //if (rlen > 0)
+  //  cout << DumpMemory((const uint8_t *)data, rlen);
   return rlen;  
 }
 
@@ -251,16 +249,14 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   }
 
   // directory tracks are 0xFA, all other tracks 0xFB
-
   off_t offs = 0;
   for (int track = 0; track < m_trackCount; ++track) {
-    uint8_t dam = (track == 17) ? 0xfa : 0xfb;
+    uint8_t dam = (track == 17) ? 0xf8 : 0xfb;
     for (int sector = 1; sector <= SD_SECTOR_COUNT; ++sector) {
-      cout << "dmk: dam=" << HEXFORMAT0x2(dam) << ","
+      cout << "jv1: dam=" << HEXFORMAT0x2(dam) << ","
               << "track=" << (int)track << "," 
               << "sector=" << (int) sector << "," 
               << "dam=" << HEXFORMAT0x2(dam) << endl; 
-
       m_sectorMap.emplace(HASH_STS(0, track, sector), SectorInfo(offs, SD_SECTOR_SIZE, dam, 0));
       offs += SD_SECTOR_SIZE;
     }
@@ -451,7 +447,6 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
                << "sector=" << (int) sector.m_sector << "," 
                << "dam=" << HEXFORMAT0x2(sector.m_dam) << ","
                << "size=" << sizeof(sector) << endl; 
-          cout << DumpMemory((const uint8_t *)&sector, headerLen);
 //          if (sector.m_track != trackNum) {
 //            cerr << "dmk: track " << trackNum << ", sector " << sectorNum << " has mismatched track number " << (int)sector.m_track << endl;
 //          }
