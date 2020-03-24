@@ -249,7 +249,7 @@ class Emulator
     bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);
 
     // Video functions
-    void CreateScreen(MainWindow & mainWindow, const Options & options);
+    void CreateScreen(MainWindow & mainWindow);
     virtual void WriteToVideo(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
     virtual uint8_t ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr) const;
     virtual void ChangeVideoColour();
@@ -290,20 +290,13 @@ class Emulator
     double m_targetCPUClock_Hz;
     double m_actualCPUClock_Hz;
 
-    bool m_debugWriteMemory = false;
-    bool m_debugReadMemory = false;
-    bool m_debugWriteVideo = false;
-    bool m_debugReadVideo = false;
-    bool m_keyboardDebug = false;
-    bool m_turbo = false;
+    Options m_options;
 
-    unsigned m_verbose = 0;
     std::shared_ptr<VirtualKeyboard>    m_keyboard;
     std::shared_ptr<VirtualScreen>      m_screen;
     std::shared_ptr<MemoryMappedScreen> m_memMapScreen;
     std::shared_ptr<Terminal>           m_terminal;
 
-    unsigned m_traceLength = 0;
     std::deque<unsigned> m_traceQueue;
 };
 

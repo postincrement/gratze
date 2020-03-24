@@ -87,6 +87,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "videotest",   ' ', "display video test before starting" },
   { ' ', "displaySpeed",  ' ', "display CPU speed on console"},
   { ' ', "keyboardDebug", ' ', "display keyboard debug on console" },
+  { ' ', "fdcDebug",      ' ', "display FDC debug on console" },
   { ' ', "turbo",         ' ', "do not throttle CPU speed"},
   { ' ', "list",          ' ', "list all emulations"},
   { 0, 0, 0, 0}
@@ -163,6 +164,7 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--readvideo",     options.m_readVideo);
   options.m_args.GetValue("--writevideo",    options.m_writeVideo);
   options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
+  options.m_args.GetValue("--fdcDebug",      options.m_fdcDebug);
   options.m_args.GetValue("--turbo",         options.m_turbo);
 
   options.m_args.GetValue("-f",      options.m_font);
@@ -173,6 +175,7 @@ int main(int argc, char *argv[])
 
   cout << "info: using type '" << options.m_typeName << "'" << endl;
 
+  cout << "info: video scale is " << options.m_videoScale << endl;
   // attempt to instantiate emulator
   std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(options.m_typeName));
   if (!emulator) {

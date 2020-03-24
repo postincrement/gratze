@@ -123,7 +123,7 @@ void Emulator::CheckKeyboard()
             Reset();
           }
           else if (m_keyboard != nullptr) {
-            if (m_keyboardDebug) {
+            if (m_options.m_keyboardDebug) {
               cerr << "debug: key down " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
             }
             m_keyboard->OnKeyDown(event.key.keysym);
@@ -137,7 +137,7 @@ void Emulator::CheckKeyboard()
       case SDL_KEYUP:
         if (event.key.repeat == 0) {
           if (m_keyboard != nullptr) {
-            if (m_keyboardDebug) {
+            if (m_options.m_keyboardDebug) {
               cerr << "debug: key up " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
             }
             m_keyboard->OnKeyUp(event.key.keysym);
@@ -163,7 +163,7 @@ void Emulator::SetKeyboard(VirtualKeyboard * kb)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
+void Emulator::CreateScreen(MainWindow & mainWindow)
 {
   int top = 10;
   int left = 10;                // border top and left
@@ -194,17 +194,17 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     pixelCols = mmapScreenInfo->m_screenWidth;
     pixelRows = mmapScreenInfo->m_screenHeight;
 
-    width  = pixelCols * options.m_videoScale;
-    height = pixelRows * options.m_videoScale;
+    width  = pixelCols * m_options.m_videoScale;
+    height = pixelRows * m_options.m_videoScale;
 
     // create main window
     mainWindow.Open(width, height);
 
-    m_memMapScreen.reset(MemoryMappedScreen::Create(mainWindow, options, *mmapScreenInfo));
+    m_memMapScreen.reset(MemoryMappedScreen::Create(mainWindow, m_options, *mmapScreenInfo));
     m_screen = m_memMapScreen;
 
-    if (!options.m_font.empty()) {
-      m_memMapScreen->SetFont(new TTFFont(mmapScreenInfo->m_font, 128, options.m_font, options.m_fontSize));
+    if (!m_options.m_font.empty()) {
+      m_memMapScreen->SetFont(new TTFFont(mmapScreenInfo->m_font, 128, m_options.m_font, m_options.m_fontSize));
     }
     else {
       m_memMapScreen->SetFont(new PixelFont(mmapScreenInfo->m_font));
@@ -220,19 +220,19 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     }
 
     // create main window with a guess at the size
-    mainWindow.Open(800 * options.m_videoScale, 600 * options.m_videoScale);
+    mainWindow.Open(800 * m_options.m_videoScale, 600 * m_options.m_videoScale);
 
     const Config::Terminal & termInfo = block->m_info.m_terminal;
 
-    m_terminal.reset(new Terminal(mainWindow, options, termInfo.m_cols, termInfo.m_rows));
+    m_terminal.reset(new Terminal(mainWindow, m_options, termInfo.m_cols, termInfo.m_rows));
     m_screen   = m_terminal->m_screen;
     m_keyboard = m_terminal->m_keyboard;
 
-    std::string fontName = options.m_font;
+    std::string fontName = m_options.m_font;
     if (fontName.empty())
       fontName = DEFAULT_TTF_FONT;
 
-    int fontSize = options.m_fontSize;
+    int fontSize = m_options.m_fontSize;
     if (fontSize <= 0)
       fontSize = 15;
 
@@ -244,7 +244,8 @@ void Emulator::CreateScreen(MainWindow & mainWindow, const Options & options)
     return; // false;
   }
 
-  m_screen->SetScale(options.m_videoScale, options.m_videoScale);
+  cout << "info: setting screen scale " << m_options.m_videoScale << endl;
+  m_screen->SetScale(m_options.m_videoScale, m_options.m_videoScale);
   m_screen->Open();
 }
 
@@ -332,7 +333,7 @@ void Emulator::CompileConfigBlocks()
   m_readIOPortBlocks.clear();
   m_writeIOPortBlocks.clear();
 
-  if (m_verbose) {
+  if (m_options.m_verbose) {
     cout << "debug: compiling config blocks" << endl;
   }
 
@@ -349,7 +350,7 @@ void Emulator::CompileConfigBlocks()
         cerr << "error: RAM block has end address" << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
         exit(-1);
       }
-      if (m_verbose) {
+      if (m_options.m_verbose) {
         cout << "debug: RAM block" << endl;
       }
       uint8_t * memory;
@@ -360,7 +361,7 @@ void Emulator::CompileConfigBlocks()
         writeInfo.m_endAddr   = info.m_endAddr;
         memory = (uint8_t *)malloc(writeInfo.m_endAddr - writeInfo.m_startAddr + 1);
         writeInfo.m_memory = memory;
-        if (m_debugWriteMemory) {
+        if (m_options.m_writeMemory) {
           writeInfo.m_function  = &Emulator::DebugWriteMemory;
         }
         m_writeMemoryBlocks.push_back(writeInfo);
@@ -371,7 +372,7 @@ void Emulator::CompileConfigBlocks()
         readInfo.m_startAddr = info.m_startAddr;
         readInfo.m_endAddr   = info.m_endAddr;
         readInfo.m_memory    = memory;
-        if (m_debugReadMemory) {
+        if (m_options.m_readMemory) {
           readInfo.m_function  = &Emulator::DebugReadMemory;
         }
         m_readMemoryBlocks.push_back(readInfo);
@@ -380,7 +381,7 @@ void Emulator::CompileConfigBlocks()
 
     // add ROM
     else if (block.m_type == Config::Type::eROM) {
-      if (m_verbose) {
+      if (m_options.m_verbose) {
         cout << "debug: ROM block" << endl;
       }
       const Config::ROM & info = block.m_info.m_rom;
@@ -393,7 +394,7 @@ void Emulator::CompileConfigBlocks()
       readInfo.m_startAddr = info.m_startAddr;
       readInfo.m_endAddr   = info.m_endAddr;
       readInfo.m_memory    = info.m_data;
-      if (m_debugReadMemory) {
+      if (m_options.m_readMemory) {
         readInfo.m_function  = &Emulator::DebugReadMemory;
       }
       m_readMemoryBlocks.push_back(readInfo);
@@ -411,7 +412,7 @@ void Emulator::CompileConfigBlocks()
       readInfo.m_startAddr    = info.m_startAddr;
       readInfo.m_endAddr      = info.m_endAddr;
       readInfo.m_realFunction = &Emulator::ReadIOMemoryInternal;
-      if (m_debugReadMemory) {
+      if (m_options.m_readMemory) {
         readInfo.m_function  = &Emulator::DebugReadIOMemory;
       }
       else {
@@ -433,7 +434,7 @@ void Emulator::CompileConfigBlocks()
       writeInfo.m_startAddr    = info.m_startAddr;
       writeInfo.m_endAddr      = info.m_endAddr;
       writeInfo.m_realFunction = &Emulator::WriteIOMemoryInternal;
-      if (m_debugWriteMemory) {
+      if (m_options.m_readMemory) {
         writeInfo.m_function  = &Emulator::DebugWriteIOMemory;
       }
       else {
@@ -459,7 +460,7 @@ void Emulator::CompileConfigBlocks()
         writeInfo.m_startAddr = info.m_startAddr;
         writeInfo.m_endAddr   = info.m_endAddr;
         writeInfo.m_realFunction = &Emulator::WriteToVideo;
-        if (m_debugWriteVideo) {
+        if (m_options.m_writeVideo) {
           writeInfo.m_function  = &Emulator::DebugWriteMemory;
         }
         else {
@@ -473,7 +474,7 @@ void Emulator::CompileConfigBlocks()
         readInfo.m_startAddr = info.m_startAddr;
         readInfo.m_endAddr   = info.m_endAddr;
         readInfo.m_realFunction = &Emulator::ReadFromVideo;
-        if (m_debugReadVideo) {
+        if (m_options.m_readVideo) {
           readInfo.m_function = &Emulator::DebugReadMemory;
         }
         else {
@@ -798,14 +799,7 @@ void Emulator::MemoryDump() const
 
 int Emulator::Run(const Options & options)
 {
-  m_verbose = options.m_verbose;
-  m_debugWriteMemory = options.m_writeMemory;
-  m_debugReadMemory  = options.m_readMemory;
-  m_debugWriteVideo  = options.m_writeVideo;
-  m_debugReadVideo   = options.m_readVideo;
-  m_keyboardDebug    = options.m_keyboardDebug;
-  m_turbo            = options.m_turbo;
-  m_traceLength      = options.m_traceLength;
+  m_options = options;
 
   // set target CPU speed
   const Config::CPU * cpu = GetCPUInfo();
@@ -817,7 +811,7 @@ int Emulator::Run(const Options & options)
   m_targetCPUClock_Hz = cpu->m_clockSpeed_MHz * 1000000.0;
   m_actualCPUClock_Hz = m_targetCPUClock_Hz;
 
-  if (m_verbose) {
+  if (m_options.m_verbose) {
     cout << "debug: target CPU speed is " << m_targetCPUClock_Hz << endl;
   }
 
@@ -853,7 +847,7 @@ int Emulator::Run(const Options & options)
   cerr << "Creating screen" << endl;
   cerr << "font size is " << (int)options.m_fontSize << endl;
 
-  CreateScreen(mainWindow, options);
+  CreateScreen(mainWindow);
 
   if (!Start()) {
     cerr << "error: cannot start emulator" << endl;
@@ -1090,12 +1084,12 @@ std::string Emulator::Disassemble(std::vector<uint8_t> & code) const
 
 void Emulator::AddTraceInfo(unsigned addr)
 {
-  if (m_traceLength == 0) {
+  if (m_options.m_traceLength == 0) {
     return;
   }
 
   m_traceQueue.push_front(addr);
-  if (m_traceQueue.size() > m_traceLength) {
+  if (m_traceQueue.size() > m_options.m_traceLength) {
     m_traceQueue.pop_back();
   }
 }

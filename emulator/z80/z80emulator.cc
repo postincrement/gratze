@@ -82,7 +82,7 @@ void Z80Emulator::SetTrace(bool v)
 
 int Z80Emulator::Exec(int cycles)
 {
-  if (m_traceLength == 0)
+  if (m_options.m_traceLength == 0)
     return ExecZ80(&m_cpu, cycles);
   else {
     int toDo = cycles;

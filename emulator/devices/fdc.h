@@ -16,7 +16,7 @@
 class WD_FDC
 {
   public:
-    WD_FDC();
+    WD_FDC(bool debug);
 
     bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
 
@@ -78,6 +78,7 @@ class WD_FDC
     void LoadHead(bool load);
     void SetTypeIStatus();
 
+    bool m_debug;
     int m_state;
     int m_drive;
     bool m_headLoaded;
@@ -110,29 +111,12 @@ class WD_FDC
     int m_bufferPtr;
     bool m_reading;
     bool m_writing;
-
-    ///////////////////////
-/*
-    void ResetStatus();
-
-
-
-    uint8_t m_cmd;
-
-    std::chrono::system_clock::time_point m_timer;
-    bool m_noPrint;
-    bool m_setInterrupt;
-
-    bool m_intOnNotReadyToReady;
-
-
- */
 };
 
 class WD_FD1771 : public WD_FDC
 {
   public:
-    WD_FD1771();
+    WD_FD1771(bool debug);
 };
 
 

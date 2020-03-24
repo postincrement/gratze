@@ -427,21 +427,31 @@ bool CommandLineArgs::OptionValue::GetValue(std::string & value) const
 template<>
 bool CommandLineArgs::OptionValue::GetValue<int>(int & value) const
 {
-  if (m_type != OptionValue::Type::eInteger)
-    return false;
-
-  value = m_integer;
-  return true;  
+  switch (m_type) {
+    case OptionValue::Type::eUnsigned:
+      cerr << "warning: value " << m_unsigned << " is not unsigned" << endl;
+      value = (int)m_unsigned;
+      return true;  
+    case OptionValue::Type::eInteger:
+      value = m_integer;
+      return true;
+  }
+  return false;
 }
 
 template<>
 bool CommandLineArgs::OptionValue::GetValue(unsigned & value) const
 {
-  if (m_type != OptionValue::Type::eUnsigned)
-    return false;
-
-  value = m_unsigned;
-  return true;  
+  switch (m_type) {
+    case OptionValue::Type::eUnsigned:
+      value = m_unsigned;
+      return true;  
+    case OptionValue::Type::eInteger:
+      value = (int)m_unsigned;
+      cerr << "warning: value " << m_unsigned << " is not int" << endl;
+      return true;
+  }
+  return false;
 }
 
 template<>

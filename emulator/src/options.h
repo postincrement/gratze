@@ -29,22 +29,22 @@ struct Options
   std::string m_font;
   unsigned m_fontSize = -1;
 
+  // debug display options
   bool m_readMemory = false;
   bool m_writeMemory = false;
   bool m_readVideo = false;
   bool m_writeVideo = false;
+  bool m_fdcDebug = false;
+  bool m_keyboardDebug = false;
 
   // set breakpoint (not used yet)
   int m_breakpoint = -1;
 
   // scale video
-  int m_videoScale = 1;
+  unsigned m_videoScale = 1;
 
   // level of vebosity
   unsigned m_verbose = 0;
-
-  // true if to display keyboard debugging
-  bool m_keyboardDebug = false;
 
   // do not limit CPU speed
   bool m_turbo = false;

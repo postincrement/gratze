@@ -204,7 +204,8 @@ int VirtualDriveFile::ReadSector(int track, int sector, SectorInfo & info, uint8
 
   info = r->second;
 
-  cout << "drive: seek side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
+  if (m_debug)
+    cout << "drive: seek side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
 
   if (lseek(m_fd, info.m_offset, SEEK_SET) < 0) {
     cerr << "error: cannot seek for sector " << dec << sector << " and track " << track << endl;
@@ -253,10 +254,11 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   for (int track = 0; track < m_trackCount; ++track) {
     uint8_t dam = (track == 17) ? 0xf8 : 0xfb;
     for (int sector = 1; sector <= SD_SECTOR_COUNT; ++sector) {
-      cout << "jv1: dam=" << HEXFORMAT0x2(dam) << ","
-              << "track=" << (int)track << "," 
-              << "sector=" << (int) sector << "," 
-              << "dam=" << HEXFORMAT0x2(dam) << endl; 
+      if (m_debug)
+        cout << "jv1: dam=" << HEXFORMAT0x2(dam) << ","
+                << "track=" << (int)track << "," 
+                << "sector=" << (int) sector << "," 
+                << "dam=" << HEXFORMAT0x2(dam) << endl; 
       m_sectorMap.emplace(HASH_STS(0, track, sector), SectorInfo(offs, SD_SECTOR_SIZE, dam, 0));
       offs += SD_SECTOR_SIZE;
     }
@@ -348,10 +350,11 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
         cerr << "drive: unknown DAM code " << HEXFORMAT0x2(dam) << endl;
       }
       else {
-        cout << "dmk: dam=" << HEXFORMAT0x2(dam) << ","
-               << "track=" << (int)track << "," 
-               << "sector=" << (int) sector << "," 
-               << "dam=" << HEXFORMAT0x2(dam) << endl; 
+        if (m_debug)
+          cout << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
+                << "track=" << (int)track << "," 
+                << "sector=" << (int) sector << "," 
+                << "dam=" << HEXFORMAT0x2(dam) << endl; 
         m_sectorMap.emplace(HASH_STS(0, track, sector), SectorInfo(offs, sectorSize, dam, density));
       }
     }
@@ -442,11 +445,12 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
           cerr << "dmk: cannot read info for sector " << sectorNum << ", track " << trackNum << endl;
         }
         else {
-          cout << "dmk: idam=" << HEXFORMAT0x2(sector.m_idam) << ","
-               << "track=" << (int) sector.m_track << "," 
-               << "sector=" << (int) sector.m_sector << "," 
-               << "dam=" << HEXFORMAT0x2(sector.m_dam) << ","
-               << "size=" << sizeof(sector) << endl; 
+          if (m_debug)
+            cout << "dmk: idam=" << HEXFORMAT0x2(sector.m_idam) << ","
+                << "track=" << (int) sector.m_track << "," 
+                << "sector=" << (int) sector.m_sector << "," 
+                << "dam=" << HEXFORMAT0x2(sector.m_dam) << ","
+                << "size=" << sizeof(sector) << endl; 
 //          if (sector.m_track != trackNum) {
 //            cerr << "dmk: track " << trackNum << ", sector " << sectorNum << " has mismatched track number " << (int)sector.m_track << endl;
 //          }

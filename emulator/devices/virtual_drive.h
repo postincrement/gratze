@@ -68,6 +68,7 @@ class VirtualDrive
     bool m_readOnly;
 
     static VirtualDriveFactory g_virtualDriveFactory;
+    bool m_debug = false;
 };
 
 class VirtualDriveFile : public VirtualDrive

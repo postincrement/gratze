@@ -80,7 +80,8 @@ static WD_FDC::CommandInfo g_commands[] = {
 
 ///////////////////////////////////////////////////////////
 
-WD_FDC::WD_FDC()
+WD_FDC::WD_FDC(bool debug)
+  : m_debug(debug)
 {
   m_diskRevTime_ms = (1000.0 / DISK_SPEED_5_INCH_RPM);
   Reset();
@@ -150,12 +151,14 @@ bool WD_FDC::SelectDrive(int driveNum)
   }
 
   if (driveNum < 0) {
-    cerr << "FDC: SELECT NO DRIVE" << endl;
+    if (m_debug)
+      cerr << "FDC: SELECT NO DRIVE" << endl;
     m_drive = -1;
     ret = true;
   }
   else if (driveNum != m_drive) {
-    cerr << "FDC: SELECT DRIVE " << dec << driveNum << endl;
+    if (m_debug)
+      cerr << "FDC: SELECT DRIVE " << dec << driveNum << endl;
     m_drive = driveNum;
   }
 
@@ -215,7 +218,8 @@ void WD_FDC::WriteCmdReg(int8_t command)
     return;
   }
 
-  cerr << "FDC: command " << HEXFORMAT0x2(command) << " " << info->m_name << " is type " << (int)info->m_type << endl;
+  if (m_debug)
+    cerr << "FDC: command " << HEXFORMAT0x2(command) << " " << info->m_name << " is type " << (int)info->m_type << endl;
   m_pulseIndex = false;
 
   switch (info->m_type) {
@@ -287,11 +291,13 @@ uint8_t WD_FDC::ReadDataReg()
     }
     else if (m_currentCommand & COMMAND_MULT_RECS) {
       m_sector++;
-      cerr << "FDC: read multiple moving to sector " << dec << (int)m_sector << endl;
+      if (m_debug)
+        cerr << "FDC: read multiple moving to sector " << dec << (int)m_sector << endl;
       ReadCommand(m_currentCommand);
     }
     else {
-      cerr << "FDC: single read ended" << endl;
+      if (m_debug)
+        cerr << "FDC: single read ended" << endl;
       m_currentCommand = -1;
       m_status = m_readDAM;  // resets STATUS_BUSY
       m_reading = false;
@@ -365,7 +371,8 @@ int WD_FDC::StepCommand(uint8_t cmd)
 
 int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
 {
-  cerr << "FDC: seek to track " << dec << (int)track << endl;
+  if (m_debug)
+    cerr << "FDC: seek to track " << dec << (int)track << endl;
 
   LoadHead(cmd & COMMAND_HEAD_LOAD_I);
 
@@ -427,12 +434,14 @@ int WD_FDC::ReadCommand(uint8_t cmd)
     VirtualDrive::SectorInfo info;
     int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
-      cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
+      if (m_debug)
+        cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
       m_status = STATUS_RECORDNOTFOUND;  // resets STATUS_BUSY
       m_setInterrupt = true;
     }
     else {
-      cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
+      if (m_debug)
+        cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
       m_bufferPtr = 0;
       m_bufferLen = bufferLen;
       m_reading   = true;
@@ -455,7 +464,8 @@ int WD_FDC::ReadCommand(uint8_t cmd)
           m_readDAM = 0x00;
           break;
       }
-      cerr << "FDC: DAM mask = " << HEXFORMAT0x4(info.m_dam) << " => " << HEXFORMAT0x2(m_readDAM) << endl;
+      if (m_debug)
+        cerr << "FDC: DAM mask = " << HEXFORMAT0x4(info.m_dam) << " => " << HEXFORMAT0x2(m_readDAM) << endl;
     }
   }
   return 0;
@@ -476,7 +486,8 @@ int WD_FDC::WriteTrackCommand(uint8_t cmd)
     m_setInterrupt = true;
   }
   else {
-    cerr << "FDC: setting write protected" << endl;
+    if (m_debug)
+      cerr << "FDC: setting write protected" << endl;
     m_status = STATUS_WR_PROT; // STATUS_LOST_DATA;  
     m_setInterrupt = true;
   }
@@ -496,16 +507,19 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
     m_reading = false;
     m_status &= !STATUS_BUSY;
     if (m_currentCommand < 0) {
-      cerr << "FDC: force int on busy with no command" << endl;
+      if (m_debug)
+        cerr << "FDC: force int on busy with no command" << endl;
     }
     else {
-      cerr << "FDC: force int on busy with command " << HEXFORMAT0x2(m_currentCommand) << endl;
+    if (m_debug)
+        cerr << "FDC: force int on busy with command " << HEXFORMAT0x2(m_currentCommand) << endl;
     }
     if (cmd & (COMMAND_FORCE_INT_NR2R | COMMAND_FORCE_INT_INDEX))
       UpdateInterrupt(true);
   }
   else {
-    cerr << "FDC: force int not busy with no command" << endl;
+    if (m_debug)
+      cerr << "FDC: force int not busy with no command" << endl;
     SetTypeIStatus();
   }
   return 0;
@@ -518,7 +532,8 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
 
 int WD_FDC::PercomCommand(uint8_t cmd)
 {
-  cerr << "FDC: Percom select " << ((cmd == 0xfe) ? "1771" : "1791") << endl;
+  if (m_debug)
+    cerr << "FDC: Percom select " << ((cmd == 0xfe) ? "1771" : "1791") << endl;
   return 0;
 }
 
@@ -549,8 +564,10 @@ void WD_FDC::Write(uint16_t addr, uint8_t value)
       m_data = value;
       break;
   }
-  if (!title.empty())
-    cerr << "FDC SET " << title << ": " << HEXFORMAT0x2(value) << endl;
+  if (!title.empty()) {
+    if (m_debug)
+      cerr << "FDC SET " << title << ": " << HEXFORMAT0x2(value) << endl;
+  }
 }
 
 uint8_t WD_FDC::Read(uint16_t addr)
@@ -576,7 +593,8 @@ uint8_t WD_FDC::Read(uint16_t addr)
 
 /////////////////////////////////////////////////////////////
 
-WD_FD1771::WD_FD1771()
+WD_FD1771::WD_FD1771(bool debug)
+  : WD_FDC(debug)
 {
 }
 
