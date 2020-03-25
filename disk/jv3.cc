@@ -17,12 +17,18 @@ VirtualDriveJV3::VirtualDriveJV3()
 
 bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t headerSize) 
 {
+  if (m_verbose)
+    cout << "jv3 - reading data" << endl;
+
   uint8_t jv3Header[JV3_SECTOR_COUNT*3];
-  int ret = ::read(m_fd, jv3Header, sizeof(jv3Header));
+  int ret = ::read(fd, jv3Header, sizeof(jv3Header));
   if (ret != sizeof(jv3Header)) {
-    cerr << "drive: unable to read JV3 header - "<< ret << " != " << sizeof(jv3Header);
+    m_error << "jv3 - unable to read header - "<< ret << " != " << sizeof(jv3Header);
     return false;
   }
+
+  if (m_verbose)
+    cout << "jv3 - reading data" << endl;
 
   m_trackCount = 0;
   uint8_t * ptr = jv3Header;
@@ -88,20 +94,29 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
           break;
       }
       if (dam == 0x00) {
-        cerr << "drive: unknown DAM code " << HEXFORMAT0x2(dam) << endl;
+        m_error << "jv3 - unknown DAM code " << HEXFORMAT0x2(flags & 0x60) << " on track " << (int)track << ", sector " << (int)sector << endl;
+        return false;
       }
       else {
-        if (m_debug)
+        if (m_verbose)
           cout << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
                 << "track=" << (int)track << "," 
                 << "sector=" << (int) sector << "," 
                 << "dam=" << HEXFORMAT0x2(dam) << endl; 
         m_sectorMap.emplace(HASH_STS(0, track, sector), SectorInfo(offs, sectorSize, dam, density));
       }
+
+      m_trackCount  = std::max((int)track+1,      m_trackCount);
+      m_sectorCount = std::max((int)sector,     m_sectorCount);
+      m_sectorSize  = std::max((int)sectorSize, m_sectorSize);
+      m_density     = std::max((int)density,    m_density);
+      m_sideCount   = std::max((int)(side+1),   m_sideCount);
     }
 
     offs += sectorSize;
     ptr += 3;
   }
-  return false;
+
+  m_fd = fd;
+  return true;
 }

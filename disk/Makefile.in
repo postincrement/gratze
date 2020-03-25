@@ -4,6 +4,7 @@ LINK.o = $(LINK.cc)
 OBJDIR = ./obj
 DEPDIR = ./.deps
 
+APP	= grzdisk
 LIB = libgrzdisk.a
 
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
@@ -24,8 +25,8 @@ CXX=@CXX@
 CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) -I..
 CFLAGS   := @CFLAGS@   $(INC_DIRS)
 
-LDFLAGS=@LDFLAGS@ -g
-LDLIBS=@LDLIBS@
+LDFLAGS=@LDFLAGS@ -g -L.
+LDLIBS=@LDLIBS@ -lgrzdisk
 
 COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
@@ -55,33 +56,47 @@ $(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
 
 endif
 
-all:	$(LIB)
+all:	$(LIB) $(APP)
+
+$(APP) : $(LIB)
 
 ################################################################################################	
 
-SRCS_CC = \
-	../disk/jv1.cc \
-	../disk/jv3.cc \
-	../disk/dmk.cc \
-	../disk/virtual_drive.cc \
+LIB_SRCS_CC = jv1.cc \
+				 		  jv3.cc \
+				 		  dmk.cc \
+				 		  virtual_drive.cc \
 
-SRCS_C =
+LIB_SRCS_C =
 
-FILENAMES := $(notdir $(basename $(SRCS_C) $(SRCS_CC)))
-OBJS	  := $(addsuffix .o,$(addprefix $(OBJDIR)/,$(FILENAMES)))
-DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(FILENAMES)))
+APP_SRCS_CC = grzdisk.cc \
+              ../common/cmdargs.cc
+
+APP_SRCS_C =
+
+################################################################################################	
+
+SRCS_CC = $(LIB_SRCS_CC) $(APP_SRCS_CC)
+SRCS_C  = $(LIB_SRCS_C)  $(APP_SRCS_C)
+
+LIB_FILENAMES := $(notdir $(basename $(LIB_SRCS_C) $(LIB_SRCS_CC)))
+APP_FILENAMES := $(notdir $(basename $(APP_SRCS_C) $(APP_SRCS_CC)))
+
+DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(LIB_FILENAMES) $(APP_FILENAMES)))
+
+LIB_OBJS	  	:= $(addsuffix .o,$(addprefix $(OBJDIR)/,$(LIB_FILENAMES)))
+APP_OBJS	  	:= $(addsuffix .o,$(addprefix $(OBJDIR)/,$(APP_FILENAMES)))
+ 
+OBJS          := $(LIB_OBJS) $(APP_OBJS)
 
 vpath %.c  $(sort $(dir $(SRCS_C)))
 vpath %.cc $(sort $(dir $(SRCS_CC)))
 
-test:
-	echo $(OBJS)
+$(LIB):	$(LIB_OBJS)
+	$(AR) rcs $(LIB) $(LIB_OBJS)
 
-$(LIB):	$(OBJS)
-	$(AR) rcs $(LIB) $(OBJS)
-
-gratze:	nfd sdl ttf cereal $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+$(APP):	$(APP_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(APP_OBJS) $(LDLIBS)
 
 $(OBJDIR):
 	@mkdir -p $@
@@ -98,5 +113,5 @@ include $(wildcard $(DEPFILES))
 .PHONY : clean
 
 clean: 
-	rm -f $(LIB) $(OBJS) $(DEPFILES)
+	rm -f $(APP) $(LIB) $(OBJS) $(DEPFILES)
 

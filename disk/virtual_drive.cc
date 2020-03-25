@@ -13,68 +13,29 @@
 
 using namespace std;
 
-//
-// DMK sector format - 5.25
-//
-
-#pragma pack(1)
-
-#pragma pack()
-
-struct DiskFormat {
-  const char * name;
-
-  char m_size;             // '3', '5', or '8'
-  int  m_sides;            // 1 or 2
-  bool m_doubleDensity;    // true is double density
-
-  uint8_t  m_tracks;          // # of tracks
-  uint16_t m_sectorSize;      // sector size
-  uint8_t  m_sectorsPerTrack; // sectors per track
-};
-
-
-static DiskFormat g_formats[] = { 
-
-//  name         size   sides  density  tracks  sec size  sec/track  
-{  "5_SS_SD_35",  '5',    1,    false,    35,      256,       10 },
-{  "5_SS_SD_40",  '5',    1,    false,    40,      256,       10 },
-{  "5_SS_SD_80",  '5',    1,    false,    80,      256,       10 },
-
-{  "5_SS_SD_35",  '5',    2,    false,    35,      256,       10 },
-{  "5_SS_SD_40",  '5',    2,    false,    40,      256,       10 },
-{  "5_SS_SD_80",  '5',    2,    false,    80,      256,       10 }
-
-};
-
-
-VirtualDriveFactory VirtualDrive::g_virtualDriveFactory;
+VirtualDriveFactory VirtualDrive::m_virtualDriveFactory;
 
 /////////////////////////////////////////////////////////////
 
-void VirtualDrive::Init()
-{
-  AddFormat<VirtualDriveJV1>();
-  AddFormat<VirtualDriveJV3>();
-  AddFormat<VirtualDriveDMK>();
-}
-
-VirtualDrive::VirtualDrive()
+VirtualFileIdentifier::VirtualFileIdentifier()
+: m_verbose(false)
 {}
 
-VirtualDrive::~VirtualDrive()
-{}
-
-bool VirtualDrive::IsReadOnly() const
+void VirtualFileIdentifier::SetVerbose(bool verbose)
 {
-  return m_readOnly;
+  m_verbose = verbose;
 }
 
-VirtualDrive * VirtualDrive::Open(const std::string & fn, bool readOnly)
+std::string VirtualFileIdentifier::GetError() const
+{
+  return m_error.str();
+}
+
+VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly)
 {
   // see if file exists
   if (::access(fn.c_str(), 0) != 0) {
-    cerr << "error: cannot find file '" << fn << "'" << endl;
+    m_error << "cannot find file '" << fn << "'";
     return nullptr;
   }
 
@@ -91,7 +52,7 @@ VirtualDrive * VirtualDrive::Open(const std::string & fn, bool readOnly)
   //  fd = ::open(name.c_str(), O_RDWR);
 
   if (fd < 0) {
-    cerr << "error: cannot open file '" << fn << "' - " << strerror(errno) << endl;
+    m_error << "cannot open file '" << fn << "' - " << strerror(errno);
     return nullptr;
   }
 
@@ -109,7 +70,7 @@ VirtualDrive * VirtualDrive::Open(const std::string & fn, bool readOnly)
   uint8_t header[16];
   int hdrLen = read(fd, header, sizeof(header));
   if (hdrLen != sizeof(header)) {
-    cerr << "error: file is too short (" << hdrLen << ") to be a disk image" << endl;
+    m_error << "file is too short (" << hdrLen << ") to be a disk image";
     close(fd);    
     return nullptr;
   }
@@ -118,25 +79,34 @@ VirtualDrive * VirtualDrive::Open(const std::string & fn, bool readOnly)
   lseek(fd, 0, SEEK_SET);
 
   VirtualDriveFactory::KeyList keys;
-  g_virtualDriveFactory.GetKeys(keys);
+  VirtualDrive::m_virtualDriveFactory.GetKeys(keys);
 
   VirtualDrive * drive = nullptr;
   for (auto & r : keys) {
-    drive = g_virtualDriveFactory.CreateInstance(r);
+    drive = VirtualDrive::m_virtualDriveFactory.CreateInstance(r);
 
-    cout << "info: checking format '" << drive->GetName() << "'" << endl;
+    if (m_verbose) {
+      cout << "info: checking format '" << drive->GetName() << "'" << endl;
+      drive->SetVerbose(true);
+    }
   
     // see if file extensions matches
     if (extension == drive->GetExtension()) {
       if (drive->OpenFile(fd, len, header, sizeof(header))) {
-        cerr << "info: file '" << fn << "' set to format '" << drive->GetName() << "' using file extension" << endl;
+        if (m_verbose)
+          cout << "info: file '" << fn << "' set to format '" << drive->GetName() << "' using file extension" << endl;
         break;
       }
     }
 
     if (drive->OpenFile(fd, hdrLen, header, sizeof(header))) {
-      cerr << "info: file is format '" << drive->GetName() << "'" << endl;
+      if (m_verbose)
+        cout << "info: file is format '" << drive->GetName() << "'" << endl;
       break;
+    }
+
+    if (m_verbose && !drive->GetError().empty()) {
+      cout << "error: " << drive->GetError() << endl;
     }
 
     delete drive;
@@ -144,10 +114,42 @@ VirtualDrive * VirtualDrive::Open(const std::string & fn, bool readOnly)
   }
 
   if (!drive) {
-    cerr << "error: cannot identify format of device '" << fn << "'" << endl;
+    m_error << "error: cannot identify format of device '" << fn << "'";
   }
 
   return drive;
+}
+
+/////////////////////////////////////////////////////////////
+
+void VirtualDrive::Init()
+{
+  AddFormat<VirtualDriveJV1>();
+  AddFormat<VirtualDriveJV3>();
+  AddFormat<VirtualDriveDMK>();
+}
+
+VirtualDrive::VirtualDrive()
+{
+  m_verbose = false;
+}
+
+VirtualDrive::~VirtualDrive()
+{}
+
+bool VirtualDrive::IsReadOnly() const
+{
+  return m_readOnly;
+}
+
+std::string VirtualDrive::GetError() const
+{
+  return m_error.str();
+}
+
+void VirtualDrive::SetVerbose(bool v)
+{
+  m_verbose = v;
 }
 
 /////////////////////////////////////////////////////////////
@@ -156,13 +158,18 @@ VirtualDriveFile::VirtualDriveFile(const std::string & str)
   : m_fd(-1)
   , m_name(str)
   , m_extension(str)
-{}
+  , m_sectorCount(0)
+  , m_sectorSize(0)
+  , m_trackCount(0)
+  , m_density(0)
+  , m_sideCount(0)
+{
+}
 
 VirtualDriveFile::VirtualDriveFile(const std::string & name, const std::string & ext)
-  : m_fd(-1)
-  , m_name(name)
-  , m_extension(ext)
+  : VirtualDriveFile(name)
 {
+  m_extension = ext;
 }
 
 VirtualDriveFile::~VirtualDriveFile()
@@ -181,6 +188,31 @@ std::string VirtualDriveFile::GetExtension() const
   return m_extension;
 }
 
+int VirtualDriveFile::GetTracks() const
+{
+  return m_trackCount;
+}
+
+int VirtualDriveFile::GetSectors() const
+{
+  return m_sectorCount;
+}
+
+int VirtualDriveFile::GetSectorSize() const
+{
+  return m_sectorSize;
+}
+
+int VirtualDriveFile::GetSides() const
+{
+  return m_sideCount;
+}
+
+int VirtualDriveFile::GetDensity() const
+{
+  return m_density;
+}
+
 bool VirtualDriveFile::Mount(bool readonly)
 {
   return true;
@@ -191,17 +223,17 @@ int VirtualDriveFile::ReadSector(int track, int sector, SectorInfo & info, uint8
   int side = 0;
   auto r = m_sectorMap.find(HASH_STS(side, track, sector+1));
   if (r == m_sectorMap.end()) {
-    cerr << "error: request for unknown sector " << dec << sector << " and track " << track << endl;
+    m_error << "request for unknown sector " << dec << sector << " and track " << track;
     return -1;
   }
 
   info = r->second;
 
-  if (m_debug)
+  if (m_verbose)
     cout << "drive: seek side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
 
   if (lseek(m_fd, info.m_offset, SEEK_SET) < 0) {
-    cerr << "error: cannot seek for sector " << dec << sector << " and track " << track << endl;
+    m_error << "cannot seek for sector " << dec << sector << " and track " << track;
     return -1;
   }
 
@@ -219,7 +251,6 @@ int VirtualDriveFile::WriteSector(int track, int sector, uint8_t * data, int len
 {
   return false;
 }
-
 
 /////////////////////////////////////////////////////////////
 

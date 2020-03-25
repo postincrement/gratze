@@ -19,11 +19,14 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     return false;
 
   // read the sector map
-  m_fd = fd;
-  m_trackCount    = (len / (SD_SECTOR_COUNT * SD_SECTOR_SIZE));
+  m_trackCount  = (len / (SD_SECTOR_COUNT * SD_SECTOR_SIZE));
+  m_sectorCount = SD_SECTOR_COUNT;
+  m_sectorSize  = SD_SECTOR_SIZE;
+  m_density     = 0;
+  m_sideCount   = 1;
 
   if (len != (SD_SECTOR_COUNT * SD_SECTOR_SIZE * m_trackCount)) {
-    cerr << "drive: file length " << len << " is not compatible with tracks of " << SD_SECTOR_COUNT << " x " << SD_SECTOR_SIZE << " bytes" << endl;
+    m_error << "jv1 - file length " << len << " is not compatible with tracks of " << SD_SECTOR_COUNT << " x " << SD_SECTOR_SIZE << " bytes";
     return false;
   }
 
@@ -32,7 +35,7 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   for (int track = 0; track < m_trackCount; ++track) {
     uint8_t dam = (track == 17) ? 0xf8 : 0xfb;
     for (int sector = 1; sector <= SD_SECTOR_COUNT; ++sector) {
-      if (m_debug)
+      if (m_verbose)
         cout << "jv1: dam=" << HEXFORMAT0x2(dam) << ","
                 << "track=" << (int)track << "," 
                 << "sector=" << (int) sector << "," 
@@ -42,5 +45,6 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     }
   }
 
+  m_fd = fd;
   return true;
 }

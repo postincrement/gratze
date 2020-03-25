@@ -8,9 +8,9 @@
 #include <memory>
 #include <functional>
 #include <map>
+#include <sstream>
 
 #include "common/factory.h"
-//#include "src/config.h"
 
 class VirtualDrive;
 using VirtualDriveFactory = Factory<VirtualDrive, std::string>;
@@ -21,6 +21,25 @@ using VirtualDriveFactory = Factory<VirtualDrive, std::string>;
 
 #define HASH_STS(side, track, sector)     (sector + (side << 8) + (track << 16))
 
+
+class VirtualDrive;
+
+class VirtualFileIdentifier
+{
+  public:
+    VirtualFileIdentifier();
+
+    void SetVerbose(bool verbose);
+
+    std::string GetError() const;
+
+    VirtualDrive * Open(const std::string & fn, bool readOnly);
+
+  protected:
+    bool m_verbose;
+    std::stringstream m_error;  
+};
+
 class VirtualDrive
 {
   public:
@@ -29,7 +48,7 @@ class VirtualDrive
     VirtualDrive();
     virtual ~VirtualDrive();
 
-    static VirtualDrive * Open(const std::string & fn, bool readOnly);
+    void SetVerbose(bool v);
 
     struct SectorInfo
     {
@@ -55,6 +74,14 @@ class VirtualDrive
     virtual std::string GetName() const = 0;
     virtual std::string GetExtension() const = 0;
 
+    virtual int GetTracks() const = 0;
+    virtual int GetSectors() const = 0;
+    virtual int GetSectorSize() const = 0;
+    virtual int GetSides() const = 0;
+    virtual int GetDensity() const = 0;
+
+    virtual std::string GetError() const;
+
     virtual int ReadSector(int track, int sector, SectorInfo & info, uint8_t * data, int len) = 0;
     virtual int WriteSector(int track, int sector, uint8_t * data, int len) = 0;
 
@@ -64,15 +91,17 @@ class VirtualDrive
       std::unique_ptr<VirtualDrive> virtualDrive(new Type());
 
       std::string key       = virtualDrive->GetName();
-      g_virtualDriveFactory.AddConcreteClass<Type>(key);
+      m_virtualDriveFactory.AddConcreteClass<Type>(key);
     }
 
-  protected:
-    virtual bool OpenFile(int fd, off_t len, const uint8_t * header, size_t headerSize) = 0;
-    bool m_readOnly;
+    static VirtualDriveFactory m_virtualDriveFactory;
 
-    static VirtualDriveFactory g_virtualDriveFactory;
-    bool m_debug = false;
+    virtual bool OpenFile(int fd, off_t len, const uint8_t * header, size_t headerSize) = 0;
+    
+  protected:
+    bool m_readOnly;
+    bool m_verbose;
+    std::stringstream m_error;
 };
 
 class VirtualDriveFile : public VirtualDrive
@@ -91,12 +120,22 @@ class VirtualDriveFile : public VirtualDrive
     virtual int ReadSector(int track, int sector, SectorInfo & info, uint8_t * data, int len) override;
     virtual int WriteSector(int track, int sector, uint8_t * data, int len) override;
 
+    virtual int GetTracks() const override;
+    virtual int GetSectors() const override;
+    virtual int GetSectorSize() const override;
+    virtual int GetSides() const override;
+    virtual int GetDensity() const override;
+
   protected:
     int m_fd;
-    int m_trackCount;
-    std::map<uint32_t, SectorInfo> m_sectorMap;
     std::string m_name;
     std::string m_extension;
+    int m_sectorCount;
+    int m_sectorSize;
+    int m_trackCount;
+    int m_density;
+    int m_sideCount;
+    std::map<uint32_t, SectorInfo> m_sectorMap;
 };
 
 

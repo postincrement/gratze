@@ -22,7 +22,7 @@ VirtualDriveDMK::VirtualDriveDMK()
 bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t headerSize)
 {
   if (headerSize < sizeof(DMKHeader)) {
-    cout << "dmk: header size too small" << endl;
+    m_error << "dmk - header size too small" << endl;
     return false;
   }
 
@@ -37,25 +37,29 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   if (!formatGood)
     return false;
 
-  cout << "dmk: wrtProt=" << (int)dmk->m_wrtProt << ",tracks=" << (int)dmk->m_trackCount << endl;
+  if (m_verbose)
+    cout << "dmk: wrtProt=" << (int)dmk->m_wrtProt << ",tracks=" << (int)dmk->m_trackCount << endl;
 
   if (dmk->m_options & (1 << 4)) {
-    cout << "dmk: disk is single density only" << endl;
+    if (m_verbose)
+      cout << "dmk: disk is single density only" << endl;
   }  
   if (dmk->m_options & (1 << 6)) {
-    cout << "dmk: disk is single density with double option" << endl;
+    if (m_verbose)
+      cout << "dmk: disk is single density with double option" << endl;
   }  
   if (dmk->m_options & (1 << 7)) {
-    cout << "dmk: disk is double density with single option" << endl;
+    if (m_verbose)
+      cout << "dmk: disk is double density with single option" << endl;
   }  
 
-  int i;
-  for (i = 0; i < DMK_TRACKLENGTHS_COUNT; ++i) {
-    if (dmk->m_trackLen == g_dmk_trackLengths[i])
-    break;
+  int j;
+  for (j = 0; j < DMK_TRACKLENGTHS_COUNT; ++j) {
+    if (dmk->m_trackLen == g_dmk_trackLengths[j])
+      break;
   }
-  if (i == DMK_TRACKLENGTHS_COUNT) {
-    cerr << "error: format looks like DMK, but track length " << dmk->m_trackLen << " is not recognised" << endl;
+  if (j == DMK_TRACKLENGTHS_COUNT) {
+    m_error << "dmk - format looks like DMK, but track length " << dmk->m_trackLen << " is not recognised" << endl;
     return false;
   }
 
@@ -66,15 +70,16 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   for (int trackNum = 0; trackNum < m_trackCount; ++trackNum) {
     uint16_t sectorOffsets[64];
     if (::lseek(m_fd, offs, SEEK_SET) < 0) {
-      cerr << "dmk: cannot seek to header for track " << trackNum << " at offset " << offs << endl;
+      m_error << "dmk: cannot seek to header for track " << trackNum << " at offset " << offs;
+      return false;
     }
     else if (::read(m_fd, sectorOffsets, sizeof(sectorOffsets)) != sizeof(sectorOffsets)) {
-      cerr << "dmk: cannot read header for track " << trackNum << " at offset " << offs << endl;
+      m_error << "dmk - cannot read header for track " << trackNum << " at offset " << offs;
+      return false;
     }
     else {
-      int sectorNum = 1;
-      for (int i = 0; i < 64; ++i) {
-        if (sectorOffsets[i] == 0)
+      for (int sectorNumber = 0; sectorNumber < 64; ++sectorNumber) {
+        if (sectorOffsets[sectorNumber] == 0)
           break;
         DMKSector sector; 
         int idamOffs       = (uint8_t *)&sector.m_idam - (uint8_t *)&sector;
@@ -82,34 +87,33 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
         int idamToDataOffs = (uint8_t *)&sector.m_data - (uint8_t *)&sector.m_idam;
         int sectorSize = 256;
         int density = 0;
+        int side = 0;
 
-        off_t sectorOffset = sectorOffsets[i] & 0x3fff; 
+        off_t sectorOffset = sectorOffsets[sectorNumber] & 0x3fff; 
 
         if (
             (::lseek(m_fd, offs + sectorOffset-idamOffs, SEEK_SET) < 0) ||
             (::read(m_fd, &sector, headerLen) != headerLen)
           ) {
-          cerr << "dmk: cannot read info for sector " << sectorNum << ", track " << trackNum << endl;
+          m_error << "dmk - cannot read info for sector " << sectorNumber << ", track " << trackNum;;
         }
         else {
-          if (m_debug)
+          if (m_verbose)
             cout << "dmk: idam=" << HEXFORMAT0x2(sector.m_idam) << ","
                 << "track=" << (int) sector.m_track << "," 
                 << "sector=" << (int) sector.m_sector << "," 
                 << "dam=" << HEXFORMAT0x2(sector.m_dam) << ","
                 << "size=" << sizeof(sector) << endl; 
-//          if (sector.m_track != trackNum) {
-//            cerr << "dmk: track " << trackNum << ", sector " << sectorNum << " has mismatched track number " << (int)sector.m_track << endl;
-//          }
-//          if (sector.m_sector != sectorNum) {
-//            cerr << "dmk: track " << trackNum << ", sector " << sectorNum << " has mismatched sector number " << (int)sector.m_sector << endl;
-//          }
 
           m_trackCount = std::max(m_trackCount, (int)trackNum);
           m_sectorMap.emplace(HASH_STS(0, trackNum, sector.m_sector+1), 
               SectorInfo(offs + sectorOffset + idamToDataOffs, sectorSize, sector.m_dam, density));
         }
-        ++sectorNum;
+
+        m_sectorCount = std::max((int)sector.m_sector+1, m_sectorCount );
+        m_sectorSize  = std::max((int)sectorSize, m_sectorSize);
+        m_density     = std::max((int)density,    m_density);
+        m_sideCount   = std::max((int)(side+1),   m_sideCount);
       }
     }
 
