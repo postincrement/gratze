@@ -14,7 +14,6 @@ autom4te.cache/*
 ./Makefile
 configure
 config.log
-trs80/model1/rom_level1.o
 SDL2-*
 SDL2_ttf-*
 *.dll
@@ -34,12 +33,6 @@ tools/grasm/grasm
 grasm/extract.bin
 grasm/grasm
 emulator/Makefile
-emulator/Makefile
-emulator/autom4te.cache/output.3
-emulator/autom4te.cache/output.3
-emulator/autom4te.cache/output.3
-emulator/autom4te.cache/requests
-emulator/autom4te.cache/traces.3
-disk/autom4te.cache/output.0
-disk/autom4te.cache/requests
-disk/autom4te.cache/traces.0
+emulator/autom4te.cache/*
+disk/autom4te.cache
+disk/libgrzdisk.a
