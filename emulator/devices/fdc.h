@@ -9,7 +9,7 @@
 #include <functional>
 #include <map>
 
-#include "virtual_drive.h"
+#include "disk/virtual_drive.h"
 #include "common/factory.h"
 #include "src/config.h"
 

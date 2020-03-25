@@ -99,6 +99,10 @@ SRCS_CC = src/main.cc \
 	src/emulator.cc \
 	../common/cmdargs.cc \
 	../common/misc.cc \
+	../disk/jv1.cc \
+	../disk/jv3.cc \
+	../disk/dmk.cc \
+	../disk/virtual_drive.cc \
   devices/fdc.cc \
 	devices/cassette.cc \
 	devices/keyscan.cc \
@@ -106,7 +110,6 @@ SRCS_CC = src/main.cc \
 	devices/z80pio.cc \
 	devices/intel8255.cc \
 	devices/synertek6545.cc \
-	devices/virtual_drive.cc \
 	video/virtual_screen.cc \
 	video/font.cc \
 	video/dg640.cc \
