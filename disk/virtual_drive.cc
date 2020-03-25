@@ -10,10 +10,13 @@
 #include "jv1.h"
 #include "jv3.h"
 #include "dmk.h"
+#include "dsk.h"
 
 using namespace std;
 
 VirtualDriveFactory VirtualDrive::m_virtualDriveFactory;
+
+#define FILE_IDENTIFIER_HEADER_SIZE      40         // must be bigger than the DSK format header (34 bytes)
 
 /////////////////////////////////////////////////////////////
 
@@ -67,7 +70,7 @@ VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly
     extension = fn.substr(pos+1);
 
   // read some bytes
-  uint8_t header[16];
+  uint8_t header[FILE_IDENTIFIER_HEADER_SIZE];
   int hdrLen = read(fd, header, sizeof(header));
   if (hdrLen != sizeof(header)) {
     m_error << "file is too short (" << hdrLen << ") to be a disk image";
@@ -82,26 +85,39 @@ VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly
   VirtualDrive::m_virtualDriveFactory.GetKeys(keys);
 
   VirtualDrive * drive = nullptr;
+
+  // give priority to formats that match the extension
+  for (auto & r : keys) {
+    drive = VirtualDrive::m_virtualDriveFactory.CreateInstance(r);
+    if (extension != drive->GetExtension()) {
+      delete drive;
+    }
+    else if (drive->OpenFile(fd, len, header, sizeof(header))) {
+      if (m_verbose)
+        cout << "info: file is format '" << drive->GetFormat() << "'" << endl;
+      return drive;
+    }
+    else {
+      if (m_verbose)
+        cout << "info: file has '" << drive->GetFormat() << "' extension but not '" << drive->GetFormat() << "' format" << endl;
+      delete drive;
+      break;
+    }
+  }
+
+  // try all formats
   for (auto & r : keys) {
     drive = VirtualDrive::m_virtualDriveFactory.CreateInstance(r);
 
     if (m_verbose) {
-      cout << "info: checking format '" << drive->GetName() << "'" << endl;
+      cout << "info: checking format '" << drive->GetFormat() << "'" << endl;
       drive->SetVerbose(true);
     }
   
-    // see if file extensions matches
-    if (extension == drive->GetExtension()) {
-      if (drive->OpenFile(fd, len, header, sizeof(header))) {
-        if (m_verbose)
-          cout << "info: file '" << fn << "' set to format '" << drive->GetName() << "' using file extension" << endl;
-        break;
-      }
-    }
-
-    if (drive->OpenFile(fd, hdrLen, header, sizeof(header))) {
+    lseek(fd, 0, SEEK_SET);
+    if (drive->OpenFile(fd, len, header, sizeof(header))) {
       if (m_verbose)
-        cout << "info: file is format '" << drive->GetName() << "'" << endl;
+        cout << "info: file is format '" << drive->GetFormat() << "'" << endl;
       break;
     }
 
@@ -127,6 +143,7 @@ void VirtualDrive::Init()
   AddFormat<VirtualDriveJV1>();
   AddFormat<VirtualDriveJV3>();
   AddFormat<VirtualDriveDMK>();
+  AddFormat<VirtualDriveDSK>();
 }
 
 VirtualDrive::VirtualDrive()
@@ -178,7 +195,7 @@ VirtualDriveFile::~VirtualDriveFile()
     ::close(m_fd);
 }
 
-std::string VirtualDriveFile::GetName() const
+std::string VirtualDriveFile::GetFormat() const
 {
   return m_name;
 }

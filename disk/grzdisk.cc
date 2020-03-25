@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
   if (args.HasArg("-v"))
     fileId.SetVerbose(true);
-    
+
   VirtualDrive * drive = fileId.Open(fn, true);
   if (drive == nullptr) {
     cerr << "error: " << fileId.GetError() << endl;
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 
   int capacity = drive->GetSides() * drive->GetTracks() * drive->GetSectors() * drive->GetSectorSize();
 
-  cout << "Format:      " << drive->GetName() << endl
+  cout << "Format:      " << drive->GetFormat() << endl
        << "Capacity:    " << (capacity / 1024) << " k" << endl
        << "Sides:       " << drive->GetSides() << endl
        << "Density:     " << (drive->GetDensity() ? "double" : "single") << endl

@@ -71,7 +71,7 @@ class VirtualDrive
 
     virtual bool IsReadOnly() const;
 
-    virtual std::string GetName() const = 0;
+    virtual std::string GetFormat() const = 0;
     virtual std::string GetExtension() const = 0;
 
     virtual int GetTracks() const = 0;
@@ -90,7 +90,7 @@ class VirtualDrive
     {
       std::unique_ptr<VirtualDrive> virtualDrive(new Type());
 
-      std::string key       = virtualDrive->GetName();
+      std::string key       = virtualDrive->GetFormat();
       m_virtualDriveFactory.AddConcreteClass<Type>(key);
     }
 
@@ -112,7 +112,7 @@ class VirtualDriveFile : public VirtualDrive
     VirtualDriveFile(const std::string & name, const std::string & ext);
     ~VirtualDriveFile();
 
-    virtual std::string GetName() const override;
+    virtual std::string GetFormat() const override;
     virtual std::string GetExtension() const override;
 
     virtual bool Mount(bool readOnly) override;

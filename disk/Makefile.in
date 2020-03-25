@@ -65,11 +65,13 @@ $(APP) : $(LIB)
 LIB_SRCS_CC = jv1.cc \
 				 		  jv3.cc \
 				 		  dmk.cc \
+				 		  dsk.cc \
 				 		  virtual_drive.cc \
 
 LIB_SRCS_C =
 
 APP_SRCS_CC = grzdisk.cc \
+              ../common/misc.cc \
               ../common/cmdargs.cc
 
 APP_SRCS_C =
