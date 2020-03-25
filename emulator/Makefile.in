@@ -38,7 +38,7 @@ SDL_TTF_TARGET_SRC=$(addprefix $(SDL_TTF_DIR)/bin/,$(SDL_TTF_TARGETS))
 SDL_INC=-I$(SDL_DIR)/include/SDL2 -I$(SDL_TTF_DIR)/include/SDL2
 SDL_LDFLAGS=-L$(SDL_DIR)/lib -L$(SDL_TTF_DIR)/lib
 
-endif # MING_ENABLED
+endif # MINGW_ENABLED
 
 INC_DIRS = -I$(shell pwd)
 
@@ -59,8 +59,8 @@ CXX=@CXX@
 CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS) -I$(CEREAL_INCLUDE_DIR) -I..
 CFLAGS   := @CFLAGS@   $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS)
 
-LDFLAGS=$(SDL_LDFLAGS) @LDFLAGS@ -g
-LDLIBS=@LDLIBS@
+LDFLAGS=$(SDL_LDFLAGS) @LDFLAGS@ -g -L ../disk
+LDLIBS=@LDLIBS@ -lgrzdisk
 
 COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
@@ -99,10 +99,6 @@ SRCS_CC = src/main.cc \
 	src/emulator.cc \
 	../common/cmdargs.cc \
 	../common/misc.cc \
-	../disk/jv1.cc \
-	../disk/jv3.cc \
-	../disk/dmk.cc \
-	../disk/virtual_drive.cc \
   devices/fdc.cc \
 	devices/cassette.cc \
 	devices/keyscan.cc \

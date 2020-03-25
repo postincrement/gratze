@@ -10,7 +10,7 @@
 #include <map>
 
 #include "common/factory.h"
-#include "src/config.h"
+//#include "src/config.h"
 
 class VirtualDrive;
 using VirtualDriveFactory = Factory<VirtualDrive, std::string>;

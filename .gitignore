@@ -35,3 +35,11 @@ grasm/extract.bin
 grasm/grasm
 emulator/Makefile
 emulator/Makefile
+emulator/autom4te.cache/output.3
+emulator/autom4te.cache/output.3
+emulator/autom4te.cache/output.3
+emulator/autom4te.cache/requests
+emulator/autom4te.cache/traces.3
+disk/autom4te.cache/output.0
+disk/autom4te.cache/requests
+disk/autom4te.cache/traces.0

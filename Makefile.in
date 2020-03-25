@@ -1,0 +1,11 @@
+DIRS = disk emulator
+
+.PHONY: all clean $DIRS
+
+all:
+	for f in $(DIRS) ; do ( cd $$f && $(MAKE) ) ; done
+
+clean:
+	for f in $(DIRS) ; do ( cd $$f && $(MAKE) clean ) ; done
+
+emulator: disk
