@@ -235,16 +235,22 @@ bool VirtualDriveFile::Mount(bool readonly)
   return true;
 }
 
-int VirtualDriveFile::ReadSector(int track, int sector, SectorInfo & info, uint8_t * data, int len)
+VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int side, int track, int sector)
 {
-  int side = 0;
   auto r = m_sectorMap.find(HASH_STS(side, track, sector+1));
   if (r == m_sectorMap.end()) {
     m_error << "request for unknown sector " << dec << sector << " and track " << track;
-    return -1;
+    return nullptr;
   }
 
-  info = r->second;
+  return &r->second;
+}
+
+int VirtualDriveFile::ReadSector(int track, int side, int sector, SectorInfo & info, uint8_t * data, int len)
+{
+  auto sectorInfo = GetInfo(side, track, sector);
+
+  info = *sectorInfo;
 
   if (m_verbose)
     cout << "drive: seek side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
@@ -264,7 +270,7 @@ int VirtualDriveFile::ReadSector(int track, int sector, SectorInfo & info, uint8
   return rlen;  
 }
 
-int VirtualDriveFile::WriteSector(int track, int sector, uint8_t * data, int len)
+int VirtualDriveFile::WriteSector(int track, int side, int sector, uint8_t * data, int len)
 {
   return false;
 }

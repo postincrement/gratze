@@ -82,8 +82,9 @@ class VirtualDrive
 
     virtual std::string GetError() const;
 
-    virtual int ReadSector(int track, int sector, SectorInfo & info, uint8_t * data, int len) = 0;
-    virtual int WriteSector(int track, int sector, uint8_t * data, int len) = 0;
+    virtual SectorInfo * GetInfo(int side, int track, int sector) = 0;
+    virtual int ReadSector(int track, int side, int sector, SectorInfo & info, uint8_t * data, int len) = 0;
+    virtual int WriteSector(int track, int side, int sector, uint8_t * data, int len) = 0;
 
     template <class Type>
     static void AddFormat()
@@ -117,8 +118,9 @@ class VirtualDriveFile : public VirtualDrive
 
     virtual bool Mount(bool readOnly) override;
 
-    virtual int ReadSector(int track, int sector, SectorInfo & info, uint8_t * data, int len) override;
-    virtual int WriteSector(int track, int sector, uint8_t * data, int len) override;
+    virtual SectorInfo * GetInfo(int side, int track, int sector) override;
+    virtual int ReadSector(int track, int side, int sector, SectorInfo & info, uint8_t * data, int len) override;
+    virtual int WriteSector(int track, int side, int sector, uint8_t * data, int len) override;
 
     virtual int GetTracks() const override;
     virtual int GetSectors() const override;
