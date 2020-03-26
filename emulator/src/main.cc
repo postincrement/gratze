@@ -132,7 +132,8 @@ int main(int argc, char *argv[])
 
   std::string fn;
   if (options.m_args.GetValue("--diskette", fn)) {
-    VirtualDrive * file = VirtualDrive::Open(fn, true);
+    VirtualFileIdentifier fileId;
+    VirtualDrive * file = fileId.Open(fn, true);
     if (file == nullptr) {
       cerr << "error: could not open diskette file '" << fn << "'" << endl;
       return -1;
