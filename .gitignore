@@ -36,3 +36,4 @@ emulator/Makefile
 emulator/autom4te.cache/*
 disk/autom4te.cache
 disk/libgrzdisk.a
+emulator/autom4te.cache/requests
