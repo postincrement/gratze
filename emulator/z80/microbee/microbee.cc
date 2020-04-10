@@ -339,18 +339,19 @@ void Microbee56_Emulator::FDCInterrupt()
 {
   //if (m_options.m_fdcDebug)
     cerr << "FDC: interrupt" << endl;
-  m_fdcPending = true;
 }
 
 uint8_t Microbee56_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
 {
   switch (info.m_id) {
     case 0x10:
+      //if ((port & 0x03) == 0)
+      //  cerr << "mbee: fdc port 0x44 read" << endl;
       return m_fdc->Read(port & 0x3);
     case 0x11:
       {
-        uint8_t val = m_fdcPending ? 0x80 : 0x00;
-        m_fdcPending = false;
+        uint8_t val = m_fdc->GetDRQ() ? 0x80 : 0x00;
+        //cerr << "mbee: port 0x48 return " << HEXFORMAT0x2(val) << endl;
         return val;
       }
   }

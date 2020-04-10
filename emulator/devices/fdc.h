@@ -76,6 +76,7 @@ class WD_FDC
     int PercomCommand(uint8_t cmd);
 
     void UpdateInterrupt(bool interruptOn);
+    bool GetDRQ() const;
 
   protected:
     virtual CommandInfo * GetCommand(uint8_t cmd);

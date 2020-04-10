@@ -17,10 +17,7 @@ using VirtualDriveFactory = Factory<VirtualDrive, std::string>;
 
 #define MAX_SECTOR_SIZE  1024
 
-#define   SD_SECTOR_SIZE    256
-
 #define HASH_STS(side, track, sector)     (sector + (side << 8) + (track << 16))
-
 
 class VirtualDrive;
 
@@ -79,6 +76,8 @@ class VirtualDrive
     virtual int GetSectorSize() const = 0;
     virtual int GetSides() const = 0;
     virtual int GetDensity() const = 0;
+    virtual int GetMinSector() const = 0;
+    virtual int GetMinTrack() const = 0;
 
     virtual std::string GetError() const;
 
@@ -127,14 +126,18 @@ class VirtualDriveFile : public VirtualDrive
     virtual int GetSectorSize() const override;
     virtual int GetSides() const override;
     virtual int GetDensity() const override;
+    virtual int GetMinSector() const override;
+    virtual int GetMinTrack() const override;
 
   protected:
     int m_fd;
     std::string m_name;
     std::string m_extension;
-    int m_sectorCount;
+    int m_minSector = 0;
+    int m_maxSector = 0;
     int m_sectorSize;
-    int m_trackCount;
+    int m_minTrack = 0;
+    int m_trackCount = 0;
     int m_density;
     int m_sideCount;
     std::map<uint32_t, SectorInfo> m_sectorMap;

@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 {
   CommandLineArgs args;
   int opt = args.Parse(g_options, argc, argv);
-  if ((opt < 0) || (argc < 2)) {
+  if ((opt < 0) || (argc < 1)) {
     cerr << "usage: grzdisk [opts] inputfile\n"
          << "where opts are:\n"
          << args.Usage();
@@ -101,6 +101,11 @@ int main(int argc, char *argv[])
     return 0;
   }
 
+  if (args.HasArg("-h")) {
+    cout << args.Usage();
+    return 0;
+  }
+ 
   std::string fn(argv[opt]);
   VirtualFileIdentifier fileId;
 
@@ -147,12 +152,16 @@ int main(int argc, char *argv[])
           sectorData.resize(chunkCount);
 
           VirtualDrive::SectorInfo sectorInfo;
-          int len = drive->ReadSector(track, side, sector, sectorInfo, &data[0], data.size());
+          int len = drive->ReadSector(track + drive->GetMinTrack(), side, sector + drive->GetMinSector(), sectorInfo, &data[0], data.size());
+
+          stringstream hdr;
+          hdr << "Track " << track + drive->GetMinTrack() << ", side " << side << ", sector " << sector + drive->GetMinSector();
+
           if (len < 0) {
             for (auto & r : sectorData)
               r = 'X';
             if (displayData) {
-              cout << "Track " << track << ", side " << side << ", sector " << sector+1 << endl;
+              cout << hdr.str() << endl;
               cout << "Could not read" << endl;
             }
           }
@@ -163,7 +172,7 @@ int main(int argc, char *argv[])
               isDir = isDir || (sectorData[chunk] == DIR_TYPE);
             }
             if (displayData || (dumpDir && isDir)) {
-              cout << "Track " << track << ", side " << side << ", sector " << sector+1 << endl;
+              cout << hdr.str() << ", offset " << sectorInfo.m_offset << endl;
               cout << "Type ";
               for (int chunk = 0; chunk < chunkCount; ++chunk) {
                 cout << sectorData[chunk];
@@ -181,8 +190,8 @@ int main(int argc, char *argv[])
       cout << setw(2) << track << "   ";
       for (int side = 0; side < drive->GetSides(); ++side) {
         cout << " ";
-        for (int sector = 0; sector < drive->GetSectors(); ++sector) {
-          for (auto & chunk : diskData[track][side][sector]) {
+        for (int sector = 1; sector <= drive->GetSectors(); ++sector) {
+          for (auto & chunk : diskData[track][side][sector-1]) {
             cout << chunk;
           }
         }

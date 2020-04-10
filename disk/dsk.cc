@@ -5,6 +5,22 @@
 //  http://www.cpcwiki.eu/index.php/Format:DSK_disk_image_file_format
 //
 
+/*
+
+  0x0000 0x00033   disk information block
+  0x0034 0x000ff   padding
+
+  0x0100 0x0117    track 0 information block
+  0x0118 0x011f    track 0, sector 1 information block
+  0x0120 0x0127    track 0, sector 2 information block
+  ...
+  0x01f8 0x01ff    track 0, sector n information block
+
+  0x0200 ....      track 0, sector 1 data
+  ...
+  
+*/
+
 #include <iostream>
 #include <string.h>
 #include <unistd.h>
@@ -91,8 +107,6 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   // compare header
   if (memcmp((const char *)header, DISK_FORMAT_ID, DISK_FORMAT_ID_LEN) != 0) {
     m_error << "dsk: file header does not match";
-    cout << DumpMemory(header, headerSize);
-    cout << DumpMemory((const uint8_t *)DISK_FORMAT_ID, DISK_FORMAT_ID_LEN);
     return false;
   }
 
@@ -102,6 +116,7 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     m_error << "dsk: cannot read file header";
     return false;
   }
+
 
   m_trackCount = dskHeader.m_tracks;
   off_t offs = 0x100;
@@ -126,19 +141,26 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       else {
         int sectorSizeBytes = trackInfo.m_sectorSize*256;
         int density = 0;
+        cout << "dsk: track " << (int)trackNum << " has sector count " << (int)trackInfo.m_sectorCount << "\n";
 
-        m_sectorCount = std::max((int)trackInfo.m_sectorCount, m_sectorCount);
         m_sideCount   = std::max((int)(side+1),   m_sideCount);
         off_t dataOffs = offs + 0x100;
         uint8_t dam = 0x00;
 
         SectorHeader * sectorHeader = trackHeader.m_sectors;
         for (int sector = 0; sector < trackInfo.m_sectorCount; ++sector) {
-          m_trackCount  = std::max((int)sectorHeader->m_track, m_trackCount);
+
+          m_minSector   = std::min<int>(sectorHeader->m_sectorID, m_minSector);
+          m_maxSector   = std::max<int>(sectorHeader->m_sectorID, m_maxSector);
+
+          m_minTrack    = std::min<int>(sectorHeader->m_track, m_minTrack);
+
           m_sectorSize  = std::max(sectorSizeBytes,            m_sectorSize);
           m_density     = std::max((int)density,    m_density);
 
-          m_sectorMap.emplace(HASH_STS(side, sectorHeader->m_track, sectorHeader->m_sectorID), 
+          cout << "dsk: sector ID " << (int)sectorHeader->m_sectorID << " has offset " << dataOffs << endl;
+
+          m_sectorMap.emplace(HASH_STS(side, sectorHeader->m_track, sectorHeader->m_sectorID),
               SectorInfo(dataOffs, sectorSizeBytes, dam, density));
 
           ++sectorHeader;

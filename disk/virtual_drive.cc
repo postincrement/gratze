@@ -175,7 +175,9 @@ VirtualDriveFile::VirtualDriveFile(const std::string & str)
   : m_fd(-1)
   , m_name(str)
   , m_extension(str)
-  , m_sectorCount(0)
+  , m_minSector(INT_MAX)
+  , m_maxSector(0)
+  , m_minTrack(INT_MAX)
   , m_sectorSize(0)
   , m_trackCount(0)
   , m_density(0)
@@ -210,9 +212,19 @@ int VirtualDriveFile::GetTracks() const
   return m_trackCount;
 }
 
+int VirtualDriveFile::GetMinTrack() const
+{
+  return m_minTrack;
+}
+
 int VirtualDriveFile::GetSectors() const
 {
-  return m_sectorCount;
+  return 1 + (m_maxSector - m_minSector);
+}
+
+int VirtualDriveFile::GetMinSector() const
+{
+  return m_minSector;
 }
 
 int VirtualDriveFile::GetSectorSize() const
@@ -237,7 +249,7 @@ bool VirtualDriveFile::Mount(bool readonly)
 
 VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int side, int track, int sector)
 {
-  auto r = m_sectorMap.find(HASH_STS(side, track, sector+1));
+  auto r = m_sectorMap.find(HASH_STS(side, track, sector));
   if (r == m_sectorMap.end()) {
     m_error << "request for unknown sector " << dec << sector << " and track " << track;
     return nullptr;
@@ -248,12 +260,13 @@ VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int side, int track, int se
 
 int VirtualDriveFile::ReadSector(int track, int side, int sector, SectorInfo & info, uint8_t * data, int len)
 {
+  cout << "drive: get info side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
   auto sectorInfo = GetInfo(side, track, sector);
 
   info = *sectorInfo;
 
-  if (m_verbose)
-    cout << "drive: seek side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
+  //if (m_verbose)
+    cout << "drive: read side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
 
   if (lseek(m_fd, info.m_offset, SEEK_SET) < 0) {
     m_error << "cannot seek for sector " << dec << sector << " and track " << track;

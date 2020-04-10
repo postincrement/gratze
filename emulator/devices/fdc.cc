@@ -97,7 +97,7 @@ void WD_FDC::Reset()
   m_realTrack   = 0;
 
   m_status      = STATUS_BUSY;  // IMPORTANT: without this, the L2 ROM won't detect the FDC
-  m_sector      = 1;
+  m_sector      = 0;
   m_side        = 0;
   m_track       = m_realTrack;
   m_data        = 0;
@@ -180,6 +180,12 @@ bool WD_FDC::IsCurrentDriveAvailable() const
 {
   return (m_drive >= 0) && (m_drive < m_drives.size()) && m_drives[m_drive];
 }
+
+bool WD_FDC::GetDRQ() const
+{
+  return (m_status & STATUS_DRQ) != 0;
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -298,23 +304,26 @@ uint8_t WD_FDC::ReadDataReg()
     m_data = m_buffer[m_bufferPtr++];
     if (m_bufferPtr < m_bufferLen) {
       //cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
-      m_status |= STATUS_DRQ;
+      m_status |= STATUS_DRQ;      
       break;
-    }
-    else if (m_currentCommand & COMMAND_MULT_RECS) {
-      m_sector++;
-      if (m_debug)
-        cerr << "FDC: read multiple moving to sector " << dec << (int)m_sector << endl;
-      ReadCommand(m_currentCommand);
     }
     else {
-      if (m_debug)
-        cerr << "FDC: single read ended" << endl;
-      m_currentCommand = -1;
-      m_status = m_readDAM;  // resets STATUS_BUSY
-      m_reading = false;
-      UpdateInterrupt(true);
-      break;
+      int maxSector = m_drives[m_drive]->GetSectors();
+      if ((m_currentCommand & COMMAND_MULT_RECS) && (m_sector < maxSector)) {
+        m_sector++;
+        if (m_debug)
+          cerr << "FDC: read multiple moving to sector " << dec << (int)m_sector << endl;
+        ReadCommand(m_currentCommand);
+      }
+      else {
+        if (m_debug)
+          cerr << "FDC: read ended" << endl;
+        m_currentCommand = -1;
+        m_status = m_readDAM;  // resets STATUS_BUSY
+        m_reading = false;
+        UpdateInterrupt(true);
+        break;
+      }
     }
   }
 
@@ -452,7 +461,7 @@ int WD_FDC::ReadCommand(uint8_t cmd)
       m_setInterrupt = true;
     }
     else {
-      if (m_debug)
+      //if (m_debug)
         cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
       m_bufferPtr = 0;
       m_bufferLen = bufferLen;
@@ -618,13 +627,15 @@ int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
     //if (m_debug)
       cerr << "FDC: read addr, track=" << dec << (int)m_track << endl;
     m_bufferPtr = 0;
-    m_bufferLen = 6;
-    m_buffer[0] = m_track+1;
+    m_bufferLen = 4;
+    m_reading   = true;
+
+    Emulator::GetInstance()->DisplayTraceInfo();
+
+    m_buffer[0] = m_track;
     m_buffer[1] = m_side;
     m_buffer[2] = 1;
     m_buffer[3] = 2;
-    m_buffer[4] = 0x00;
-    m_buffer[5] = 0x00;
 
     m_reading   = true;
     m_status |= STATUS_DRQ;
@@ -638,7 +649,6 @@ static WD_FDC::CommandInfo g_2793commands[] = {
 
 WD_FDC::CommandInfo * WD_FD1793::GetCommand(uint8_t cmd)
 {
-  cout << "WD_FD1793 cmd : " << HEXFORMAT0x2(cmd) << endl;
   WD_FDC::CommandInfo * info = WD_FDC::GetCommand(cmd, g_2793commands, sizeof(g_2793commands)/sizeof(g_2793commands[0]));
   if (info != nullptr)
     return info;

@@ -95,8 +95,8 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   }
 
   m_fd = fd;
-  m_trackCount = dmk->m_trackCount;
   off_t offs = 0x10;
+  m_trackCount = dmk->m_trackCount;
 
   for (int trackNum = 0; trackNum < m_trackCount; ++trackNum) {
     uint16_t sectorOffsets[64];
@@ -109,6 +109,7 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       return false;
     }
     else {
+      m_minSector = 0;
       for (int sectorNumber = 0; sectorNumber < 64; ++sectorNumber) {
         if (sectorOffsets[sectorNumber] == 0)
           break;
@@ -136,12 +137,14 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
                 << "dam=" << HEXFORMAT0x2(sector.m_dam) << ","
                 << "size=" << sizeof(sector) << endl; 
 
-          m_trackCount = std::max(m_trackCount, (int)trackNum);
-          m_sectorMap.emplace(HASH_STS(0, trackNum, sector.m_sector+1), 
+          m_minSector   = std::min<int>(sector.m_sector, m_minSector);
+          m_maxSector   = std::max<int>(sector.m_sector, m_maxSector);
+          m_minTrack    = std::min<int>(trackNum,        m_minTrack);
+
+          m_sectorMap.emplace(HASH_STS(0, trackNum, sector.m_sector), 
               SectorInfo(offs + sectorOffset + idamToDataOffs, sectorSize, sector.m_dam, density));
         }
 
-        m_sectorCount = std::max((int)sector.m_sector+1, m_sectorCount );
         m_sectorSize  = std::max((int)sectorSize, m_sectorSize);
         m_density     = std::max((int)density,    m_density);
         m_sideCount   = std::max((int)(side+1),   m_sideCount);

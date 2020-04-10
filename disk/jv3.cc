@@ -30,9 +30,10 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   if (m_verbose)
     cout << "jv3 - reading data" << endl;
 
-  m_trackCount = 0;
   uint8_t * ptr = jv3Header;
   off_t offs = JV3_SECTOR_COUNT*3 + 1;
+
+  m_minTrack = 1;
 
   for (int i = 0; i < JV3_SECTOR_COUNT; ++i) {
     uint8_t track  = ptr[0];
@@ -101,16 +102,18 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
         if (m_verbose)
           cout << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
                 << "track=" << (int)track << "," 
-                << "sector=" << (int) sector << "," 
+                << "sector=" << (int)sector << "," 
                 << "dam=" << HEXFORMAT0x2(dam) << endl; 
         m_sectorMap.emplace(HASH_STS(0, track, sector), SectorInfo(offs, sectorSize, dam, density));
       }
 
-      m_trackCount  = std::max((int)track+1,      m_trackCount);
-      m_sectorCount = std::max((int)sector,     m_sectorCount);
+      m_minSector   = std::min<int>(sector,    m_minSector);
+      m_maxSector   = std::max<int>(sector,    m_maxSector);
+      m_trackCount  = std::max<int>(track+1,   m_trackCount);
+      
       m_sectorSize  = std::max((int)sectorSize, m_sectorSize);
-      m_density     = std::max((int)density,    m_density);
       m_sideCount   = std::max((int)(side+1),   m_sideCount);
+      m_density     = std::max((int)density,    m_density);
     }
 
     offs += sectorSize;
