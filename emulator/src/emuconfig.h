@@ -16,6 +16,7 @@ class Font;
 
 #define INFO_INSERT(name)                   g_configInfo_##name, g_configInfo_##name##_size
 
+#define INFO_PARENT(cls)                    { Config::Type::eParent,      { .m_parent={ INFO_INSERT(cls) }}}
 #define INFO_CPU(speed, addr)               { Config::Type::eCPU,         { .m_cpu={ speed, addr } } }
 #define INFO_ROM(addr, data)                { Config::Type::eROM,         { .m_rom={ addr, addr + sizeof(data) - 1, data } } }
 #define INFO_ROM_DATA(start, end, data)     { Config::Type::eROM,         { .m_rom={ start, end, data } } }
@@ -63,7 +64,8 @@ enum class Type
   eIOPortRW,
   eMemoryMappedScreen,
   eTerminal,
-  eMonitor
+  eMonitor,
+  eParent
 };
 
 struct Font
@@ -152,6 +154,13 @@ struct Terminal
   const char * m_fontName;
 };
 
+struct Block;
+
+struct Parent {
+  const Block * m_blocks;
+  const size_t  m_blockCount;  
+};
+
 /////////////////////////////////////////////
 //
 //  master config structure
@@ -169,6 +178,7 @@ struct Block {
     MemoryMappedScreen  m_memoryMappedScreen;
     Monitor             m_monitor;
     Terminal            m_terminal;
+    Parent              m_parent;
   } m_info;
 };
 

@@ -13,12 +13,6 @@
 
 using namespace std;
 
-#define   MICROBEE_ROM_START_ADDR     0x8000
-#define   MICROBEE_ROM_END_ADDR       0xbfff
-
-#define   MICROBEE_RAM_START_ADDR     0x0000
-#define   MICROBEE_RAM_END_ADDR       0x7fff
-
 #define   MICROBEE_VIDEO_START_ADDR   0xf000
 #define   MICROBEE_VIDEO_END_ADDR     0xf7ff
 
@@ -32,8 +26,6 @@ using namespace std;
 
 #define   MICROBEE_PCG_START_ADDR     0xf800
 #define   MICROBEE_PCG_END_ADDR       0xffff
-
-extern unsigned char g_microbeeBasic5_22e_ROM[16384];
 
 extern EmulatorInfo g_microbeeEmulatorInfo;
 
@@ -143,8 +135,8 @@ void Microbee_Emulator::Instantiate()
   MemoryMappedScreen::AddType<MicrobeeVideo>("microbee");
 }
 
-Microbee_Emulator::Microbee_Emulator()
-  : Z80Emulator(&g_microbeeEmulatorInfo)
+Microbee_Emulator::Microbee_Emulator(const EmulatorInfo * info)
+  : Z80Emulator(info)
 {
   // don't do anything in constructor as this is created to instantiate devices using Instantiate
   // do it Open instead
@@ -312,14 +304,81 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+extern EmulatorInfo g_microbee32EmulatorInfo;
+
+Microbee32_Emulator::Microbee32_Emulator()
+  : Microbee_Emulator(&g_microbee32EmulatorInfo)
+{}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+extern EmulatorInfo g_microbee56EmulatorInfo;
+
+Microbee56_Emulator::Microbee56_Emulator()
+  : Microbee_Emulator(&g_microbee56EmulatorInfo)
+{
+}
+
+bool Microbee56_Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
+{
+  return m_fdc->MountDrive(driveNum, drive, readOnly);
+}
+
+bool Microbee56_Emulator::Open(const Options & options)
+{
+  if (!Microbee_Emulator::Open(options))
+    return false;
+
+  m_fdc.reset(new WD_FD1793(options.m_fdcDebug));
+  m_fdc->SetInterruptHandler(std::bind(&Microbee56_Emulator::FDCInterrupt, this));
+
+  return true;
+}
+
+void Microbee56_Emulator::FDCInterrupt()
+{
+  //if (m_options.m_fdcDebug)
+    cerr << "FDC: interrupt" << endl;
+  m_fdcPending = true;
+}
+
+uint8_t Microbee56_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
+{
+  switch (info.m_id) {
+    case 0x10:
+      return m_fdc->Read(port & 0x3);
+    case 0x11:
+      {
+        uint8_t val = m_fdcPending ? 0x80 : 0x00;
+        m_fdcPending = false;
+        return val;
+      }
+  }
+  return Microbee_Emulator::ReadIOPort(info, port);
+}
+
+void Microbee56_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
+{
+  switch (info.m_id) {
+    case 0x10:
+      return m_fdc->Write(port & 0x3, data);
+    case 0x11:
+    {
+      m_drive   = data & 0x03;
+      m_fdc->SelectDrive(m_drive);
+      m_side    = (data & 0x04) != 0;
+      m_fdc->SelectSide(m_side);
+      m_density = (data & 0x08) != 0;
+    }
+    return;
+  }
+  return Microbee_Emulator::WriteIOPort(info, port, data);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
 INFO_START(microbee)
 {
-  INFO_CPU(4, MICROBEE_ROM_START_ADDR),
-
-  INFO_ROM(MICROBEE_ROM_START_ADDR, g_microbeeBasic5_22e_ROM),
-
-  INFO_MAIN_RAM(MICROBEE_RAM_START_ADDR, 32, 16, MICROBEE_ROM_START_ADDR / 1024),
-
   INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
   INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
   INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
@@ -339,14 +398,64 @@ INFO_START(microbee)
 }
 INFO_END(microbee);
 
-EmulatorInfo g_microbeeEmulatorInfo =
+///////////////////////////////////////////////////////////////////////////
+
+#define   MICROBEE_BASIC_ROM_START_ADDR     0x8000
+#define   MICROBEE_BASIC_ROM_END_ADDR       0xbfff
+
+#define   MICROBEE_BASIC_RAM_START_ADDR     0x0000
+#define   MICROBEE_BASIC_RAM_END_ADDR       0x7fff
+
+extern unsigned char g_microbeeBasic5_22e_ROM[16384];
+
+INFO_START(microbee32)
 {
-  "mbee",                    // command line option
+  INFO_CPU(4, MICROBEE_BASIC_ROM_START_ADDR),
+  INFO_PARENT(microbee),
+  INFO_ROM(MICROBEE_BASIC_ROM_START_ADDR, g_microbeeBasic5_22e_ROM),
+  INFO_MAIN_RAM(MICROBEE_BASIC_RAM_START_ADDR, 32, 16, MICROBEE_BASIC_ROM_START_ADDR / 1024),
+}
+INFO_END(microbee32);
+
+
+EmulatorInfo g_microbee32EmulatorInfo =
+{
+  "mbee32",                  // command line option
   "Microbee 32k",            // short name
   "Microbee 32k",            // long name
 
-  INFO_INSERT(microbee)
+  INFO_INSERT(microbee32)
+};
+
+///////////////////////////////////////////////////////////////////////////
+
+#define   MICROBEE_DISK_ROM_START_ADDR     0xe000
+#define   MICROBEE_DISK_ROM_END_ADDR       0xefff
+
+#define   MICROBEE_DISK_RAM_START_ADDR     0x0000
+#define   MICROBEE_DISK_RAM_END_ADDR       0xdfff
+
+extern unsigned char g_disk56_ROM[4096];
+
+INFO_START(microbee56)
+{
+  INFO_CPU(4, MICROBEE_DISK_ROM_START_ADDR),
+  INFO_PARENT(microbee),
+  INFO_ROM(MICROBEE_DISK_ROM_START_ADDR, g_disk56_ROM),
+  INFO_MAIN_RAM(MICROBEE_DISK_RAM_START_ADDR, 56, 56, MICROBEE_DISK_ROM_START_ADDR / 1024),
+
+  INFO_IO_PORT_RW(0x44, 0x47, 0x10),      // FDC
+  INFO_IO_PORT_RW(0x48, 0x48, 0x11)      // drive select
+}
+INFO_END(microbee56);
+
+EmulatorInfo g_microbee56EmulatorInfo =
+{
+  "mbee56",                  // command line option
+  "Microbee 56k",            // short name
+  "Microbee 56k",            // long name
+
+  INFO_INSERT(microbee56)
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-

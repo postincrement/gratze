@@ -44,7 +44,6 @@ AC_SUBST(LDFLAGS)
 #
 # add header files
 #
-AC_CONFIG_HEADERS([src/config.h])
 
 ##########################################################
 #

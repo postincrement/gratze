@@ -80,8 +80,9 @@ static WD_FDC::CommandInfo g_commands[] = {
 
 ///////////////////////////////////////////////////////////
 
-WD_FDC::WD_FDC(bool debug)
-  : m_debug(debug)
+WD_FDC::WD_FDC(unsigned int mode, bool debug)
+  : m_mode(mode)
+  , m_debug(debug)
 {
   m_diskRevTime_ms = (1000.0 / DISK_SPEED_5_INCH_RPM);
   Reset();
@@ -97,6 +98,7 @@ void WD_FDC::Reset()
 
   m_status      = STATUS_BUSY;  // IMPORTANT: without this, the L2 ROM won't detect the FDC
   m_sector      = 1;
+  m_side        = 0;
   m_track       = m_realTrack;
   m_data        = 0;
 
@@ -140,6 +142,12 @@ bool WD_FDC::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
   return m_drives[driveNum]->Mount(readOnly);
 }
 
+bool WD_FDC::SelectSide(int side)
+{
+  m_side = side;
+  return true;
+}
+
 bool WD_FDC::SelectDrive(int driveNum)
 {
   int oldDrive = driveNum;
@@ -175,16 +183,20 @@ bool WD_FDC::IsCurrentDriveAvailable() const
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd)
+WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd, WD_FDC::CommandInfo * info, size_t count)
 {
-  WD_FDC::CommandInfo * info = g_commands;
-  for (int i = 0; i < (sizeof(g_commands)/sizeof(g_commands[0])); ++i) {
+  for (int i = 0; i < count; ++i) {
     if ((cmd & info->m_andMask) == (info->m_cmd))
       return info;
     info++;
  }
 
  return nullptr;
+}
+
+WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd)
+{
+  return GetCommand(cmd, g_commands, sizeof(g_commands)/sizeof(g_commands[0]));
 }
 
 
@@ -432,7 +444,7 @@ int WD_FDC::ReadCommand(uint8_t cmd)
   }
   else {
     VirtualDrive::SectorInfo info;
-    int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
+    int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_side, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
       if (m_debug)
         cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
@@ -593,9 +605,43 @@ uint8_t WD_FDC::Read(uint16_t addr)
 
 /////////////////////////////////////////////////////////////
 
-WD_FD1771::WD_FD1771(bool debug)
-  : WD_FDC(debug)
+int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
 {
+  Emulator::GetInstance()->DisplayTraceInfo();
+  LoadHead(cmd & COMMAND_HEAD_LOAD_II);
+
+  if (!IsCurrentDriveAvailable()) {
+    m_status = STATUS_SEEKERR;
+    m_setInterrupt = true;
+  }
+  else {
+    //if (m_debug)
+      cerr << "FDC: read addr, track=" << dec << (int)m_track << endl;
+    m_bufferPtr = 0;
+    m_bufferLen = 6;
+    m_buffer[0] = m_track+1;
+    m_buffer[1] = m_side;
+    m_buffer[2] = 1;
+    m_buffer[3] = 2;
+    m_buffer[4] = 0x00;
+    m_buffer[5] = 0x00;
+
+    m_reading   = true;
+    m_status |= STATUS_DRQ;
+  }
+  return 0;
 }
 
-/////////////////////////////////////////////////////////////
+static WD_FDC::CommandInfo g_2793commands[] = {
+  { 0xfb, 0xc0,  "readaddr",  3, &WD_FDC::ReadAddrCommand_1793 }
+};
+
+WD_FDC::CommandInfo * WD_FD1793::GetCommand(uint8_t cmd)
+{
+  cout << "WD_FD1793 cmd : " << HEXFORMAT0x2(cmd) << endl;
+  WD_FDC::CommandInfo * info = WD_FDC::GetCommand(cmd, g_2793commands, sizeof(g_2793commands)/sizeof(g_2793commands[0]));
+  if (info != nullptr)
+    return info;
+  return WD_FDC::GetCommand(cmd);  
+}
+

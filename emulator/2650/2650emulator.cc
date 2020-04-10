@@ -112,6 +112,11 @@ unsigned S2650Emulator::GetPC() const
   return m_cpu->registers.ap;
 }
 
+void S2650Emulator::SetPC(unsigned v)
+{
+  m_cpu->registers.ap = v;
+}
+
 void S2650Emulator::SetTrace(bool v)
 {
 }

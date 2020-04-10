@@ -213,7 +213,7 @@ int CommandLineArgs::Parse(const Option * options, int argc, char *argv[])
       else {
         if (++optIndex >= argc) {
           cerr << "error: command line ends without argument for '" << argv[optIndex] << "'" << endl;
-          return false;
+          return -1;
         }
         if (argv[optIndex][0] == '-') {
           cerr << "error: argument for '" << argv[optIndex] << "' looks like another option" << endl;

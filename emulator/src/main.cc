@@ -49,7 +49,8 @@ void Init()
   AddEmulator<DG680_Emulator>();
   AddEmulator<ETI685>();
   AddEmulator<Super80_Emulator>();
-  AddEmulator<Microbee_Emulator>();
+  AddEmulator<Microbee32_Emulator>();
+  AddEmulator<Microbee56_Emulator>();
   AddEmulator<Sorcerer_Emulator>();
   AddEmulator<EA78UP5_PIPBUG_110>();
   AddEmulator<EA78UP5_PIPBUG_300>();
@@ -66,30 +67,32 @@ void Init()
 }
 
 static CommandLineArgs::Option g_commandLineOptions[] = {
-  { 'h', "help",        ' ', "display this help message" },
-  { 'r', "rom",         's', "name of ROM"    },
-  { ' ', "ram",         'u', "RAM size in k" },
-  { ' ', "drive*",      's', "name of file for virtual disk drive" },
-  { 'b', "breakpoint",  'x', "breakpoint address"  },
-  { 'f', "font",        's', "use TTF font"},
-  { 'F', "fontSize",    'u', "TTF font size" },
-  { 's', "scale",       'u', "Screen scale factor" },
-  { ' ', "diskette",    's', "test virtual drive file"},
-  { ' ', "cassette",    's', "test virtual cassette file"},
-  { 't', "type",        's', "look for model" },
-  { ' ', "readmemory",  ' ', "turn on memory read debugging" },
-  { ' ', "writememory", ' ', "turn on memory write debugging" },
-  { ' ', "readvideo",   ' ', "turn on video read debugging" },
-  { ' ', "writevideo",  ' ', "turn on memory write debugging" },
-  { ' ', "trace",       'u', "set length of backtrace queue" },
-  { ' ', "ei",          'b', "enable/disable Model 1 Expansion Interface" },
-  { 'v', "verbose",     '+', "enable verbose logging" },
-  { ' ', "videotest",   ' ', "display video test before starting" },
-  { ' ', "displaySpeed",  ' ', "display CPU speed on console"},
-  { ' ', "keyboardDebug", ' ', "display keyboard debug on console" },
-  { ' ', "fdcDebug",      ' ', "display FDC debug on console" },
-  { ' ', "turbo",         ' ', "do not throttle CPU speed"},
-  { ' ', "list",          ' ', "list all emulations"},
+  { 'h', "help",            ' ', "display this help message" },
+  { 'r', "rom",             's', "name of ROM"    },
+  { ' ', "ram",             'u', "RAM size in k" },
+  { ' ', "drive*",          's', "name of file for virtual disk drive" },
+  { 'b', "breakpoint",      'x', "breakpoint address"  },
+  { 'f', "font",            's', "use TTF font"},
+  { 'F', "fontSize",        'u', "TTF font size" },
+  { 's', "scale",           'u', "Screen scale factor" },
+  { ' ', "diskette",        's', "test virtual drive file"},
+  { ' ', "cassette",        's', "test virtual cassette file"},
+  { 't', "type",            's', "look for model" },
+  { ' ', "readmemdebug",    ' ', "turn on memory read debugging" },
+  { ' ', "writememdebug",   ' ', "turn on memory write debugging" },
+  { ' ', "readvideodebug",  ' ', "turn on video read debugging" },
+  { ' ', "writevideodebug", ' ', "turn on memory write debugging" },
+  { ' ', "readiodebug",     ' ', "turn on I/O read debugging" },
+  { ' ', "writeiodebug",    ' ', "turn on I/O write debugging" },
+  { ' ', "trace",           'u', "set length of backtrace queue" },
+  { ' ', "ei",              'b', "enable/disable Model 1 Expansion Interface" },
+  { 'v', "verbose",         '+', "enable verbose logging" },
+  { ' ', "videotest",       ' ', "display video test before starting" },
+  { ' ', "displaySpeed",    ' ', "display CPU speed on console"},
+  { ' ', "keyboardDebug",   ' ', "display keyboard debug on console" },
+  { ' ', "fdcDebug",        ' ', "display FDC debug on console" },
+  { ' ', "turbo",           ' ', "do not throttle CPU speed"},
+  { ' ', "list",            ' ', "list all emulations"},
   { 0, 0, 0, 0}
 };
 
@@ -100,8 +103,9 @@ int main(int argc, char *argv[])
 
   Options options;
 
-  if (!options.m_args.Parse(g_commandLineOptions, argc, argv)) {
-    return -1;
+  int optIndex = options.m_args.Parse(g_commandLineOptions, argc, argv);
+  if (optIndex < 0) {
+    exit(-1);
   }
 
   cout << options.m_args.DumpValues();
@@ -160,17 +164,22 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--ram",           options.m_ramSize_k);
   options.m_args.GetValue("-s",              options.m_videoScale);
   options.m_args.GetValue("-v",              options.m_verbose);
-  options.m_args.GetValue("--readmemory",    options.m_readMemory);
-  options.m_args.GetValue("--writememory",   options.m_writeMemory);
+  options.m_args.GetValue("--readiodebug",   options.m_readIO);
+  options.m_args.GetValue("--writeiodebug",  options.m_writeIO);
+  options.m_args.GetValue("--readmemdebug",  options.m_readMemory);
+  options.m_args.GetValue("--writememdebug", options.m_writeMemory);
   options.m_args.GetValue("--readvideo",     options.m_readVideo);
   options.m_args.GetValue("--writevideo",    options.m_writeVideo);
   options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
   options.m_args.GetValue("--fdcDebug",      options.m_fdcDebug);
   options.m_args.GetValue("--turbo",         options.m_turbo);
+  options.m_args.GetValue("--displaySpeed",  options.m_displayCPUSpeed);
 
   options.m_args.GetValue("-f",      options.m_font);
   options.m_args.GetValue("-F",      options.m_fontSize);
   options.m_args.GetValue("--trace", options.m_traceLength);
+  if (optIndex < argc)
+    options.m_arg = argv[optIndex];
 
   cout << "info: backtrace queue is " << options.m_traceLength << endl;
 

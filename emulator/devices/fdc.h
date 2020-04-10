@@ -16,7 +16,14 @@
 class WD_FDC
 {
   public:
-    WD_FDC(bool debug);
+    enum {
+      eWD1771 = 1,
+      eWD1791 = 2,
+      eWD1793 = 4,
+      eWD2793 = 8
+    };
+
+    WD_FDC(unsigned int mode, bool debug);
 
     bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
 
@@ -24,6 +31,7 @@ class WD_FDC
     uint8_t Read(uint16_t addr);
 
     bool SelectDrive(int drive);
+    bool SelectSide(int side);
 
     void SetInterruptHandler(std::function<void ()> handler);
     void SetDriveChangedHandler(std::function<void (int, bool)> handler);
@@ -59,6 +67,7 @@ class WD_FDC
 
     // type III commands
     int WriteTrackCommand(uint8_t cmd);
+    int ReadAddrCommand_1793(uint8_t cmd);
 
     // type IV commands
     int ForceIntCommand(uint8_t cmd);
@@ -66,9 +75,12 @@ class WD_FDC
     // undocumented commands
     int PercomCommand(uint8_t cmd);
 
+    void UpdateInterrupt(bool interruptOn);
+
   protected:
     virtual CommandInfo * GetCommand(uint8_t cmd);
-    void UpdateInterrupt(bool interruptOn);
+    virtual CommandInfo * GetCommand(uint8_t cmd, WD_FDC::CommandInfo * info, size_t count);
+
     void WriteCmdReg(int8_t command);
     uint8_t ReadStatusReg();
     uint8_t ReadDataReg();
@@ -77,6 +89,8 @@ class WD_FDC
     void RestartHeadLoadTimer();
     void LoadHead(bool load);
     void SetTypeIStatus();
+
+    unsigned int m_mode = 0;
 
     bool m_debug;
     int m_state;
@@ -97,6 +111,7 @@ class WD_FDC
     // copies of registers
     uint8_t m_status;
     uint8_t m_track;
+    bool m_side;
     uint8_t m_sector;
     uint8_t m_data;
 
@@ -116,8 +131,35 @@ class WD_FDC
 class WD_FD1771 : public WD_FDC
 {
   public:
-    WD_FD1771(bool debug);
+    WD_FD1771(bool debug)
+      : WD_FDC(eWD1771, debug)
+    {}
 };
 
+class WD_FD1791 : public WD_FDC
+{
+  public:
+    WD_FD1791(bool debug)
+      : WD_FDC(eWD1791, debug)
+    {}
+};
+
+class WD_FD17x1 : public WD_FDC
+{
+  public:
+    WD_FD17x1(bool debug)
+      : WD_FDC(eWD1771 | eWD1791, debug)
+    {}
+};
+
+class WD_FD1793 : public WD_FDC
+{
+  public:
+    WD_FD1793(bool debug)
+      : WD_FDC(eWD1793, debug)
+    {}
+
+    virtual CommandInfo * GetCommand(uint8_t cmd);
+};
 
 #endif // FDC_H_

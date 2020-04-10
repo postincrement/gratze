@@ -15,6 +15,8 @@ AC_CONFIG_SRCDIR([emulator/src/emulator.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_CONFIG_HEADERS([common/config.h])
+
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_SUBDIRS([disk emulator])
 AC_OUTPUT

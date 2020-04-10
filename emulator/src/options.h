@@ -10,6 +10,9 @@ struct Options
 {
   CommandLineArgs m_args;
 
+  // first argument after options
+  std::string m_arg;
+
   // override default type
   std::string m_typeName;
 
@@ -34,6 +37,8 @@ struct Options
   bool m_writeMemory = false;
   bool m_readVideo = false;
   bool m_writeVideo = false;
+  bool m_readIO = false;
+  bool m_writeIO = false;
   bool m_fdcDebug = false;
   bool m_keyboardDebug = false;
 
@@ -51,6 +56,9 @@ struct Options
 
   // maintain backtrace queue
   unsigned m_traceLength = 0;
+
+  // display the CPU speed
+  bool m_displayCPUSpeed = false;
 };
 
 #endif // OPTIONS_H_

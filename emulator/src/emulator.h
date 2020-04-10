@@ -183,6 +183,7 @@ class Emulator
     virtual void Interrupt(uint16_t vector = 0) = 0;
     virtual void Reset(int addr = -1);
     virtual unsigned GetPC() const = 0;
+    virtual void SetPC(unsigned) = 0;
 
     virtual void DumpStack(int count);
     virtual void DumpStack(const std::vector<uint16_t> & stack);
@@ -209,6 +210,7 @@ class Emulator
     virtual std::string Disassemble(std::vector<uint8_t> & code) const;
 
     void CompileConfigBlocks();
+    void CompileConfigBlocks(const Config::Block * blocks, size_t blockCount);
 
     // memory functions
     virtual uint8_t ReadMemory(uint16_t) const;
@@ -239,7 +241,7 @@ class Emulator
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data);
 
     virtual uint8_t ReadIOPortLog(uint16_t addr) const;
-    virtual void WriteIoPortLog(uint16_t addr, uint8_t val) const;
+    virtual void WriteIOPortLog(uint16_t addr, uint8_t val) const;
 
     // keyboard functions
     virtual void OnKeyDown(const SDL_Keysym & keysym);
@@ -262,10 +264,16 @@ class Emulator
     int AddRealTimePollDef(double seconds, PollHandler handler);
     int AddCPUTimePollDef(uint64_t cycles, PollHandler handler);
 
-    void LoadGRZ();
+    void LoadFile();
+    void LoadFile(const std::string & path);
+    bool SaveBlock(unsigned addr, const uint8_t * data, unsigned len);
 
   protected:
     static Emulator * m_instance;
+
+    const Config::Block * GetConfigBlock(Config::Type type, 
+                                         const Config::Block * blocks,
+                                         size_t blockCount) const;
 
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) = 0;
 

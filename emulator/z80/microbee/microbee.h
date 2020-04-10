@@ -11,7 +11,7 @@
 class Microbee_Emulator : public Z80Emulator
 {
   public:
-    Microbee_Emulator();
+    Microbee_Emulator(const EmulatorInfo * info);
 
     void Instantiate() override;
 
@@ -37,5 +37,36 @@ class Microbee_Emulator : public Z80Emulator
     Synertek6545 m_crtc;
     uint16_t m_prevKeyboardCode;
 };
+
+
+class Microbee32_Emulator : public Microbee_Emulator
+{
+  public:
+    Microbee32_Emulator();
+};
+
+
+class Microbee56_Emulator : public Microbee_Emulator
+{
+  public:
+    Microbee56_Emulator();
+
+    bool Open(const Options & options);
+
+    bool MountDrive(int driveNum, VirtualDrive *drive, bool readOnly);
+
+    virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
+    virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
+
+    void FDCInterrupt();
+
+  protected:  
+    mutable std::unique_ptr<WD_FDC> m_fdc;
+    int m_drive    = 0x00;
+    bool m_side    = false;
+    bool m_density = false;
+    bool m_fdcPending = false;
+};
+
 
 #endif // DG680_H_

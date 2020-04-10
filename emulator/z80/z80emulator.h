@@ -29,6 +29,7 @@ class Z80Emulator : public Emulator
     virtual bool Start(int addr = -1) override;
     virtual int Exec(int cycles)  override;
     virtual unsigned GetPC() const override;
+    virtual void SetPC(unsigned) override;
 
     virtual void NMI() override;
     virtual void Interrupt(uint16_t vector = 0) override;

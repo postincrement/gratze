@@ -8,13 +8,14 @@
 #include <math.h>
 
 #include "common/misc.h"
+#include "common/binfile.h"
 #include "src/config.h"
 #include "src/emulator.h"
 #include "devices/fdc.h"
 #include "video/virtual_screen.h"
 #include "src/mainwindow.h"
 #include "terminal/terminal.h"
-#include "src/grz.h"
+#include "common/grz.h"
 
 extern "C" {
 #include "nfd.h"
@@ -25,7 +26,7 @@ using namespace std;
 #define TRACE_SYM   SDLK_F2
 #define COLOUR_SYM  SDLK_F9
 #define DUMP_SYM    SDLK_F10
-#define GRZ_SYM     SDLK_F11
+#define LOAD_SYM    SDLK_F11
 #define REBOOT_SYM  SDLK_F12
 
 
@@ -116,8 +117,8 @@ void Emulator::CheckKeyboard()
           else if (event.key.keysym.sym == DUMP_SYM) {
             MemoryDump();
           }
-          else if (event.key.keysym.sym == GRZ_SYM) {
-            LoadGRZ();
+          else if (event.key.keysym.sym == LOAD_SYM) {
+            LoadFile();
           }
           else if (event.key.keysym.sym == REBOOT_SYM) {
             Reset();
@@ -296,12 +297,25 @@ void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 
 const Config::Block * Emulator::GetConfigBlock(Config::Type type) const
 {
-  for (int p = 0; p < m_info->m_blockCount; ++p) {
-    const Config::Block & block = m_info->m_blocks[p];
+  return GetConfigBlock(type, m_info->m_blocks, m_info->m_blockCount);
+}
+
+const Config::Block * Emulator::GetConfigBlock(Config::Type type, 
+                                              const Config::Block * blocks,
+                                              size_t blockCount) const
+{
+  for (int p = 0; p < blockCount; ++p) {
+    const Config::Block & block = blocks[p];
     if (block.m_type == Config::Type::eEnd)
       break;
     if (block.m_type == type)
       return &block;
+    if (block.m_type == Config::Type::eParent) {
+      const Config::Parent & parent = block.m_info.m_parent;
+      const Config::Block * ptr = GetConfigBlock(type, parent.m_blocks, parent.m_blockCount);
+      if (ptr != nullptr)
+        return ptr;
+    }
   }
   return nullptr;
 }
@@ -337,14 +351,38 @@ void Emulator::CompileConfigBlocks()
     cout << "debug: compiling config blocks" << endl;
   }
 
-  for (int p = 0; p < m_info->m_blockCount; ++p) {
-    const Config::Block & block = m_info->m_blocks[p];
+  CompileConfigBlocks(m_info->m_blocks, m_info->m_blockCount);
+
+  for (auto & r : m_writeMemoryBlocks) {
+    cout << "WRITE " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; // << " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
+  }
+  for (auto & r : m_readMemoryBlocks) {
+    cout << "READ  " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
+  }
+
+  for (auto & r : m_writeIOPortBlocks) {
+    cout << "WRITE IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  << " " << (void *)r.m_function << endl;
+  }
+  for (auto & r : m_readIOPortBlocks) {
+    cout << "READ IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << endl;
+  }
+}
+
+void Emulator::CompileConfigBlocks(const Config::Block * blocks, size_t blockCount)
+{
+  for (int p = 0; p < blockCount; ++p) {
+    const Config::Block & block = blocks[p];
 
     if (block.m_type == Config::Type::eEnd)
       break;
 
+    if (block.m_type == Config::Type::eParent) {
+      const Config::Parent & parent = block.m_info.m_parent;
+      CompileConfigBlocks(parent.m_blocks, parent.m_blockCount);
+    }
+
     // add RAM
-    if ((block.m_type == Config::Type::eRAM) || (block.m_type == Config::Type::eMainRAM)) {
+    else if ((block.m_type == Config::Type::eRAM) || (block.m_type == Config::Type::eMainRAM)) {
       const Config::RAM & info = block.m_info.m_ram;
       if (info.m_startAddr > info.m_endAddr) {
         cerr << "error: RAM block has end address" << HEXFORMAT0x4(info.m_endAddr) << " < start address " << HEXFORMAT0x4(info.m_startAddr) << endl;
@@ -516,20 +554,6 @@ void Emulator::CompileConfigBlocks()
       m_writeIOPortBlocks.push_back(writeInfo);
     }
   }
-
-  for (auto & r : m_writeMemoryBlocks) {
-    cout << "WRITE " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; // << " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
-  }
-  for (auto & r : m_readMemoryBlocks) {
-    cout << "READ  " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
-  }
-
-  for (auto & r : m_writeIOPortBlocks) {
-    cout << "WRITE IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  << " " << (void *)r.m_function << endl;
-  }
-  for (auto & r : m_readIOPortBlocks) {
-    cout << "READ IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << endl;
-  }
 }
 
 uint8_t Emulator::ReadMemory(uint16_t addr) const
@@ -645,6 +669,8 @@ void Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uin
 
 void Emulator::WritePort(register uint16_t port, register uint8_t data)
 {
+  if (m_options.m_writeIO) 
+    WriteIOPortLog(port, data);
   uint8_t shortPort = port & 0xff;
   for (auto & r : m_writeIOPortBlocks) {
     if (shortPort < r.m_startPort)
@@ -656,11 +682,13 @@ void Emulator::WritePort(register uint16_t port, register uint8_t data)
       return;
     }
   }
-  WriteIoPortLog(port, data);
+  WriteIOPortLog(port, data);
 }
 
 uint8_t Emulator::ReadPort(register uint16_t port)
 {
+  if (m_options.m_writeIO) 
+    ReadIOPortLog(port);
   uint8_t shortPort = port & 0xff;
   for (auto & r : m_readIOPortBlocks) {
     if (shortPort < r.m_startPort)
@@ -701,7 +729,7 @@ uint8_t Emulator::ReadIOPortLog(uint16_t addr) const
   return 0x00;
 }
 
-void Emulator::WriteIoPortLog(uint16_t addr, uint8_t val) const
+void Emulator::WriteIOPortLog(uint16_t addr, uint8_t val) const
 {
   cerr << "WRITE IO PORT " << HEXFORMAT0x2(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
@@ -897,8 +925,6 @@ int Emulator::Run(const Options & options)
   m_cycleCounter = 0;
   double now = GET_NOW_AS_DOUBLE();
 
-  cout << "now = " << FIXEDFORMAT(3, now) << endl;
-
   // initialise real time pollers
   for (auto & r : m_pollers.m_list) {
     PollDef & def = r.second;
@@ -912,8 +938,10 @@ int Emulator::Run(const Options & options)
     }
   }
 
-  bool displayCPUSpeed = false;
-  options.m_args.GetValue("--displaySpeed", displayCPUSpeed);
+  // load a file if specified
+  if (!m_options.m_arg.empty()) {
+    LoadFile(m_options.m_arg);
+  }
 
   // run emulator
   auto lastPoll  = std::chrono::system_clock::now();
@@ -929,13 +957,11 @@ int Emulator::Run(const Options & options)
       PollDef & def = r.second;
       if (def.m_pollIsTime) {
         if (now >= def.m_nextTime) {
-//          cout << "info: clocks = " << m_cycleCounter << ", clock interval = " << r.m_clockInterval << endl;
           def.Execute(now - def.m_lastTime, m_cycleCounter - def.m_lastClock);
           def.m_lastTime  = now;
           def.m_lastClock = m_cycleCounter;
           def.m_nextTime  = def.m_nextTime + def.m_timeInterval;
         }
-//        cout << "real time interval = " << r.m_timeInterval << endl;
         earliestNextRealTime_s = std::min<double>(earliestNextRealTime_s, def.m_nextTime);
       }
       else if (!def.m_pollIsTime) {
@@ -959,7 +985,6 @@ int Emulator::Run(const Options & options)
 
     int remaining = Exec(cyclesToDo);
     int cyclesDone = cyclesToDo - remaining;
-    //cout << "time to do " << timeToDo_s << ", cycles to do - " << cyclesToDo << ", cycles done = " << cyclesDone << endl;
     m_cycleCounter += cyclesDone;
   }
 }
@@ -979,98 +1004,52 @@ void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)
   if (secs > 0) {
     m_actualCPUClock_Hz = 1.0 * clocks / secs;
     //cout << "secs " << secs << ", clocks " << clocks << endl;
-    cout << std::fixed << std::setprecision(3) << (m_actualCPUClock_Hz / 1e+6) << " MHz" << endl;
+    if (m_options.m_displayCPUSpeed)
+      cout << std::fixed << std::setprecision(3) << (m_actualCPUClock_Hz / 1e+6) << " MHz" << endl;
   }
 }
 
-void Emulator::LoadGRZ()
+void Emulator::LoadFile()
 {
-  /*
   nfd_OpenDialogExt extInfo;
   memset(&extInfo, 0, sizeof(extInfo));
-  extInfo.filterList      = "grz";
-  extInfo.title           = "Open GRZ file";
+  extInfo.filterList      = "grz;hex";
+  extInfo.title           = "Open file";
 
   nfdchar_t * path = NULL;
-  if (NFD_OpenDialogExt(&extInfo, &path) == NFD_OKAY) {
-    std::string json;
-    {
-      std::ifstream file(path);
-      if (!file.is_open()) {
-        cout << "cannot open " << path << endl;
-        return;
-      }
-      std::string line;
-      while ( getline(file,line)) {
-        json += line;
-      }
-      file.close();
-    }
-    cout << "json: " << json << endl;
-    {
-      GRZ grz;
-      std::stringstream strm(json);
-      try {
-        cereal::JSONInputArchive ar(strm);
-        grz.load(ar);
-      }
-      catch(const std::exception& e) {
-        cerr << "load failed - " << e.what() << endl;
-        return;
-      }
+  if (NFD_OpenDialogExt(&extInfo, &path) != NFD_OKAY)
+    return;
 
-      std::string dir(path);
+  return LoadFile(path);
+}
 
-      size_t pos = dir.rfind(DIR_SEPERATOR);
-      if (pos != std::string::npos)
-        dir = dir.substr(0, pos+1);
 
-      std::string fn = dir + grz.m_filename;
+void Emulator::LoadFile(const std::string & path)
+{
+  BINFileIdentifier bin;
+  BINFile * file = bin.Open(path, false);
 
-      int fd = ::open(fn.c_str(), O_RDONLY);
-      if (fd < 0) {
-        cerr << "error: cannot open '" << fn << "' - " << strerror(errno) << endl;
-        return;
-      }
+  if (file == nullptr)
+    return;
 
-      // read file
-      off_t len = lseek(fd, 0, SEEK_END);
-      if (len < 0) {
-        cerr << "error: cannot get length of '" << fn << "'" << endl;
-        return;
-      }
+  using namespace std::placeholders;
 
-      // check offset
-      unsigned offset = grz.m_hasOffs ? grz.m_offs : 0;
-      if (grz.m_hasOffs && (len < offset)) {
-        cerr << "error: file too short for offset" << endl;
-        return;
-      }
-
-      // check length
-      signed length = (grz.m_hasLength ? grz.m_length : len) - offset;
-      if ((length < 0) || ((offset + length) > len)) {
-        cerr << "error: file too short for offset + length" << endl;
-        return;
-      }
-
-      // allocate and read data
-      std::vector<int8_t> m_data;
-      m_data.resize(length);
-      lseek(fd, offset, SEEK_SET);
-      ::read(fd, &m_data[0], length);
-      ::close(fd);
-
-      // copy to memory
-      unsigned addr = grz.m_addr;
-      for (unsigned i = 0; i < length; ++i) {
-        WriteMemory(addr++, m_data[i]);
-      }
-
-      cout << "info: loaded " << HEXFORMAT0x4(length) << " bytes to " << HEXFORMAT0x4(grz.m_addr) << endl;
-    }
+  bool loaded = file->Load(std::bind(&Emulator::SaveBlock, this, _1, _2, _3));
+ 
+  unsigned execAddr;
+  if (loaded && file->GetExecAddr(execAddr)) {
+    cerr << "info: setting PC to " << HEXFORMAT0x4(execAddr) << endl;
+    SetPC(execAddr);    
   }
-  */
+
+  delete file;
+ }
+
+bool Emulator::SaveBlock(unsigned addr, const uint8_t * data, unsigned len)
+{
+  for (unsigned i = 0; i < len; ++i) {
+    WriteMemory(addr++, data[i]);
+  }
 }
 
 unsigned Emulator::GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const
@@ -1117,83 +1096,3 @@ void Emulator::DisplayTraceInfo()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-
-  double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
-      if (interval >= 0.001) {
-        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
-        m_speedCycleCounter = 0;
-        m_cpuDelayTimer = std::chrono::system_clock::now();
-      }
-    }
-    }
-    else {
-      for (;;) {
-        Exec(poll_cycles);
-
-    auto now = std::chrono::system_clock::now();
-
-    double interval = std::chrono::duration<double>(now - lastPoll).count();
-    if (interval >= 50e-3) {
-      if (!Poll())
-        break;
-      lastPoll = now;
-    }
-
-    if (displayCPUSpeed) {
-      interval = std::chrono::duration<double>(now - lastSpeed).count();
-      if (interval >= 1) {
-        cout << std::fixed << std::setprecision(3) << (GetActualCPUSpeed_Hz() / 1e+6) << " MHz" << endl;
-        lastSpeed = now;
-      }
-    }
-  }
-
-
-  // full speed
-  if (m_turbo) {
-    int cyclesDone = cycles - ExecZ80(&m_cpu, cycles);
-    m_cycleCounter      += cyclesDone;
-    m_speedCycleCounter += cyclesDone;
-    if (m_speedCycleCounter > 100) {
-      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
-      if (interval >= 0.001) {
-        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
-        m_speedCycleCounter = 0;
-        m_cpuDelayTimer = std::chrono::system_clock::now();
-      }
-    }
-  }
-  else {
-#define INC  4
-    while (cycles > 0) {
-      int cyclesDone = INC - ExecZ80(&m_cpu, INC);
-      cycles              -= cyclesDone;
-      m_cycleCounter      += cyclesDone;
-      m_speedCycleCounter += cyclesDone;
-
-      double interval = std::chrono::duration<double>(std::chrono::system_clock::now() - m_cpuDelayTimer).count();
-
-      if ((m_speedCycleCounter > 100) && (interval >= 0.001)) {
-        m_actualCPUClock_Hz = m_speedCycleCounter / interval;
-        m_speedCycleCounter = 0;
-        m_cpuDelayTimer = std::chrono::system_clock::now();
-
-        m_cpuDelayRepeat = m_cpuDelayRepeat * m_actualCPUClock_Hz / m_targetCPUClock_Hz;
-        if (m_cpuDelayRepeat < 1)
-          m_cpuDelayRepeat = 1;
-        else if (m_cpuDelayRepeat > 600)
-          m_cpuDelayRepeat = 600;
-      }
-
-      for (int i = 0; i < m_cpuDelayRepeat; ++i)
-        memset(m_delayBuffer, 0, sizeof(m_delayBuffer));
-    }
-  }
-  // exiting
-}
-
-#endif
-
-/////////////////////////////////////////////////////////////////////////////////////
