@@ -59,6 +59,8 @@ struct Options
 
   // display the CPU speed
   bool m_displayCPUSpeed = false;
+
+  bool m_logPC = false;
 };
 
 #endif // OPTIONS_H_

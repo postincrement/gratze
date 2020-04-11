@@ -84,7 +84,8 @@ bool TRS80Emulator::Open(const Options & options)
   cout << "info: FDC is " << (m_fdcEnabled ? "en" : "dis") << "abled" << endl;
   if (m_fdcEnabled) {
     m_fdc.reset(new WD_FD1771(options.m_fdcDebug));
-    m_fdc->SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this));
+    using namespace placeholders;
+    m_fdc->SetInterruptHandler(std::bind(&TRS80Emulator::FDCInterrupt, this, _1));
   }
 
   if (!Z80Emulator::Open(options))
@@ -210,7 +211,7 @@ bool TRS80Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-void TRS80Emulator::FDCInterrupt()
+void TRS80Emulator::FDCInterrupt(bool v)
 {
   if (m_options.m_fdcDebug)
     cerr << "FDC: interrupt" << endl;

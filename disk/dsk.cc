@@ -141,7 +141,7 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       else {
         int sectorSizeBytes = trackInfo.m_sectorSize*256;
         int density = 0;
-        cout << "dsk: track " << (int)trackNum << " has sector count " << (int)trackInfo.m_sectorCount << "\n";
+        //cout << "dsk: track " << (int)trackNum << " has sector count " << (int)trackInfo.m_sectorCount << "\n";
 
         m_sideCount   = std::max((int)(side+1),   m_sideCount);
         off_t dataOffs = offs + 0x100;
@@ -158,7 +158,7 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
           m_sectorSize  = std::max(sectorSizeBytes,            m_sectorSize);
           m_density     = std::max((int)density,    m_density);
 
-          cout << "dsk: sector ID " << (int)sectorHeader->m_sectorID << " has offset " << dataOffs << endl;
+          //cout << "dsk: sector ID " << (int)sectorHeader->m_sectorID << " has offset " << dataOffs << endl;
 
           m_sectorMap.emplace(HASH_STS(side, sectorHeader->m_track, sectorHeader->m_sectorID),
               SectorInfo(dataOffs, sectorSizeBytes, dam, density));

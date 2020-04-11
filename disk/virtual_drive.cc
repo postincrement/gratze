@@ -260,9 +260,7 @@ VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int side, int track, int se
 
 int VirtualDriveFile::ReadSector(int track, int side, int sector, SectorInfo & info, uint8_t * data, int len)
 {
-  cout << "drive: get info side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
   auto sectorInfo = GetInfo(side, track, sector);
-
   info = *sectorInfo;
 
   //if (m_verbose)

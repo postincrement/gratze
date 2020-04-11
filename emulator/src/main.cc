@@ -84,6 +84,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "writevideodebug", ' ', "turn on memory write debugging" },
   { ' ', "readiodebug",     ' ', "turn on I/O read debugging" },
   { ' ', "writeiodebug",    ' ', "turn on I/O write debugging" },
+  { ' ', "logpc",           ' ', "turn on logging of PC" },
   { ' ', "trace",           'u', "set length of backtrace queue" },
   { ' ', "ei",              'b', "enable/disable Model 1 Expansion Interface" },
   { 'v', "verbose",         '+', "enable verbose logging" },
@@ -178,6 +179,8 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("-f",      options.m_font);
   options.m_args.GetValue("-F",      options.m_fontSize);
   options.m_args.GetValue("--trace", options.m_traceLength);
+  options.m_args.GetValue("--logpc", options.m_logPC);
+
   if (optIndex < argc)
     options.m_arg = argv[optIndex];
 

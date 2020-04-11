@@ -101,7 +101,7 @@ class TRS80Emulator : public Z80Emulator
     void InitFDC();
     uint8_t ReadFDC(uint16_t addr) const;
     void WriteFDC(uint16_t addr, uint8_t val);
-    void FDCInterrupt();
+    void FDCInterrupt(bool v);
     void RTCInterrupt();
 
     uint8_t ReadInterrupt(uint16_t) const;

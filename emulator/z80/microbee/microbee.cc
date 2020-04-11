@@ -95,6 +95,15 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
     FontChar GetCharAtLoc(int addr) const override;
 
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
+
+    virtual void WriteMemoryAtAddress(int addr, uint8_t ch)  override;
+    virtual uint8_t ReadMemoryAtAddress(int addr) const override;
+
+    void EnableFontROM(bool enable)
+    { m_fontROMEnabled = enable; }
+
+  protected:
+    bool m_fontROMEnabled = false;
 };
 
 
@@ -116,7 +125,6 @@ FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
   return ch;
 }
 
-
 void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
   if (withCursor) {
@@ -127,6 +135,19 @@ void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * rend
   }
 }
 
+void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t ch)
+{
+  if (!m_fontROMEnabled)
+    SingleColourMemoryMappedScreen::WriteMemoryAtAddress(addr, ch);
+}
+
+uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
+{
+  if (!m_fontROMEnabled)
+    return SingleColourMemoryMappedScreen::ReadMemoryAtAddress(addr);
+  else
+    return g_charGen_MotorolaMCM6574.m_data[addr];
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -295,6 +316,7 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
     case 2:
       return m_crtc.Write(port & 1, data);
     case 3:
+      ((MicrobeeVideo *)m_screen.get())->EnableFontROM((data & 1) != 0);
       return;
     case 4:
       return;
@@ -330,27 +352,24 @@ bool Microbee56_Emulator::Open(const Options & options)
     return false;
 
   m_fdc.reset(new WD_FD1793(options.m_fdcDebug));
-  m_fdc->SetInterruptHandler(std::bind(&Microbee56_Emulator::FDCInterrupt, this));
 
   return true;
-}
-
-void Microbee56_Emulator::FDCInterrupt()
-{
-  //if (m_options.m_fdcDebug)
-    cerr << "FDC: interrupt" << endl;
 }
 
 uint8_t Microbee56_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
 {
   switch (info.m_id) {
     case 0x10:
-      //if ((port & 0x03) == 0)
-      //  cerr << "mbee: fdc port 0x44 read" << endl;
-      return m_fdc->Read(port & 0x3);
+      {
+        uint8_t v = m_fdc->Read(port & 0x3);
+        if ((port & 0x03) == 0)
+          cerr << "mbee: fdc port 0x44 = " << HEXFORMAT0x2(v) << endl;
+        return v;
+      }
     case 0x11:
       {
-        uint8_t val = m_fdc->GetDRQ() ? 0x80 : 0x00;
+        uint8_t val = (m_fdc->GetDRQ() || m_fdc->GetInterrupt()) ? 0x80 : 0x00;
+        //m_fdcPending = false;
         //cerr << "mbee: port 0x48 return " << HEXFORMAT0x2(val) << endl;
         return val;
       }

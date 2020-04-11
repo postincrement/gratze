@@ -33,7 +33,7 @@ class WD_FDC
     bool SelectDrive(int drive);
     bool SelectSide(int side);
 
-    void SetInterruptHandler(std::function<void ()> handler);
+    void SetInterruptHandler(std::function<void (bool)> handler);
     void SetDriveChangedHandler(std::function<void (int, bool)> handler);
 
     void Reset();
@@ -77,6 +77,7 @@ class WD_FDC
 
     void UpdateInterrupt(bool interruptOn);
     bool GetDRQ() const;
+    bool GetInterrupt() const;
 
   protected:
     virtual CommandInfo * GetCommand(uint8_t cmd);
@@ -116,7 +117,7 @@ class WD_FDC
     uint8_t m_sector;
     uint8_t m_data;
 
-    std::function<void ()> m_interruptHandler;
+    std::function<void (bool)> m_interruptHandler;
     std::vector<std::unique_ptr<VirtualDrive>> m_drives;
 
     std::function<void (int, bool)> m_driveChangedHandler;

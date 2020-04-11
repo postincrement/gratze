@@ -117,7 +117,7 @@ void WD_FDC::Reset()
     m_driveChangedHandler(m_drive, m_headLoaded);
 }
 
-void WD_FDC::SetInterruptHandler(std::function<void ()> handler)
+void WD_FDC::SetInterruptHandler(std::function<void (bool)> handler)
 {
   m_interruptHandler = handler;
 }
@@ -144,6 +144,7 @@ bool WD_FDC::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
 
 bool WD_FDC::SelectSide(int side)
 {
+  cerr << "FDC: select side " << side << endl;
   m_side = side;
   return true;
 }
@@ -186,6 +187,10 @@ bool WD_FDC::GetDRQ() const
   return (m_status & STATUS_DRQ) != 0;
 }
 
+bool WD_FDC::GetInterrupt() const
+{
+  return m_interrupt;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -299,31 +304,29 @@ uint8_t WD_FDC::ReadDataReg()
   if (!m_reading)
     return 0;
 
-  // if more data, reset DRQ
-  for (;;) {
-    m_data = m_buffer[m_bufferPtr++];
-    if (m_bufferPtr < m_bufferLen) {
-      //cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
-      m_status |= STATUS_DRQ;      
-      break;
+  // get data
+  m_data = m_buffer[m_bufferPtr];
+  cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
+  if (++m_bufferPtr < m_bufferLen) {
+    m_status |= STATUS_DRQ;      
+  }
+  else {
+    int maxSector = m_drives[m_drive]->GetSectors();
+    if (
+        ((m_currentCommand & COMMAND_MULT_RECS) == 0)
+        || (maxSector == m_sector)
+       ) {
+      m_currentCommand = -1;
+      m_status = m_readDAM;  // resets STATUS_BUSY
+      m_reading = false;
+      UpdateInterrupt(true);
+      if (m_debug)
+        cerr << "FDC: read ended" << endl;
     }
     else {
-      int maxSector = m_drives[m_drive]->GetSectors();
-      if ((m_currentCommand & COMMAND_MULT_RECS) && (m_sector < maxSector)) {
-        m_sector++;
-        if (m_debug)
-          cerr << "FDC: read multiple moving to sector " << dec << (int)m_sector << endl;
-        ReadCommand(m_currentCommand);
-      }
-      else {
-        if (m_debug)
-          cerr << "FDC: read ended" << endl;
-        m_currentCommand = -1;
-        m_status = m_readDAM;  // resets STATUS_BUSY
-        m_reading = false;
-        UpdateInterrupt(true);
-        break;
-      }
+      m_sector++;
+      ReadCommand(m_currentCommand);
+      m_status |= STATUS_DRQ;
     }
   }
 
@@ -341,8 +344,8 @@ void WD_FDC::UpdateInterrupt(bool interruptOn)
     return;
 
   m_interrupt = interruptOn;
-  if (interruptOn && m_interruptHandler) {
-    m_interruptHandler();
+  if (m_interruptHandler) {
+    m_interruptHandler(interruptOn);
   }
 }
 
@@ -433,8 +436,8 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
 void WD_FDC::SetTypeIStatus()
 {
   // set track 0 bit
-  m_pulseIndex = true;
-  m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
+  //m_pulseIndex = true;
+  //m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
 }
 
 
@@ -453,6 +456,7 @@ int WD_FDC::ReadCommand(uint8_t cmd)
   }
   else {
     VirtualDrive::SectorInfo info;
+    m_bufferPtr = 0;
     int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_side, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
       if (m_debug)
@@ -463,7 +467,6 @@ int WD_FDC::ReadCommand(uint8_t cmd)
     else {
       //if (m_debug)
         cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
-      m_bufferPtr = 0;
       m_bufferLen = bufferLen;
       m_reading   = true;
       m_status |= STATUS_DRQ;
@@ -539,9 +542,9 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
       UpdateInterrupt(true);
   }
   else {
-    if (m_debug)
-      cerr << "FDC: force int not busy with no command" << endl;
     SetTypeIStatus();
+    if (m_debug)
+      cerr << "FDC: force int not busy with no command " << HEXFORMAT0x2(m_status) << endl;
   }
   return 0;
 }

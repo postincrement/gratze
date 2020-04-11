@@ -82,12 +82,15 @@ void Z80Emulator::SetTrace(bool v)
 
 int Z80Emulator::Exec(int cycles)
 {
-  if (m_options.m_traceLength == 0)
+  if (!m_options.m_logPC && (m_options.m_traceLength == 0))
     return ExecZ80(&m_cpu, cycles);
   else {
     int toDo = cycles;
     while (toDo > 0) {
-      AddTraceInfo(GetPC());
+      if (m_options.m_traceLength > 0)
+        AddTraceInfo(GetPC());
+      if (m_options.m_logPC)
+        cerr << "pc: " << HEXFORMAT0x4(GetPC()) << endl;  
       int remaining = ExecZ80(&m_cpu, 1);
       int cyclesDone = 1 - remaining;
       toDo -= cyclesDone;

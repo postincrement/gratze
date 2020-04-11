@@ -58,14 +58,12 @@ class Microbee56_Emulator : public Microbee_Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
-    void FDCInterrupt();
-
   protected:  
     mutable std::unique_ptr<WD_FDC> m_fdc;
     int m_drive    = 0x00;
     bool m_side    = false;
     bool m_density = false;
-    bool m_fdcPending = false;
+    bool m_charROMEnabled = false;
 };
 
 
