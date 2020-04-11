@@ -25,6 +25,9 @@ class Microbee_Emulator : public Z80Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
+    virtual void WriteIOMemory(int id, uint16_t addr, uint8_t val);
+    virtual uint8_t ReadIOMemory(int id, uint16_t addr) const;
+
     void OnPIOInterrupt(uint8_t vector);
 
     bool OnKeyboardScan(bool doUpdate, uint16_t & addr);
@@ -40,6 +43,7 @@ class Microbee_Emulator : public Z80Emulator
     Z80PIO m_pio;
     Synertek6545 m_crtc;
     uint16_t m_prevKeyboardCode;
+    std::vector<uint8_t> m_pcgRAM;
 };
 
 

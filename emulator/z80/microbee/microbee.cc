@@ -21,10 +21,13 @@ using namespace std;
 #define   MICROBEE_FONT_WIDTH         8
 #define   MICROBEE_FONT_HEIGHT        16
 
-#define   MICROBEE_VIRTUAL_FONT_CHARS    128
+#define   MICROBEE_VIRTUAL_FONT_CHARS    256
 
 #define   MICROBEE_PCG_START_ADDR     0xf800
 #define   MICROBEE_PCG_END_ADDR       0xffff
+
+#define   MICROBEE_PCG_SIZE           (MICROBEE_PCG_END_ADDR - MICROBEE_PCG_START_ADDR + 1)
+
 
 extern EmulatorInfo g_microbeeEmulatorInfo;
 
@@ -124,6 +127,10 @@ FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
 {
   FontChar ch = m_memory[loc & 0x7ff];
 
+  if (ch >= 0x80) {
+    //ch = ch & 0x7f;
+  }
+
   //uint8_t attr = m_memory[0x400 + charAddr];
   // switch to graphics
   //ch += ((attr & 0x2) != 0) ? 0x100 : 0x000;
@@ -155,6 +162,20 @@ uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
     return g_charGen_MotorolaMCM6574.m_data[(addr & 0x7ff) + m_fontOffset];
 }
 
+static bool CreateFontWithPCG(const Config::Font & fontInfo, std::vector<uint8_t> & fontData)
+{
+  cerr << "Setting default invert font" << endl;
+
+  // create inverted chars
+  {
+    uint8_t * src = &fontData[0];
+    uint8_t * dst = &fontData[128 * fontInfo.m_height];
+    for (int i = 0; i < 128*fontInfo.m_height; ++i)
+      *dst++ = *src++ ^ 0xff;
+  }
+  return true;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 void Microbee_Emulator::Instantiate()
@@ -173,6 +194,8 @@ bool Microbee_Emulator::Open(const Options & options)
 {
   if (!Z80Emulator::Open(options))
     return false;
+
+  m_pcgRAM.resize(MICROBEE_PCG_SIZE);
 
   KeyboardScanner * kb = new KeyboardScanner();
   SetKeyboard(kb);
@@ -273,12 +296,12 @@ void Microbee_Emulator::OnSetScreenSize(int cols, int rows)
 
   if ((cols == 64) && (rows == 16)) {
     cout << "mbee: setting screen set to " << cols << "x" << rows << endl;
-    m_screen->SetFont(new PixelFont(g_charGen_mbee64x16), cols, rows);
+    m_screen->SetFont(new PixelFont(g_charGen_mbee64x16, 256, &CreateFontWithPCG), cols, rows);
     m_screen->RefreshScreen();
   }
   else if ((cols == 80) && (rows == 24)) {
     cout << "mbee: setting screen set to " << cols << "x" << rows << endl;
-    m_screen->SetFont(new PixelFont(g_charGen_mbee80x24), cols, rows);
+    m_screen->SetFont(new PixelFont(g_charGen_mbee80x24, 256, &CreateFontWithPCG), cols, rows);
     m_screen->RefreshScreen();
   }
   else {
@@ -350,6 +373,23 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
       return;
   }
   cerr << "microbee: write port " << HEXFORMAT0x2(port) << " " << HEXFORMAT0x2(data) << endl;
+}
+
+void Microbee_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
+{
+  if (id == 8) {
+    uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
+    m_pcgRAM[offs] = val;
+    // need to write this to the screen somehow
+  }
+}
+
+uint8_t Microbee_Emulator::ReadIOMemory(int id, uint16_t addr) const
+{
+  if (id == 8) {
+    uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
+    return m_pcgRAM[offs];
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -443,7 +483,8 @@ INFO_START(microbee)
 
   INFO_MONITOR(12.0, 4.0, 3.0, ePAL),
 
-  INFO_RAM(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR)
+  INFO_MEM_IO_READ(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR, 8),
+  INFO_MEM_IO_WRITE(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR, 8)
 }
 INFO_END(microbee);
 

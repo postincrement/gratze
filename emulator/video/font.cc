@@ -100,20 +100,25 @@ PixelFont::PixelFont(const Config::Font & config)
   m_pixelHeight = config.m_height;
 }
 
-PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont)
-  : Font(pixelFont.m_count)
+PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont, int count, Config::FontCreator creator)
+  : Font(count)
 {
-  m_config.m_count   = pixelFont.m_count;
+  m_config.m_count   = count;
   m_config.m_width   = pixelFont.m_width;
   m_config.m_height  = pixelFont.m_height;
   m_config.m_charGen = &pixelFont;
-  m_config.m_creator = nullptr;
+  m_config.m_creator = creator;
 
   m_width  = m_config.m_width;
   m_height = m_config.m_height;
 
   m_pixelWidth  = m_config.m_width;
   m_pixelHeight = m_config.m_height;
+}
+
+PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont)
+  : PixelFont(pixelFont, pixelFont.m_count, nullptr)
+{
 }
 
 bool PixelFont::Open(SDL_Renderer * renderer)

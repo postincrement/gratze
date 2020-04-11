@@ -30,6 +30,7 @@ class PixelFont : public Font
 {
   public:
     PixelFont(const CharacterGeneratorROM & pixelFont);
+    PixelFont(const CharacterGeneratorROM & pixelFont, int count, Config::FontCreator creator);
     PixelFont(const Config::Font & fontConfig);
     virtual bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
