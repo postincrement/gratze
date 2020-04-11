@@ -155,7 +155,7 @@ void Synertek6545::Write(uint8_t reg, uint8_t data)
     case 12:
     case 13:
       if (m_startAddressHandler)
-        m_startAddressHandler((m_regs[13] << 8) + m_regs[12]);
+        m_startAddressHandler((m_regs[12] << 8) + m_regs[13]);
       //cout << "6545: write start address (" << ((m_regSel == 12) ? "H" : "L") << ")is " << HEXFORMAT0x4((m_regs[12] << 8) + m_regs[13]) << endl;
       break;
     case 14:

@@ -3,7 +3,7 @@
 
 #include "SDL_FontCache/SDL_FontCache.h"
 #include "src/emuconfig.h"
-#include "chargenrom.h"
+#include "video/chargenrom.h"
 
 typedef uint16_t FontChar;
 
@@ -24,16 +24,19 @@ class Font
     int m_height;
 };
 
+class CharacterGeneratorROM;
+
 class PixelFont : public Font
 {
   public:
-    PixelFont(const Config::Font & contig);
+    PixelFont(const CharacterGeneratorROM & pixelFont);
+    PixelFont(const Config::Font & fontConfig);
     virtual bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 
   protected:  
     uint8_t * m_data;
-    const Config::Font m_config;
+    Config::Font m_config;
   private:
     int m_pixelWidth;
     int m_pixelHeight;  

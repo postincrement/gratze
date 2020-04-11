@@ -144,7 +144,8 @@ bool WD_FDC::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
 
 bool WD_FDC::SelectSide(int side)
 {
-  cerr << "FDC: select side " << side << endl;
+  if (m_debug)
+    cerr << "FDC: select side " << side << endl;
   m_side = side;
   return true;
 }
@@ -306,7 +307,7 @@ uint8_t WD_FDC::ReadDataReg()
 
   // get data
   m_data = m_buffer[m_bufferPtr];
-  cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
+  //cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
   if (++m_bufferPtr < m_bufferLen) {
     m_status |= STATUS_DRQ;      
   }
@@ -436,7 +437,7 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
 void WD_FDC::SetTypeIStatus()
 {
   // set track 0 bit
-  //m_pulseIndex = true;
+  m_pulseIndex = true;
   //m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
 }
 
@@ -465,7 +466,7 @@ int WD_FDC::ReadCommand(uint8_t cmd)
       m_setInterrupt = true;
     }
     else {
-      //if (m_debug)
+      if (m_debug)
         cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
       m_bufferLen = bufferLen;
       m_reading   = true;
@@ -627,15 +628,15 @@ int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
     m_setInterrupt = true;
   }
   else {
-    //if (m_debug)
-      cerr << "FDC: read addr, track=" << dec << (int)m_track << endl;
+    if (m_debug)
+      cerr << "FDC: read addr, track=" << dec << (int)m_realTrack << endl;
     m_bufferPtr = 0;
     m_bufferLen = 4;
     m_reading   = true;
 
     Emulator::GetInstance()->DisplayTraceInfo();
 
-    m_buffer[0] = m_track;
+    m_buffer[0] = m_realTrack;
     m_buffer[1] = m_side;
     m_buffer[2] = 1;
     m_buffer[3] = 2;

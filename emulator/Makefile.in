@@ -121,6 +121,7 @@ SRCS_CC = src/main.cc \
 	z80/trs80/model3/chargen_model3.cc \
 	z80/trs80/model4/model4.cc \
 	z80/microbee/microbee.cc \
+	z80/microbee/mbee_font.cc \
 	z80/sorcerer/sorcerer.cc \
 	z80/sorcerer/chargen_sorcerer.cc \
 	z80/dg680/dg680.cc \

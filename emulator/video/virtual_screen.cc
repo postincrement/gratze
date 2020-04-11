@@ -48,6 +48,16 @@ bool VirtualScreen::Open()
   return true;
 }
 
+int VirtualScreen::GetRows() const
+{
+  return m_rows;
+}
+
+int VirtualScreen::GetCols() const
+{
+  return m_cols;
+}
+
 void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
 {
   if (m_font) {
@@ -132,7 +142,7 @@ void VirtualScreen::SetCursorPos(int x, int y)
     RenderCharAtPos(m_cursorX, m_cursorY, true);
 }
 
-bool VirtualScreen::SetFont(Font * font)
+bool VirtualScreen::SetFont(Font * font, int cols, int rows)
 {
   m_font.reset(font);
 
@@ -152,6 +162,12 @@ bool VirtualScreen::SetFont(Font * font)
   }
 
   cout << "info: font size = " << m_font->GetWidth() << "x" << m_font->GetHeight() << endl;
+
+  if ((cols > 0) && (rows > 0)) {
+    m_cols = cols;
+    m_rows = rows;
+    cout << "info: new screen size = " << m_cols << "x" << m_rows << endl;
+  }
 
   ResizeScreen();
 
@@ -174,6 +190,10 @@ bool VirtualScreen::ResizeScreen()
 
   m_width  = newWidth;
   m_height = newHeight;
+
+  m_visibleSize = m_rows * m_cols;
+  m_visibleMask = m_visibleSize - 1;
+  cout << "info: text window is " << m_cols << " x " << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 
   m_mainWindow.Open(newWidth, newHeight);
   m_font->Open(m_mainWindow.GetRenderer());
@@ -275,6 +295,11 @@ MemoryMappedScreen::MemoryMappedScreen(MainWindow & mainWindow, const Options & 
 MemoryMappedScreen::~MemoryMappedScreen()
 {}
 
+void MemoryMappedScreen::SetOffset(uint16_t offset)
+{
+  m_offset = offset;
+  RefreshScreen();  
+}
 
 void MemoryMappedScreen::WriteMemoryAtAddress(int addr, uint8_t data)
 {

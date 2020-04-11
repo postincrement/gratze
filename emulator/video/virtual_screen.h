@@ -29,6 +29,9 @@ class VirtualScreen
 
     virtual bool Open();
 
+    virtual int GetRows() const;
+    virtual int GetCols() const;
+
     virtual void Update(bool hasChanged = false);
 
     virtual void SetScale(int hscale, int vscale);
@@ -52,7 +55,7 @@ class VirtualScreen
     virtual FontChar GetCharAtLoc(int addr) const;
     virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg);
 
-    virtual bool SetFont(Font * font);
+    virtual bool SetFont(Font * font, int cols = -1, int rows = -1);
 
   private:
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
@@ -108,6 +111,8 @@ class MemoryMappedScreen : public VirtualScreen
     // new functions
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const = 0;
+
+    virtual void SetOffset(uint16_t offset);
 
     static MemoryMappedScreen * Create(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
 

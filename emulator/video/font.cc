@@ -46,7 +46,7 @@ static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vecto
     return false;
   }
 
-  CharacterGeneratorROM & charGen = *config.m_charGen;
+  const CharacterGeneratorROM & charGen = *config.m_charGen;
 
   if (config.m_width < charGen.m_width) {
     cerr << "error: font width " << (int)config.m_width << " cannot be less than charactr generator width " << (int)charGen.m_width << endl;
@@ -98,6 +98,22 @@ PixelFont::PixelFont(const Config::Font & config)
 
   m_pixelWidth = config.m_width;
   m_pixelHeight = config.m_height;
+}
+
+PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont)
+  : Font(pixelFont.m_count)
+{
+  m_config.m_count   = pixelFont.m_count;
+  m_config.m_width   = pixelFont.m_width;
+  m_config.m_height  = pixelFont.m_height;
+  m_config.m_charGen = &pixelFont;
+  m_config.m_creator = nullptr;
+
+  m_width  = m_config.m_width;
+  m_height = m_config.m_height;
+
+  m_pixelWidth  = m_config.m_width;
+  m_pixelHeight = m_config.m_height;
 }
 
 bool PixelFont::Open(SDL_Renderer * renderer)

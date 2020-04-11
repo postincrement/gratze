@@ -8,6 +8,10 @@
 #include "devices/keyscan.h"
 #include "devices/synertek6545.h"
 
+extern struct CharacterGeneratorROM g_charGen_mbee64x16;
+extern struct CharacterGeneratorROM g_charGen_mbee80x24;
+
+
 class Microbee_Emulator : public Z80Emulator
 {
   public:

@@ -8,7 +8,6 @@
 #include "z80/microbee/microbee.h"
 #include "devices/z80pio.h"
 #include "devices/keyscan.h"
-#include "video/chargen_mcm6574.h"
 #include "video/dg640.h"
 
 using namespace std;
@@ -102,8 +101,15 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
     void EnableFontROM(bool enable)
     { m_fontROMEnabled = enable; }
 
+    void SetFontOffset(uint16_t offset)
+    { m_fontOffset = offset; }
+
+    uint16_t GetFontOffset() const
+    { return m_fontOffset; }
+
   protected:
     bool m_fontROMEnabled = false;
+    uint16_t m_fontOffset = 0;
 };
 
 
@@ -146,7 +152,7 @@ uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
   if (!m_fontROMEnabled)
     return SingleColourMemoryMappedScreen::ReadMemoryAtAddress(addr);
   else
-    return g_charGen_MotorolaMCM6574.m_data[addr];
+    return g_charGen_MotorolaMCM6574.m_data[(addr & 0x7ff) + m_fontOffset];
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -262,19 +268,40 @@ bool Microbee_Emulator::OnKeyboardScan(bool doUpdate, uint16_t & addr)
 
 void Microbee_Emulator::OnSetScreenSize(int cols, int rows)
 {
-  if ((cols != 64) || (rows != 16)) {
-    cout << "mbee: screen set to non-standard size of is " << cols << "x" << rows << endl;
+  if ((m_screen->GetCols() == cols) && (m_screen->GetRows() == rows))
+    return;
+
+  if ((cols == 64) && (rows == 16)) {
+    cout << "mbee: setting screen set to " << cols << "x" << rows << endl;
+    m_screen->SetFont(new PixelFont(g_charGen_mbee64x16), cols, rows);
+    m_screen->RefreshScreen();
+  }
+  else if ((cols == 80) && (rows == 24)) {
+    cout << "mbee: setting screen set to " << cols << "x" << rows << endl;
+    m_screen->SetFont(new PixelFont(g_charGen_mbee80x24), cols, rows);
+    m_screen->RefreshScreen();
+  }
+  else {
+    cout << "mbee: not setting screen set to non-standard size of is " << cols << "x" << rows << endl;
   }
 }
 
 void Microbee_Emulator::OnSetVideoStartAddress(uint16_t addr)
 {
-  cout << "mbee: video start address set to " << HEXFORMAT0x4(addr) << endl;
+  MicrobeeVideo * video = (MicrobeeVideo *)m_screen.get();
+
+  uint16_t memOffset  = addr & 0x7ff;
+  uint16_t fontOffset = ((addr & (1 << 13)) != 0) ? 0x800 : 0x000;
+  video->SetOffset(memOffset);
+  video->SetFontOffset(fontOffset);
+  cout << "mbee: video start address set to " << HEXFORMAT0x4(memOffset) << ", font offset = " << fontOffset << endl;
+  video->RefreshScreen();
 }
 
 void Microbee_Emulator::OnSetCursorAddress(uint16_t addr)
 {
-  m_screen->SetCursorPos(addr % 64, addr / 64);
+  //cout << "Set cursor to " << HEXFORMAT0x4(addr) << endl;
+  m_screen->SetCursorPos(addr % m_screen->GetCols(), addr / m_screen->GetCols());
 }
 
 void Microbee_Emulator::OnSetCursorShape(uint8_t start, uint8_t end, int blinkRate)
@@ -319,6 +346,7 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
       ((MicrobeeVideo *)m_screen.get())->EnableFontROM((data & 1) != 0);
       return;
     case 4:
+    case 5:
       return;
   }
   cerr << "microbee: write port " << HEXFORMAT0x2(port) << " " << HEXFORMAT0x2(data) << endl;
@@ -362,8 +390,8 @@ uint8_t Microbee56_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16
     case 0x10:
       {
         uint8_t v = m_fdc->Read(port & 0x3);
-        if ((port & 0x03) == 0)
-          cerr << "mbee: fdc port 0x44 = " << HEXFORMAT0x2(v) << endl;
+        //if ((port & 0x03) == 0)
+        //  cerr << "mbee: fdc port 0x44 = " << HEXFORMAT0x2(v) << endl;
         return v;
       }
     case 0x11:
@@ -401,7 +429,8 @@ INFO_START(microbee)
 {
   INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
   INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
-  INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // ??
+  INFO_IO_PORT_RW(0x09, 0x09, 5),      // wait off/Viatel
+  INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // enable font ROM
   INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545
 
   INFO_SCREEN_MEMORY_MAPPED_FIXED("microbee", \
@@ -409,7 +438,7 @@ INFO_START(microbee)
                           MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
                           MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
                           MICROBEE_VIRTUAL_FONT_CHARS, \
-                          &g_charGen_MotorolaMCM6574, \
+                          &g_charGen_mbee64x16, \
                           nullptr),
 
   INFO_MONITOR(12.0, 4.0, 3.0, ePAL),

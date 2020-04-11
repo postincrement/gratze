@@ -263,7 +263,7 @@ int VirtualDriveFile::ReadSector(int track, int side, int sector, SectorInfo & i
   auto sectorInfo = GetInfo(side, track, sector);
   info = *sectorInfo;
 
-  //if (m_verbose)
+  if (m_verbose)
     cout << "drive: read side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
 
   if (lseek(m_fd, info.m_offset, SEEK_SET) < 0) {
