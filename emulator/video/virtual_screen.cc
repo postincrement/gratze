@@ -301,6 +301,25 @@ void MemoryMappedScreen::SetOffset(uint16_t offset)
   RefreshScreen();  
 }
 
+void MemoryMappedScreen::InitUsage()
+{
+  m_trackUsage = true;
+  m_usage.clear();
+  for (int loc = 0;loc < m_memory.size(); ++loc) {
+    FontChar ch = GetCharAtLoc(loc);
+    auto r = m_usage.find(ch);
+    if (r != m_usage.end()) {
+      r->second.m_locs.insert(loc);
+    }
+    else {
+      CharUsage u;
+      u.m_locs.insert(loc);
+      m_usage[ch] = u;
+    }
+  }
+}
+
+
 void MemoryMappedScreen::WriteMemoryAtAddress(int addr, uint8_t data)
 {
   // make sure address is in correct range
@@ -308,13 +327,44 @@ void MemoryMappedScreen::WriteMemoryAtAddress(int addr, uint8_t data)
     return;
   }
 
-  // put data into memory
-  m_memory[addr] = data;
-
   // calculate location using offset
   int loc = addr - m_offset;
 
+  // get current character
+  if (!m_trackUsage) {
+    m_memory[addr] = data;
+  }
+  else {
+    FontChar oldChar = GetCharAtLoc(loc);
+    m_memory[addr] = data;
+    UpdateUsage(loc, oldChar, GetCharAtLoc(loc));
+  }
+
+  // redraw the new character
   RefreshCharAtLoc(loc);
+}
+
+void MemoryMappedScreen::UpdateUsage(int loc, FontChar oldChar, FontChar newChar)
+{
+  auto r = m_usage.find(oldChar);
+  if (r == m_usage.end()) {
+    cerr << "mmap: char " << HEXFORMAT0x4(oldChar) << " not in used map" << endl;
+  }
+  else {
+    r->second.m_locs.erase(loc);
+    if (r->second.m_locs.size() == 0)
+      r->second.m_locs.erase(oldChar);
+  }
+
+  r = m_usage.find(newChar);
+  if (r != m_usage.end()) {
+    r->second.m_locs.insert(loc);
+  }
+  else {
+    CharUsage u;
+    u.m_locs.insert(loc);
+    m_usage[newChar] = u;
+  }
 }
 
 uint8_t MemoryMappedScreen::ReadMemoryAtAddress(int addr) const

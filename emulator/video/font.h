@@ -5,23 +5,24 @@
 #include "src/emuconfig.h"
 #include "video/chargenrom.h"
 
-typedef uint16_t FontChar;
+typedef int FontChar;
 
 class Font
 {
   public:
     Font(int charCount);
     ~Font();
-    virtual int GetWidth() const;
-    virtual int GetHeight() const;
+
+    virtual int GetWidth() const = 0;
+    virtual int GetHeight() const = 0;
+
     virtual bool Open(SDL_Renderer * m_renderer) = 0;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) = 0;
+    virtual void Modify(FontChar ch, int row, uint8_t data) = 0;
 
   protected:  
     SDL_Texture * m_texture;
     int m_charCount;
-    int m_width;
-    int m_height;
 };
 
 class CharacterGeneratorROM;
@@ -35,12 +36,16 @@ class PixelFont : public Font
     virtual bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 
+    void SetHeight(int hgt);
+
+    virtual int GetWidth() const override;
+    virtual int GetHeight() const override;
+
+    virtual void Modify(FontChar ch, int row, uint8_t data) override;
+
   protected:  
     uint8_t * m_data;
     Config::Font m_config;
-  private:
-    int m_pixelWidth;
-    int m_pixelHeight;  
 };
 
 class TTFFont : public Font 
@@ -50,8 +55,13 @@ class TTFFont : public Font
     TTFFont(const Config::Font & config, int charCount, const std::string & fontName, int fontSize);
     ~TTFFont();
 
+    virtual int GetWidth() const override;
+    virtual int GetHeight() const override;
+
     bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
+    
+    virtual void Modify(FontChar ch, int row, uint8_t data) override;
 
   protected:
     bool UsePixelFont(const FontChar & ch) const;
@@ -60,7 +70,10 @@ class TTFFont : public Font
     std::string m_name;  
     int m_fontSize;
     FC_Font * m_font;
-};
 
+  private:  
+    int m_width;
+    int m_height;
+};
 
 #endif // FONT_H_

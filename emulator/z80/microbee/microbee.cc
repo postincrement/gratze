@@ -101,6 +101,10 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
     virtual void WriteMemoryAtAddress(int addr, uint8_t ch)  override;
     virtual uint8_t ReadMemoryAtAddress(int addr) const override;
 
+    virtual void SetScreenSize(int cols, int rows, int lines);
+
+    virtual void SetCharData(FontChar ch, int line, uint8_t val);
+
     void EnableFontROM(bool enable)
     { m_fontROMEnabled = enable; }
 
@@ -111,6 +115,9 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
     { return m_fontOffset; }
 
   protected:
+    int m_rows = 0;
+    int m_cols = 0;
+    int m_lines = 0;
     bool m_fontROMEnabled = false;
     uint16_t m_fontOffset = 0;
 };
@@ -121,6 +128,7 @@ MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, const Options & options, c
 {
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
+  InitUsage();
 }
 
 FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
@@ -176,6 +184,36 @@ static bool CreateFontWithPCG(const Config::Font & fontInfo, std::vector<uint8_t
   return true;
 }
 
+void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
+{
+  m_cols  = cols;
+  m_rows  = rows;
+  m_lines = lines;
+
+  cout << "mbee: setting screen to " << m_cols << "x" << m_rows << "x" << lines << endl;
+  PixelFont * font = new PixelFont(
+      (m_fontOffset == 0) ? g_charGen_mbee64x16 : g_charGen_mbee80x24,
+      256, 
+      &CreateFontWithPCG);
+  font->SetHeight(lines);
+
+  SetFont(font, m_cols, m_rows);
+  RefreshScreen();
+}
+
+void MicrobeeVideo::SetCharData(FontChar ch, int line, uint8_t val)
+{
+  size_t count = m_usage.count(ch);
+  if (count > 0) {
+    m_font->Modify(ch, line, val);
+    auto & s = m_usage[ch];
+    for (auto & r : s.m_locs) 
+      RefreshCharAtLoc(r);
+    Update(true);  
+  }
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 void Microbee_Emulator::Instantiate()
@@ -204,7 +242,7 @@ bool Microbee_Emulator::Open(const Options & options)
   using namespace std::placeholders;
   m_pio.SetInterruptHandler(std::bind(&Microbee_Emulator::OnPIOInterrupt, this, _1));
 
-  m_crtc.SetScreenShapeHandler(std::bind(&Microbee_Emulator::OnSetScreenSize, this, _1, _2));
+  m_crtc.SetScreenShapeHandler(std::bind(&Microbee_Emulator::OnSetScreenSize, this, _1, _2, _3));
   m_crtc.SetStartAddressHandler(std::bind(&Microbee_Emulator::OnSetVideoStartAddress, this, _1));
   m_crtc.SetCursorAddressHandler(std::bind(&Microbee_Emulator::OnSetCursorAddress, this, _1));
   m_crtc.SetCursorShapeHandler(std::bind(&Microbee_Emulator::OnSetCursorShape, this, _1, _2, _3));
@@ -218,6 +256,7 @@ bool Microbee_Emulator::Open(const Options & options)
 
 void Microbee_Emulator::Reset(int addr)
 {
+  m_video = (MicrobeeVideo *)m_screen.get();
   Z80Emulator::Reset(addr);
   m_pio.Reset();
   m_crtc.Reset();
@@ -289,36 +328,32 @@ bool Microbee_Emulator::OnKeyboardScan(bool doUpdate, uint16_t & addr)
   return false;
 }
 
-void Microbee_Emulator::OnSetScreenSize(int cols, int rows)
+void Microbee_Emulator::OnSetScreenSize(int cols, int rows, int lines)
 {
-  if ((m_screen->GetCols() == cols) && (m_screen->GetRows() == rows))
+  ++lines;
+  if (
+      (m_screen->GetRows() == rows) && 
+      (m_screen->GetCols() == cols) && 
+      (m_lines == lines)
+     )
     return;
 
-  if ((cols == 64) && (rows == 16)) {
-    cout << "mbee: setting screen set to " << cols << "x" << rows << endl;
-    m_screen->SetFont(new PixelFont(g_charGen_mbee64x16, 256, &CreateFontWithPCG), cols, rows);
-    m_screen->RefreshScreen();
-  }
-  else if ((cols == 80) && (rows == 24)) {
-    cout << "mbee: setting screen set to " << cols << "x" << rows << endl;
-    m_screen->SetFont(new PixelFont(g_charGen_mbee80x24, 256, &CreateFontWithPCG), cols, rows);
-    m_screen->RefreshScreen();
-  }
-  else {
-    cout << "mbee: not setting screen set to non-standard size of is " << cols << "x" << rows << endl;
-  }
+  m_lines = lines;
+  m_video->SetScreenSize(cols, rows, lines);
 }
 
 void Microbee_Emulator::OnSetVideoStartAddress(uint16_t addr)
 {
-  MicrobeeVideo * video = (MicrobeeVideo *)m_screen.get();
-
   uint16_t memOffset  = addr & 0x7ff;
   uint16_t fontOffset = ((addr & (1 << 13)) != 0) ? 0x800 : 0x000;
-  video->SetOffset(memOffset);
-  video->SetFontOffset(fontOffset);
-  cout << "mbee: video start address set to " << HEXFORMAT0x4(memOffset) << ", font offset = " << fontOffset << endl;
-  video->RefreshScreen();
+  m_video->SetOffset(memOffset);
+  cout << "mbee: video start address set to " << HEXFORMAT0x4(memOffset) << endl;
+
+  if (fontOffset != m_fontOffset) {
+    m_fontOffset = fontOffset;
+    m_video->SetFontOffset(fontOffset);
+    m_video->SetScreenSize(m_screen->GetCols(), m_screen->GetRows(), m_lines);
+  }
 }
 
 void Microbee_Emulator::OnSetCursorAddress(uint16_t addr)
@@ -366,7 +401,7 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
     case 2:
       return m_crtc.Write(port & 1, data);
     case 3:
-      ((MicrobeeVideo *)m_screen.get())->EnableFontROM((data & 1) != 0);
+      m_video->EnableFontROM((data & 1) != 0);
       return;
     case 4:
     case 5:
@@ -380,6 +415,11 @@ void Microbee_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
   if (id == 8) {
     uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
     m_pcgRAM[offs] = val;
+
+    int pcgChar = 128 + (offs >> 4);
+
+    m_video->SetCharData(pcgChar, addr & 0xf, val);
+    
     // need to write this to the screen somehow
   }
 }

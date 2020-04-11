@@ -6,6 +6,8 @@
 #include <map>
 #include <memory>
 #include <chrono>
+#include <map>
+#include <set>
 
 #include <SDL.h>
 
@@ -123,11 +125,22 @@ class MemoryMappedScreen : public VirtualScreen
         g_memoryMappedScreenFactory.AddConcreteClass<Type>(name);
     }
 
+    void InitUsage();
+    void UpdateUsage(int loc, FontChar oldChar, FontChar newChar);
+
+    struct CharUsage
+    {
+      std::set<int> m_locs;
+    };
+
   protected:
     std::vector<uint8_t> m_memory;
     int m_memoryMask = 0;
     int m_offset;
     static MemoryMappedScreenFactory g_memoryMappedScreenFactory;
+
+    bool m_trackUsage = false;
+    std::map<FontChar, CharUsage> m_usage;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -146,5 +159,7 @@ class SingleColourMemoryMappedScreen : public MemoryMappedScreen
     SDL_Color m_bgColour;
     SDL_Color m_fgColour;
 };
+
+/////////////////////////////////////////////////////////////////////////////////
 
 #endif // VIRTUALSCREEN_H_

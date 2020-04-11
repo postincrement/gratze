@@ -23,13 +23,6 @@ Font::~Font()
     SDL_DestroyTexture(m_texture);
 }
 
-int Font::GetWidth() const
-{ return m_width; }
-
-int Font::GetHeight() const
-{ return m_height; }
-
-
 /////////////////////////////////////////////////////////////////////////////
 
 static unsigned char reverse(unsigned char b) {
@@ -49,17 +42,12 @@ static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vecto
   const CharacterGeneratorROM & charGen = *config.m_charGen;
 
   if (config.m_width < charGen.m_width) {
-    cerr << "error: font width " << (int)config.m_width << " cannot be less than charactr generator width " << (int)charGen.m_width << endl;
-    return false;
-  }
-
-  if (config.m_height < charGen.m_height) {
-    cerr << "error: font height " << (int)config.m_height << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
+    cerr << "error: font width " << (int)config.m_width << " cannot be less than character generator width " << (int)charGen.m_width << endl;
     return false;
   }
 
   if (charGen.m_stride < charGen.m_height) {
-    cerr << "error: chargen stride " << (int)charGen.m_stride << " cannot be less than charactr generator height " << (int)charGen.m_height << endl;
+    cerr << "error: chargen stride " << (int)charGen.m_stride << " cannot be less than character generator height " << (int)charGen.m_height << endl;
     return false;
   }
 
@@ -67,6 +55,12 @@ static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vecto
     cerr << "error: character generators > 8 pixels wide not supported" << endl;
     return false;
   }
+
+  //if (config.m_height < charGen.m_height) {
+  //  cerr << "error: font height " << (int)config.m_height << " cannot be less than character generator height " << (int)charGen.m_height << endl;
+  //  return false;
+  //}
+  int copyHeight = std::min(config.m_height, charGen.m_height);
 
   fontData.resize(config.m_count * config.m_height * ((config.m_width + 7) / 8));
 
@@ -76,12 +70,15 @@ static bool UnpackCharacterGeneratorFont(const Config::Font & config, std::vecto
     const uint8_t * src = charGen.m_data + c * charGen.m_stride;
     uint8_t * dst = &fontData[c * config.m_height];
 
-    for (int y = 0; y < charGen.m_height; ++y) {
+    int y;
+    for (y = 0; y < copyHeight; ++y) {
       *dst++ = charGen.m_reverse ? 
                     reverse(*src++) >> (8 - charGen.m_width - shiftBits) :
                     *src++ << shiftBits
                     ;
     }
+    for (; y < config.m_height;++y)
+      *dst++ = 0x00;
   }
 
   return true;
@@ -93,11 +90,10 @@ PixelFont::PixelFont(const Config::Font & config)
   : Font(config.m_count)
   , m_config(config)
 {
-  m_width  = config.m_width;
-  m_height = config.m_height;
-
-  m_pixelWidth = config.m_width;
-  m_pixelHeight = config.m_height;
+  //m_width  = config.m_width;
+  //m_height = config.m_height;
+  //m_pixelWidth = config.m_width;
+  //m_pixelHeight = config.m_height;
 }
 
 PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont, int count, Config::FontCreator creator)
@@ -109,11 +105,8 @@ PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont, int count, Config:
   m_config.m_charGen = &pixelFont;
   m_config.m_creator = creator;
 
-  m_width  = m_config.m_width;
-  m_height = m_config.m_height;
-
-  m_pixelWidth  = m_config.m_width;
-  m_pixelHeight = m_config.m_height;
+  //m_pixelWidth  = m_config.m_width;
+  //m_pixelHeight = m_config.m_height;
 }
 
 PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont)
@@ -121,10 +114,26 @@ PixelFont::PixelFont(const CharacterGeneratorROM & pixelFont)
 {
 }
 
+int PixelFont::GetWidth() const
+{ 
+  return m_config.m_width; 
+}
+
+int PixelFont::GetHeight() const
+{ 
+  return m_config.m_height; 
+}
+
+void PixelFont::SetHeight(int hgt)
+{
+  m_config.m_height = hgt;
+}
+
 bool PixelFont::Open(SDL_Renderer * renderer)
 {
+  // get pixel data
   std::vector<uint8_t> fontData;
-  fontData.resize(m_config.m_count * m_pixelHeight);
+  fontData.resize(m_config.m_count * m_config.m_height);
 
   // unpack pixel data
   if (m_config.m_charGen != NULL) {
@@ -144,7 +153,11 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   if (m_texture)
     SDL_DestroyTexture(m_texture);
 
-  m_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, m_pixelWidth, m_pixelHeight * m_charCount);
+  m_texture = SDL_CreateTexture(renderer, 
+                                SDL_PIXELFORMAT_RGBA32, 
+                                SDL_TEXTUREACCESS_STREAMING, 
+                                m_config.m_width, 
+                                m_config.m_height * m_charCount);
   if (m_texture == NULL) {
     cerr << "error: cannot create font texture - " << SDL_GetError() << endl;
     return false;
@@ -153,17 +166,17 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   cout << "info: creating font with " << dec << m_charCount << " chars" << endl;;
 
   std::vector<uint32_t> pixels;
-  pixels.resize(m_pixelWidth * m_pixelHeight * m_charCount);
+  pixels.resize(m_config.m_width * m_config.m_height * m_charCount);
 
   const uint8_t * data = &fontData[0];
 
   // copy pixel data to the surface with the correct colours
   for (int i = 0; i < m_charCount; ++i) {
-    const uint8_t * srcPixels = data + (i * m_pixelHeight);
-    for (int y = 0; y < m_pixelHeight; ++y) {
-      uint32_t * dstPixels = &pixels[m_pixelWidth * ((i * m_pixelHeight) + y)];
-      unsigned mask = 1 << (m_pixelWidth - 1);
-      for (int x = 0; x < m_pixelWidth; ++x) {
+    const uint8_t * srcPixels = data + (i * m_config.m_height);
+    for (int y = 0; y < m_config.m_height; ++y) {
+      uint32_t * dstPixels = &pixels[m_config.m_width * ((i * m_config.m_height) + y)];
+      unsigned mask = 1 << (m_config.m_width - 1);
+      for (int x = 0; x < m_config.m_width; ++x) {
         if (*srcPixels & mask) {
           *dstPixels = 0xffffffff;
         }
@@ -178,7 +191,7 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   }
 
   // create texture
-  if (SDL_UpdateTexture(m_texture, NULL, &pixels[0], m_pixelWidth * sizeof(uint32_t)) != 0) {
+  if (SDL_UpdateTexture(m_texture, NULL, &pixels[0], m_config.m_width * sizeof(uint32_t)) != 0) {
     cerr << "error: cannot update font texture - " << SDL_GetError() << endl;
     return false;
   }
@@ -188,9 +201,39 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   return true;
 }
 
+void PixelFont::Modify(FontChar ch, int row, uint8_t data)
+{
+  SDL_Rect rect = { 0, ch * m_config.m_height + row, m_config.m_width, 1 };
+
+  uint32_t * dstPixels;
+  int pitch;
+  if (SDL_LockTexture(m_texture, &rect, (void **)&dstPixels, &pitch)) {
+    cerr << "sdl: lock texture failed" << endl;
+    return;
+  }
+
+  int shiftBits = m_config.m_width - m_config.m_charGen->m_width;
+  data << shiftBits;
+
+  unsigned mask = 1 << (m_config.m_width - 1);
+  for (int x = 0; x < m_config.m_width; ++x) {
+    if (data & mask) {
+      *dstPixels = 0xffffffff;
+    }
+    else {
+      *dstPixels = 0x00000000;
+    }  
+    dstPixels++;
+    mask = mask >> 1;
+  }
+
+  SDL_UnlockTexture(m_texture);
+}
+
+
 void PixelFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  SDL_Rect srcRect = { 0, ch * m_pixelHeight, m_pixelWidth, m_pixelHeight };
+  SDL_Rect srcRect = { 0, ch * m_config.m_height, m_config.m_width, m_config.m_height };
   
   SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);
   SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b);
@@ -224,6 +267,13 @@ TTFFont::~TTFFont()
   if (m_font)
     FC_FreeFont(m_font);
 }
+
+int TTFFont::GetWidth() const
+{ return m_width; }
+
+int TTFFont::GetHeight() const
+{ return m_height; }
+
 
 bool TTFFont::Open(SDL_Renderer * renderer)
 {
@@ -332,3 +382,8 @@ void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & 
     FC_DrawBoxAlign(m_font, renderer, dstRect, FC_ALIGN_CENTER, str); 
   }
 }
+
+void TTFFont::Modify(FontChar ch, int row, uint8_t data)
+{}
+
+/////////////////////////////////////////////////////////////////////////////////

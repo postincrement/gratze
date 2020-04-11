@@ -20,7 +20,7 @@ void Synertek6545::Reset()
   VECTOR_ZERO(m_regs);
 }
 
-void Synertek6545::SetScreenShapeHandler(std::function<void (int cols, int rows)> handler)
+void Synertek6545::SetScreenShapeHandler(std::function<void (int cols, int rows, int scan)> handler)
 {
   m_screenShapeHandler = handler;
 }
@@ -141,9 +141,11 @@ void Synertek6545::Write(uint8_t reg, uint8_t data)
   switch (m_regSel) {
     case 1:
     case 6:
-      if ((m_regs[1] != 0) && (m_regs[6] != 0) && m_screenShapeHandler)
-        m_screenShapeHandler(m_regs[1], m_regs[6]);
+    case 9:
+      if ((m_regs[1] != 0) && (m_regs[6] != 0) && (m_regs[9] != 0) && m_screenShapeHandler)
+        m_screenShapeHandler(m_regs[1], m_regs[6], m_regs[9]);
       break;
+      
     case 10:
     case 11:
       if (m_cursorShapeHandler) {

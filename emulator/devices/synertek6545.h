@@ -30,7 +30,7 @@ class Synertek6545 : public VirtualDevice
     virtual uint8_t Read(uint8_t reg);
     virtual void Write(uint8_t reg, uint8_t data);
 
-    void SetScreenShapeHandler(std::function<void (int cols, int rows)> handler);
+    void SetScreenShapeHandler(std::function<void (int cols, int rows, int lines)> handler);
     void SetStartAddressHandler(std::function<void (uint16_t addr)> handler);
     void SetCursorAddressHandler(std::function<void (uint16_t addr)> handler);
     void SetCursorShapeHandler(std::function<void (uint8_t start, uint8_t end, int blinkRate)> handler);
@@ -46,7 +46,7 @@ class Synertek6545 : public VirtualDevice
     uint8_t m_regSel = 0;
     bool m_writePending;
     std::vector<uint8_t> m_regs;
-    std::function<void (int, int)> m_screenShapeHandler = nullptr;
+    std::function<void (int, int, int)> m_screenShapeHandler = nullptr;
     std::function<void (uint16_t)> m_startAddressHandler = nullptr;
     std::function<void (uint16_t)> m_cursorAddressHandler = nullptr;
     std::function<void (uint8_t start, uint8_t end, int blinkRate)> m_cursorShapeHandler = nullptr;

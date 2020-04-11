@@ -76,7 +76,7 @@ struct Font
 {
   int  m_count;                       // number of chars in font
   int  m_width;                       // nominal font width in pixels (X)
-  int  m_height;                      // nominal font height in pixels (X)
+  int  m_height;                      // nominal font height in pixels (Y)
   const CharacterGeneratorROM * m_charGen;  // character generator for base data (if required)
   FontCreator m_creator;              // function to create final font data (if required)
 };

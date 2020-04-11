@@ -11,6 +11,7 @@
 extern struct CharacterGeneratorROM g_charGen_mbee64x16;
 extern struct CharacterGeneratorROM g_charGen_mbee80x24;
 
+class MicrobeeVideo;
 
 class Microbee_Emulator : public Z80Emulator
 {
@@ -32,7 +33,7 @@ class Microbee_Emulator : public Z80Emulator
 
     bool OnKeyboardScan(bool doUpdate, uint16_t & addr);
 
-    void OnSetScreenSize(int cols, int rows);
+    void OnSetScreenSize(int cols, int rows, int lines);
     void OnSetVideoStartAddress(uint16_t addr);
     void OnSetCursorAddress(uint16_t addr);
     void OnSetCursorShape(uint8_t start, uint8_t end, int blinkRate);
@@ -43,6 +44,10 @@ class Microbee_Emulator : public Z80Emulator
     Z80PIO m_pio;
     Synertek6545 m_crtc;
     uint16_t m_prevKeyboardCode;
+    int m_fontOffset = 0;
+    int m_lines = 0;
+
+    MicrobeeVideo * m_video; 
     std::vector<uint8_t> m_pcgRAM;
 };
 

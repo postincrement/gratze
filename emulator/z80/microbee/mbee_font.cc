@@ -18,7 +18,7 @@ struct CharacterGeneratorROM g_charGen_mbee80x24 = {
 	"Microbee 80x24",
 	128,   // chars
 	8,     // cols
-	12,    // rows
+	11,    // rows
 	16,    // bytes per char
 	g_mbeeFontData + 128*16
 };
