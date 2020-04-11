@@ -479,7 +479,7 @@ INFO_START(microbee)
                           MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
                           MICROBEE_VIRTUAL_FONT_CHARS, \
                           &g_charGen_mbee64x16, \
-                          nullptr),
+                          CreateFontWithPCG),
 
   INFO_MONITOR(12.0, 4.0, 3.0, ePAL),
 
