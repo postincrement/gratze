@@ -28,6 +28,11 @@ int Font::GetCharCount() const
   return m_charCount;
 }
 
+void Font::Modify(FontChar ch, int row, uint8_t data)
+{
+  Modify(ch, row, 1, &data);
+}
+
 /////////////////////////////////////////////////////////////////////////////
 
 static unsigned char reverse(unsigned char b) {
@@ -206,12 +211,12 @@ bool PixelFont::Open(SDL_Renderer * renderer)
   return true;
 }
 
-void PixelFont::Modify(FontChar ch, int row, uint8_t data)
+void PixelFont::Modify(FontChar ch, int rowStart, int rowCount, uint8_t * rowData)
 {
-  if (row >= m_config.m_height)
+  if (rowStart >= m_config.m_height)
     return;
 
-  SDL_Rect rect = { 0, ch * m_config.m_height + row, m_config.m_width, 1 };
+  SDL_Rect rect = { 0, ch * m_config.m_height + rowStart, m_config.m_width, rowCount };
 
   uint32_t * dstPixels;
   int pitch;
@@ -221,18 +226,24 @@ void PixelFont::Modify(FontChar ch, int row, uint8_t data)
   }
 
   int shiftBits = m_config.m_width - m_config.m_charGen->m_width;
-  data << shiftBits;
 
-  unsigned mask = 1 << (m_config.m_width - 1);
-  for (int x = 0; x < m_config.m_width; ++x) {
-    if (data & mask) {
-      *dstPixels = 0xffffffff;
+  for (int y = 0; y < rowCount; ++y) {
+    if ((rowStart + y) >= m_config.m_height)
+      break;
+    uint8_t data = *rowData++;
+    data << shiftBits;
+    unsigned mask = 1 << (m_config.m_width - 1);
+    for (int x = 0; x < m_config.m_width; ++x) {
+      if (data & mask) {
+        *dstPixels = 0xffffffff;
+      }
+      else {
+        *dstPixels = 0x00000000;
+      }  
+      dstPixels++;
+      mask = mask >> 1;
     }
-    else {
-      *dstPixels = 0x00000000;
-    }  
-    dstPixels++;
-    mask = mask >> 1;
+    dstPixels += pitch - m_config.m_width;
   }
 
   SDL_UnlockTexture(m_texture);
@@ -393,7 +404,7 @@ void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & 
   }
 }
 
-void TTFFont::Modify(FontChar ch, int row, uint8_t data)
+void TTFFont::Modify(FontChar ch, int rowStart, int rowCount, uint8_t * rowData)
 {}
 
 /////////////////////////////////////////////////////////////////////////////////

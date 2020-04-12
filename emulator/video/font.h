@@ -19,7 +19,8 @@ class Font
 
     virtual bool Open(SDL_Renderer * m_renderer) = 0;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) = 0;
-    virtual void Modify(FontChar ch, int row, uint8_t data) = 0;
+    virtual void Modify(FontChar ch, int row, uint8_t data);
+    virtual void Modify(FontChar ch, int rowStart, int rowCount, uint8_t * data) = 0;
 
   protected:  
     SDL_Texture * m_texture;
@@ -42,7 +43,7 @@ class PixelFont : public Font
     virtual int GetWidth() const override;
     virtual int GetHeight() const override;
 
-    virtual void Modify(FontChar ch, int row, uint8_t data) override;
+    virtual void Modify(FontChar ch, int rowStart, int rowCount, uint8_t * data) override;
 
   protected:  
     uint8_t * m_data;
@@ -62,7 +63,7 @@ class TTFFont : public Font
     bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
 
-    virtual void Modify(FontChar ch, int row, uint8_t data) override;
+    virtual void Modify(FontChar ch, int rowStart, int rowCount, uint8_t * data) override;
 
   protected:
     bool UsePixelFont(const FontChar & ch) const;

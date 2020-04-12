@@ -24,7 +24,8 @@ class CommandLineArgs
         eBoolean,
         eInteger,
         eUnsigned,
-        eString
+        eString,
+        eFloat
       } m_type;
 
       template<class Type>
@@ -32,9 +33,12 @@ class CommandLineArgs
 
       std::string m_wildcard;
 
+      // if this was made a union,
+      // initializers could not be used
       bool m_boolean = false;
       int m_integer = 0;
       unsigned m_unsigned = 0;
+      double m_float = 0.0;
       std::string m_string;
     };
 
@@ -47,7 +51,8 @@ class CommandLineArgs
       eUnsigned     = 'u',
       eHexOrDecimal = 'x',
       eBoolean      = 'b',
-      eIncrement    = '+'
+      eIncrement    = '+',
+      eFloat        = 'f'
     };
 
     typedef std::multimap<std::string, OptionValue> ValueMap;
@@ -152,5 +157,7 @@ bool CommandLineArgs::OptionValue::GetValue(int & value) const;
 template<>
 bool CommandLineArgs::OptionValue::GetValue(bool & value) const;
 
+template<>
+bool CommandLineArgs::OptionValue::GetValue(double & value) const;
 
 #endif // CMD_ARGS_H

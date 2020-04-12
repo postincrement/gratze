@@ -42,7 +42,7 @@ class VirtualScreen
     virtual void EnableCursor(bool enable = true);
     virtual void SetCursorPos(int x, int y);
 
-    virtual void RefreshCharAtLoc(int loc);
+    virtual void RefreshCharAtLoc(int loc, bool update = true);
 
     virtual void RefreshScreen();
     virtual bool ResizeScreen();
@@ -59,9 +59,11 @@ class VirtualScreen
 
     virtual bool SetFont(Font * font, int cols = -1, int rows = -1);
 
+    virtual void OnUpdate();
+
   private:
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
-    virtual void RenderCharAtPos(int x, int y, bool withCursor);
+    virtual void RenderCharAtPos(int x, int y, bool withCursor, bool update = true);
 
   protected:
     MainWindow & m_mainWindow;
@@ -109,6 +111,7 @@ class MemoryMappedScreen : public VirtualScreen
     // overrides from VirtualScreen
     virtual void GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg) override = 0;
     virtual FontChar GetCharAtLoc(int loc) const override;
+    virtual void OnUpdate() override;
 
     // new functions
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
@@ -125,10 +128,12 @@ class MemoryMappedScreen : public VirtualScreen
         g_memoryMappedScreenFactory.AddConcreteClass<Type>(name);
     }
 
-    virtual void SetCharData(FontChar ch, int line, uint8_t val, bool update = true);
+    virtual void InitPCG();
+    virtual void UpdatePCG(int loc, FontChar oldChar, FontChar newChar);
 
-    void InitUsage();
-    void UpdateUsage(int loc, FontChar oldChar, FontChar newChar);
+    virtual bool IsPCG(FontChar ch) const;
+    virtual void SetPCG(FontChar ch, int line, uint8_t val);
+    virtual void SetPCG(FontChar ch, int row, int rowCount, uint8_t * val);
 
     struct CharUsage
     {
@@ -141,8 +146,9 @@ class MemoryMappedScreen : public VirtualScreen
     int m_offset;
     static MemoryMappedScreenFactory g_memoryMappedScreenFactory;
 
-    bool m_trackUsage = false;
-    std::map<FontChar, CharUsage> m_usage;
+    bool m_hasPCG = false;
+    std::map<FontChar, CharUsage> m_pcgLocs;
+    std::set<FontChar> m_pcgDirty;
 };
 
 /////////////////////////////////////////////////////////////////////////////////

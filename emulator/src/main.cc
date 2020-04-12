@@ -94,6 +94,11 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "fdcDebug",        ' ', "display FDC debug on console" },
   { ' ', "turbo",           ' ', "do not throttle CPU speed"},
   { ' ', "list",            ' ', "list all emulations"},
+
+  { ' ', "delay",           'u', "manual CPU delay"},
+  { ' ', "kp",              'f', "Kp for CPU delay control"},
+  { ' ', "ki",              'f', "Ki for CPU delay control"},
+
   { 0, 0, 0, 0}
 };
 
@@ -180,6 +185,10 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("-F",      options.m_fontSize);
   options.m_args.GetValue("--trace", options.m_traceLength);
   options.m_args.GetValue("--logpc", options.m_logPC);
+
+  options.m_args.GetValue("--delay", options.m_delay);
+  options.m_args.GetValue("--kp",    options.m_Kp);
+  options.m_args.GetValue("--ki",    options.m_Ki);
 
   if (optIndex < argc)
     options.m_arg = argv[optIndex];

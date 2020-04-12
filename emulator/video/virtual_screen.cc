@@ -58,7 +58,7 @@ int VirtualScreen::GetCols() const
   return m_cols;
 }
 
-void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
+void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool update)
 {
   if (m_font) {
     SDL_Rect dstRect;
@@ -77,7 +77,8 @@ void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
 
     RenderChar(GetCharAtPos(x, y), withCursor, m_mainWindow.GetRenderer(), dstRect, fg, bg);
 
-    Update(true);
+    if (update)
+      Update(true);
   }
 }
 
@@ -94,7 +95,7 @@ void VirtualScreen::Update(bool hasChanged)
 {
   if (!m_lazyUpdates) {
     if (!hasChanged || m_dirty)
-      m_mainWindow.Update();
+      OnUpdate();
     m_dirty = false;
     return;
   }
@@ -106,9 +107,14 @@ void VirtualScreen::Update(bool hasChanged)
   }
 
   if (m_dirty && (now > m_updateTimer)) {
-    m_mainWindow.Update();
+    OnUpdate();
     m_dirty = false;
   }
+}
+
+void VirtualScreen::OnUpdate()
+{
+  m_mainWindow.Update();
 }
 
 void VirtualScreen::RefreshScreen()
@@ -249,11 +255,11 @@ void VirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & b
 }
 
 
-void VirtualScreen::RefreshCharAtLoc(int loc)
+void VirtualScreen::RefreshCharAtLoc(int loc, bool update)
 {
   int x, y;
   if (MapLocToPos(x, y, loc))
-    RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
+    RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY), update);
 }
 
 FontChar VirtualScreen::GetCharAtLoc(int loc) const
@@ -301,25 +307,6 @@ void MemoryMappedScreen::SetOffset(uint16_t offset)
   RefreshScreen();  
 }
 
-void MemoryMappedScreen::InitUsage()
-{
-  m_trackUsage = true;
-  m_usage.clear();
-  for (int loc = 0;loc < m_memory.size(); ++loc) {
-    FontChar ch = GetCharAtLoc(loc);
-    auto r = m_usage.find(ch);
-    if (r != m_usage.end()) {
-      r->second.m_locs.insert(loc);
-    }
-    else {
-      CharUsage u;
-      u.m_locs.insert(loc);
-      m_usage[ch] = u;
-    }
-  }
-}
-
-
 void MemoryMappedScreen::WriteMemoryAtAddress(int addr, uint8_t data)
 {
   // make sure address is in correct range
@@ -331,38 +318,17 @@ void MemoryMappedScreen::WriteMemoryAtAddress(int addr, uint8_t data)
   int loc = addr - m_offset;
 
   // get current character
-  if (!m_trackUsage) {
+  if (!m_hasPCG) {
     m_memory[addr] = data;
   }
   else {
     FontChar oldChar = GetCharAtLoc(loc);
     m_memory[addr] = data;
-    UpdateUsage(loc, oldChar, GetCharAtLoc(loc));
+    UpdatePCG(loc, oldChar, GetCharAtLoc(loc));
   }
 
   // redraw the new character
   RefreshCharAtLoc(loc);
-}
-
-void MemoryMappedScreen::UpdateUsage(int loc, FontChar oldChar, FontChar newChar)
-{
-  auto r = m_usage.find(oldChar);
-  if (r == m_usage.end()) {
-    cerr << "mmap: char " << HEXFORMAT0x4(oldChar) << " not in used map" << endl;
-  }
-  else {
-    r->second.m_locs.erase(loc);
-  }
-
-  r = m_usage.find(newChar);
-  if (r != m_usage.end()) {
-    r->second.m_locs.insert(loc);
-  }
-  else {
-    CharUsage u;
-    u.m_locs.insert(loc);
-    m_usage[newChar] = u;
-  }
 }
 
 uint8_t MemoryMappedScreen::ReadMemoryAtAddress(int addr) const
@@ -379,22 +345,83 @@ FontChar MemoryMappedScreen::GetCharAtLoc(int loc) const
   return m_memory[loc & m_memoryMask];
 }
 
-void MemoryMappedScreen::SetCharData(FontChar ch, int line, uint8_t val, bool update)
+bool MemoryMappedScreen::IsPCG(FontChar ch) const
 {
-  if (!m_trackUsage || (ch >= m_font->GetCharCount()))
-    return;
+  return false;
+}
 
-  m_font->Modify(ch, line, val);
-  if (m_usage.count(ch) > 0) {
-    auto & s = m_usage[ch];
-    for (auto & r : s.m_locs) 
-      RefreshCharAtLoc(r);
-    if (update)
-      Update(true);
+void MemoryMappedScreen::OnUpdate()
+{
+  if (m_hasPCG && (m_pcgDirty.size() > 0)) {
+    for (auto & ch : m_pcgDirty) {
+      if (IsPCG(ch)) {
+        auto & s = m_pcgLocs[ch];
+        for (auto & loc : s.m_locs) {
+          //cout << "Refresh PCG char " << HEXFORMAT0x2(ch) << " at " << HEXFORMAT0x4(loc) << endl;
+          RefreshCharAtLoc(loc, false);
+        }
+      }
+    }
+    m_pcgDirty.clear();
+  }
+
+  VirtualScreen::OnUpdate();
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+void MemoryMappedScreen::InitPCG()
+{
+  m_hasPCG = true;
+  m_pcgLocs.clear();
+  for (int loc = 0;loc < m_memory.size(); ++loc) {
+    FontChar ch = GetCharAtLoc(loc);
+    auto r = m_pcgLocs.find(ch);
+    if (r != m_pcgLocs.end()) {
+      r->second.m_locs.insert(loc);
+    }
+    else {
+      CharUsage u;
+      u.m_locs.insert(loc);
+      m_pcgLocs[ch] = u;
+    }
   }
 }
 
+void MemoryMappedScreen::UpdatePCG(int loc, FontChar oldChar, FontChar newChar)
+{
+  auto r = m_pcgLocs.find(oldChar);
+  if (r == m_pcgLocs.end()) {
+    cerr << "mmap: char " << HEXFORMAT0x4(oldChar) << " not in used map" << endl;
+  }
+  else {
+    r->second.m_locs.erase(loc);
+  }
 
+  r = m_pcgLocs.find(newChar);
+  if (r != m_pcgLocs.end()) {
+    r->second.m_locs.insert(loc);
+  }
+  else {
+    CharUsage u;
+    u.m_locs.insert(loc);
+    m_pcgLocs[newChar] = u;
+  }
+}
+
+void MemoryMappedScreen::SetPCG(FontChar ch, int line, uint8_t val)
+{
+  SetPCG(ch, line, 1, &val);
+}
+
+void MemoryMappedScreen::SetPCG(FontChar ch, int row, int rowCount, uint8_t * val)
+{
+  if (!m_hasPCG || !IsPCG(ch))
+    return;
+
+  m_font->Modify(ch, row, rowCount, val);
+  m_pcgDirty.insert(ch);
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 

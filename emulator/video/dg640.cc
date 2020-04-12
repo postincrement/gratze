@@ -31,7 +31,7 @@ DG640::DG640(MainWindow & mainWindow, const Options & options, const Config::Mem
   }
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
-  InitUsage();
+  InitPCG();
 }
 
 

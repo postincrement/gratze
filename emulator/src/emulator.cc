@@ -947,6 +947,16 @@ int Emulator::Run(const Options & options)
   auto lastPoll  = std::chrono::system_clock::now();
   auto lastSpeed = std::chrono::system_clock::now();
 
+  if (options.m_turbo) {
+    cerr << "turbo mode" << endl;
+  }
+
+  time_t prevTIME = time(NULL);
+
+  double prevBaseline = GET_NOW_AS_DOUBLE();
+  uint64_t cyclesInBaseline = 0;
+  double sigmaError = 0;
+
   for (;;) {
     now                            = GET_NOW_AS_DOUBLE();
     double  earliestNextRealTime_s = now + 1.0;
@@ -975,16 +985,80 @@ int Emulator::Run(const Options & options)
       }
     }
 
-    // run the CPU
+    // calculate number of cycles until next poll
     uint64_t cyclesToDo = earliestNextClockTime - m_cycleCounter;
+
+    // calculate seconds until next poll
     double   timeToDo_s = earliestNextRealTime_s - now;
 
+    // calculate cycles to do until next poll
     uint64_t cyclesForTime = timeToDo_s * m_targetCPUClock_Hz;
     if (cyclesForTime < cyclesToDo)
       cyclesToDo = cyclesForTime;
 
-    int remaining = Exec(cyclesToDo);
-    int cyclesDone = cyclesToDo - remaining;
+    // if in turbo mode, execute "cyclesToDo" without delays
+    // else insert something to slow down
+    int remaining;
+    int cyclesDone;
+    if (options.m_turbo) {
+      remaining = Exec(cyclesToDo);
+      cyclesDone = cyclesToDo - remaining;
+    }
+    else {
+      uint64_t cycles = std::min<int64_t>(cyclesToDo, 50);
+      remaining = Exec(cycles);
+      cyclesDone = cycles - remaining;
+      cyclesInBaseline += cyclesDone;
+
+      double newBaseline = GET_NOW_AS_DOUBLE()
+      double duration_s = newBaseline - prevBaseline;
+
+      if (duration_s >= 0.1) {
+        double actual_Hz = (cyclesInBaseline * 1.0) / duration_s;
+        double error = (m_targetCPUClock_Hz - actual_Hz) / 1000000.0;
+
+        sigmaError += (error * duration_s);
+
+        double pidOut = m_options.m_Kp * error + options.m_Ki * sigmaError;
+
+        unsigned delay;
+        if (m_options.m_delay > 0)
+          delay = m_options.m_delay;
+        else {
+          delay = pidOut;
+          if (delay > 10000)
+            delay = 10000;
+        }
+
+        if (::time(NULL) != prevTIME) {
+          /*
+          cout << "T " << actual_Hz/1000000.0 << " MHz"
+               << ", " << (m_targetCPUClock_Hz / 1000000.0) << " MHz" 
+               << ", duration " << duration_s << " sec";
+          if (m_options.m_delay == 0) {     
+            cout << ", PID " << pidOut
+                 << ", error " << error 
+                 << ", delay " << delay;
+          }
+          cout << endl;
+          */
+          prevTIME = ::time(NULL);      
+        }
+
+        if (delay > 0) {
+          volatile int dummy = 0;
+          for (int i = 0; i < delay; ++i) {
+            for (int j = 0; j < 10000; ++j) {
+              dummy = j;
+            }
+          }
+        }
+        prevBaseline = newBaseline;
+        cyclesInBaseline = 0;
+      }
+    }  
+
+    // calculate how many any actually done
     m_cycleCounter += cyclesDone;
   }
 }
@@ -1005,7 +1079,10 @@ void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)
     m_actualCPUClock_Hz = 1.0 * clocks / secs;
     //cout << "secs " << secs << ", clocks " << clocks << endl;
     if (m_options.m_displayCPUSpeed)
-      cout << std::fixed << std::setprecision(3) << (m_actualCPUClock_Hz / 1e+6) << " MHz" << endl;
+      cout << std::fixed << std::setprecision(3) 
+           << (m_actualCPUClock_Hz / 1e+6) 
+           << " MHz " 
+           << (m_options.m_turbo ? "(turbo)" : "(limited)") << "\n";
   }
 }
 

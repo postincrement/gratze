@@ -103,6 +103,8 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
 
     virtual void SetScreenSize(int cols, int rows, int lines);
 
+    virtual void OnUpdate() override;;
+
     void EnableFontROM(bool enable)
     { m_fontROMEnabled = enable; }
 
@@ -112,12 +114,19 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
     uint16_t GetFontOffset() const
     { return m_fontOffset; }
 
+    virtual bool IsPCG(FontChar ch) const
+    { return (ch >= 0x80) && (ch < 0x100); }
+
+    void SetUpdateHandler(std::function<void ()> handler)
+    { m_updateHandler = handler; }
+
   protected:
     int m_rows = 0;
     int m_cols = 0;
     int m_lines = 0;
     bool m_fontROMEnabled = false;
     uint16_t m_fontOffset = 0;
+    std::function<void ()> m_updateHandler = nullptr;
 };
 
 
@@ -126,7 +135,7 @@ MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, const Options & options, c
 {
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
-  InitUsage();
+  InitPCG();
 }
 
 FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
@@ -185,6 +194,14 @@ void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
   RefreshScreen();
 }
 
+void MicrobeeVideo::OnUpdate()
+{
+  //if (m_updateHandler)
+  //  m_updateHandler();
+
+  SingleColourMemoryMappedScreen::OnUpdate();
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 void Microbee_Emulator::Instantiate()
@@ -228,6 +245,7 @@ bool Microbee_Emulator::Open(const Options & options)
 void Microbee_Emulator::Reset(int addr)
 {
   m_video = (MicrobeeVideo *)m_screen.get();
+
   Z80Emulator::Reset(addr);
   m_pio.Reset();
   m_crtc.Reset();
@@ -243,9 +261,6 @@ static int FindBitSet(uint8_t val)
   }
   return pos;
 }
-
-  // XX -- ---rr rccc ----
-
 
 static std::string GetRowCol(uint16_t addr)
 {
@@ -310,11 +325,6 @@ void Microbee_Emulator::OnSetScreenSize(int cols, int rows, int lines)
 
   m_lines = lines;
   m_video->SetScreenSize(cols, rows, lines);
-
-  for (int c = 0; c < 0x80; ++c) {
-    for (int i = 0; i < 16; ++i)
-      m_video->SetCharData(0x80+c, i, m_pcgRAM[c*16+i], false);
-  }
   m_video->Update(true);
 }
 
@@ -391,9 +401,9 @@ void Microbee_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
   if (id == 8) {
     uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
     m_pcgRAM[offs] = val;
-    int pcgChar = 128 + (offs >> 4);
-    m_video->SetCharData(pcgChar, addr & 0xf, val);
-    return;
+    int ch  = 128 + (offs >> 4);
+    int row = addr & 0xf;
+    m_video->SetPCG(ch, row, val);
   }
 }
 

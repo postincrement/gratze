@@ -42,6 +42,7 @@ bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::
       value.m_boolean = true;
       break;
 
+    // increment the argument count
     case ArgType::eIncrement:
       value.m_type       = OptionValue::Type::eUnsigned; 
       value.m_unsigned++;
@@ -51,6 +52,20 @@ bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::
     case ArgType::eString:
       value.m_type    = OptionValue::Type::eString; 
       value.m_string = arg;
+      break;
+
+    // floating point value value
+    case ArgType::eFloat:
+      {
+        char * ptr;
+        double num = strtod(arg.c_str(), &ptr);
+        if (ptr == arg.c_str()) {
+          cerr << "error: argument to '" << optionName << " is not a floating point value" << endl;
+          return false;
+        }
+        value.m_type  = OptionValue::Type::eFloat; 
+        value.m_float = num;
+      }
       break;
 
     // signed integer decimal value
@@ -327,6 +342,9 @@ std::string CommandLineArgs::Usage() const
         case ArgType::eBoolean:
           strm << " bool";
           break;
+        case ArgType::eFloat:
+          strm << " float";
+          break;
         default:
           strm << " ?" << optDef->m_type << "?";  
       }
@@ -388,6 +406,11 @@ std::string CommandLineArgs::DumpValues() const
       case OptionValue::Type::eString:
         columns[1].push_back("string");
         col2 << "'" << value.m_string << "'";
+        break;
+
+      case OptionValue::Type::eFloat:
+        columns[1].push_back("float");
+        col2 << value.m_float;
         break;
     }
     columns[2].push_back(col2.str());
@@ -461,5 +484,16 @@ bool CommandLineArgs::OptionValue::GetValue(bool & value) const
     return false;
 
   value = m_boolean;
+  return true;  
+}
+
+
+template<>
+bool CommandLineArgs::OptionValue::GetValue(double & value) const
+{
+  if (m_type != OptionValue::Type::eFloat)
+    return false;
+
+  value = m_float;
   return true;  
 }
