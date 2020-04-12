@@ -15,6 +15,7 @@ class Font
 
     virtual int GetWidth() const = 0;
     virtual int GetHeight() const = 0;
+    virtual int GetCharCount() const;
 
     virtual bool Open(SDL_Renderer * m_renderer) = 0;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) = 0;
@@ -60,7 +61,7 @@ class TTFFont : public Font
 
     bool Open(SDL_Renderer * m_renderer) override;
     virtual void RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg) override;
-    
+
     virtual void Modify(FontChar ch, int row, uint8_t data) override;
 
   protected:

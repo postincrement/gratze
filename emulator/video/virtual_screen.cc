@@ -63,9 +63,9 @@ void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor)
   if (m_font) {
     SDL_Rect dstRect;
     m_mainWindow.GetScreenCharRect(dstRect,
-                                   (x * m_font->GetWidth()/* * m_colScale*/),
+                                   (x * m_font->GetWidth()),
                                     y * m_font->GetHeight(),
-                                    m_font->GetWidth()/* * m_colScale*/,
+                                    m_font->GetWidth(),
                                     m_font->GetHeight(),
                                     m_hscale * m_colScale,
                                     m_vscale);
@@ -176,8 +176,8 @@ bool VirtualScreen::SetFont(Font * font, int cols, int rows)
 
 bool VirtualScreen::ResizeScreen()
 {
-  int newWidth  = m_cols * m_font->GetWidth();
-  int newHeight = m_rows * m_font->GetHeight();
+  int newWidth  = m_cols * m_font->GetWidth() * m_hscale;
+  int newHeight = m_rows * m_font->GetHeight() * m_vscale;
 
   if ((m_width == 0) || (m_height == 0)) {
     cout << "info: screen size set to " << newWidth << "x" << newHeight << endl;
@@ -352,8 +352,6 @@ void MemoryMappedScreen::UpdateUsage(int loc, FontChar oldChar, FontChar newChar
   }
   else {
     r->second.m_locs.erase(loc);
-    if (r->second.m_locs.size() == 0)
-      r->second.m_locs.erase(oldChar);
   }
 
   r = m_usage.find(newChar);
@@ -380,6 +378,23 @@ FontChar MemoryMappedScreen::GetCharAtLoc(int loc) const
 {
   return m_memory[loc & m_memoryMask];
 }
+
+void MemoryMappedScreen::SetCharData(FontChar ch, int line, uint8_t val, bool update)
+{
+  if (!m_trackUsage || (ch >= m_font->GetCharCount()))
+    return;
+
+  m_font->Modify(ch, line, val);
+  if (m_usage.count(ch) > 0) {
+    auto & s = m_usage[ch];
+    for (auto & r : s.m_locs) 
+      RefreshCharAtLoc(r);
+    if (update)
+      Update(true);
+  }
+}
+
+
 
 /////////////////////////////////////////////////////////////////////////////////
 

@@ -23,6 +23,11 @@ Font::~Font()
     SDL_DestroyTexture(m_texture);
 }
 
+int Font::GetCharCount() const
+{
+  return m_charCount;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 
 static unsigned char reverse(unsigned char b) {
@@ -203,6 +208,9 @@ bool PixelFont::Open(SDL_Renderer * renderer)
 
 void PixelFont::Modify(FontChar ch, int row, uint8_t data)
 {
+  if (row >= m_config.m_height)
+    return;
+
   SDL_Rect rect = { 0, ch * m_config.m_height + row, m_config.m_width, 1 };
 
   uint32_t * dstPixels;
@@ -261,7 +269,6 @@ TTFFont::TTFFont(const Config::Font & config, int charCount, const std::string &
   m_pixelFont.reset(new PixelFont(config));
 }
 
-
 TTFFont::~TTFFont()
 {
   if (m_font)
@@ -269,11 +276,14 @@ TTFFont::~TTFFont()
 }
 
 int TTFFont::GetWidth() const
-{ return m_width; }
+{ 
+  return m_width; 
+}
 
 int TTFFont::GetHeight() const
-{ return m_height; }
-
+{ 
+  return m_height; 
+}
 
 bool TTFFont::Open(SDL_Renderer * renderer)
 {

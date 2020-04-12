@@ -125,6 +125,8 @@ class MemoryMappedScreen : public VirtualScreen
         g_memoryMappedScreenFactory.AddConcreteClass<Type>(name);
     }
 
+    virtual void SetCharData(FontChar ch, int line, uint8_t val, bool update = true);
+
     void InitUsage();
     void UpdateUsage(int loc, FontChar oldChar, FontChar newChar);
 
