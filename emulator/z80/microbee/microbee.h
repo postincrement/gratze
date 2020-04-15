@@ -39,6 +39,7 @@ class Microbee_Emulator : public Z80Emulator
     void OnSetCursorShape(uint8_t start, uint8_t end, int blinkRate);
 
     bool ScanKeyboard(uint16_t & addr);
+    void RewritePCG();
 
   protected:  
     Z80PIO m_pio;

@@ -472,7 +472,7 @@ void Emulator::CompileConfigBlocks(const Config::Block * blocks, size_t blockCou
       writeInfo.m_startAddr    = info.m_startAddr;
       writeInfo.m_endAddr      = info.m_endAddr;
       writeInfo.m_realFunction = &Emulator::WriteIOMemoryInternal;
-      if (m_options.m_readMemory) {
+      if (m_options.m_writeMemory) {
         writeInfo.m_function  = &Emulator::DebugWriteIOMemory;
       }
       else {
@@ -792,6 +792,8 @@ void Emulator::MemoryDump() const
       memcpy(&dump[r.m_startAddr], r.m_memory, r.m_endAddr - r.m_startAddr + 1);
     }
     else {
+      for (int addr = r.m_startAddr; addr <= r.m_endAddr; ++addr)
+        dump[addr] = ReadMemory(addr);
     }
   }
 
@@ -1005,7 +1007,7 @@ int Emulator::Run(const Options & options)
       cyclesDone = cyclesToDo - remaining;
     }
     else {
-      uint64_t cycles = std::min<int64_t>(cyclesToDo, 50);
+      uint64_t cycles = std::min<int64_t>(cyclesToDo, 1);
       remaining = Exec(cycles);
       cyclesDone = cycles - remaining;
       cyclesInBaseline += cyclesDone;

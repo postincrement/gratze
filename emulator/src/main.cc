@@ -174,8 +174,8 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--writeiodebug",  options.m_writeIO);
   options.m_args.GetValue("--readmemdebug",  options.m_readMemory);
   options.m_args.GetValue("--writememdebug", options.m_writeMemory);
-  options.m_args.GetValue("--readvideo",     options.m_readVideo);
-  options.m_args.GetValue("--writevideo",    options.m_writeVideo);
+  options.m_args.GetValue("--readvideodebug",     options.m_readVideo);
+  options.m_args.GetValue("--writevideodebug",    options.m_writeVideo);
   options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
   options.m_args.GetValue("--fdcDebug",      options.m_fdcDebug);
   options.m_args.GetValue("--turbo",         options.m_turbo);

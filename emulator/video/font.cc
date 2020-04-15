@@ -213,14 +213,21 @@ bool PixelFont::Open(SDL_Renderer * renderer)
 
 void PixelFont::Modify(FontChar ch, int rowStart, int rowCount, uint8_t * rowData)
 {
+  if (ch >= m_config.m_count) {
+    cerr << "PCG char " << HEXFORMAT0x2(ch) << " not valid" << endl;
+    return;
+  }
   if (rowStart >= m_config.m_height)
     return;
+  if ((rowStart + rowCount) >= m_config.m_height)
+    rowCount = m_config.m_height - rowStart;  
 
-  SDL_Rect rect = { 0, ch * m_config.m_height + rowStart, m_config.m_width, rowCount };
+  //cout << "font: " << (int)ch << " row " << rowStart << " to " << (rowStart + rowCount - 1) << endl; 
+  SDL_Rect rect = { 0, (ch * m_config.m_height) + rowStart, m_config.m_width, rowCount };
 
-  uint32_t * dstPixels;
+  uint8_t * pixels;
   int pitch;
-  if (SDL_LockTexture(m_texture, &rect, (void **)&dstPixels, &pitch)) {
+  if (SDL_LockTexture(m_texture, &rect, (void **)&pixels, &pitch)) {
     cerr << "sdl: lock texture failed" << endl;
     return;
   }
@@ -228,11 +235,10 @@ void PixelFont::Modify(FontChar ch, int rowStart, int rowCount, uint8_t * rowDat
   int shiftBits = m_config.m_width - m_config.m_charGen->m_width;
 
   for (int y = 0; y < rowCount; ++y) {
-    if ((rowStart + y) >= m_config.m_height)
-      break;
     uint8_t data = *rowData++;
     data << shiftBits;
     unsigned mask = 1 << (m_config.m_width - 1);
+    uint32_t * dstPixels = (uint32_t *)pixels;
     for (int x = 0; x < m_config.m_width; ++x) {
       if (data & mask) {
         *dstPixels = 0xffffffff;
@@ -243,7 +249,7 @@ void PixelFont::Modify(FontChar ch, int rowStart, int rowCount, uint8_t * rowDat
       dstPixels++;
       mask = mask >> 1;
     }
-    dstPixels += pitch - m_config.m_width;
+    pixels += pitch;
   }
 
   SDL_UnlockTexture(m_texture);

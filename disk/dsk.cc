@@ -117,6 +117,7 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     return false;
   }
 
+  cout << "dsk: track length = " << dskHeader.m_trackSize << endl;
 
   m_trackCount = dskHeader.m_tracks;
   off_t offs = 0x100;
@@ -138,37 +139,37 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
         m_error << "dsk: header for track " << trackNum << " at offset " << HEXFORMAT0x4(offs) << " has bad ID";
         return false;
       }
-      else {
-        int sectorSizeBytes = trackInfo.m_sectorSize*256;
-        int density = 0;
-        //cout << "dsk: track " << (int)trackNum << " has sector count " << (int)trackInfo.m_sectorCount << "\n";
 
-        m_sideCount   = std::max((int)(side+1),   m_sideCount);
-        off_t dataOffs = offs + 0x100;
-        uint8_t dam = 0x00;
+      int sectorSizeBytes = trackInfo.m_sectorSize*256;
+      int density = 0;
+      //cout << "dsk: track " << (int)trackNum << " has sector count " << (int)trackInfo.m_sectorCount << "\n";
 
-        SectorHeader * sectorHeader = trackHeader.m_sectors;
-        for (int sector = 0; sector < trackInfo.m_sectorCount; ++sector) {
+      m_sideCount   = std::max((int)(side+1),   m_sideCount);
+      off_t dataOffs = offs + 0x100;
+      uint8_t dam = 0x00;
 
-          m_minSector   = std::min<int>(sectorHeader->m_sectorID, m_minSector);
-          m_maxSector   = std::max<int>(sectorHeader->m_sectorID, m_maxSector);
+      SectorHeader * sectorHeader = trackHeader.m_sectors;
+      for (int sector = 0; sector < trackInfo.m_sectorCount; ++sector) {
 
-          m_minTrack    = std::min<int>(sectorHeader->m_track, m_minTrack);
+        m_minSector   = std::min<int>(sectorHeader->m_sectorID, m_minSector);
 
-          m_sectorSize  = std::max(sectorSizeBytes,            m_sectorSize);
-          m_density     = std::max((int)density,    m_density);
+        m_minTrack    = std::min<int>(sectorHeader->m_track, m_minTrack);
 
-          //cout << "dsk: sector ID " << (int)sectorHeader->m_sectorID << " has offset " << dataOffs << endl;
+        m_sectorSize  = std::max(sectorSizeBytes,            m_sectorSize);
+        m_density     = std::max((int)density,    m_density);
 
-          m_sectorMap.emplace(HASH_STS(side, sectorHeader->m_track, sectorHeader->m_sectorID),
-              SectorInfo(dataOffs, sectorSizeBytes, dam, density));
+        //cout << "dsk: sector ID " << (int)sectorHeader->m_sectorID << " has offset " << dataOffs << endl;
 
-          ++sectorHeader;
-          dataOffs += sectorSizeBytes;
-        }
+        m_sectorMap.emplace(HASH_STS(side, sectorHeader->m_track, sectorHeader->m_sectorID),
+            SectorInfo(dataOffs, sectorSizeBytes, dam, density));
+
+        ++sectorHeader;
+        dataOffs += sectorSizeBytes;
       }
 
-      offs += 0x100 + trackInfo.m_sectorCount * (trackInfo.m_sectorSize * 256);
+      m_maxSector   = std::max<int>(m_minSector + trackInfo.m_sectorCount - 1, m_maxSector);
+
+      offs += 0x100 + trackInfo.m_sectorCount * sectorSizeBytes;
     }
   }
 

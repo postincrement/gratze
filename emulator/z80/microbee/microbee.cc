@@ -103,8 +103,6 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
 
     virtual void SetScreenSize(int cols, int rows, int lines);
 
-    virtual void OnUpdate() override;;
-
     void EnableFontROM(bool enable)
     { m_fontROMEnabled = enable; }
 
@@ -119,7 +117,7 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
 
     void SetUpdateHandler(std::function<void ()> handler)
     { m_updateHandler = handler; }
-
+    
   protected:
     int m_rows = 0;
     int m_cols = 0;
@@ -141,15 +139,6 @@ MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, const Options & options, c
 FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
 {
   FontChar ch = m_memory[loc & 0x7ff];
-
-  if (ch >= 0x80) {
-    //ch = ch & 0x7f;
-  }
-
-  //uint8_t attr = m_memory[0x400 + charAddr];
-  // switch to graphics
-  //ch += ((attr & 0x2) != 0) ? 0x100 : 0x000;
-
   return ch;
 }
 
@@ -173,8 +162,10 @@ uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
 {
   if (!m_fontROMEnabled)
     return SingleColourMemoryMappedScreen::ReadMemoryAtAddress(addr);
-  else
-    return g_charGen_MotorolaMCM6574.m_data[(addr & 0x7ff) + m_fontOffset];
+  else {
+    const CharacterGeneratorROM * chargen = (m_fontOffset == 0) ? &g_charGen_mbee64x16 : &g_charGen_mbee80x24;
+    return chargen->m_data[addr & 0x7ff];
+  }
 }
 
 void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
@@ -190,17 +181,17 @@ void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
       nullptr);
   font->SetHeight(lines);
 
+  cout << "font created" << endl;
+
   SetFont(font, m_cols, m_rows);
+ 
+  cout << "set font done" << endl;
+
   RefreshScreen();
+
+  cout << "refresh done" << endl;
 }
 
-void MicrobeeVideo::OnUpdate()
-{
-  //if (m_updateHandler)
-  //  m_updateHandler();
-
-  SingleColourMemoryMappedScreen::OnUpdate();
-}
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -245,6 +236,7 @@ bool Microbee_Emulator::Open(const Options & options)
 void Microbee_Emulator::Reset(int addr)
 {
   m_video = (MicrobeeVideo *)m_screen.get();
+  m_video->SetRewritePCGHandler(std::bind(&Microbee_Emulator::RewritePCG, this));
 
   Z80Emulator::Reset(addr);
   m_pio.Reset();
@@ -337,6 +329,7 @@ void Microbee_Emulator::OnSetVideoStartAddress(uint16_t addr)
 
   if (fontOffset != m_fontOffset) {
     m_fontOffset = fontOffset;
+    cout << "mbee: video font offset set to " << HEXFORMAT0x4(m_fontOffset) << endl;
     m_video->SetFontOffset(fontOffset);
     m_video->SetScreenSize(m_screen->GetCols(), m_screen->GetRows(), m_lines);
   }
@@ -400,10 +393,12 @@ void Microbee_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 {
   if (id == 8) {
     uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
-    m_pcgRAM[offs] = val;
-    int ch  = 128 + (offs >> 4);
-    int row = addr & 0xf;
-    m_video->SetPCG(ch, row, val);
+    //if (m_pcgRAM[offs] != val) {
+      m_pcgRAM[offs] = val;
+      int ch  = 128 + (offs >> 4);
+      int row = addr & 0xf;
+      m_video->SetPCG(ch, row, val);
+    //}
   }
 }
 
@@ -412,6 +407,15 @@ uint8_t Microbee_Emulator::ReadIOMemory(int id, uint16_t addr) const
   if (id == 8) {
     uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
     return m_pcgRAM[offs];
+  }
+}
+
+void Microbee_Emulator::RewritePCG()
+{
+  cerr << "pcg: rewriting PCG" << endl;
+  for (FontChar ch = 0x80; ch < 0x100; ++ch) {
+    int offs = (ch - 0x80) * 16;
+    m_video->SetPCG(ch, 0, 16, &m_pcgRAM[offs]);
   }
 }
 

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <map>
 #include <set>
+#include <functional>
 
 #include <SDL.h>
 
@@ -112,6 +113,7 @@ class MemoryMappedScreen : public VirtualScreen
     virtual void GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg) override = 0;
     virtual FontChar GetCharAtLoc(int loc) const override;
     virtual void OnUpdate() override;
+    virtual bool SetFont(Font * font, int cols = -1, int rows = -1) override;
 
     // new functions
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg) = 0;
@@ -135,6 +137,8 @@ class MemoryMappedScreen : public VirtualScreen
     virtual void SetPCG(FontChar ch, int line, uint8_t val);
     virtual void SetPCG(FontChar ch, int row, int rowCount, uint8_t * val);
 
+    virtual void SetRewritePCGHandler(std::function<void ()> handler);
+
     struct CharUsage
     {
       std::set<int> m_locs;
@@ -149,6 +153,7 @@ class MemoryMappedScreen : public VirtualScreen
     bool m_hasPCG = false;
     std::map<FontChar, CharUsage> m_pcgLocs;
     std::set<FontChar> m_pcgDirty;
+    std::function<void ()> m_rewritePCGHandler = nullptr;
 };
 
 /////////////////////////////////////////////////////////////////////////////////

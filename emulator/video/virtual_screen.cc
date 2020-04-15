@@ -357,7 +357,6 @@ void MemoryMappedScreen::OnUpdate()
       if (IsPCG(ch)) {
         auto & s = m_pcgLocs[ch];
         for (auto & loc : s.m_locs) {
-          //cout << "Refresh PCG char " << HEXFORMAT0x2(ch) << " at " << HEXFORMAT0x4(loc) << endl;
           RefreshCharAtLoc(loc, false);
         }
       }
@@ -414,13 +413,30 @@ void MemoryMappedScreen::SetPCG(FontChar ch, int line, uint8_t val)
   SetPCG(ch, line, 1, &val);
 }
 
-void MemoryMappedScreen::SetPCG(FontChar ch, int row, int rowCount, uint8_t * val)
+void MemoryMappedScreen::SetPCG(FontChar ch, int row, int rowCount, uint8_t * ptr)
 {
   if (!m_hasPCG || !IsPCG(ch))
     return;
 
-  m_font->Modify(ch, row, rowCount, val);
+  m_font->Modify(ch, row, rowCount, ptr);
   m_pcgDirty.insert(ch);
+}
+
+
+bool MemoryMappedScreen::SetFont(Font * font, int cols, int rows)
+{
+  if (!VirtualScreen::SetFont(font, cols, rows)) 
+    return false;
+
+  if (m_hasPCG && m_rewritePCGHandler)
+    m_rewritePCGHandler();
+
+  return true;
+}
+
+void MemoryMappedScreen::SetRewritePCGHandler(std::function<void ()> handler)
+{
+  m_rewritePCGHandler = handler;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
