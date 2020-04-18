@@ -17,8 +17,6 @@ using VirtualDriveFactory = Factory<VirtualDrive, std::string>;
 
 #define MAX_SECTOR_SIZE  1024
 
-#define HASH_STS(side, track, sector)     (sector + (side << 8) + (track << 16))
-
 class VirtualDrive;
 
 class VirtualFileIdentifier
@@ -47,21 +45,37 @@ class VirtualDrive
 
     void SetVerbose(bool v);
 
-    struct SectorInfo
+    class SectorInfo
     {
-      SectorInfo() = default;
-      SectorInfo(const SectorInfo & obj) = default;
-      SectorInfo(off_t offset, int size, uint8_t dam, uint8_t density)
-        : m_offset(offset)
-        , m_size(size)
-        , m_dam(dam)
-        , m_density(density)
-      {}
+      public:
+        SectorInfo() = default;
+        SectorInfo(const SectorInfo & obj) = default;
+        SectorInfo(int id, off_t offset, int size, uint8_t dam, uint8_t density)
+          : m_id(id)
+          , m_offset(offset)
+          , m_size(size)
+          , m_dam(dam)
+          , m_density(density)
+        {}
 
-      off_t m_offset;
-      int m_size;
-      uint8_t m_dam;
-      uint8_t m_density;
+        int     m_id = -1;
+        off_t   m_offset = 0;
+        int     m_size = 0;
+        uint8_t m_dam = 0;
+        uint8_t m_density = 0;
+    };
+
+    class TrackInfo
+    {
+      public:
+        TrackInfo();
+
+        virtual void AddSector(const SectorInfo & sector);
+
+        virtual SectorInfo * GetSector(int sector);
+        virtual const SectorInfo * GetSector(int sector) const;
+
+        std::vector<SectorInfo> m_sectors;
     };
 
     virtual bool Mount(bool readOnly) = 0;
@@ -71,13 +85,13 @@ class VirtualDrive
     virtual std::string GetFormat() const = 0;
     virtual std::string GetExtension() const = 0;
 
-    virtual int GetTracks() const = 0;
-    virtual int GetSectors() const = 0;
-    virtual int GetSectorSize() const = 0;
+    virtual void AddTrack(int trackNum, const TrackInfo & track);
+    
+    virtual TrackInfo * GetTrack(int trackNum);
+    virtual const TrackInfo * GetTrack(int trackNum) const;
+
     virtual int GetSides() const = 0;
     virtual int GetDensity() const = 0;
-    virtual int GetMinSector() const = 0;
-    virtual int GetMinTrack() const = 0;
 
     virtual std::string GetError() const;
 
@@ -101,7 +115,10 @@ class VirtualDrive
   protected:
     bool m_readOnly;
     bool m_verbose;
+    int  m_density;
+    int  m_sideCount;
     std::stringstream m_error;
+    std::map<int, TrackInfo> m_tracks;
 };
 
 class VirtualDriveFile : public VirtualDrive
@@ -121,26 +138,13 @@ class VirtualDriveFile : public VirtualDrive
     virtual int ReadSector(int track, int side, int sector, SectorInfo & info, uint8_t * data, int len) override;
     virtual int WriteSector(int track, int side, int sector, uint8_t * data, int len) override;
 
-    virtual int GetTracks() const override;
-    virtual int GetSectors() const override;
-    virtual int GetSectorSize() const override;
     virtual int GetSides() const override;
     virtual int GetDensity() const override;
-    virtual int GetMinSector() const override;
-    virtual int GetMinTrack() const override;
 
   protected:
     int m_fd;
     std::string m_name;
     std::string m_extension;
-    int m_minSector = 0;
-    int m_maxSector = 0;
-    int m_sectorSize;
-    int m_minTrack = 0;
-    int m_trackCount = 0;
-    int m_density;
-    int m_sideCount;
-    std::map<uint32_t, SectorInfo> m_sectorMap;
 };
 
 

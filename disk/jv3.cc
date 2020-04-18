@@ -33,9 +33,8 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   uint8_t * ptr = jv3Header;
   off_t offs = JV3_SECTOR_COUNT*3 + 1;
 
-  m_minTrack = 1;
-
   for (int i = 0; i < JV3_SECTOR_COUNT; ++i) {
+
     uint8_t track  = ptr[0];
     uint8_t sector = ptr[1];
     uint8_t flags  = ptr[2];
@@ -57,64 +56,66 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
           sectorSize = 256;
           break;
       }
+      continue;
+    }
+
+    TrackInfo * trackInfo = GetTrack(track);
+    if (trackInfo == nullptr) {
+      AddTrack(track, TrackInfo());
+      trackInfo = GetTrack(track);
+    }
+    
+    int density = (flags & 0x80) ? 1 : 0;
+    uint8_t dam = 0x00;
+    int side    = (flags & 0x10) ? 1 : 0;
+    switch (flags & 0x3) {
+      case 0:
+        sectorSize = 256;
+        break;
+      case 1:
+        sectorSize = 128;
+        break;
+      case 2:
+        sectorSize = 1024;
+        break;
+      case 3:
+        sectorSize = 512;
+        break;
+    }
+    switch ((flags & 0x60) + density) {
+      case 0x00:  // single
+      case 0x01:  // double
+        dam = 0xfb;
+        break;
+      case 0x20:  // single
+        dam = 0xfa;
+        break;
+      case 0x21:  // double
+        dam = 0xf8;
+        break;
+      case 0x40:  // single
+        dam = 0xf9;
+        break;
+      case 0x60:  // double
+        dam = 0xf8;
+        break;
+    }
+    if (dam == 0x00) {
+      m_error << "jv3 - unknown DAM code " << HEXFORMAT0x2(flags & 0x60) << " on track " << (int)track << ", sector " << (int)sector << endl;
+      return false;
     }
     else {
-      int density = (flags & 0x80) ? 1 : 0;
-      uint8_t dam = 0x00;
-      int side    = (flags & 0x10) ? 1 : 0;
-      switch (flags & 0x3) {
-        case 0:
-          sectorSize = 256;
-          break;
-        case 1:
-          sectorSize = 128;
-          break;
-        case 2:
-          sectorSize = 1024;
-          break;
-        case 3:
-          sectorSize = 512;
-          break;
-      }
-      switch ((flags & 0x60) + density) {
-        case 0x00:  // single
-        case 0x01:  // double
-          dam = 0xfb;
-          break;
-        case 0x20:  // single
-          dam = 0xfa;
-          break;
-        case 0x21:  // double
-          dam = 0xf8;
-          break;
-        case 0x40:  // single
-          dam = 0xf9;
-          break;
-        case 0x60:  // double
-          dam = 0xf8;
-          break;
-      }
-      if (dam == 0x00) {
-        m_error << "jv3 - unknown DAM code " << HEXFORMAT0x2(flags & 0x60) << " on track " << (int)track << ", sector " << (int)sector << endl;
-        return false;
-      }
-      else {
-        if (m_verbose)
-          cout << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
-                << "track=" << (int)track << "," 
-                << "sector=" << (int)sector << "," 
-                << "dam=" << HEXFORMAT0x2(dam) << endl; 
-        m_sectorMap.emplace(HASH_STS(0, track, sector), SectorInfo(offs, sectorSize, dam, density));
-      }
-
-      m_minSector   = std::min<int>(sector,    m_minSector);
-      m_maxSector   = std::max<int>(sector,    m_maxSector);
-      m_trackCount  = std::max<int>(track+1,   m_trackCount);
-      
-      m_sectorSize  = std::max((int)sectorSize, m_sectorSize);
-      m_sideCount   = std::max((int)(side+1),   m_sideCount);
-      m_density     = std::max((int)density,    m_density);
+      if (m_verbose)
+        cout << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
+              << "track=" << (int)track << "," 
+              << "sector=" << (int)sector << "," 
+              << "dam=" << HEXFORMAT0x2(dam) << endl;
+      SectorInfo sectorInfo(sector, offs, sectorSize, dam, density);
+      trackInfo->AddSector(sectorInfo);
     }
+
+    m_sideCount     = std::max((int)(side+1),   m_sideCount);
+    m_density       = std::max((int)density,    m_density);
 
     offs += sectorSize;
     ptr += 3;
