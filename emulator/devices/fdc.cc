@@ -59,6 +59,7 @@ using namespace std;
 
 
 static WD_FDC::CommandInfo g_commands[] = {
+//  cmd   mask  mode
   { 0x00, 0xf0, 0,                  "home",       1, &WD_FDC::HomeCommand },
 
   { 0x10, 0xf0, WD_FDC::eWD1771,    "seek",       1, &WD_FDC::SeekCommand_1771 },   // 1771 seek command does not have update bit
@@ -74,11 +75,11 @@ static WD_FDC::CommandInfo g_commands[] = {
   { 0xf4, 0xff, 0,                  "writeTrack", 3, &WD_FDC::WriteTrackCommand },
 
   { 0xc4, 0xf4, 0,                  "readAddr",   3, 0 },
+  { 0xfb, 0xc0, WD_FDC::eWD1793,    "readaddr",   3, &WD_FDC::ReadAddrCommand_1793 },
+
   { 0xe4, 0xfe, 0,                  "readTrack",  3, 0 },
 
   { 0xd0, 0xf0, 0,                  "forceInt",   4, &WD_FDC::ForceIntCommand },
-
-  { 0xfb, 0xc0, WD_FDC::eWD1793,    "readaddr",   3,  &WD_FDC::ReadAddrCommand_1793 },
 
   { 0xfe, 0xff, WD_FDC::eWD1771,    "enable1771", 0, &WD_FDC::PercomCommand },
   { 0xff, 0xff, WD_FDC::eWD1771,    "enable1791", 0, &WD_FDC::PercomCommand }
@@ -208,6 +209,8 @@ WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd, WD_FDC::CommandInfo * info
         (((info->m_modes == 0) || (info->m_modes & m_mode) != 0))
         && 
         ((cmd & info->m_andMask) == (info->m_cmd))
+        &&
+        (info->m_function != nullptr)
       ) {
       return info;
     }
