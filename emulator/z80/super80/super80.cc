@@ -106,7 +106,7 @@ static KeyboardScanner::ScanLayout g_super80Keys = {
 
 //////////////////////////////////////////////////////////////////////////////////
 
-class Super80Video : public SingleColourMemoryMappedScreen
+class Super80Video : public MonoMemoryMappedScreen
 {
   public:
     Super80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
@@ -114,7 +114,7 @@ class Super80Video : public SingleColourMemoryMappedScreen
 };
 
 Super80Video::Super80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
-  : SingleColourMemoryMappedScreen(mainWindow, options, info)
+  : MonoMemoryMappedScreen(mainWindow, options, info)
 {
 }
 

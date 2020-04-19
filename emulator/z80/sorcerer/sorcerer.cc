@@ -88,7 +88,7 @@ static EmulatorInfo g_emulatorInfo =
 
 //////////////////////////////////////////////////////////////////////////////////
 
-using SorcererVideo = SingleColourMemoryMappedScreen;
+using SorcererVideo = MonoMemoryMappedScreen;
 
 void Sorcerer_Emulator::Instantiate()
 {

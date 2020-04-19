@@ -59,7 +59,7 @@
 #define   MODEL4_SCREEN_WIDTH_PIXELS     (MODEL4_SCREEN_WIDTH_CHARS*MODEL4_FONT_WIDTH)
 #define   MODEL4_SCREEN_HEIGHT_PIXELS    (MODEL4_SCREEN_HEIGHT_CHARS*MODEL4_FONT_HEIGHT)
 
-class TRS80Video : public SingleColourMemoryMappedScreen
+class TRS80Video : public MonoMemoryMappedScreen
 {
   public:
     TRS80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);

@@ -23,7 +23,7 @@ using namespace std;
 extern unsigned char g_dg640Char_ROM[1024];
 
 DG640::DG640(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
-  : SingleColourMemoryMappedScreen(mainWindow, options, info)
+  : MonoMemoryMappedScreen(mainWindow, options, info)
 {
   if (m_memory.size() != DG640_VIDEO_RAM_SIZE_K * 1024) {
     cerr << "error: DG640 memory is wrong size - " << m_memory.size() << " instead of " << DG640_VIDEO_RAM_SIZE_K * 1024 << endl;

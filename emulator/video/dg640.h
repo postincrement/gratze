@@ -29,7 +29,7 @@ extern void CreateDG640PixelData(const Options & options, const Config::Font & f
                            &DG640::CreatePixelFont), \
   INFO_MONITOR(12.0, 4.0, 3.0, ePAL)
 
-class DG640 : public SingleColourMemoryMappedScreen
+class DG640 : public MonoMemoryMappedScreen
 {
   public:
     DG640(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);

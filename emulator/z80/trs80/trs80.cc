@@ -489,7 +489,7 @@ uint8_t TRS80Emulator::ReadFF(register uint16_t)
 /////////////////////////////////////////////////////////////
 
 TRS80Video::TRS80Video(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
-  : SingleColourMemoryMappedScreen(mainWindow, options, info)
+  : MonoMemoryMappedScreen(mainWindow, options, info)
 {
   m_32Col = false;
 }
@@ -508,5 +508,5 @@ void TRS80Video::WriteMemoryAtAddress(int addr, uint8_t ch)
   if (ch < 0x20)
     ch += 0x40;
 
-  SingleColourMemoryMappedScreen::WriteMemoryAtAddress(addr, ch);
+  MonoMemoryMappedScreen::WriteMemoryAtAddress(addr, ch);
 }

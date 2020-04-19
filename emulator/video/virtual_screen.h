@@ -159,10 +159,10 @@ class MemoryMappedScreen : public VirtualScreen
 
 /////////////////////////////////////////////////////////////////////////////////
 
-class SingleColourMemoryMappedScreen : public MemoryMappedScreen
+class MonoMemoryMappedScreen : public MemoryMappedScreen
 {
   public:
-    SingleColourMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
+    MonoMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
 
     virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg);
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
@@ -172,6 +172,17 @@ class SingleColourMemoryMappedScreen : public MemoryMappedScreen
   protected:
     SDL_Color m_bgColour;
     SDL_Color m_fgColour;
+};
+
+/////////////////////////////////////////////////////////////////////////////////
+
+class ColourMemoryMappedScreen : public MemoryMappedScreen
+{
+  public:
+    ColourMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
+
+    virtual void SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg);
+    virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
 };
 
 /////////////////////////////////////////////////////////////////////////////////

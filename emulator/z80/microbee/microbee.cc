@@ -99,7 +99,7 @@ static KeyboardScanner::ScanLayout g_microbeeKeys = {
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-class MicrobeeVideo : public SingleColourMemoryMappedScreen
+class MicrobeeVideo : public ColourMemoryMappedScreen
 {
   public:
     MicrobeeVideo(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);
@@ -135,6 +135,8 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
 
     virtual void RewritePCG() override;
 
+    void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg) override;
+
     bool m_attributeRAMEnabled = false;
     bool m_extendedPCG = false;
     bool m_colourRAMEnabled = false;
@@ -154,7 +156,7 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
 
 
 MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
-  : SingleColourMemoryMappedScreen(mainWindow, options, info)
+  : ColourMemoryMappedScreen(mainWindow, options, info)
 {
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
@@ -182,6 +184,37 @@ FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
   return ch;
 }
 
+static SDL_Colour g_colours[16] = 
+{   //R     G     B
+  { 0x00, 0x00, 0x00, 0xff },  // black
+  { 0x80, 0x00, 0x00, 0xff },  // red 
+  { 0x00, 0x80, 0x00, 0xff },  // green
+  { 0x80, 0x80, 0x00, 0xff },  // yellow
+  { 0x00, 0x00, 0x80, 0xff },  // blue
+  { 0x80, 0x00, 0x80, 0xff },  // magenta
+  { 0x00, 0x80, 0x80, 0xff },  // cyan
+  { 0x80, 0x80, 0x80, 0xff },  // white
+  
+  { 0x00, 0x00, 0x00, 0xff },  // black
+  { 0xff, 0x00, 0x00, 0xff },  // red 
+  { 0x00, 0xff, 0x00, 0xff },  // green
+  { 0xff, 0xff, 0x00, 0xff },  // yellow
+  { 0x00, 0x00, 0xff, 0xff },  // blue
+  { 0xff, 0x00, 0xff, 0xff },  // magenta
+  { 0x00, 0xff, 0xff, 0xff },  // cyan
+  { 0xff, 0xff, 0xff, 0xff },  // white
+
+};
+
+void MicrobeeVideo::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
+{
+  uint8_t attr = m_colourRAM[0][loc & 0x7ff];
+
+  fg = g_colours[attr & 0xf];
+  bg = g_colours[(attr >> 4) & 0xf];
+  bg.a = 0x00;
+}
+
 void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
   if (withCursor) {
@@ -200,6 +233,7 @@ void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t val)
   if (offs >= 0x800) {
     if (m_colourRAMEnabled) {
       m_colourRAM[0][voffs] = val;
+      RefreshCharAtLoc(voffs);
     }
     else {
       m_pcgRAM[m_bankSel][voffs] = val;
@@ -212,7 +246,7 @@ void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t val)
     m_attributeRAM[m_bankSel][voffs] = val;
   }
   else if (!m_fontROMEnabled)
-    SingleColourMemoryMappedScreen::WriteMemoryAtAddress(voffs, val);
+    ColourMemoryMappedScreen::WriteMemoryAtAddress(voffs, val);
 }
 
 uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
@@ -232,7 +266,7 @@ uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
     return m_attributeRAM[m_bankSel][voffs];
   }  
   else if (!m_fontROMEnabled)
-    return SingleColourMemoryMappedScreen::ReadMemoryAtAddress(voffs);
+    return ColourMemoryMappedScreen::ReadMemoryAtAddress(voffs);
   else {
     const CharacterGeneratorROM * chargen = (m_fontOffset == 0) ? &g_charGen_mbee64x16 : &g_charGen_mbee80x24;
     return chargen->m_data[voffs];

@@ -446,14 +446,14 @@ void MemoryMappedScreen::SetRewritePCGHandler(std::function<void ()> handler)
 
 /////////////////////////////////////////////////////////////////////////////////
 
-SingleColourMemoryMappedScreen::SingleColourMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+MonoMemoryMappedScreen::MonoMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
   : MemoryMappedScreen(mainWindow, options, info)
 {
   m_fgColour = { 0xff, 0xff, 0xff, 0xff };
   m_bgColour = { 0, 0, 0, 0 };
 }
 
-void SingleColourMemoryMappedScreen::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
+void MonoMemoryMappedScreen::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
 {
   m_fgColour = fg;
   m_bgColour = bg;
@@ -461,14 +461,26 @@ void SingleColourMemoryMappedScreen::SetFontColour(const SDL_Colour & fg, const 
   RefreshScreen();
 }
 
-void SingleColourMemoryMappedScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
+void MonoMemoryMappedScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
 {
   fg = m_fgColour;
   bg = m_bgColour;
 }
 
-void SingleColourMemoryMappedScreen::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
+void MonoMemoryMappedScreen::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
 {
   return GetFontColour(fg, bg);
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+
+ColourMemoryMappedScreen::ColourMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
+  : MemoryMappedScreen(mainWindow, options, info)
+{}
+
+void ColourMemoryMappedScreen::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
+{}
+
+void ColourMemoryMappedScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
+{}
 
