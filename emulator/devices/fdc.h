@@ -42,8 +42,10 @@ class WD_FDC
 
     struct CommandInfo
     {
-      uint8_t m_andMask;
       uint8_t m_cmd;
+      uint8_t m_andMask;
+
+      unsigned m_modes;
 
       const char * m_name;
       int m_type;
@@ -57,7 +59,8 @@ class WD_FDC
 
     // type I commands
     int HomeCommand(uint8_t cmd);
-    int SeekCommand(uint8_t cmd);
+    int SeekCommand_1771(uint8_t cmd);
+    int SeekCommand_1793(uint8_t cmd);
     int StepCommand(uint8_t cmd);
     int StepInCommand(uint8_t cmd);
     int StepOutCommand(uint8_t cmd);
@@ -160,8 +163,6 @@ class WD_FD1793 : public WD_FDC
     WD_FD1793(bool debug)
       : WD_FDC(eWD1793, debug)
     {}
-
-    virtual CommandInfo * GetCommand(uint8_t cmd);
 };
 
 #endif // FDC_H_

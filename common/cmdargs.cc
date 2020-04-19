@@ -307,7 +307,7 @@ int CommandLineArgs::Parse(const Option * options, int argc, char *argv[])
 
 std::string CommandLineArgs::Usage() const
 {
-  ColumnFormatter::Columns<2> columns;
+  ColumnFormatter::Columns columns(2);
 
   const Option * optDef = m_options;
   while (optDef->m_type != 0) {
@@ -361,14 +361,14 @@ std::string CommandLineArgs::Usage() const
   }
 
   std::stringstream strm;
-  strm << ColumnFormatter::Print<2>(columns, { "   ", " : " });
+  strm << ColumnFormatter::Print(columns, { "   ", " : " });
   return strm.str();
 }
 
 std::string CommandLineArgs::DumpValues() const
 {
   std::stringstream strm;
-  ColumnFormatter::Columns<3> columns;
+  ColumnFormatter::Columns columns(3);
 
   columns[0].push_back("Name");
   columns[0].push_back("----");
@@ -417,7 +417,7 @@ std::string CommandLineArgs::DumpValues() const
   }
 
   strm << "Argument values" << endl;
-  strm << ColumnFormatter::Print<3>(columns, { "", " ", " " });
+  strm << ColumnFormatter::Print(columns, { "", " ", " " });
   strm << "---------------" << endl;
   return strm.str();
 }

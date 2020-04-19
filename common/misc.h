@@ -35,85 +35,48 @@ std::string DumpMemory(const uint8_t * memory, int memoryLen);
 namespace ColumnFormatter 
 {
 
-template<int Cols>
-using Columns = std::array<std::vector<std::string>, Cols>;
+typedef std::vector<std::string> StringVector;
 
-template <int Cols>
-std::string Print(const Columns<Cols> & columns, const std::array<std::string, Cols> & seps)
+struct Columns : public std::vector<StringVector> 
 {
-  std::array<int, Cols> width;
-  std::array<int, Cols> height;
+  Columns(size_t colCount);
 
-  int maxHeight = 0;
-  int col = 0;
-  for (auto & r : columns) {
-    height[col] = r.size();
-    maxHeight = std::max(maxHeight, height[col]);
-    width[col] = 0;
-    for (auto & s : r) {
-      width[col] = std::max((int)width[col], (int)s.length());
+  StringVector & operator[](size_t offs)
+  {
+    if (offs >= size()) {
+      resize(offs+1);
     }
-    ++col;  
+    return std::vector<StringVector>::operator[](offs);  
   }
-
-  std::stringstream strm;
-  int row;
-  for (row = 0; row < maxHeight; ++row) {
-    for (col = 0; col < Cols; ++col) {
-      if (row < columns[col].size()) {
-        strm << seps[col];
-        strm << columns[col][row];
-        strm << std::string(width[col] - columns[col][row].length(), ' ');
-      }
+  const StringVector & operator[](size_t offs) const
+  {
+    if (offs >= size()) {
+      m_dummy.resize(0);
+      return m_dummy;
     }
-    strm << "\n";
+    return std::vector<StringVector>::operator[](offs);  
   }
+  static StringVector m_dummy;
+};
 
-  return strm.str();
-}
+std::string Print(const Columns & columns, const StringVector & seps);
 
+std::string Print(const Columns & columns);
+
+std::string Print(int cols, const std::string & sep, const Columns & columns);
+
+std::string Print(const Columns & columns, char sep);
+
+/*
 template <int Cols>
-std::string Print(const Columns<Cols> & columns)
-{
-  std::array<std::string, Cols> seps;
-  bool first = true;
-  for (int i = 0; i < Cols; ++i) {
-    if (i != 0)
-      seps[i] = "  ";
-  }
-  return Print<Cols>(columns, seps);
-}
-
-template <int Cols>
-std::string Print(const std::string & sep, const Columns<Cols> & columns)
-{
-  std::array<std::string, Cols> seps;
-  for (int i = 0; i < Cols; ++i) {
-    if (i != 0)
-      seps[i] = sep;
-  }
-  return Print<Cols>(columns, seps);
-}
-
-template <int Cols>
-std::string Print(const Columns<Cols> & columns, char sep)
-{
-  std::array<std::string, Cols> seps;
-  for (int i = 0; i < Cols; ++i) {
-    if (i != 0)
-      seps[i] = std::string(sep, 1);
-  }
-  return Print<Cols>(columns, seps);
-}
-
-template <int Cols>
-std::string Print(const Columns<Cols> & columns, char * sepStrings[Cols])
+std::string Print(const Columns & columns, char * sepStrings[Cols])
 {
   std::array<std::string, Cols> seps;
   for (int i = 0; i < Cols; ++i)
     seps[i] = std::string(sepStrings[i]);
   return Print<Cols>(columns, seps);
 }
+*/
 
 } // namespace ColumnFormatter
 

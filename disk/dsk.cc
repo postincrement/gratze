@@ -27,6 +27,7 @@
 
 using namespace std;
 
+#include "virtual_drive.h"
 #include "common/misc.h"
 #include "disk/dsk.h"
 
@@ -48,7 +49,7 @@ struct DSKHeader
   uint8_t  m_unused[204];  // pad out to 256
 };
 
-struct TrackInfo
+struct DSKTrackInfo
 {
   char     m_id[12];       // ID
   uint8_t  m_unused[4];
@@ -61,7 +62,7 @@ struct TrackInfo
   uint8_t  m_filler;       // filler byte (normally 0xe5)
 };
 
-struct SectorHeader
+struct DSKSectorHeader
 {
   uint8_t m_track;         // track (equivalent to C parameter in NEC765 commands
   uint8_t m_side;          // side (equivalent to H parameter in NEC765 commands)	
@@ -81,12 +82,12 @@ struct SectorHeader
   uint8_t m_unused[2];	
 };
 
-#define SECTOR_HEADER_COUNT ((256 - sizeof(TrackInfo)) / sizeof(SectorHeader))
+#define SECTOR_HEADER_COUNT ((256 - sizeof(DSKTrackInfo)) / sizeof(DSKSectorHeader))
 
-struct TrackHeader
+struct DSKTrackHeader
 {
-  TrackInfo    m_track;
-  SectorHeader m_sectors[SECTOR_HEADER_COUNT];
+  DSKTrackInfo    m_track;
+  DSKSectorHeader m_sectors[SECTOR_HEADER_COUNT];
 };
 
 #pragma pack()
@@ -119,57 +120,50 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
 
   cout << "dsk: track length = " << dskHeader.m_trackSize << endl;
 
-  m_trackCount = dskHeader.m_tracks;
+  int trackCount = dskHeader.m_tracks;
   off_t offs = 0x100;
 
-  for (int trackNum = 0; trackNum < m_trackCount; ++trackNum) {
+  for (int trackNum = 0; trackNum < trackCount; ++trackNum) {
     for (int side = 0; side < dskHeader.m_sides; ++side) {
-      TrackHeader trackHeader;
-      TrackInfo & trackInfo = trackHeader.m_track;
+      DSKTrackHeader dskTrackHeader;
+      const DSKTrackInfo & dskTrackInfo = dskTrackHeader.m_track;
 
       if (::lseek(fd, offs, SEEK_SET) < 0) {
         m_error << "dsk: cannot seek to header for track " << trackNum << " at offset " << offs;
         return false;
       }
-      else if (::read(fd, &trackHeader, sizeof(trackHeader)) != sizeof(trackHeader)) {
+      else if (::read(fd, &dskTrackHeader, sizeof(dskTrackHeader)) != sizeof(dskTrackHeader)) {
         m_error << "dsk - cannot read header for track " << trackNum << " at offset " << offs;
         return false;
       }
-      else if (memcmp(trackHeader.m_track.m_id, TRACK_HEADER_ID, TRACK_HEADER_ID_LEN) != 0) {
+      else if (memcmp(dskTrackHeader.m_track.m_id, TRACK_HEADER_ID, TRACK_HEADER_ID_LEN) != 0) {
         m_error << "dsk: header for track " << trackNum << " at offset " << HEXFORMAT0x4(offs) << " has bad ID";
         return false;
       }
 
-      int sectorSizeBytes = trackInfo.m_sectorSize*256;
-      int density = 0;
-      //cout << "dsk: track " << (int)trackNum << " has sector count " << (int)trackInfo.m_sectorCount << "\n";
+      TrackInfo trackInfo;
 
-      m_sideCount   = std::max((int)(side+1),   m_sideCount);
+      int sectorSizeBytes = dskTrackInfo.m_sectorSize*256;
+      int density = 0;
+
       off_t dataOffs = offs + 0x100;
       uint8_t dam = 0x00;
 
-      SectorHeader * sectorHeader = trackHeader.m_sectors;
-      for (int sector = 0; sector < trackInfo.m_sectorCount; ++sector) {
-
-        m_minSector   = std::min<int>(sectorHeader->m_sectorID, m_minSector);
-
-        m_minTrack    = std::min<int>(sectorHeader->m_track, m_minTrack);
-
-        m_sectorSize  = std::max(sectorSizeBytes,            m_sectorSize);
-        m_density     = std::max((int)density,    m_density);
+      DSKSectorHeader * sectorHeader = dskTrackHeader.m_sectors;
+      for (int sector = 0; sector < dskTrackInfo.m_sectorCount; ++sector) {
 
         //cout << "dsk: sector ID " << (int)sectorHeader->m_sectorID << " has offset " << dataOffs << endl;
+        SectorInfo sectorInfo(sectorHeader->m_sectorID, dataOffs, sectorSizeBytes, dam, density);
 
-        m_sectorMap.emplace(HASH_STS(side, sectorHeader->m_track, sectorHeader->m_sectorID),
-            SectorInfo(dataOffs, sectorSizeBytes, dam, density));
+        trackInfo.AddSector(sectorInfo);
 
         ++sectorHeader;
         dataOffs += sectorSizeBytes;
       }
 
-      m_maxSector   = std::max<int>(m_minSector + trackInfo.m_sectorCount - 1, m_maxSector);
+      AddTrack(side, trackNum, trackInfo);
 
-      offs += 0x100 + trackInfo.m_sectorCount * sectorSizeBytes;
+      offs += 0x100 + dskTrackInfo.m_sectorCount * sectorSizeBytes;
     }
   }
 

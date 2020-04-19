@@ -28,7 +28,6 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   }
 
   m_density       = 0;
-  m_sideCount     = 1;
 
   // directory tracks are 0xFA, all other tracks 0xFB
   off_t offs = 0;
@@ -45,7 +44,7 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       trackInfo.AddSector(sectorInfo);
       offs += SD_SECTOR_SIZE;
     }
-    AddTrack(track, trackInfo);
+    AddTrack(0, track, trackInfo);
   }
 
   m_fd = fd;

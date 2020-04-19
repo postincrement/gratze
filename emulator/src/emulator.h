@@ -240,7 +240,7 @@ class Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t);
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data);
 
-    virtual uint8_t ReadIOPortLog(uint16_t addr) const;
+    virtual void ReadIOPortLog(uint16_t addr, int val) const;
     virtual void WriteIOPortLog(uint16_t addr, uint8_t val) const;
 
     // keyboard functions

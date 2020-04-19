@@ -96,9 +96,9 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
 
   m_fd = fd;
   off_t offs = 0x10;
-  m_trackCount = dmk->m_trackCount;
+  int trackCount = dmk->m_trackCount;
 
-  for (int trackNum = 0; trackNum < m_trackCount; ++trackNum) {
+  for (int trackNum = 0; trackNum < trackCount; ++trackNum) {
     uint16_t sectorOffsets[64];
     if (::lseek(m_fd, offs, SEEK_SET) < 0) {
       m_error << "dmk: cannot seek to header for track " << trackNum << " at offset " << offs;
@@ -111,7 +111,6 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     else {
       TrackInfo trackInfo;
 
-      m_minSector = 0;
       for (int sectorNumber = 0; sectorNumber < 64; ++sectorNumber) {
         if (sectorOffsets[sectorNumber] == 0)
           break;
@@ -140,14 +139,13 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
                 << "dam=" << HEXFORMAT0x2(sector.m_dam) << ","
                 << "size=" << sizeof(sector) << endl; 
 
-          SectorInfo sector(sector.m_sector, offs + sectorOffset + idamToDataOffs, sectorSize, sector.m_dam, density));
-          trackInfo.AddSector(sector);
+          SectorInfo sectorInfo(sector.m_sector, offs + sectorOffset + idamToDataOffs, sectorSize, sector.m_dam, density);
+          trackInfo.AddSector(sectorInfo);
         }
 
-        AddTrack(sector)
+        AddTrack(side, trackNum, trackInfo);
 
         m_density       = std::max((int)density,    m_density);
-        m_sideCount     = std::max((int)(side+1),   m_sideCount);
       }
     }
 

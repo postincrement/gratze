@@ -59,23 +59,29 @@ using namespace std;
 
 
 static WD_FDC::CommandInfo g_commands[] = {
-  { 0xf0, 0x00, "home",       1, &WD_FDC::HomeCommand },
-  { 0xf0, 0x10, "seek",       1, &WD_FDC::SeekCommand },
-  { 0xf0, 0x20, "step",       1, &WD_FDC::StepCommand },
-  { 0xe0, 0x30, "stepIn",     1, &WD_FDC::StepInCommand },
-  { 0xe0, 0x60, "stepOut",    1, &WD_FDC::StepOutCommand },
+  { 0x00, 0xf0, 0,                  "home",       1, &WD_FDC::HomeCommand },
 
-  { 0xe3, 0x80, "read",       2, &WD_FDC::ReadCommand },
-  { 0xe0, 0xa0, "write",      2, 0 },
+  { 0x10, 0xf0, WD_FDC::eWD1771,    "seek",       1, &WD_FDC::SeekCommand_1771 },   // 1771 seek command does not have update bit
+  { 0x10, 0xf0, WD_FDC::eWD1793,    "seek",       1, &WD_FDC::SeekCommand_1793 },   // 1793 does have update bit
 
-  { 0xf4, 0xc4, "readAddr",   3, 0 },
-  { 0xfe, 0xe4, "readTrack",  3, 0 },
-  { 0xff, 0xf4, "writeTrack", 3, &WD_FDC::WriteTrackCommand },
+  { 0x20, 0xf0, 0,                  "step",       1, &WD_FDC::StepCommand },
+  { 0x30, 0xe0, 0,                  "stepIn",     1, &WD_FDC::StepInCommand },
+  { 0x60, 0xe0, 0,                  "stepOut",    1, &WD_FDC::StepOutCommand },
 
-  { 0xf0, 0xd0, "forceInt",   4, &WD_FDC::ForceIntCommand },
+  { 0x80, 0xe3, 0,                  "read",       2, &WD_FDC::ReadCommand },
+  { 0xa0, 0xe0, 0,                  "write",      2, 0 },
 
-  { 0xff, 0xfe, "enable1771", 0, &WD_FDC::PercomCommand },
-  { 0xff, 0xff, "enable1791", 0, &WD_FDC::PercomCommand }
+  { 0xf4, 0xff, 0,                  "writeTrack", 3, &WD_FDC::WriteTrackCommand },
+
+  { 0xc4, 0xf4, 0,                  "readAddr",   3, 0 },
+  { 0xe4, 0xfe, 0,                  "readTrack",  3, 0 },
+
+  { 0xd0, 0xf0, 0,                  "forceInt",   4, &WD_FDC::ForceIntCommand },
+
+  { 0xfb, 0xc0, WD_FDC::eWD1793,    "readaddr",   3,  &WD_FDC::ReadAddrCommand_1793 },
+
+  { 0xfe, 0xff, WD_FDC::eWD1771,    "enable1771", 0, &WD_FDC::PercomCommand },
+  { 0xff, 0xff, WD_FDC::eWD1771,    "enable1791", 0, &WD_FDC::PercomCommand }
 };
 
 ///////////////////////////////////////////////////////////
@@ -198,8 +204,13 @@ bool WD_FDC::GetInterrupt() const
 WD_FDC::CommandInfo * WD_FDC::GetCommand(uint8_t cmd, WD_FDC::CommandInfo * info, size_t count)
 {
   for (int i = 0; i < count; ++i) {
-    if ((cmd & info->m_andMask) == (info->m_cmd))
+    if (
+        (((info->m_modes == 0) || (info->m_modes & m_mode) != 0))
+        && 
+        ((cmd & info->m_andMask) == (info->m_cmd))
+      ) {
       return info;
+    }
     info++;
  }
 
@@ -311,24 +322,21 @@ uint8_t WD_FDC::ReadDataReg()
   if (++m_bufferPtr < m_bufferLen) {
     m_status |= STATUS_DRQ;      
   }
+  else if (
+    ((m_currentCommand & COMMAND_MULT_RECS) != 0) &&
+    (m_drives[m_drive]->GetInfo(m_side, m_realTrack, m_sector+1) != nullptr)
+    ) {
+    m_sector++;
+    ReadCommand(m_currentCommand);
+    m_status |= STATUS_DRQ;
+  }
   else {
-    int maxSector = m_drives[m_drive]->GetSectors();
-    if (
-        ((m_currentCommand & COMMAND_MULT_RECS) == 0)
-        || (maxSector == m_sector)
-       ) {
-      m_currentCommand = -1;
-      m_status = m_readDAM;  // resets STATUS_BUSY
-      m_reading = false;
-      UpdateInterrupt(true);
-      if (m_debug)
-        cerr << "FDC: read ended" << endl;
-    }
-    else {
-      m_sector++;
-      ReadCommand(m_currentCommand);
-      m_status |= STATUS_DRQ;
-    }
+    m_currentCommand = -1;
+    m_status = m_readDAM;  // resets STATUS_BUSY
+    m_reading = false;
+    UpdateInterrupt(true);
+    if (m_debug)
+      cerr << "FDC: read ended" << endl;
   }
 
   return m_data;
@@ -369,9 +377,14 @@ int WD_FDC::HomeCommand(uint8_t cmd)
   return SeekTrack(cmd, 0, false);
 }
 
-int WD_FDC::SeekCommand(uint8_t cmd)
+int WD_FDC::SeekCommand_1771(uint8_t cmd)
 {
   return SeekTrack(cmd, m_data, false);
+}
+
+int WD_FDC::SeekCommand_1793(uint8_t cmd)
+{
+  return SeekTrack(cmd, m_data, cmd & COMMAND_UPDATE);
 }
 
 int WD_FDC::StepInCommand(uint8_t cmd)
@@ -397,7 +410,7 @@ int WD_FDC::StepCommand(uint8_t cmd)
 int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
 {
   if (m_debug)
-    cerr << "FDC: seek to track " << dec << (int)track << endl;
+    cerr << "FDC: seek to track " << dec << (int)track << " from " << (int)m_track << " with update " << update << endl;
 
   LoadHead(cmd & COMMAND_HEAD_LOAD_I);
 
@@ -437,7 +450,7 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
 void WD_FDC::SetTypeIStatus()
 {
   // set track 0 bit
-  m_pulseIndex = true;
+  //m_pulseIndex = true;
   //m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
 }
 
@@ -458,7 +471,7 @@ int WD_FDC::ReadCommand(uint8_t cmd)
   else {
     VirtualDrive::SectorInfo info;
     m_bufferPtr = 0;
-    int bufferLen = m_drives[m_drive]->ReadSector(m_realTrack, m_side, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
+    int bufferLen = m_drives[m_drive]->ReadSector(m_side, m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
       if (m_debug)
         cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << " failed" << endl;
@@ -620,15 +633,15 @@ uint8_t WD_FDC::Read(uint16_t addr)
 
 int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
 {
-  Emulator::GetInstance()->DisplayTraceInfo();
   LoadHead(cmd & COMMAND_HEAD_LOAD_II);
 
   if (!IsCurrentDriveAvailable()) {
     m_status = STATUS_SEEKERR;
     m_setInterrupt = true;
+    cerr << "FDC: read addr drive not available" << endl;
   }
   else {
-    if (m_debug)
+    //if (m_debug)
       cerr << "FDC: read addr, track=" << dec << (int)m_realTrack << endl;
     m_bufferPtr = 0;
     m_bufferLen = 4;
@@ -647,15 +660,4 @@ int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
   return 0;
 }
 
-static WD_FDC::CommandInfo g_2793commands[] = {
-  { 0xfb, 0xc0,  "readaddr",  3, &WD_FDC::ReadAddrCommand_1793 }
-};
-
-WD_FDC::CommandInfo * WD_FD1793::GetCommand(uint8_t cmd)
-{
-  WD_FDC::CommandInfo * info = WD_FDC::GetCommand(cmd, g_2793commands, sizeof(g_2793commands)/sizeof(g_2793commands[0]));
-  if (info != nullptr)
-    return info;
-  return WD_FDC::GetCommand(cmd);  
-}
 

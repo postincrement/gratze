@@ -687,19 +687,21 @@ void Emulator::WritePort(register uint16_t port, register uint8_t data)
 
 uint8_t Emulator::ReadPort(register uint16_t port)
 {
-  if (m_options.m_writeIO) 
-    ReadIOPortLog(port);
   uint8_t shortPort = port & 0xff;
   for (auto & r : m_readIOPortBlocks) {
     if (shortPort < r.m_startPort)
       continue;
     if (shortPort <= r.m_endPort) {
-      if (r.m_function != nullptr) {
-        return std::invoke(r.m_function, *this, r, shortPort);
+      if (r.m_function != nullptr) { 
+        uint8_t val = std::invoke(r.m_function, *this, r, shortPort);
+        if (m_options.m_readIO) {
+          ReadIOPortLog(port, val);
+        }
+        return val;
       }
     }
   }
-  ReadIOPortLog(port);
+  ReadIOPortLog(port, -1);
   return 0x00;
 }
 
@@ -723,10 +725,13 @@ void Emulator::WriteLog(uint16_t addr, uint8_t val) const
   cerr << "WRITE " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
 }
 
-uint8_t Emulator::ReadIOPortLog(uint16_t addr) const
+void Emulator::ReadIOPortLog(uint16_t addr, int val) const
 {
-  cerr << "READ IO PORT " << HEXFORMAT0x2(addr) << endl;
-  return 0x00;
+  cerr << "READ IO PORT " << HEXFORMAT0x2(addr) << " ";
+  if (val < 0)
+    cerr << "failed" << endl;
+  else
+    cerr << HEXFORMAT0x2(val) << endl;
 }
 
 void Emulator::WriteIOPortLog(uint16_t addr, uint8_t val) const

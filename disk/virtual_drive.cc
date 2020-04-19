@@ -151,6 +151,11 @@ VirtualDrive::SectorInfo::SectorInfo(int id, off_t offset, int size, uint8_t dam
 VirtualDrive::TrackInfo::TrackInfo()
 {}
 
+int VirtualDrive::TrackInfo::GetSectorCount() const
+{
+  return m_sectors.size();
+}
+
 void VirtualDrive::TrackInfo::AddSector(const SectorInfo & sector)
 {
   m_sectors.push_back(sector);
@@ -160,7 +165,7 @@ VirtualDrive::SectorInfo * VirtualDrive::TrackInfo::GetSector(int sector)
 {
   for (auto & r : m_sectors)
     if (sector == r.m_id)
-      return &sector;
+      return &r;
 
   return nullptr;    
 }
@@ -169,12 +174,40 @@ const VirtualDrive::SectorInfo * VirtualDrive::TrackInfo::GetSector(int sector) 
 {
   for (auto & r : m_sectors)
     if (sector == r.m_id)
-      return &sector;
+      return &r;
 
   return nullptr;    
 }
 
+VirtualDrive::SectorList & VirtualDrive::TrackInfo::GetSectors()
+{
+  return m_sectors;
+}
+
+const VirtualDrive::SectorList & VirtualDrive::TrackInfo::GetSectors() const
+{
+  return m_sectors;
+}
+
 /////////////////////////////////////////////////////////////
+
+VirtualDrive::TrackList & VirtualDrive::SideInfo::GetTracks()
+{
+  return m_tracks;
+}
+
+const VirtualDrive::TrackList & VirtualDrive::SideInfo::GetTracks() const
+{
+  return m_tracks;
+}
+
+int VirtualDrive::SideInfo::GetTrackCount() const
+{
+  return m_tracks.size();
+}
+
+/////////////////////////////////////////////////////////////
+
 
 void VirtualDrive::Init()
 {
@@ -207,27 +240,53 @@ void VirtualDrive::SetVerbose(bool v)
   m_verbose = v;
 }
 
-void VirtualDrive::AddTrack(const TrackInfo & track)
+int VirtualDrive::GetSideCount() const
 {
-  m_tracks[track.m_number] = track;
+  return m_disk.size();
 }
 
-VirtualDrive::TrackInfo * VirtualDrive::GetTrack(int trackNum)
+VirtualDrive::SideList & VirtualDrive::GetSides()
 {
-  auto & r = m_tracks.find(trackNum);
-  if (r == m_tracks.end())
-    return nullptr;
-
-  return &r.m_second;  
+  return m_disk;
 }
 
-const VirtualDrive::TrackInfo * VirtualDrive::GetTrack(int trackNum) const
+const VirtualDrive::SideList & VirtualDrive::GetSides() const
 {
-  const auto & r = m_tracks.find(trackNum);
-  if (r == m_tracks.end())
-    return nullptr;
+  return m_disk;
+}
 
-  return &r.m_second;  
+int VirtualDrive::GetDensity() const
+{
+  return m_density;
+}
+
+void VirtualDrive::AddTrack(int sideNum, int trackNum, const TrackInfo & track)
+{
+  m_disk[sideNum].GetTracks()[trackNum] = track;
+}
+
+VirtualDrive::TrackInfo * VirtualDrive::GetTrack(int sideNum, int trackNum)
+{
+  auto r = m_disk.find(sideNum);
+  if (r == m_disk.end())
+    return nullptr;
+  auto & tracks = r->second.GetTracks();  
+  auto s = tracks.find(trackNum);
+  if (s == tracks.end())
+    return nullptr;
+  return &s->second;     
+}
+
+const VirtualDrive::TrackInfo * VirtualDrive::GetTrack(int sideNum, int trackNum) const
+{
+  const auto r = m_disk.find(sideNum);
+  if (r == m_disk.end())
+    return nullptr;
+  const auto & tracks = r->second.GetTracks();  
+  const auto s = tracks.find(trackNum);
+  if (s == tracks.end())
+    return nullptr;
+  return &s->second;     
 }
 
 /////////////////////////////////////////////////////////////
@@ -236,8 +295,6 @@ VirtualDriveFile::VirtualDriveFile(const std::string & str)
   : m_fd(-1)
   , m_name(str)
   , m_extension(str)
-  , m_density(0)
-  , m_sideCount(0)
 {
 }
 
@@ -263,58 +320,30 @@ std::string VirtualDriveFile::GetExtension() const
   return m_extension;
 }
 
-int VirtualDriveFile::GetTracks() const
-{
-  return m_trackCount;
-}
-
-int VirtualDriveFile::GetMinTrack() const
-{
-  return m_minTrack;
-}
-
-int VirtualDriveFile::GetSectors() const
-{
-  return 1 + (m_maxSector - m_minSector);
-}
-
-int VirtualDriveFile::GetMinSector() const
-{
-  return m_minSector;
-}
-
-int VirtualDriveFile::GetSectorSize() const
-{
-  return m_sectorSize;
-}
-
-int VirtualDriveFile::GetSides() const
-{
-  return m_sideCount;
-}
-
-int VirtualDriveFile::GetDensity() const
-{
-  return m_density;
-}
-
 bool VirtualDriveFile::Mount(bool readonly)
 {
   return true;
 }
 
-VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int side, int track, int sector)
+VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int sideNum, int trackNum, int sectorNum)
 {
-  auto r = m_sectorMap.find(HASH_STS(side, track, sector));
-  if (r == m_sectorMap.end()) {
-    m_error << "request for unknown sector " << dec << sector << " and track " << track;
-    return nullptr;
+  auto * trackInfo = GetTrack(sideNum, trackNum);
+  if (trackInfo != nullptr) {
+    auto * sectorInfo = trackInfo->GetSector(sectorNum);
+    if (sectorInfo != nullptr) {
+      return sectorInfo;
+    }
   }
 
-  return &r->second;
+  m_error << "request for unknown side " << dec << sideNum 
+          << ", track " << dec << trackNum 
+          << ", sector " << dec << sectorNum 
+          << endl;
+
+  return nullptr;
 }
 
-int VirtualDriveFile::ReadSector(int track, int side, int sector, SectorInfo & info, uint8_t * data, int len)
+int VirtualDriveFile::ReadSector(int side, int track, int sector, SectorInfo & info, uint8_t * data, int len)
 {
   auto sectorInfo = GetInfo(side, track, sector);
   info = *sectorInfo;
@@ -337,7 +366,7 @@ int VirtualDriveFile::ReadSector(int track, int side, int sector, SectorInfo & i
   return rlen;  
 }
 
-int VirtualDriveFile::WriteSector(int track, int side, int sector, uint8_t * data, int len)
+int VirtualDriveFile::WriteSector(int side, int track, int sector, uint8_t * data, int len)
 {
   return false;
 }

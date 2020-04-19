@@ -59,12 +59,6 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       continue;
     }
 
-    TrackInfo * trackInfo = GetTrack(track);
-    if (trackInfo == nullptr) {
-      AddTrack(track, TrackInfo());
-      trackInfo = GetTrack(track);
-    }
-    
     int density = (flags & 0x80) ? 1 : 0;
     uint8_t dam = 0x00;
     int side    = (flags & 0x10) ? 1 : 0;
@@ -105,16 +99,23 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       return false;
     }
     else {
+
+      TrackInfo * trackInfo = GetTrack(side, track);
+      if (trackInfo == nullptr) {
+        AddTrack(side, track, TrackInfo());
+        trackInfo = GetTrack(side, track);
+      }
+    
       if (m_verbose)
         cout << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
               << "track=" << (int)track << "," 
               << "sector=" << (int)sector << "," 
               << "dam=" << HEXFORMAT0x2(dam) << endl;
+              
       SectorInfo sectorInfo(sector, offs, sectorSize, dam, density);
       trackInfo->AddSector(sectorInfo);
     }
 
-    m_sideCount     = std::max((int)(side+1),   m_sideCount);
     m_density       = std::max((int)density,    m_density);
 
     offs += sectorSize;

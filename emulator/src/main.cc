@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 
   if (options.m_args.HasArg("--list")) {
     cout << "Available emulations\n";
-    ColumnFormatter::Columns<2> columns;
+    ColumnFormatter::Columns columns(2);
     std::vector<std::string> keys;
     g_emulatorFactory.GetKeys(keys);
 
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
       columns[1].push_back(info.m_title);
     }
 
-    cout << ColumnFormatter::Print<2>(columns, { "   ", "   " });
+    cout << ColumnFormatter::Print(columns, { "   ", "   " });
     exit(0);
   }
 

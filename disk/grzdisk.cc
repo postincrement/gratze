@@ -1,6 +1,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <set>
 
 #include "../common/cmdargs.h"
 #include "../common/misc.h"
@@ -9,13 +10,18 @@
 
 using namespace std;
 
-#define DIR_TYPE      'D'
+#define NO_CHUNK     " "
+#define EMPTY_CHUNK  "."
+#define DIR_CHUNK    "D"
+#define NORM_CHUNK   "*"
+
+#define CHUNK_SIZE    128
 
 static CommandLineArgs::Option g_options[] = {
   { 'h', "help",        ' ',   "display this help message" },
   { 'v', "verbose",     ' ',   "enable verbose reporting" },
-  { 'i', "info",        ' ',   "display info" },
-  { 'd', "info",        ' ',   "display data" },
+  { 'm', "map",         ' ',   "display sector map" },
+  { 'd', "data",        ' ',   "display all data" },
   { 'D', "dumpDir",     ' ',   "display dir sectors" },
   { ' ', "list",        ' ',   "list supported disk types"},
 
@@ -34,10 +40,10 @@ bool IsEmpty(const uint8_t * data, int len)
   return empty;
 }
 
-char IdentifyChunk(const uint8_t * data, int len)
+std::string IdentifyChunk(const uint8_t * data, int len)
 { 
   if (IsEmpty(data, len))
-    return '.';
+    return EMPTY_CHUNK;
 
   // look for a CPM directory chunk
   bool isDir = true;
@@ -71,9 +77,9 @@ char IdentifyChunk(const uint8_t * data, int len)
   }  
 
   if (isDir)
-    return DIR_TYPE;
+    return DIR_CHUNK;
 
-  return '*';
+  return NORM_CHUNK;
 }
 
 int main(int argc, char *argv[])
@@ -118,87 +124,177 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  int capacity = drive->GetSides() * drive->GetTracks() * drive->GetSectors() * drive->GetSectorSize();
+  VirtualDrive::SideList & sideList = drive->GetSides();
 
+  if (sideList.size() == 0) {
+    cerr << "error: disk has no sides" << endl;
+    return -1;
+  }
+
+  VirtualDrive::SideInfo & side0 = sideList.begin()->second;
+  VirtualDrive::TrackList & side0Tracks = side0.GetTracks();
+
+  if (side0Tracks.size() == 0) {
+    cerr << "error: side 0 has no tracks" << endl;
+    return -1;
+  }
+
+  VirtualDrive::TrackInfo & side0Track0         = side0Tracks.begin()->second;
+  VirtualDrive::SectorList & side0Track0Sectors = side0Track0.GetSectors();
+
+  if (side0Track0Sectors.size() == 0) {
+    cerr << "error: side 0, track 0 has no sectors" << endl;
+    return -1;
+  }
+
+  // calculate capacity and get various min and max numbers
+  std::set<int> sectorSizes;
+  std::set<int> sectorNums;
+  std::set<int> trackNums;
+  std::set<int> sideNums;
+
+  int capacity = 0;
+  for (auto & s : sideList) {
+    sideNums.insert(s.first);
+    for (auto & t : s.second.GetTracks()) {
+      trackNums.insert(t.first);
+      for (auto & e : t.second.GetSectors()) {
+        sectorNums.insert(e.m_id);
+        sectorSizes.insert(e.m_size);
+        capacity += e.m_size;
+      }
+    }
+  }
+  
   cout << "Format:      " << drive->GetFormat() << endl
        << "Capacity:    " << (capacity / 1024) << " k" << endl
-       << "Sides:       " << drive->GetSides() << endl
+       << "Sides:       " << sideList.size() << endl
        << "Density:     " << (drive->GetDensity() ? "double" : "single") << endl
-       << "Tracks:      " << drive->GetTracks() << endl
-       << "Sectors:     " << drive->GetSectors() << endl
-       << "Sector size: " << drive->GetSectorSize() << endl;
+       << "Tracks:      " << side0Tracks.size() << endl
+       << "Sectors:     " << side0Track0Sectors.size() << endl
+       << "Sector size: ";
+  {
+    string first;     
+    for (auto sectorSize : sectorSizes) {
+      cout << first << sectorSize << endl;
+      first = ", ";
+    }
+    cout << endl;
+  }
+
+  int maxSectorSize = *sectorSizes.rbegin();
+  int chunkCount = (maxSectorSize + 127) / 128;
+
+  ColumnFormatter::Columns output(1 + 1 + (sectorNums.size() * sectorNums.size()) + (sideList.size() - 1));
+
+  // track number : 2 or 3 rows depending on chunk count
+  //output[0].push_back("   ");    
+  //if (chunkCount < 2) {
+  //  output[0].push_back("   ");
+  //}
+
+  int col = 0;
+  for (auto sideNum : sideNums) {
+    output[col+0].push_back("   ");
+    output[col+0].push_back("   ");
+    output[col+1].push_back("|");
+    output[col+1].push_back("+");
+    col += 2;
+    for (auto sectorNum : sectorNums) {
+      stringstream strm;
+      if (chunkCount > 1) {
+        strm << setw(chunkCount) << setfill(' ') << sectorNum << '|';
+        output[col].push_back(strm.str());
+        output[col].push_back(std::string(chunkCount, '=') + "+");
+      }
+      else {
+        if ((sectorNum % 10) != 0)
+          output[col].push_back(" ");
+        else {
+          strm << (sectorNum / 10);
+          output[col].push_back(strm.str());
+        }
+        strm.str("");
+        strm << (sectorNum % 10);
+        output[col].push_back(strm.str());
+        output[col].push_back("+");
+      }
+      col++;
+    }
+  }
+
+  std::map<int, std::map<int, std::map<int, std::vector<uint8_t>>>> diskData;
+  std::map<int, std::map<int, std::map<int, std::vector<std::string>>>> chunkType;
+
+  // sector information
+  for (auto trackNum : trackNums) {
+    int col = 0;
+    for (auto sideNum : sideNums) {
+      stringstream strm;
+      if (col == 0) {
+        strm << trackNum;
+      }
+      output[col+0].push_back(strm.str());
+      output[col+1].push_back("|");
+      col += 2;
+      auto & sideData = diskData[sideNum];
+      for (auto sectorNum : sectorNums) {
+        std::stringstream strm;
+        VirtualDrive::SectorInfo * sector = drive->GetInfo(sideNum, trackNum, sectorNum);
+        if (sector == nullptr) {
+          if (chunkCount > 1) {
+            for (int chunk = 0; chunk < chunkCount; ++chunk) {
+              strm << NO_CHUNK;
+            }
+            strm << "|";
+          }
+        }
+        else {
+          auto & sectorData = sideData[trackNum][sectorNum];
+          sectorData.resize(sector->m_size);
+          VirtualDrive::SectorInfo sectorInfo;
+          int len = drive->ReadSector(sideNum, trackNum, sectorNum, sectorInfo, &sectorData[0], sectorData.size());
+          for (int chunk = 0; chunk < chunkCount; ++chunk) {
+            std::string id = IdentifyChunk(&sectorData[chunk*CHUNK_SIZE], CHUNK_SIZE);
+            chunkType[sideNum][trackNum][sectorNum].push_back(id);
+            strm << id;
+          }
+        }
+        output[col++].push_back(strm.str());
+      }
+    }
+  }
+
+  if (args.HasArg("-m"))
+    cout << ColumnFormatter::Print(output, 0);
 
   bool displayData = args.HasArg("-d");
-  bool dumpDir = args.HasArg("-D");
+  bool displayDir = args.HasArg("-D");
 
-  if (args.HasArg("-i")) {
+  if (displayData || displayDir) {
 
-    std::vector< std::vector< std::vector< std::vector<char> > > > diskData;
-    std::vector<uint8_t> data;
-    data.resize(drive->GetSectorSize());
-    int chunkCount = drive->GetSectorSize() / 128;
-
-    diskData.resize(drive->GetTracks());
-    for (int track = 0; track < drive->GetTracks(); ++track) {
-      auto & trackData = diskData[track];
-      trackData.resize(drive->GetSides());
-      for (int side = 0; side < drive->GetSides(); ++side) {
-        auto & sideData = trackData[side];
-
-        sideData.resize(drive->GetSectors());
-        for (int sector = 0; sector < drive->GetSectors(); ++sector) {
-
-          auto & sectorData = sideData[sector];
-          sectorData.resize(chunkCount);
-
-          VirtualDrive::SectorInfo sectorInfo;
-          int len = drive->ReadSector(track + drive->GetMinTrack(), side, sector + drive->GetMinSector(), sectorInfo, &data[0], data.size());
-
-          stringstream hdr;
-          hdr << "Track " << track + drive->GetMinTrack() << ", side " << side << ", sector " << sector + drive->GetMinSector();
-
-          if (len < 0) {
-            for (auto & r : sectorData)
-              r = 'X';
-            if (displayData) {
-              cout << hdr.str() << endl;
-              cout << "Could not read" << endl;
-            }
-          }
-          else {
+    for (auto sideNum : sideNums) {
+      for (auto trackNum : trackNums) {
+        for (auto sectorNum : sectorNums) {
+          int len = diskData[sideNum][trackNum][sectorNum].size();
+          if (len > 0) {
+            stringstream hdr;
+            hdr <<  "Side " << sideNum << ", track " << trackNum << ", sector " << sectorNum;
             bool isDir = false;
-            for (int chunk = 0; chunk < chunkCount; ++chunk) {
-              sectorData[chunk] = IdentifyChunk(&data[chunk*128], 128);
-              isDir = isDir || (sectorData[chunk] == DIR_TYPE);
+            for (int chunk = 0; !isDir && (chunk < chunkCount); ++chunk) {
+              isDir = chunkType[sideNum][trackNum][sectorNum][chunk] == DIR_CHUNK;
             }
-            if (displayData || (dumpDir && isDir)) {
-              cout << hdr.str() << ", offset " << sectorInfo.m_offset << endl;
-              cout << "Type ";
-              for (int chunk = 0; chunk < chunkCount; ++chunk) {
-                cout << sectorData[chunk];
-              }
-              cout << endl;  
-              cout << DumpMemory(&data[0], len);
+            if (displayData || (displayDir && isDir)) {
+              cout << hdr.str()/* << ", offset " << sectorInfo.m_offset */ << endl;
+              cout << DumpMemory(&diskData[sideNum][trackNum][sectorNum][0], len);
               cout << endl;
             }
           }  
         }
       }
     }
-
-    for (int track = 0; track < drive->GetTracks(); ++track) {
-      cout << setw(2) << track << "   ";
-      for (int side = 0; side < drive->GetSides(); ++side) {
-        cout << " ";
-        for (int sector = 1; sector <= drive->GetSectors(); ++sector) {
-          for (auto & chunk : diskData[track][side][sector-1]) {
-            cout << chunk;
-          }
-        }
-      }
-      cout << endl;
-    }    
   }     
+
 
   return 0;
 }

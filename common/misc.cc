@@ -4,6 +4,10 @@
 
 using namespace std;
 
+ColumnFormatter::StringVector ColumnFormatter::Columns::m_dummy;
+
+
+
 std::string DumpMemory(const uint8_t * memory, int memoryLen)
 {
   stringstream strm;
@@ -27,3 +31,94 @@ std::string DumpMemory(const uint8_t * memory, int memoryLen)
 
   return strm.str();
 }
+
+
+namespace ColumnFormatter 
+{
+
+Columns::Columns(size_t colCount)
+{
+  resize(colCount);
+}
+
+std::string Print(const Columns & columns, const StringVector & seps)
+{
+  std::vector<int> width(columns.size());
+  std::vector<int> height(columns.size());
+
+  int maxHeight = 0;
+  int col = 0;
+  for (auto & r : columns) {
+    height[col] = r.size();
+    maxHeight = std::max(maxHeight, height[col]);
+    width[col] = 0;
+    for (auto & s : r) {
+      width[col] = std::max((int)width[col], (int)s.length());
+    }
+    ++col;  
+  }
+
+  std::stringstream strm;
+  int row;
+  for (row = 0; row < maxHeight; ++row) {
+    for (col = 0; col < columns.size(); ++col) {
+      if (row < columns[col].size()) {
+        strm << seps[col];
+        strm << columns[col][row];
+        strm << std::string(width[col] - columns[col][row].length(), ' ');
+      }
+    }
+    strm << "\n";
+  }
+
+  return strm.str();
+}
+
+std::string Print(const Columns & columns)
+{
+  StringVector seps(columns.size());
+  bool first = true;
+  for (int i = 0; i < columns.size(); ++i) {
+    if (i != 0)
+      seps[i] = "  ";
+  }
+  return Print(columns, seps);
+}
+
+std::string Print(int cols, const std::string & sep, const Columns & columns)
+{
+  StringVector seps(columns.size());
+  for (int i = 0; i < columns.size(); ++i) {
+    if (i != 0)
+      seps[i] = sep;
+  }
+  return Print(columns, seps);
+}
+
+std::string Print(const Columns & columns, char sep)
+{
+  std::string strSep;
+  if (isprint(sep))
+    strSep += sep;
+
+  StringVector seps(columns.size());
+  for (int i = 0; i < columns.size(); ++i) {
+    if (i != 0)
+      seps[i] = strSep;
+  }
+  return Print(columns, seps);
+}
+
+/*
+template <int Cols>
+std::string Print(const Columns & columns, char * sepStrings[Cols])
+{
+  std::array<std::string, Cols> seps;
+  for (int i = 0; i < Cols; ++i)
+    seps[i] = std::string(sepStrings[i]);
+  return Print<Cols>(columns, seps);
+}
+*/
+
+} // namespace ColumnFormatter
+
