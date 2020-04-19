@@ -623,19 +623,24 @@ void Emulator::DebugWriteMemory(const WriteMemoryBlockInfo & info, uint16_t addr
 
 uint8_t Emulator::DebugReadIOMemory(const ReadMemoryBlockInfo & info, uint16_t addr) const
 {
-  cout << "debug: reading IO memory " << HEXFORMAT0x4(addr) << endl;
+  int val = -1;
   if (info.m_realFunction != nullptr) {
-    return std::invoke(info.m_realFunction, *this, info, addr);
+    val = std::invoke(info.m_realFunction, *this, info, addr);
   }
-  return 0x00;
+  cout << "debug: reading IO memory " << info.m_id << " " << HEXFORMAT0x4(addr) << " ";
+  if (val < 0)
+    cout << "failed" << endl;
+  else
+    cout << HEXFORMAT0x2(val) << endl;
+  return val;
 }
 
 void Emulator::DebugWriteIOMemory(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data)
 {
-  cout << "debug: writing IO memory " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(data) << endl;
-  //if (info.m_realFunction != nullptr) {
-  //  std::invoke(info.m_realFunction, *this, info, addr, data);
-  //}
+  cout << "debug: writing IO memory " << info.m_id << " " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(data) << endl;
+  if (info.m_realFunction != nullptr) {
+    std::invoke(info.m_realFunction, *this, info, addr, data);
+  }
 }
 
 uint8_t Emulator::ReadIOMemoryInternal(const ReadMemoryBlockInfo & info, uint16_t addr) const

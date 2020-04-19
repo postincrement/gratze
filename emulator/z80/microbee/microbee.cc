@@ -13,7 +13,7 @@
 using namespace std;
 
 #define   MICROBEE_VIDEO_START_ADDR   0xf000
-#define   MICROBEE_VIDEO_END_ADDR     0xf7ff
+#define   MICROBEE_VIDEO_END_ADDR     0xffff
 
 #define   MICROBEE_SCREEN_COLS        64
 #define   MICROBEE_SCREEN_ROWS        16
@@ -23,11 +23,23 @@ using namespace std;
 
 #define   MICROBEE_VIRTUAL_FONT_CHARS    256
 
-#define   MICROBEE_PCG_START_ADDR     0xf800
-#define   MICROBEE_PCG_END_ADDR       0xffff
+#define   MICROBEE_PCG_START_OFFS     0x0800
+#define   MICROBEE_PCG_END_OFFS       0x0fff
 
-#define   MICROBEE_PCG_SIZE           (MICROBEE_PCG_END_ADDR - MICROBEE_PCG_START_ADDR + 1)
+#define   MICROBEE_PCG_SIZE           (MICROBEE_PCG_END_OFFS - MICROBEE_PCG_START_OFFS + 1)
+#define   MICROBEE_ATTRIBUTE_SIZE     0x800
 
+#define PORT_PIO        1      // PIO
+#define PORT_6545       2      // 6545
+#define PORT_FONT       3      // enable font ROM
+#define PORT_COLOUR     4      // colour control port
+#define PORT_VIATEL     5      // wait off/Viatel
+
+#define   PORT_FDC      0x10   // floppy controller
+#define   PORT_DRVSEL   0x11   // drive select
+
+#define   PORT_LVDAT    0x12   // LV DAT
+#define   PORT_BANK     0x13   // bank select
 
 extern EmulatorInfo g_microbeeEmulatorInfo;
 
@@ -104,7 +116,10 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
     virtual void SetScreenSize(int cols, int rows, int lines);
 
     void EnableFontROM(bool enable)
-    { m_fontROMEnabled = enable; }
+    { 
+      m_fontROMEnabled = enable; 
+      //cerr << "mbee: font ROM " << (enable ? "enabled" : "disabled") << endl;
+    }
 
     void SetFontOffset(uint16_t offset)
     { m_fontOffset = offset; }
@@ -117,7 +132,17 @@ class MicrobeeVideo : public SingleColourMemoryMappedScreen
 
     void SetUpdateHandler(std::function<void ()> handler)
     { m_updateHandler = handler; }
-    
+
+    virtual void RewritePCG() override;
+
+    bool m_attributeRAMEnabled = false;
+    bool m_extendedPCG = false;
+    bool m_colourRAMEnabled = false;
+    int m_bankSel = 0;
+    std::vector<std::vector<uint8_t>> m_attributeRAM;
+    std::vector<std::vector<uint8_t>> m_pcgRAM;
+    std::vector<std::vector<uint8_t>> m_colourRAM;
+
   protected:
     int m_rows = 0;
     int m_cols = 0;
@@ -133,6 +158,21 @@ MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, const Options & options, c
 {
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
+
+  m_pcgRAM.resize(16);
+  m_attributeRAM.resize(16);
+  m_colourRAM.resize(16);
+  for (int i = 0; i < 16; ++i) {
+    m_pcgRAM[i].resize(MICROBEE_PCG_SIZE);
+    m_attributeRAM[i].resize(MICROBEE_ATTRIBUTE_SIZE);
+    m_colourRAM[i].resize(MICROBEE_ATTRIBUTE_SIZE);
+  }
+
+  m_attributeRAMEnabled = false;
+  m_colourRAMEnabled = false;
+  m_extendedPCG = false;
+  m_bankSel = 0;
+
   InitPCG();
 }
 
@@ -152,19 +192,50 @@ void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * rend
   }
 }
 
-void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t ch)
+void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t val)
 {
-  if (!m_fontROMEnabled)
-    SingleColourMemoryMappedScreen::WriteMemoryAtAddress(addr, ch);
+  //cout << "mbeevideo: write " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
+  uint16_t offs = addr & 0x0fff;
+  uint16_t voffs = addr & 0x07ff;
+  if (offs >= 0x800) {
+    if (m_colourRAMEnabled) {
+      m_colourRAM[0][voffs] = val;
+    }
+    else {
+      m_pcgRAM[m_bankSel][voffs] = val;
+      int ch  = 128 + (voffs >> 4);
+      int row = addr & 0xf;
+      SetPCG(ch, row, val);
+    }
+  }
+  else if (m_attributeRAMEnabled) {
+    m_attributeRAM[m_bankSel][voffs] = val;
+  }
+  else if (!m_fontROMEnabled)
+    SingleColourMemoryMappedScreen::WriteMemoryAtAddress(voffs, val);
 }
 
 uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
 {
-  if (!m_fontROMEnabled)
-    return SingleColourMemoryMappedScreen::ReadMemoryAtAddress(addr);
+  //cout << "mbeevideo: read " << HEXFORMAT0x4(addr) << endl;
+  uint16_t offs  = addr & 0x0fff;
+  uint16_t voffs = addr & 0x07ff;
+  if (offs >= 0x800) {
+    if (m_colourRAMEnabled) {
+      return m_colourRAM[0][voffs];
+    }
+    else {
+      return m_pcgRAM[m_bankSel][voffs];
+    }
+  }
+  else if (m_attributeRAMEnabled) {
+    return m_attributeRAM[m_bankSel][voffs];
+  }  
+  else if (!m_fontROMEnabled)
+    return SingleColourMemoryMappedScreen::ReadMemoryAtAddress(voffs);
   else {
     const CharacterGeneratorROM * chargen = (m_fontOffset == 0) ? &g_charGen_mbee64x16 : &g_charGen_mbee80x24;
-    return chargen->m_data[addr & 0x7ff];
+    return chargen->m_data[voffs];
   }
 }
 
@@ -180,18 +251,18 @@ void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
       256, 
       nullptr);
   font->SetHeight(lines);
-
-  cout << "font created" << endl;
-
   SetFont(font, m_cols, m_rows);
- 
-  cout << "set font done" << endl;
-
   RefreshScreen();
-
-  cout << "refresh done" << endl;
 }
 
+void MicrobeeVideo::RewritePCG() 
+{
+ cerr << "pcg: rewriting PCG" << endl;
+  for (FontChar ch = 0x80; ch < 0x100; ++ch) {
+    int offs = (ch - 0x80) * 16;
+    SetPCG(ch, 0, 16, &m_pcgRAM[0][offs]);
+  }  
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -211,8 +282,6 @@ bool Microbee_Emulator::Open(const Options & options)
 {
   if (!Z80Emulator::Open(options))
     return false;
-
-  m_pcgRAM.resize(MICROBEE_PCG_SIZE);
 
   KeyboardScanner * kb = new KeyboardScanner();
   SetKeyboard(kb);
@@ -236,7 +305,6 @@ bool Microbee_Emulator::Open(const Options & options)
 void Microbee_Emulator::Reset(int addr)
 {
   m_video = (MicrobeeVideo *)m_screen.get();
-  m_video->SetRewritePCGHandler(std::bind(&Microbee_Emulator::RewritePCG, this));
 
   Z80Emulator::Reset(addr);
   m_pio.Reset();
@@ -359,13 +427,13 @@ void Microbee_Emulator::OnPIOInterrupt(uint8_t vector)
 uint8_t Microbee_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
 {
   switch (info.m_id) {
-    case 1:
+    case PORT_PIO:
       return m_pio.Read(port & 0x3);
-    case 2:
+    case PORT_6545:
       return m_crtc.Read(port & 1);
-    case 3:
+    case PORT_FONT:
       return 0x00;
-    case 4:
+    case PORT_COLOUR:
       return 0x00;
   }
   cerr << "microbee: read port " << HEXFORMAT0x2(port) << endl;
@@ -375,15 +443,17 @@ uint8_t Microbee_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t
 void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
 {
   switch (info.m_id) {
-    case 1:
+    case PORT_PIO:
       return m_pio.Write(port & 0x3, data);
-    case 2:
+    case PORT_6545:
       return m_crtc.Write(port & 1, data);
-    case 3:
+    case PORT_FONT:
       m_video->EnableFontROM((data & 1) != 0);
       return;
-    case 4:
-    case 5:
+    case PORT_COLOUR:
+      m_video->m_colourRAMEnabled = (data & 0x40);
+      return;
+    case PORT_VIATEL:
       return;
   }
   cerr << "microbee: write port " << HEXFORMAT0x2(port) << " " << HEXFORMAT0x2(data) << endl;
@@ -391,57 +461,42 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
 
 void Microbee_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 {
+  #if 0
   if (id == 8) {
     uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
     //if (m_pcgRAM[offs] != val) {
-      m_pcgRAM[offs] = val;
+      m_video->m_pcgRAM[offs] = val;
       int ch  = 128 + (offs >> 4);
       int row = addr & 0xf;
       m_video->SetPCG(ch, row, val);
     //}
   }
+  #endif
 }
 
 uint8_t Microbee_Emulator::ReadIOMemory(int id, uint16_t addr) const
 {
+  #if 0
   if (id == 8) {
     uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
-    return m_pcgRAM[offs];
+    return m_video->m_pcgRAM[offs];
   }
-}
-
-void Microbee_Emulator::RewritePCG()
-{
-  cerr << "pcg: rewriting PCG" << endl;
-  for (FontChar ch = 0x80; ch < 0x100; ++ch) {
-    int offs = (ch - 0x80) * 16;
-    m_video->SetPCG(ch, 0, 16, &m_pcgRAM[offs]);
-  }
+  #endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-extern EmulatorInfo g_microbee32EmulatorInfo;
-
-Microbee32_Emulator::Microbee32_Emulator()
-  : Microbee_Emulator(&g_microbee32EmulatorInfo)
-{}
-
-/////////////////////////////////////////////////////////////////////////////////////////////
-
-extern EmulatorInfo g_microbee56EmulatorInfo;
-
-Microbee56_Emulator::Microbee56_Emulator()
-  : Microbee_Emulator(&g_microbee56EmulatorInfo)
+MicrobeeDisk_Emulator::MicrobeeDisk_Emulator(const EmulatorInfo * info)
+  : Microbee_Emulator(info)
 {
 }
 
-bool Microbee56_Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
+bool MicrobeeDisk_Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
 {
   return m_fdc->MountDrive(driveNum, drive, readOnly);
 }
 
-bool Microbee56_Emulator::Open(const Options & options)
+bool MicrobeeDisk_Emulator::Open(const Options & options)
 {
   if (!Microbee_Emulator::Open(options))
     return false;
@@ -451,17 +506,17 @@ bool Microbee56_Emulator::Open(const Options & options)
   return true;
 }
 
-uint8_t Microbee56_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
+uint8_t MicrobeeDisk_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
 {
   switch (info.m_id) {
-    case 0x10:
+    case PORT_FDC:
       {
         uint8_t v = m_fdc->Read(port & 0x3);
         //if ((port & 0x03) == 0)
         //  cerr << "mbee: fdc port 0x44 = " << HEXFORMAT0x2(v) << endl;
         return v;
       }
-    case 0x11:
+    case PORT_DRVSEL:
       {
         uint8_t val = (m_fdc->GetDRQ() || m_fdc->GetInterrupt()) ? 0x80 : 0x00;
         //m_fdcPending = false;
@@ -472,12 +527,12 @@ uint8_t Microbee56_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16
   return Microbee_Emulator::ReadIOPort(info, port);
 }
 
-void Microbee56_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
+void MicrobeeDisk_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
 {
   switch (info.m_id) {
-    case 0x10:
+    case PORT_FDC:
       return m_fdc->Write(port & 0x3, data);
-    case 0x11:
+    case PORT_DRVSEL:
     {
       m_drive   = data & 0x03;
       m_fdc->SelectDrive(m_drive);
@@ -492,25 +547,39 @@ void Microbee56_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-INFO_START(microbee)
-{
-  INFO_IO_PORT_RW(0x00, 0x03, 1),      // PIO
-  INFO_IO_PORT_RW(0x08, 0x08, 4),      // colour control port
-  INFO_IO_PORT_RW(0x09, 0x09, 5),      // wait off/Viatel
-  INFO_IO_PORT_RW(0x0b, 0x0b, 3),      // enable font ROM
-  INFO_IO_PORT_RW(0x0c, 0x0d, 2),      // 6545
+extern EmulatorInfo g_microbee32EmulatorInfo;
 
+Microbee32_Emulator::Microbee32_Emulator()
+  : Microbee_Emulator(&g_microbee32EmulatorInfo)
+{}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+#define MICROBEE_FIXED_VIDEO() \
   INFO_SCREEN_MEMORY_MAPPED_FIXED("microbee", \
                           MICROBEE_VIDEO_START_ADDR, MICROBEE_VIDEO_END_ADDR, \
                           MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
                           MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
                           MICROBEE_VIRTUAL_FONT_CHARS, \
-                          &g_charGen_mbee64x16, nullptr),
+                          &g_charGen_mbee64x16, nullptr)
+
+#define MICROBEE_VARIABLE_VIDEO() \
+  INFO_SCREEN_MEMORY_MAPPED_VARIABLE("microbee", 0x800, \
+                          MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
+                          MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
+                          MICROBEE_VIRTUAL_FONT_CHARS, \
+                          &g_charGen_mbee64x16, nullptr)
+
+INFO_START(microbee)
+{
+  INFO_IO_PORT_RW(0x00, 0x03, PORT_PIO),      // PIO
+  INFO_IO_PORT_RW(0x08, 0x08, PORT_COLOUR),   // colour control port
+  INFO_IO_PORT_RW(0x09, 0x09, PORT_VIATEL),   // wait off/Viatel
+  INFO_IO_PORT_RW(0x0b, 0x0b, PORT_FONT),     // enable font ROM
+  INFO_IO_PORT_RW(0x0c, 0x0d, PORT_6545),     // 6545
+  INFO_IO_PORT_RW(0x1c, 0x1c, PORT_LVDAT),    // LVDAT
 
   INFO_MONITOR(12.0, 4.0, 3.0, ePAL),
-
-  INFO_MEM_IO_READ(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR, 8),
-  INFO_MEM_IO_WRITE(MICROBEE_PCG_START_ADDR, MICROBEE_PCG_END_ADDR, 8)
 }
 INFO_END(microbee);
 
@@ -530,6 +599,8 @@ INFO_START(microbee32)
   INFO_PARENT(microbee),
   INFO_ROM(MICROBEE_BASIC_ROM_START_ADDR, g_microbeeBasic5_22e_ROM),
   INFO_MAIN_RAM(MICROBEE_BASIC_RAM_START_ADDR, 32, 16, MICROBEE_BASIC_ROM_START_ADDR / 1024),
+
+  MICROBEE_FIXED_VIDEO()
 }
 INFO_END(microbee32);
 
@@ -545,23 +616,32 @@ EmulatorInfo g_microbee32EmulatorInfo =
 
 ///////////////////////////////////////////////////////////////////////////
 
-#define   MICROBEE_DISK_ROM_START_ADDR     0xe000
-#define   MICROBEE_DISK_ROM_END_ADDR       0xefff
+extern EmulatorInfo g_microbee56EmulatorInfo;
 
-#define   MICROBEE_DISK_RAM_START_ADDR     0x0000
-#define   MICROBEE_DISK_RAM_END_ADDR       0xdfff
+Microbee56_Emulator::Microbee56_Emulator()
+  : MicrobeeDisk_Emulator(&g_microbee56EmulatorInfo)
+{
+}
+
+#define   MICROBEE_56k_DISK_ROM_START_ADDR     0xe000
+#define   MICROBEE_56k_DISK_ROM_END_ADDR       0xefff
+
+#define   MICROBEE_56k_DISK_RAM_START_ADDR     0x0000
+#define   MICROBEE_56k_DISK_RAM_END_ADDR       0xdfff
 
 extern unsigned char g_disk56_ROM[4096];
 
 INFO_START(microbee56)
 {
-  INFO_CPU(4, MICROBEE_DISK_ROM_START_ADDR),
+  INFO_CPU(4, MICROBEE_56k_DISK_ROM_START_ADDR),
   INFO_PARENT(microbee),
-  INFO_ROM(MICROBEE_DISK_ROM_START_ADDR, g_disk56_ROM),
-  INFO_MAIN_RAM(MICROBEE_DISK_RAM_START_ADDR, 56, 56, MICROBEE_DISK_ROM_START_ADDR / 1024),
+  INFO_ROM(MICROBEE_56k_DISK_ROM_START_ADDR, g_disk56_ROM),
+  INFO_MAIN_RAM(MICROBEE_56k_DISK_RAM_START_ADDR, 56, 56, MICROBEE_56k_DISK_RAM_END_ADDR / 1024),
 
-  INFO_IO_PORT_RW(0x44, 0x47, 0x10),      // FDC
-  INFO_IO_PORT_RW(0x48, 0x48, 0x11)      // drive select
+  MICROBEE_FIXED_VIDEO(),
+
+  INFO_IO_PORT_RW(0x44, 0x47, PORT_FDC),     // FDC
+  INFO_IO_PORT_RW(0x48, 0x48, PORT_DRVSEL)   // drive select
 }
 INFO_END(microbee56);
 
@@ -572,6 +652,158 @@ EmulatorInfo g_microbee56EmulatorInfo =
   "Microbee 56k",            // long name
 
   INFO_INSERT(microbee56)
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+#define MEMORY_LOWER_BANK       0x01
+#define MEMORY_UPPER_BANK       0x02
+
+#define MEMORY_ROM_BANK         0x03
+#define MEMORY_LOWER_VIDEO_BANK 0x04
+#define MEMORY_UPPER_VIDEO_BANK 0x05
+
+extern unsigned char g_disk128_ROM[8192];
+
+extern EmulatorInfo g_microbee128EmulatorInfo;
+
+Microbee128_Emulator::Microbee128_Emulator()
+  : MicrobeeDisk_Emulator(&g_microbee128EmulatorInfo)
+{
+  SetBankSel(0x00);
+}
+
+
+void Microbee128_Emulator::SetBankSel(uint8_t data)
+{
+  m_bankSel          = data;
+  m_currentLowerBank = m_bankedMemory[data & 3];
+  m_romDisable       = data & 0x04;
+  m_videoDisable     = data & 0x08;
+  m_videoLower       = data & 0x10;;
+  cerr << "mbee128: bank sel " << HEXFORMAT0x2(data) 
+       << ", bank " << (data & 3)
+       << ", ROM " << (m_romDisable ? "disabled" : "enabled")
+       << ", video " << (m_videoDisable ? "disabled" : "enabled")
+       << ", video addr " << (m_videoLower ? "0x8000" : "0xf000")
+       << endl;
+}
+
+uint8_t Microbee128_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
+{
+//  switch (info.m_id) {
+//    case PORT_BANK:
+//      return m_bankSel;
+//    case PORT_LVDAT:
+//  }
+  return MicrobeeDisk_Emulator::ReadIOPort(info, port);
+}
+
+void Microbee128_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
+{
+  switch (info.m_id) {
+    case PORT_LVDAT:
+      cerr << "mbee128: LVDAT " << HEXFORMAT0x2(data) << endl;
+      m_video->m_bankSel             = data & 0x0f;
+      m_video->m_attributeRAMEnabled = data & 0x10;
+      m_video->m_extendedPCG         = data & 0x80;
+      return;
+    case PORT_BANK:
+      SetBankSel(data);
+      return;
+  }
+  return MicrobeeDisk_Emulator::WriteIOPort(info, port, data);
+}
+
+void Microbee128_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
+{
+  switch (id) {
+    case MEMORY_LOWER_BANK:
+      m_currentLowerBank[addr] = val;
+      return;
+
+    case MEMORY_LOWER_VIDEO_BANK:
+      if (!m_videoDisable && m_videoLower) {
+        m_video->WriteMemoryAtAddress(addr & 0xfff, val);
+        return;
+      }  
+      m_bankedMemory[0][addr & 0x7fff] = val;
+      return;
+
+    case MEMORY_UPPER_VIDEO_BANK:
+      if (!m_videoDisable && !m_videoLower) {
+        m_video->WriteMemoryAtAddress(addr & 0x0fff, val);
+        return;
+      }  
+      if (!m_romDisable && (addr < 0xa000)) {  
+        return;
+      }
+      // fall through
+    case MEMORY_UPPER_BANK:
+      m_bankedMemory[0][addr & 0x7fff] = val;
+      return;
+  }
+  return MicrobeeDisk_Emulator::WriteIOMemory(id, addr, val);
+}
+
+uint8_t Microbee128_Emulator::ReadIOMemory(int id, uint16_t addr) const
+{
+  switch (id) {
+    case MEMORY_LOWER_BANK:
+      return m_currentLowerBank[addr];
+
+    case MEMORY_LOWER_VIDEO_BANK:
+      if (!m_videoDisable && m_videoLower) {
+        return m_video->ReadMemoryAtAddress(addr);
+      }
+      if (!m_romDisable && (addr < 0xa000)) {  
+        return g_disk128_ROM[addr & 0x1fff];
+      }
+      return m_bankedMemory[0][addr & 0x7fff];
+
+    case MEMORY_UPPER_VIDEO_BANK:
+      if (!m_videoDisable && !m_videoLower) {
+        return m_video->ReadMemoryAtAddress(addr);
+      }  
+      // fall through
+    case MEMORY_UPPER_BANK:
+      if (!m_romDisable && (addr < 0xa000)) {  
+        return g_disk128_ROM[addr & 0x1fff];
+      }
+      return m_bankedMemory[0][addr & 0x7fff];
+  }
+  return MicrobeeDisk_Emulator::ReadIOMemory(id, addr);
+}
+
+#define   MICROBEE_128k_DISK_ROM_START_ADDR     0x8000
+
+INFO_START(microbee128)
+{
+  INFO_CPU(4, MICROBEE_128k_DISK_ROM_START_ADDR),
+  INFO_PARENT(microbee),
+
+  INFO_MEM_IO(0x0000, 0x7fff, MEMORY_LOWER_BANK),
+  
+  INFO_MEM_IO(0x8000, 0x8fff, MEMORY_LOWER_VIDEO_BANK),
+  INFO_MEM_IO(0xf000, 0xffff, MEMORY_UPPER_VIDEO_BANK),
+  INFO_MEM_IO(0x9000, 0xefff, MEMORY_UPPER_BANK),
+
+  MICROBEE_VARIABLE_VIDEO(),
+
+  INFO_IO_PORT_RW(0x44, 0x47, PORT_FDC),     // FDC
+  INFO_IO_PORT_RW(0x48, 0x48, PORT_DRVSEL),  // drive select
+
+  INFO_IO_PORT_RW(0x50, 0x50, PORT_BANK)     // memory bank select
+}
+INFO_END(microbee128);
+
+EmulatorInfo g_microbee128EmulatorInfo =
+{
+  "mbee128",                  // command line option
+  "Microbee 128k",            // short name
+  "Microbee 128k",            // long name
+
+  INFO_INSERT(microbee128)
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////

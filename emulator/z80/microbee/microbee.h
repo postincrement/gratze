@@ -26,8 +26,8 @@ class Microbee_Emulator : public Z80Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
-    virtual void WriteIOMemory(int id, uint16_t addr, uint8_t val);
-    virtual uint8_t ReadIOMemory(int id, uint16_t addr) const;
+    virtual void WriteIOMemory(int id, uint16_t addr, uint8_t val) override;
+    virtual uint8_t ReadIOMemory(int id, uint16_t addr) const override;
 
     void OnPIOInterrupt(uint8_t vector);
 
@@ -49,21 +49,12 @@ class Microbee_Emulator : public Z80Emulator
     int m_lines = 0;
 
     MicrobeeVideo * m_video; 
-    std::vector<uint8_t> m_pcgRAM;
 };
 
-
-class Microbee32_Emulator : public Microbee_Emulator
+class MicrobeeDisk_Emulator : public Microbee_Emulator
 {
   public:
-    Microbee32_Emulator();
-};
-
-
-class Microbee56_Emulator : public Microbee_Emulator
-{
-  public:
-    Microbee56_Emulator();
+    MicrobeeDisk_Emulator(const EmulatorInfo * info);
 
     bool Open(const Options & options);
 
@@ -77,8 +68,45 @@ class Microbee56_Emulator : public Microbee_Emulator
     int m_drive    = 0x00;
     bool m_side    = false;
     bool m_density = false;
-    bool m_charROMEnabled = false;
 };
 
+
+class Microbee32_Emulator : public Microbee_Emulator
+{
+  public:
+    Microbee32_Emulator();
+};
+
+
+class Microbee56_Emulator : public MicrobeeDisk_Emulator
+{
+  public:
+    Microbee56_Emulator();
+
+  protected:  
+};
+
+class Microbee128_Emulator : public MicrobeeDisk_Emulator
+{
+  public:
+    Microbee128_Emulator();
+
+    virtual void WriteIOMemory(int id, uint16_t addr, uint8_t val) override;
+    virtual uint8_t ReadIOMemory(int id, uint16_t addr) const override;
+
+    virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
+    virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
+
+    virtual void SetBankSel(uint8_t data);
+
+  protected:
+    uint8_t m_bankedMemory[4][0x8000];
+    uint8_t m_bankSel = 0;
+    uint8_t * m_currentLowerBank;
+    bool m_romDisable   = false;
+    bool m_videoDisable = false;
+    bool m_videoLower   = false;
+
+};
 
 #endif // DG680_H_

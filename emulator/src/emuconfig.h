@@ -22,12 +22,15 @@ class Font;
 #define INFO_ROM_DATA(start, end, data)     { Config::Type::eROM,         { .m_rom={ start, end, data } } }
 #define INFO_MAIN_RAM(start, k, min, max)   { Config::Type::eMainRAM,     { .m_ram={ start, start + (k)*1024 - 1, min, max } } }
 #define INFO_RAM(start, end)                { Config::Type::eRAM,         { .m_ram={ start, end } } }
-#define INFO_MEM_IO_READ(start, end, id)    { Config::Type::eMemIORead,   { .m_memIO={ start, end, id } } }
 #define INFO_MEM_IO_WRITE(start, end, id)   { Config::Type::eMemIOWrite,  { .m_memIO={ start, end, id } } }
+#define INFO_MEM_IO_READ(start, end, id)    { Config::Type::eMemIORead,   { .m_memIO={ start, end, id } } }
 #define INFO_IO_PORT_READ(start, end, id)   { Config::Type::eIOPortRead,  { .m_ioPort={ start, end, id } } }
 #define INFO_IO_PORT_WRITE(start, end, id)  { Config::Type::eIOPortWrite, { .m_ioPort={ start, end, id } } }
 #define INFO_IO_PORT_RW(start, end, id)     { Config::Type::eIOPortRW,    { .m_ioPort={ start, end, id } } }
 #define INFO_MONITOR(freq, h, v, fmt)       { Config::Type::eMonitor,     { .m_monitor={ freq, h, v, Config::VideoStandard::fmt, 6.7, 5.0 } } }
+
+#define INFO_MEM_IO(start, end, id)         INFO_MEM_IO_WRITE(start, end, id), \
+                                            INFO_MEM_IO_READ(start, end, id)
 
 #define INFO_FONT(count,width,height,data, creator)  { count, width, height, data, creator }
 
@@ -42,7 +45,7 @@ class Font;
   INFO_SCREEN_MEMORY_MAPPED(name, start, end, cols, rows, fontWid, fontHgt, count, fontData, fontCreator, false)
 
 #define INFO_SCREEN_MEMORY_MAPPED_VARIABLE(name, size, cols, rows, fontWid, fontHgt, count, fontData, fontCreator) \
-  INFO_SCREEN_MEMORY_MAPPED(name, 0, size, cols, rows, fontWid, fontHgt, count, fontData, fontCreator, true)
+  INFO_SCREEN_MEMORY_MAPPED(name, 0, size-1, cols, rows, fontWid, fontHgt, count, fontData, fontCreator, true)
 
 #define INFO_TERMINAL(cols, rows)   { Config::Type::eTerminal,    { .m_terminal={ cols, rows, DEFAULT_TTF_FONT } } }
 

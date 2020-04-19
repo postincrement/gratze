@@ -77,7 +77,7 @@ void Z80Emulator::Reset(int addr)
 
 void Z80Emulator::SetTrace(bool v)
 {
-  m_cpu.Trace = v ? 1 : 0;
+  //m_cpu.Trace = v ? 1 : 0;
 }
 
 int Z80Emulator::Exec(int cycles)

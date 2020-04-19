@@ -513,7 +513,7 @@ int ExecZ80(register Z80 *R,register int RunCycles)
     {
 #ifdef DEBUG
       /* Turn tracing on when reached trap address */
-      if(R->PC.W==R->Trap) R->Trace=1;
+      //if(R->PC.W==R->Trap) R->Trace=1;
       /* Call single-step debugger, exit if requested */
       if(R->Trace)
         if(!DebugZ80(R)) return(R->ICount);

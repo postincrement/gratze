@@ -46,3 +46,4 @@ grasm/t.out
 disk/t
 disk/defender_ds40.dsk
 grasm/trs80_level2.asm
+emulator/z80/microbee/56krom.lst

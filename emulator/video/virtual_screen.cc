@@ -428,10 +428,15 @@ bool MemoryMappedScreen::SetFont(Font * font, int cols, int rows)
   if (!VirtualScreen::SetFont(font, cols, rows)) 
     return false;
 
-  if (m_hasPCG && m_rewritePCGHandler)
-    m_rewritePCGHandler();
+  RewritePCG();
 
   return true;
+}
+
+void MemoryMappedScreen::RewritePCG()
+{
+  if (m_hasPCG && m_rewritePCGHandler)
+    m_rewritePCGHandler();
 }
 
 void MemoryMappedScreen::SetRewritePCGHandler(std::function<void ()> handler)

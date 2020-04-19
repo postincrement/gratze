@@ -136,6 +136,7 @@ class MemoryMappedScreen : public VirtualScreen
     virtual bool IsPCG(FontChar ch) const;
     virtual void SetPCG(FontChar ch, int line, uint8_t val);
     virtual void SetPCG(FontChar ch, int row, int rowCount, uint8_t * val);
+    virtual void RewritePCG();
 
     virtual void SetRewritePCGHandler(std::function<void ()> handler);
 
