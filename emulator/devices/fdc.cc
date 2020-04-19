@@ -75,7 +75,7 @@ static WD_FDC::CommandInfo g_commands[] = {
   { 0xf4, 0xff, 0,                  "writeTrack", 3, &WD_FDC::WriteTrackCommand },
 
   { 0xc4, 0xf4, 0,                  "readAddr",   3, 0 },
-  { 0xfb, 0xc0, WD_FDC::eWD1793,    "readaddr",   3, &WD_FDC::ReadAddrCommand_1793 },
+  { 0xc0, 0xf4, WD_FDC::eWD1793,    "readaddr",   3, &WD_FDC::ReadAddrCommand_1793 },
 
   { 0xe4, 0xfe, 0,                  "readTrack",  3, 0 },
 
