@@ -206,8 +206,10 @@ class Emulator
     static Emulator * GetInstance() 
     { return m_instance; }
 
-    virtual unsigned GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const;
-    virtual std::string Disassemble(std::vector<uint8_t> & code) const;
+    virtual std::string Disassemble(unsigned addr) const;
+
+    virtual std::string DecodeOpcode(const std::vector<uint8_t> & code) const = 0;
+    virtual unsigned GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const = 0;
 
     void CompileConfigBlocks();
     void CompileConfigBlocks(const Config::Block * blocks, size_t blockCount);

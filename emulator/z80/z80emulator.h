@@ -42,8 +42,9 @@ class Z80Emulator : public Emulator
     virtual int GetMemorySize() const override;
     virtual std::string GetName() const override;
     virtual std::string DumpRegs() const override;
+
     virtual unsigned GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const override;
-    virtual std::string Disassemble(std::vector<uint8_t> & code) const override;
+    virtual std::string DecodeOpcode(const std::vector<uint8_t> & code) const override;
 
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;

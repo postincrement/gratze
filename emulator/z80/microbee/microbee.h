@@ -91,6 +91,9 @@ class Microbee128_Emulator : public MicrobeeDisk_Emulator
   public:
     Microbee128_Emulator();
 
+    bool Open(const Options & options) override;
+    virtual void Reset(int addr = -1) override;
+
     virtual void WriteIOMemory(int id, uint16_t addr, uint8_t val) override;
     virtual uint8_t ReadIOMemory(int id, uint16_t addr) const override;
 

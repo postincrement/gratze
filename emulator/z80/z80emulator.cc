@@ -77,12 +77,13 @@ void Z80Emulator::Reset(int addr)
 
 void Z80Emulator::SetTrace(bool v)
 {
+  
   //m_cpu.Trace = v ? 1 : 0;
 }
 
 int Z80Emulator::Exec(int cycles)
 {
-  if (!m_options.m_logPC && (m_options.m_traceLength == 0))
+  if (!m_options.m_trace && !m_options.m_logPC && (m_options.m_traceLength == 0))
     return ExecZ80(&m_cpu, cycles);
   else {
     int toDo = cycles;
@@ -90,7 +91,9 @@ int Z80Emulator::Exec(int cycles)
       if (m_options.m_traceLength > 0)
         AddTraceInfo(GetPC());
       if (m_options.m_logPC)
-        cerr << "pc: " << HEXFORMAT0x4(GetPC()) << endl;  
+        cerr << "pc: " << HEXFORMAT0x4(GetPC()) << endl;
+      if (m_options.m_trace)
+        cout << Emulator::Disassemble(GetPC()) <<endl;
       int remaining = ExecZ80(&m_cpu, 1);
       int cyclesDone = 1 - remaining;
       toDo -= cyclesDone;
@@ -241,13 +244,12 @@ unsigned Z80Emulator::GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) c
   return opcodes.size();  
 }
 
-std::string Z80Emulator::Disassemble(std::vector<uint8_t> & code) const
+std::string Z80Emulator::DecodeOpcode(const std::vector<uint8_t> & code) const
 {
   char str[20];
-  MFZ::DAsm(str, &code[0]);
+  MFZ::DAsm(str, (uint8_t *)&code[0]);
   return str;
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////////
 

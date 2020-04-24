@@ -214,6 +214,15 @@ void S2650Emulator::DumpStackInternal(const std::vector<uint16_t> & stack)
   */
 }
 
+unsigned S2650Emulator::GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const
+{
+  return 1;
+}
+
+std::string S2650Emulator::DecodeOpcode(const std::vector<uint8_t> & code) const
+{
+  return "";
+}
 
 /////////////////////////////////////////////////////////////////////////////////////
 

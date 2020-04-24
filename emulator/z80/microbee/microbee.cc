@@ -262,15 +262,15 @@ uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
       return m_pcgRAM[m_bankSel][voffs];
     }
   }
-  else if (m_attributeRAMEnabled) {
-    return m_attributeRAM[m_bankSel][voffs];
-  }  
-  else if (!m_fontROMEnabled)
-    return ColourMemoryMappedScreen::ReadMemoryAtAddress(voffs);
-  else {
+  else if (m_fontROMEnabled) {
     const CharacterGeneratorROM * chargen = (m_fontOffset == 0) ? &g_charGen_mbee64x16 : &g_charGen_mbee80x24;
     return chargen->m_data[voffs];
   }
+  else if (m_attributeRAMEnabled) {
+    return m_attributeRAM[m_bankSel][voffs];
+  }  
+  else  
+    return ColourMemoryMappedScreen::ReadMemoryAtAddress(voffs);
 }
 
 void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
@@ -693,10 +693,6 @@ EmulatorInfo g_microbee56EmulatorInfo =
 #define MEMORY_LOWER_BANK       0x01
 #define MEMORY_UPPER_BANK       0x02
 
-#define MEMORY_ROM_BANK         0x03
-#define MEMORY_LOWER_VIDEO_BANK 0x04
-#define MEMORY_UPPER_VIDEO_BANK 0x05
-
 extern unsigned char g_disk128_ROM[8192];
 
 extern EmulatorInfo g_microbee128EmulatorInfo;
@@ -704,9 +700,21 @@ extern EmulatorInfo g_microbee128EmulatorInfo;
 Microbee128_Emulator::Microbee128_Emulator()
   : MicrobeeDisk_Emulator(&g_microbee128EmulatorInfo)
 {
-  SetBankSel(0x00);
 }
 
+bool Microbee128_Emulator::Open(const Options & options)
+{
+  if (!MicrobeeDisk_Emulator::Open(options))
+    return false;
+
+  return true;
+}
+
+void Microbee128_Emulator::Reset(int addr)
+{
+  MicrobeeDisk_Emulator::Reset(addr);
+  SetBankSel(0x00);
+}
 
 void Microbee128_Emulator::SetBankSel(uint8_t data)
 {
@@ -715,12 +723,14 @@ void Microbee128_Emulator::SetBankSel(uint8_t data)
   m_romDisable       = data & 0x04;
   m_videoDisable     = data & 0x08;
   m_videoLower       = data & 0x10;;
+  /*
   cerr << "mbee128: bank sel " << HEXFORMAT0x2(data) 
        << ", bank " << (data & 3)
        << ", ROM " << (m_romDisable ? "disabled" : "enabled")
        << ", video " << (m_videoDisable ? "disabled" : "enabled")
        << ", video addr " << (m_videoLower ? "0x8000" : "0xf000")
        << endl;
+  */     
 }
 
 uint8_t Microbee128_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
@@ -756,24 +766,20 @@ void Microbee128_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
       m_currentLowerBank[addr] = val;
       return;
 
-    case MEMORY_LOWER_VIDEO_BANK:
-      if (!m_videoDisable && m_videoLower) {
-        m_video->WriteMemoryAtAddress(addr & 0xfff, val);
-        return;
-      }  
-      m_bankedMemory[0][addr & 0x7fff] = val;
-      return;
-
-    case MEMORY_UPPER_VIDEO_BANK:
-      if (!m_videoDisable && !m_videoLower) {
-        m_video->WriteMemoryAtAddress(addr & 0x0fff, val);
-        return;
+    case MEMORY_UPPER_BANK:
+      if (!m_videoDisable) {
+        if (m_videoLower && (addr <= 0x8fff)) {
+          m_video->WriteMemoryAtAddress(addr & 0xfff, val);
+          return;
+        }  
+        if (!m_videoLower && (addr >= 0xf000)) {
+          m_video->WriteMemoryAtAddress(addr & 0x0fff, val);
+          return;
+        }
       }  
       if (!m_romDisable && (addr < 0xa000)) {  
         return;
       }
-      // fall through
-    case MEMORY_UPPER_BANK:
       m_bankedMemory[0][addr & 0x7fff] = val;
       return;
   }
@@ -783,29 +789,24 @@ void Microbee128_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 uint8_t Microbee128_Emulator::ReadIOMemory(int id, uint16_t addr) const
 {
   switch (id) {
-    case MEMORY_LOWER_BANK:
+    case MEMORY_LOWER_BANK:          // 0x0000 to 0x7ffff
       return m_currentLowerBank[addr];
 
-    case MEMORY_LOWER_VIDEO_BANK:
-      if (!m_videoDisable && m_videoLower) {
-        return m_video->ReadMemoryAtAddress(addr);
-      }
-      if (!m_romDisable && (addr < 0xa000)) {  
-        return g_disk128_ROM[addr & 0x1fff];
-      }
-      return m_bankedMemory[0][addr & 0x7fff];
-
-    case MEMORY_UPPER_VIDEO_BANK:
-      if (!m_videoDisable && !m_videoLower) {
-        return m_video->ReadMemoryAtAddress(addr);
+    case MEMORY_UPPER_BANK:          // 0x8000 to 0xffff
+      if (!m_videoDisable) {
+        if (m_videoLower && (addr <= 0x8fff)) {
+          return m_video->ReadMemoryAtAddress(addr & 0x0fff);
+        }  
+        if (!m_videoLower && (addr >= 0xf000)) {
+          return m_video->ReadMemoryAtAddress(addr & 0x0fff);
+        }
       }  
-      // fall through
-    case MEMORY_UPPER_BANK:
       if (!m_romDisable && (addr < 0xa000)) {  
         return g_disk128_ROM[addr & 0x1fff];
       }
       return m_bankedMemory[0][addr & 0x7fff];
   }
+  
   return MicrobeeDisk_Emulator::ReadIOMemory(id, addr);
 }
 
@@ -817,10 +818,7 @@ INFO_START(microbee128)
   INFO_PARENT(microbee),
 
   INFO_MEM_IO(0x0000, 0x7fff, MEMORY_LOWER_BANK),
-  
-  INFO_MEM_IO(0x8000, 0x8fff, MEMORY_LOWER_VIDEO_BANK),
-  INFO_MEM_IO(0xf000, 0xffff, MEMORY_UPPER_VIDEO_BANK),
-  INFO_MEM_IO(0x9000, 0xefff, MEMORY_UPPER_BANK),
+  INFO_MEM_IO(0x8000, 0xffff, MEMORY_UPPER_BANK),
 
   MICROBEE_VARIABLE_VIDEO(),
 

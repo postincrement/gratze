@@ -45,6 +45,9 @@ struct Options
   // set breakpoint (not used yet)
   int m_breakpoint = -1;
 
+  // set trace
+  bool m_trace = false;
+
   // scale video
   unsigned m_videoScale = 1;
 

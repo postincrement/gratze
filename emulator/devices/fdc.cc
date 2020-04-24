@@ -17,6 +17,8 @@ using namespace std;
 
 #define   INIT_TIME_MS      200
 
+#define   MAX_DRQ_TIME_US   100
+
 // status for multiple types
 #define   STATUS_BUSY               (1 << 0)    // type I and II
 #define   STATUS_WR_PROT            (1 << 6)    // type I and type II write
@@ -66,7 +68,7 @@ static WD_FDC::CommandInfo g_commands[] = {
   { 0x10, 0xf0, WD_FDC::eWD1793,    "seek",       1, &WD_FDC::SeekCommand_1793 },   // 1793 does have update bit
 
   { 0x20, 0xf0, 0,                  "step",       1, &WD_FDC::StepCommand },
-  { 0x30, 0xe0, 0,                  "stepIn",     1, &WD_FDC::StepInCommand },
+  { 0x40, 0xe0, 0,                  "stepIn",     1, &WD_FDC::StepInCommand },
   { 0x60, 0xe0, 0,                  "stepOut",    1, &WD_FDC::StepOutCommand },
 
   { 0x80, 0xe3, 0,                  "read",       2, &WD_FDC::ReadCommand },
@@ -307,8 +309,21 @@ void WD_FDC::WriteCmdReg(int8_t command)
 
 uint8_t WD_FDC::ReadStatusReg()
 {
+  if (m_reading) {
+    auto now = std::chrono::system_clock::now();
+    if (now > m_readWriteTimer) {
+      ReadNextByte();
+      if (m_lostData == 0) {
+        if (m_debug)
+          cerr << "FDC: setting lost data" << endl;
+        m_lostData = STATUS_LOST_DATA;
+      }
+    }
+    m_status |= m_lostData;
+  }
+  
   UpdateInterrupt(false);
-  if (m_pulseIndex)
+  if (m_headLoaded && m_pulseIndex)
     m_status ^= STATUS_INDEX;
   //cerr << "FDC: read status " << HEXFORMAT0x2(m_status) << endl;
   return m_status;
@@ -319,11 +334,19 @@ uint8_t WD_FDC::ReadDataReg()
   if (!m_reading)
     return 0;
 
+  return ReadNextByte();
+}
+
+uint8_t WD_FDC::ReadNextByte()
+{
   // get data
   m_data = m_buffer[m_bufferPtr];
+
   //cerr << "FDC: reading byte " << dec << (int)m_bufferPtr << " of " << (int)m_bufferLen << endl;
   if (++m_bufferPtr < m_bufferLen) {
-    m_status |= STATUS_DRQ;      
+    m_status |= STATUS_DRQ | m_lostData;
+    m_readWriteTimer = std::chrono::system_clock::now() 
+                     + std::chrono::microseconds(MAX_DRQ_TIME_US);
   }
   else if (
     ((m_currentCommand & COMMAND_MULT_RECS) != 0) &&
@@ -331,11 +354,11 @@ uint8_t WD_FDC::ReadDataReg()
     ) {
     m_sector++;
     ReadCommand(m_currentCommand);
-    m_status |= STATUS_DRQ;
+    m_status |= STATUS_DRQ | m_lostData;
   }
   else {
     m_currentCommand = -1;
-    m_status = m_readDAM;  // resets STATUS_BUSY
+    m_status = m_readDAM | m_lostData;  // resets STATUS_BUSY
     m_reading = false;
     UpdateInterrupt(true);
     if (m_debug)
@@ -365,8 +388,12 @@ void WD_FDC::LoadHead(bool loadHead)
 {
   bool oldHeadLoaded = m_headLoaded;
   m_headLoaded = loadHead;
-  if (m_driveChangedHandler && (oldHeadLoaded != loadHead))
-    m_driveChangedHandler(m_drive, m_headLoaded);
+  if (oldHeadLoaded != loadHead) {
+    if (m_debug)
+      cerr << "fdc: head is now " << m_headLoaded << endl;
+    if (m_driveChangedHandler)
+      m_driveChangedHandler(m_drive, m_headLoaded);
+  }
   RestartHeadLoadTimer();
 }
 
@@ -393,12 +420,20 @@ int WD_FDC::SeekCommand_1793(uint8_t cmd)
 int WD_FDC::StepInCommand(uint8_t cmd)
 {
   m_directionIn = true;
-  SeekTrack(cmd, m_track-1, cmd & COMMAND_UPDATE);
+  
+  SeekTrack(cmd, m_track+1, cmd & COMMAND_UPDATE);
   return 0;
 }
 
 int WD_FDC::StepOutCommand(uint8_t cmd)
 {
+  if (m_track == 0) {
+    m_status = STATUS_SEEKERR;
+    SetTypeIStatus();
+    m_setInterrupt = true;
+    return 0;
+  }
+
   m_directionIn = false;
   SeekTrack(cmd, m_track-1, cmd & COMMAND_UPDATE);
   return 0;
@@ -417,6 +452,9 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
 
   LoadHead(cmd & COMMAND_HEAD_LOAD_I);
 
+  int origRealTrack = m_realTrack;
+  int origTrack     = m_track;
+
   // update track and do update bit logic
   m_realTrack = track;
   if (update) {
@@ -433,10 +471,17 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
     // "CRC, wrong track"   SEEK_ERROR
     // "valid"              no error
     //
-    if (IsCurrentDriveAvailable()) {
+    LoadHead(cmd & COMMAND_HEAD_LOAD_I);
+
+    if (!IsCurrentDriveAvailable()) {
       m_status = STATUS_SEEKERR;
     }
     else if (m_track != m_realTrack) {
+      if (m_debug)
+        cerr << "FDC: seek error - track " << (int)track 
+             << ", m_track " << origTrack
+             << ", realTrack " << origRealTrack 
+             << endl; 
       m_status = STATUS_SEEKERR;
     }
     else {
@@ -447,14 +492,18 @@ int WD_FDC::SeekTrack(uint8_t cmd, uint8_t track, bool update)
   SetTypeIStatus();
 
   m_setInterrupt = true;
+
+  if (m_debug)
+    cerr << "FDC: seek status = " << HEXFORMAT0x2(m_status) << endl;
   return 0;
 }
 
 void WD_FDC::SetTypeIStatus()
 {
   // set track 0 bit
-  //m_pulseIndex = true;
-  //m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
+  m_pulseIndex = true;
+  if (m_headLoaded)
+    m_status |= ((m_realTrack == 0) ? STATUS_TRK0 : 0);
 }
 
 
@@ -465,7 +514,7 @@ void WD_FDC::SetTypeIStatus()
 
 int WD_FDC::ReadCommand(uint8_t cmd)
 {
-  LoadHead(cmd & COMMAND_HEAD_LOAD_II);
+  LoadHead(true);
 
   if (!IsCurrentDriveAvailable()) {
     m_status = STATUS_SEEKERR;
@@ -482,6 +531,9 @@ int WD_FDC::ReadCommand(uint8_t cmd)
       m_setInterrupt = true;
     }
     else {
+      m_readWriteTimer = std::chrono::system_clock::now() 
+                     + std::chrono::microseconds(MAX_DRQ_TIME_US);
+      m_lostData = 0;            
       if (m_debug)
         cerr << "FDC: read sector, track=" << dec << (int)m_track << ",sector=" << dec << (int)m_sector << ",len=" << (int)bufferLen << ",density=" << (int)info.m_density << ",DAM=" << HEXFORMAT0x2(info.m_dam) << endl;
       m_bufferLen = bufferLen;
@@ -559,7 +611,7 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
       UpdateInterrupt(true);
   }
   else {
-    SetTypeIStatus();
+    //SetTypeIStatus();
     if (m_debug)
       cerr << "FDC: force int not busy with no command " << HEXFORMAT0x2(m_status) << endl;
   }
@@ -617,6 +669,10 @@ uint8_t WD_FDC::Read(uint16_t addr)
   switch (addr & 0x3) {
     case 0:
       value = ReadStatusReg();
+      if (m_debug && (value != m_prevStatusValue)) {
+        cerr << "FDC: status " << HEXFORMAT0x2(value) << endl;
+        m_prevStatusValue = value;
+      }
       break;
     case 1:
       value = m_track;
@@ -636,7 +692,7 @@ uint8_t WD_FDC::Read(uint16_t addr)
 
 int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
 {
-  LoadHead(cmd & COMMAND_HEAD_LOAD_II);
+  LoadHead(true);
 
   if (!IsCurrentDriveAvailable()) {
     m_status = STATUS_SEEKERR;
@@ -657,6 +713,9 @@ int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
     m_buffer[2] = 1;
     m_buffer[3] = 2;
 
+    m_readWriteTimer = std::chrono::system_clock::now() 
+                     + std::chrono::microseconds(MAX_DRQ_TIME_US);
+    m_lostData = 0;          
     m_reading   = true;
     m_status |= STATUS_DRQ;
   }

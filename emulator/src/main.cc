@@ -85,8 +85,9 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "writevideodebug", ' ', "turn on memory write debugging" },
   { ' ', "readiodebug",     ' ', "turn on I/O read debugging" },
   { ' ', "writeiodebug",    ' ', "turn on I/O write debugging" },
+  { ' ', "trace",           ' ', "turn on tracing" },
   { ' ', "logpc",           ' ', "turn on logging of PC" },
-  { ' ', "trace",           'u', "set length of backtrace queue" },
+  { ' ', "traceLen",        'u', "set length of backtrace queue" },
   { ' ', "ei",              'b', "enable/disable Model 1 Expansion Interface" },
   { 'v', "verbose",         '+', "enable verbose logging" },
   { ' ', "videotest",       ' ', "display video test before starting" },
@@ -182,10 +183,11 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--turbo",         options.m_turbo);
   options.m_args.GetValue("--displaySpeed",  options.m_displayCPUSpeed);
 
-  options.m_args.GetValue("-f",      options.m_font);
-  options.m_args.GetValue("-F",      options.m_fontSize);
-  options.m_args.GetValue("--trace", options.m_traceLength);
-  options.m_args.GetValue("--logpc", options.m_logPC);
+  options.m_args.GetValue("-f",         options.m_font);
+  options.m_args.GetValue("-F",         options.m_fontSize);
+  options.m_args.GetValue("--traceLen", options.m_traceLength);
+  options.m_args.GetValue("--logpc",    options.m_logPC);
+  options.m_args.GetValue("--trace",    options.m_trace);
 
   options.m_args.GetValue("--delay", options.m_delay);
   options.m_args.GetValue("--kp",    options.m_Kp);

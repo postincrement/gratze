@@ -147,7 +147,7 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       int density = 0;
 
       off_t dataOffs = offs + 0x100;
-      uint8_t dam = 0x00;
+      uint8_t dam = 0xfb;
 
       DSKSectorHeader * sectorHeader = dskTrackHeader.m_sectors;
       for (int sector = 0; sector < dskTrackInfo.m_sectorCount; ++sector) {

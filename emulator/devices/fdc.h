@@ -95,6 +95,8 @@ class WD_FDC
     void LoadHead(bool load);
     void SetTypeIStatus();
 
+    uint8_t ReadNextByte();
+
     unsigned int m_mode = 0;
 
     bool m_debug;
@@ -108,6 +110,7 @@ class WD_FDC
     bool m_directionIn;
     bool m_setInterrupt;
     uint8_t m_realTrack;
+    uint8_t m_prevStatusValue = 0;
 
     int m_currentCommand;  // currently active command, or -1
     uint8_t m_readDAM;     // DAM for status register at the end of the read
@@ -131,6 +134,8 @@ class WD_FDC
     int m_bufferPtr;
     bool m_reading;
     bool m_writing;
+    uint8_t m_lostData;
+    std::chrono::system_clock::time_point m_readWriteTimer;
 };
 
 class WD_FD1771 : public WD_FDC

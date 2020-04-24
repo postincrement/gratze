@@ -969,6 +969,9 @@ int Emulator::Run(const Options & options)
   uint64_t cyclesInBaseline = 0;
   double sigmaError = 0;
 
+  if (m_options.m_trace)
+    SetTrace(true);
+
   for (;;) {
     now                            = GET_NOW_AS_DOUBLE();
     double  earliestNextRealTime_s = now + 1.0;
@@ -1141,16 +1144,6 @@ bool Emulator::SaveBlock(unsigned addr, const uint8_t * data, unsigned len)
   }
 }
 
-unsigned Emulator::GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const
-{
-  return 0;
-}
-
-std::string Emulator::Disassemble(std::vector<uint8_t> & code) const
-{
-  return "";
-}
-
 void Emulator::AddTraceInfo(unsigned addr)
 {
   if (m_options.m_traceLength == 0) {
@@ -1170,18 +1163,24 @@ void Emulator::DisplayTraceInfo()
 
   cout << "Backtrace of " << m_traceQueue.size() << " entries" << endl;  
   for (int i = m_traceQueue.size()-1; i >= 0; --i) {
-    unsigned addr = m_traceQueue[i];
-    cout << HEXFORMAT0x4(addr);
-    std::vector<uint8_t> opcodes;
-    GetOpcode(addr, opcodes);
-    for (auto & r : opcodes) {
-      cout << " " << HEXFORMAT2(r);
-    }
-    cout << std::string((5-opcodes.size())*3, ' ');
-    cout << Disassemble(opcodes);
-    cout << endl;  
+    cout << Disassemble(m_traceQueue[i]) << endl;
   }
   getchar();
+}
+
+std::string Emulator::Disassemble(unsigned addr) const
+{
+  stringstream strm;
+  strm << HEXFORMAT0x4(addr);
+  std::vector<uint8_t> opcodes;
+  GetOpcode(addr, opcodes);
+  for (auto & r : opcodes) {
+    strm << " " << HEXFORMAT2(r);
+  }
+  strm << std::string((5-opcodes.size())*3, ' ');
+  strm << DecodeOpcode(opcodes);
+
+  return strm.str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
