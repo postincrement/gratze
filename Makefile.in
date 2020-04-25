@@ -1,4 +1,4 @@
-DIRS = disk emulator
+DIRS = disk emulator 6800
 
 .PHONY: all clean $DIRS
 

@@ -1,0 +1,113 @@
+
+
+LINK.o = $(LINK.cc)
+OBJDIR = ./obj
+DEPDIR = ./.deps
+
+APP	= 6800test
+LIB = libgrz6800.a
+
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
+
+MINGW_ENABLED=@MINGW_ENABLED@
+
+ifeq ($(MINGW_ENABLED),1)
+
+MING_ARCH=@MING_ARCH@
+
+endif # MINGW_ENABLED
+
+INC_DIRS = -I$(shell pwd)
+
+CC=@CC@
+CXX=@CXX@
+
+CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) -I..
+CFLAGS   := @CFLAGS@   $(INC_DIRS)
+
+LDFLAGS=@LDFLAGS@ -g -L.
+LDLIBS=@LDLIBS@ -lgrz6800
+
+COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+
+OUTPUT_OPTION = -o $(OBJDIR)/$*.o
+
+ifeq ($(VERBOSE),1)
+
+%.o : %.c 
+$(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+				
+%.o : %.cc
+$(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
+	$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+else
+
+$(OBJDIR)/%.o : %.c | $(DEPDIR) $(OBJDIR)
+	@echo "(CC) $<"
+	@$(COMPILE.c) $(OUTPUT_OPTION) $<
+				
+%.o : %.cc
+$(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
+	@echo "(CXX) $<"
+	@$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+endif
+
+all:	$(LIB) $(APP)
+
+$(APP) : $(LIB)
+
+################################################################################################	
+
+LIB_SRCS_CC = 
+
+LIB_SRCS_C =  6800.c
+
+APP_SRCS_CC = 6800test.cc 
+
+APP_SRCS_C =
+
+################################################################################################	
+
+SRCS_CC = $(LIB_SRCS_CC) $(APP_SRCS_CC)
+SRCS_C  = $(LIB_SRCS_C)  $(APP_SRCS_C)
+
+LIB_FILENAMES := $(notdir $(basename $(LIB_SRCS_C) $(LIB_SRCS_CC)))
+APP_FILENAMES := $(notdir $(basename $(APP_SRCS_C) $(APP_SRCS_CC)))
+
+DEPFILES  := $(addsuffix .d,$(addprefix $(DEPDIR)/,$(LIB_FILENAMES) $(APP_FILENAMES)))
+
+LIB_OBJS	  	:= $(addsuffix .o,$(addprefix $(OBJDIR)/,$(LIB_FILENAMES)))
+APP_OBJS	  	:= $(addsuffix .o,$(addprefix $(OBJDIR)/,$(APP_FILENAMES)))
+ 
+OBJS          := $(LIB_OBJS) $(APP_OBJS)
+
+vpath %.c  $(sort $(dir $(SRCS_C)))
+vpath %.cc $(sort $(dir $(SRCS_CC)))
+
+$(LIB):	$(LIB_OBJS)
+	$(AR) rcs $(LIB) $(LIB_OBJS)
+
+$(APP):	$(APP_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(APP_OBJS) $(LDLIBS)
+
+$(OBJDIR):
+	@mkdir -p $@
+
+$(DEPFILES): $(DEPDIR)
+
+$(DEPDIR):
+	@mkdir -p $@
+
+include $(wildcard $(DEPFILES))
+
+################################################################################################	
+
+.PHONY : clean
+
+clean: 
+	rm -f $(APP) $(LIB) $(OBJS) $(DEPFILES)
+
