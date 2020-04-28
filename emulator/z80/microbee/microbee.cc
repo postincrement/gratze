@@ -23,10 +23,7 @@ using namespace std;
 
 #define   MICROBEE_VIRTUAL_FONT_CHARS    256
 
-#define   MICROBEE_PCG_START_OFFS     0x0800
-#define   MICROBEE_PCG_END_OFFS       0x0fff
-
-#define   MICROBEE_PCG_SIZE           (MICROBEE_PCG_END_OFFS - MICROBEE_PCG_START_OFFS + 1)
+#define   MICROBEE_PCG_SIZE           0x800
 #define   MICROBEE_ATTRIBUTE_SIZE     0x800
 
 #define PORT_PIO        1      // PIO
@@ -716,13 +713,28 @@ void Microbee128_Emulator::Reset(int addr)
   SetBankSel(0x00);
 }
 
+#define UPPER_BANK   0
+
+// 0x00 = 0 0000   => RESET MAP  DRAM bank 0, VDU from F000 
+// 0x0C = 0 1100   => BIOS MAP   DRAM bank 0, no VDU
+// 0x14 = 1 0100   => VDR MAP    DRAM bank 0, VDU from 8000
+// 0x0D = 0 1101   => BANK A     0-7fff = DRAM bank 1 lower, 8000-ffff DRAM bank 0 upper
+// 0x0F = 0 1111   => BANK B     0-7fff = DRAM bank 1 upper, 8000-ffff DRAM bank 0 upper
+
+static int g_bankMap[4] = {
+  0,    // 00 -> bank 0, lower
+  2,    // 01 -> bank 1, lower
+  2,    // 10 -> bank 1, lower ??
+  3,    // 11 -> bank 1, upper
+};
+
 void Microbee128_Emulator::SetBankSel(uint8_t data)
 {
   m_bankSel          = data;
-  m_currentLowerBank = m_bankedMemory[data & 3];
+  m_currentLowerBank = m_bankedMemory[data & 3]; //g_bankMap[data & 3]];
   m_romDisable       = data & 0x04;
   m_videoDisable     = data & 0x08;
-  m_videoLower       = data & 0x10;;
+  m_videoLower       = data & 0x10;
   /*
   cerr << "mbee128: bank sel " << HEXFORMAT0x2(data) 
        << ", bank " << (data & 3)
@@ -780,11 +792,12 @@ void Microbee128_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
       if (!m_romDisable && (addr < 0xa000)) {  
         return;
       }
-      m_bankedMemory[0][addr & 0x7fff] = val;
+      m_bankedMemory[UPPER_BANK][addr & 0x7fff] = val;
       return;
   }
   return MicrobeeDisk_Emulator::WriteIOMemory(id, addr, val);
 }
+
 
 uint8_t Microbee128_Emulator::ReadIOMemory(int id, uint16_t addr) const
 {
@@ -804,7 +817,7 @@ uint8_t Microbee128_Emulator::ReadIOMemory(int id, uint16_t addr) const
       if (!m_romDisable && (addr < 0xa000)) {  
         return g_disk128_ROM[addr & 0x1fff];
       }
-      return m_bankedMemory[0][addr & 0x7fff];
+      return m_bankedMemory[UPPER_BANK][addr & 0x7fff];
   }
   
   return MicrobeeDisk_Emulator::ReadIOMemory(id, addr);

@@ -52,32 +52,32 @@ typedef enum {
   EORAi, ADCAi, ORAAi, ADDAi, CPXAi, BSR,   LDSi,  x8f,
 
   // 0x90
-  SUBAd, CMPAd, SBCAd, x93,   ANDAd, BITAd, LDAAd, x97,  
-  EORAd, ADCAd, ORAAd, ADDAd, CPXAd, x9d,   LDSd,  x9f,
+  SUBAd, CMPAd, SBCAd, x93,   ANDAd, BITAd, LDAAd, STAAd,  
+  EORAd, ADCAd, ORAAd, ADDAd, CPXAd, x9d,   LDSd,  STSd,
 
   // 0xa0
-  SUBAx, CMPAx, SBCAx, xa3,   ANDAx, BITAx, LDAAx, xa7,  
-  EORAx, ADCAx, ORAAx, ADDAx, CPXAx, JSRx,  LDSx,  xaf,
+  SUBAx, CMPAx, SBCAx, xa3,   ANDAx, BITAx, LDAAx, STAAx,  
+  EORAx, ADCAx, ORAAx, ADDAx, CPXAx, JSRx,  LDSx,  STSx,
 
   // 0xb0
-  SUBAe, CMPAe, SBCAe, xb3,   ANDAe, BITAe, LDAAe, xb7,  
-  EORAe, ADCAe, ORAAe, ADDAe, CPXAe, JSRe,  LDSe,  xbf,
+  SUBAe, CMPAe, SBCAe, xb3,   ANDAe, BITAe, LDAAe, STAAe,  
+  EORAe, ADCAe, ORAAe, ADDAe, CPXAe, JSRe,  LDSe,  STSe,
 
   // 0xc0
   SUBBi, CMPBi, SBBAi, xc3,   ANDBi, BITBi, LDABi, xc7,  
   EORBi, ADCBi, ORABi, ADDBi, xcc,   xcd,   LDXi,  xcf,
 
   // 0xd0
-  SUBBd, CMPBd, SBCBd, xd3,   ANDBd, BITBd, LDABd, xd7,  
+  SUBBd, CMPBd, SBCBd, xd3,   ANDBd, BITBd, LDABd, STABd,  
   EORBd, ADCBd, ORABd, ADDBd, xdc,   xdd,   LDXd,  STXd,
 
   // 0xe0
-  SUBBx, CMPBx, SBCBx, xe3,   ANDBx, BITBx, LDABx, xe7,  
-  EORBx, ADCBx, ORABx, ADDBx, xec,   xed,   LDXx,  xef,
+  SUBBx, CMPBx, SBCBx, xe3,   ANDBx, BITBx, LDABx, STABx,  
+  EORBx, ADCBx, ORABx, ADDBx, xec,   xed,   LDXx,  STXx,
 
   // 0xf0
-  SUBBe, CMPBe, SBCBe, xf3,   ANDBe, BITBe, LDABe, xf7,  
-  EORBe, ADCBe, ORABe, ADDBe, xfc,   xfd,   LDXe,  xff
+  SUBBe, CMPBe, SBCBe, xf3,   ANDBe, BITBe, LDABe, STABe,  
+  EORBe, ADCBe, ORABe, ADDBe, xfc,   xfd,   LDXe,  STXe
 } Opcode;
 
 static uint8_t g_lenAndCycles[256][2] = {
@@ -182,31 +182,81 @@ static const char * g_mnemonic[256] = {
   "EORBe", "ADCBe", "ORABe", "ADDBe", "xfc",   "xfd",   "LDXe",  "STXe"
 };
 
+#define REG_A      cpu->m_regs.m_A
+#define REG_B      cpu->m_regs.m_B
+#define REG_X      cpu->m_regs.m_X
+#define REG_PC     cpu->m_regs.m_PC
+#define REG_SP     cpu->m_regs.m_SP
+#define REG_STATUS cpu->m_regs.m_status
+
+///////////////////////////////////////////
+
 #define LOBYTE(v)   ((v) & 0xff)
 #define HIBYTE(v)   ((v) >> 8)
 
-#define WRITE_MEM8(addr, v) cpu->m_writeMem((addr), (v))
-#define READ_MEM8(addr)     cpu->m_readMem((addr))
-
-#define PUSH_8(v) \
-  WRITE_MEM8(cpu->m_regs.m_SP--, (v));
-
-#define PUSH_16(v) \
-  PUSH_8(LOBYTE(cpu->m_regs.m_PC)); \
-  PUSH_8(HIBYTE(cpu->m_regs.m_PC)); \
-
-#define READ_IMMED16() \
-      uint16 = (cpu->m_ins[1] << 8) + cpu->m_ins[2];
-
-#define READ_INDEX() \
-      uint16 = cpu->m_ins[1];
+#define READ_MEM8(addr) \
+      cpu->m_readMem((addr))
 
 #define READ_MEM16(addr)\
       (READ_MEM8(addr+0) << 8) + READ_MEM8(addr+1)
 
+#define WRITE_MEM8(addr, v)\
+      cpu->m_writeMem((addr), (v))
+
 #define WRITE_MEM16(addr, val)\
       WRITE_MEM8(addr+0, HIBYTE(val)); \
       WRITE_MEM8(addr+1, LOBYTE(val));
+
+#define READ_IMMED8() \
+      (cpu->m_ins[1])
+
+#define READ_IMMED16() \
+      ((cpu->m_ins[1] << 8) + cpu->m_ins[2])
+
+#define READ_DIR8()  READ_MEM8((uint16_t)READ_IMMED8())
+
+inline uint8_t ReadExt8(M6800 * cpu)
+{
+  uint16_t addr = READ_IMMED16();
+  return READ_MEM8(addr);
+}
+
+#define READ_EXT8() ReadExt8(cpu)
+
+inline uint16_t ReadExt16(M6800 * cpu)
+{
+  uint16_t addr = READ_IMMED16();
+  return READ_MEM16(addr);
+}
+
+#define READ_EXT16() ReadExt16(cpu)
+
+#define PUSH_8(v) \
+  WRITE_MEM8(REG_SP--, (v));
+
+#define PUSH_16(v) \
+  PUSH_8(LOBYTE(REG_PC)); \
+  PUSH_8(HIBYTE(REG_PC)); \
+
+
+///////////////////////////////////////////
+
+#define SET_Z(v)  cpu->m_regs.m_status = (v == 0) ? (cpu->m_regs.m_status & ~M6800_STATUS_ZERO) \
+                                                  : (cpu->m_regs.m_status | M6800_STATUS_ZERO) \
+                                                  ;
+
+#define SET_S8(v)  cpu->m_regs.m_status = (v & 0x80) ? (cpu->m_regs.m_status | M6800_STATUS_SIGN) \
+                                                    : (cpu->m_regs.m_status & ~M6800_STATUS_SIGN) \
+                                                    ;
+#define SET_S16(v)  cpu->m_regs.m_status = (v & 0x8000) ? (cpu->m_regs.m_status | M6800_STATUS_SIGN) \
+                                                        : (cpu->m_regs.m_status & ~M6800_STATUS_SIGN) \
+                                                        ;
+#define ZERO_OVF() \
+      cpu->m_regs.m_status &= ~M6800_STATUS_OVERFLOW;
+
+#define SET_SZ8(v) SET_S8(v); SET_Z(v)
+
+#define SET_SZ16(v) SET_S16(v); SET_Z(v)
 
 ///////////////////////////////////////////////////////
 
@@ -275,6 +325,85 @@ static int Exec(M6800 * cpu)
   uint16_t uint16;
 
   switch (cpu->m_ins[0]) {
+    //////////////////////////////////////////////////////////////////////
+    //
+    //  load
+    //  
+    case LDAAx: 
+    case LDABx:
+      break;
+
+    case LDAAi: REG_A = READ_IMMED8(); SET_SZ8(REG_A); ZERO_OVF(); break;
+    case LDABi: REG_B = READ_IMMED8(); SET_SZ8(REG_B); ZERO_OVF(); break;
+
+    case LDAAe: REG_A = READ_EXT8();   SET_SZ8(REG_A); ZERO_OVF(); break;
+    case LDABe: REG_B = READ_EXT8();   SET_SZ8(REG_B); ZERO_OVF(); break;
+
+    case LDAAd: REG_A = READ_DIR8();   SET_SZ8(REG_A); ZERO_OVF(); break;
+    case LDABd: REG_B = READ_DIR8();   SET_SZ8(REG_B); ZERO_OVF(); break; 
+      break;
+
+    case LDSd : 
+    case LDXd : 
+
+    case LDSx : 
+    case LDXx : 
+      break;
+      
+    case LDSi : REG_SP = READ_IMMED16(); SET_SZ16(REG_SP); ZERO_OVF(); break;
+    case LDXi : REG_X  = READ_IMMED16(); SET_SZ16(REG_X);  ZERO_OVF(); break;
+
+    case LDSe : REG_SP = READ_EXT16(); SET_SZ16(REG_SP); ZERO_OVF(); break; 
+    case LDXe : REG_X  = READ_EXT16(); SET_SZ16(REG_X);  ZERO_OVF(); break;
+
+    case STXd :
+      READ_IMMED8();
+      WRITE_MEM16(uint16, cpu->m_regs.m_X)
+      ZERO_OVF();
+      break;
+
+    case STXx :
+    case STXe :
+      break;
+
+    case STSd :
+    case STSx :
+    case STSe :
+      break;
+
+    case STAAd :  
+    case STAAx :  
+    case STAAe :  
+      break;
+
+    case STABd :  
+    case STABx :  
+    case STABe :  
+      break;
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    //  register transfer
+    //
+    case TAB  : REG_B = REG_A;      SET_SZ8(REG_B); ZERO_OVF(); break;
+    case TBA  : REG_A = REG_B;      SET_SZ8(REG_A); ZERO_OVF(); break;
+    case TSX  : REG_X = REG_SP + 1; break;
+    case TXS  : REG_SP = REG_X - 1; break; 
+
+    case TAP  : REG_STATUS = REG_A | M6800_STATUS_ONES; break; 
+    case TPA  : REG_A      = REG_STATUS;                break;
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    //   misc
+    //
+    case NOP  : break;
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    //  interrupts
+    //  
+
     case SWI:
       PUSH_16(cpu->m_regs.m_PC);
       PUSH_16(cpu->m_regs.m_X);
@@ -285,11 +414,93 @@ static int Exec(M6800 * cpu)
                          (cpu->m_readMem(SWI_VECTOR+1));
       break;
 
+    //////////////////////////////////////////////////////////////////////
+    //
+    // branches
+    //
     case BSR:
       PUSH_16(cpu->m_regs.m_PC);
       cpu->m_regs.m_PC += (int8_t)(cpu->m_ins[1]);
       break;
+    case BRA  : 
+    case BHI  : 
+    case BLS  : 
+    case BCC  : 
+    case BCS  : 
+    case BNE  : 
+    case BEQ  :  
+    case BVC  : 
+    case BVS  : 
+    case BPL  : 
+    case BMI  : 
+    case BGE  : 
+    case BLT  : 
+    case BGT  : 
+    case BLE  :
+      break;
 
+    //////////////////////////////////////////////////////////////////////
+    //
+    //  jump 
+    //
+    case JSRe : 
+    case JSRx : 
+    case JMPx : 
+    case JMPe : 
+      break;
+
+    //////////////////////////////////////////////////////////////////////
+    // 
+    //  stack operations
+    //    
+    case PULA : 
+    case PULB : 
+    case PSHA : 
+    case PSHB : 
+      break;
+
+    case INX  : 
+    case DEX  : 
+    case CLV  : 
+    case SEV  : 
+    case CLC  : 
+    case SEC  : 
+    case CLI  : 
+    case SEI  :
+    case SBA  : 
+    case CBA  : 
+
+    case DAA  : 
+    case ABA  : 
+      break;
+
+    case INS  : 
+    case DES  : 
+    case RTS  : 
+    case RTI  : 
+    case WAI  : 
+      break;
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    //
+    //
+    case NEGA : case NEGB : case NEGi : case NEGe : 
+    case COMA : case COMB : case COMi : case COMe : 
+    case LSRA : case LSRB : case LSRi : case LSRe : 
+    case RORA : case RORB : case RORx : case RORe : 
+    case ASRA : case ASRB : case ASRx : case ASRe : 
+    case ASLA : case ASLB : case ASLx : case ASLe : 
+    case ROLA : case ROLB : case ROLx : case ROLe : 
+    case DECA : case DECB : case DECx : case DECe : 
+    case INCA : case INCB : case INCx : case INCe : 
+    case TSTA : case TSTB : case TSTx : case TSTe :
+      break; 
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    //  clear
+    //
     case CLRA:
       cpu->m_regs.m_A = 0;
       cpu->m_regs.m_status &= ~M6800_STATUS_MASK;
@@ -302,40 +513,51 @@ static int Exec(M6800 * cpu)
       cpu->m_regs.m_status |= M6800_STATUS_ZERO;
       break;
 
-    case LDAAi:
-      cpu->m_regs.m_A = cpu->m_ins[1];
-      cpu->m_regs.m_status &= ~M6800_STATUS_OVERFLOW;
+    case CLRx : case CLRe :
       break;
 
-    case LDABi:
-      cpu->m_regs.m_B = cpu->m_ins[1];
-      cpu->m_regs.m_status &= ~M6800_STATUS_OVERFLOW;
+    //////////////////////////////////////////////////////////////////////
+    //
+    //  
+    //
+    case SUBAi: case SUBAd: case SUBAx: case SUBAe: 
+    case CMPAi: case CMPAd: case CMPAx: case CMPAe: 
+    case SBCAi: case SBCAd: case SBCAx: case SBCAe: 
+    case ANDAi: case ANDAd: case ANDAx: case ANDAe: 
+    case BITAi: case BITAd: case BITAx: case BITAe: 
+    case EORAi: case EORAd: case EORAx: case EORAe: 
+    case ADCAi: case ADCAd: case ADCAx: case ADCAe: 
+    case ORAAi: case ORAAd: case ORAAx: case ORAAe: 
+    case ADDAi: case ADDAd: case ADDAx: case ADDAe:  
+    case CPXAi: case CPXAd: case CPXAx: case CPXAe:             
       break;
 
-    case LDSi:
-      READ_IMMED16();
-      cpu->m_regs.m_SP = uint16;
-      cpu->m_regs.m_status &= ~M6800_STATUS_OVERFLOW;
+    case SUBBi: case SUBBd: case SUBBx: case SUBBe: 
+    case CMPBi: case CMPBd: case CMPBx: case CMPBe: 
+    case SBBAi: case SBCBd: case SBCBx: case SBCBe: 
+    case ANDBi: case ANDBd: case ANDBx: case ANDBe: 
+    case BITBi: case BITBd: case BITBx: case BITBe: 
+    case EORBi: case EORBd: case EORBx: case EORBe: 
+    case ADCBi: case ADCBd: case ADCBx: case ADCBe: 
+    case ORABi: case ORABd: case ORABx: case ORABe:
+    case ADDBi: case ADDBd: case ADDBx: case ADDBe:
       break;
 
-    case LDXi:
-      READ_IMMED16();
-      cpu->m_regs.m_X = uint16;
-      cpu->m_regs.m_status &= ~M6800_STATUS_OVERFLOW;
-      break;
-
-    case STXd:
-      READ_INDEX();
-      WRITE_MEM16(uint16, cpu->m_regs.m_X)
-      cpu->m_regs.m_status &= ~M6800_STATUS_OVERFLOW;
-      break;
-
-    case LDXe:
-      READ_IMMED16();
-      cpu->m_regs.m_X = READ_MEM16(uint16);
-      cpu->m_regs.m_status &= ~M6800_STATUS_OVERFLOW;
-      break;
-
+    case x00 : case x02 : case x03 : case x04 : 
+    case x05 : case x12 : case x13 : case x14 : 
+    case x15 : case x18 : case x1a : case x1c : 
+    case x1d : case x1e : case x1f : case x21 : 
+    case x38 : case x3a : case x3c : case x3d : 
+    case x41 : case x42 : case x45 : case x4b : 
+    case x4e : case x51 : case x52 : case x55 : 
+    case x5b : case x5e : case x83 : case x87 : 
+    case x61 : case x62 : case x65 : case x6b : 
+    case x71 : case x72 : case x75 : case x7b : 
+    case x8f : case x93 : case x9d : case xa3 : 
+    case xb3 : case xc3 : case xc7 : case xcc : 
+    case xcd : case xcf : case xd3 : case xdc : 
+    case xdd : case xe3 : case xec : case xed : 
+    case xf3 : case xfc : case xfd : 
     default:
       if (cpu->m_trap)
         (*cpu->m_trap)(cpu->m_regs.m_PC, cpu->m_ins[0]);
