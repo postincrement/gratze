@@ -13,6 +13,7 @@
 using namespace std;
 
 #define   MICROBEE_VIDEO_START_ADDR   0xf000
+#define   MICROBEE_PCG_START_ADDR     0xf800
 #define   MICROBEE_VIDEO_END_ADDR     0xffff
 
 #define   MICROBEE_SCREEN_COLS        64
@@ -32,11 +33,15 @@ using namespace std;
 #define PORT_COLOUR     4      // colour control port
 #define PORT_VIATEL     5      // wait off/Viatel
 
-#define   PORT_FDC      0x10   // floppy controller
-#define   PORT_DRVSEL   0x11   // drive select
+#define PORT_FDC      0x10   // floppy controller
+#define PORT_DRVSEL   0x11   // drive select
 
-#define   PORT_LVDAT    0x12   // LV DAT
-#define   PORT_BANK     0x13   // bank select
+#define PORT_LVDAT    0x12   // LV DAT
+#define PORT_BANK     0x13   // bank select
+
+#define MEMORY_LOWER_BANK       0x21
+#define MEMORY_UPPER_BANK       0x22
+#define MEMORY_PCG              0x23
 
 extern EmulatorInfo g_microbeeEmulatorInfo;
 
@@ -115,7 +120,6 @@ class MicrobeeVideo : public ColourMemoryMappedScreen
     void EnableFontROM(bool enable)
     { 
       m_fontROMEnabled = enable; 
-      //cerr << "mbee: font ROM " << (enable ? "enabled" : "disabled") << endl;
     }
 
     void SetFontOffset(uint16_t offset)
@@ -134,21 +138,34 @@ class MicrobeeVideo : public ColourMemoryMappedScreen
 
     void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg) override;
 
-    bool m_attributeRAMEnabled = false;
-    bool m_extendedPCG = false;
-    bool m_colourRAMEnabled = false;
-    int m_bankSel = 0;
-    std::vector<std::vector<uint8_t>> m_attributeRAM;
-    std::vector<std::vector<uint8_t>> m_pcgRAM;
-    std::vector<std::vector<uint8_t>> m_colourRAM;
+    enum {
+      eOriginal,
+      eColour,
+      eAlpha,
+      TC256
+    };
+
+    void SetAlphaEnable(bool v);
+    void SetAttributeEnable(bool v);
+    void SetColourEnable(bool v);
+    void SetPCGBank(int v);
 
   protected:
+    int m_mode = eOriginal;
+    bool m_colourRAMEnabled = false;
+    bool m_attributeRAMEnabled = false;
+    int m_bankSel = 0;
+
     int m_rows = 0;
     int m_cols = 0;
     int m_lines = 0;
     bool m_fontROMEnabled = false;
     uint16_t m_fontOffset = 0;
     std::function<void ()> m_updateHandler = nullptr;
+
+    std::vector<uint8_t> m_attributeRAM;
+    std::vector<uint8_t> m_colourRAM;
+    std::vector<std::vector<uint8_t>> m_pcgRAM;
 };
 
 
@@ -158,19 +175,18 @@ MicrobeeVideo::MicrobeeVideo(MainWindow & mainWindow, const Options & options, c
   memset(&m_memory[0],             0x20, m_visibleSize);
   memset(&m_memory[m_visibleSize], 0x00, m_memory.size() - m_visibleSize);
 
+  m_attributeRAM.resize(MICROBEE_ATTRIBUTE_SIZE);
+  m_colourRAM.resize(MICROBEE_ATTRIBUTE_SIZE);
+
   m_pcgRAM.resize(16);
-  m_attributeRAM.resize(16);
-  m_colourRAM.resize(16);
   for (int i = 0; i < 16; ++i) {
     m_pcgRAM[i].resize(MICROBEE_PCG_SIZE);
-    m_attributeRAM[i].resize(MICROBEE_ATTRIBUTE_SIZE);
-    m_colourRAM[i].resize(MICROBEE_ATTRIBUTE_SIZE);
   }
 
+  m_mode                = eOriginal;
   m_attributeRAMEnabled = false;
-  m_colourRAMEnabled = false;
-  m_extendedPCG = false;
-  m_bankSel = 0;
+  m_colourRAMEnabled    = false;
+  m_bankSel             = 0;
 
   InitPCG();
 }
@@ -181,7 +197,38 @@ FontChar MicrobeeVideo::GetCharAtLoc(int loc) const
   return ch;
 }
 
-static SDL_Colour g_colours[16] = 
+void MicrobeeVideo::SetAlphaEnable(bool v)
+{
+  if (m_mode == eOriginal) {
+    cout << "mbee: alpha video enabled" << endl;
+    m_mode = eAlpha; 
+  }
+}
+
+void MicrobeeVideo::SetAttributeEnable(bool v)
+{
+  if (v && (m_mode == eOriginal)) {
+    cout << "microbee: original colour mode enabled (attr)" << endl;
+    m_mode = eColour;
+  }
+  m_attributeRAMEnabled = v;
+}
+
+void MicrobeeVideo::SetColourEnable(bool v)
+{
+  if (v && (m_mode == eOriginal)) {
+    cout << "microbee: original colour mode enabled (colour)" << endl;
+    m_mode = eColour;
+  }
+  m_colourRAMEnabled = v;
+}
+
+void MicrobeeVideo::SetPCGBank(int v)
+{
+  m_bankSel = v;
+}
+
+static SDL_Colour g_premiumColours[16] = 
 {   //R     G     B
   { 0x00, 0x00, 0x00, 0xff },  // black
   { 0x80, 0x00, 0x00, 0xff },  // red 
@@ -199,16 +246,49 @@ static SDL_Colour g_colours[16] =
   { 0x00, 0x00, 0xff, 0xff },  // blue
   { 0xff, 0x00, 0xff, 0xff },  // magenta
   { 0x00, 0xff, 0xff, 0xff },  // cyan
-  { 0xff, 0xff, 0xff, 0xff },  // white
+  { 0xff, 0xff, 0xff, 0xff }   // white
+};
 
+enum {
+  eBlack,  eRed2, eGreen2, eYellow2, eBlue2, eMagenta2, eCyan2, eWhite2,
+  eBlack2, eRed,  eGreen,  eYellow,  eBlue,  eMagenta,  eCyan,  eWhite
+};
+
+static int g_originalFgColours[64] = 
+{
+  eBlack, eBlue, eGreen, eCyan, eRed, eMagenta, eYellow, eWhite,
+  eBlack, eBlue, eGreen, eCyan, eRed, eMagenta, eYellow, eWhite,
+
+  eBlack2, eBlue2, eGreen2, eCyan2, eRed2, eMagenta2, eYellow2, eWhite2,
+  eBlack2, eBlue2, eGreen2, eCyan2, eRed2, eMagenta2, eYellow2, eWhite2
+};
+
+static int g_originalBgColours[8] = 
+{
+  eBlack, eRed, eGreen, eYellow, eBlue, eMagenta, eCyan, eWhite
 };
 
 void MicrobeeVideo::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
 {
-  uint8_t attr = m_colourRAM[0][loc & 0x7ff];
+  int bgIndex = eBlack;
+  int fgIndex = eGreen;
 
-  fg = g_colours[attr & 0xf];
-  bg = g_colours[(attr >> 4) & 0xf];
+  if (m_mode != eOriginal) {
+    uint8_t attr = m_colourRAM[loc & 0x7ff];
+
+    if (m_mode = eColour) {
+      fgIndex = g_originalFgColours[attr & 0x1f];
+      bgIndex = g_originalBgColours[(attr >> 5) & 0x7];
+    }
+    else 
+    {
+      fgIndex = attr & 0xf;
+      bgIndex = (attr >> 4) & 0xf;
+    }
+  }
+
+  fg = g_premiumColours[fgIndex];
+  bg = g_premiumColours[bgIndex];
   bg.a = 0x00;
 }
 
@@ -225,24 +305,31 @@ void MicrobeeVideo::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * rend
 void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t val)
 {
   //cout << "mbeevideo: write " << HEXFORMAT0x4(addr) << " " << HEXFORMAT0x2(val) << endl;
-  uint16_t offs = addr & 0x0fff;
+  uint16_t offs  = addr & 0x0fff;
   uint16_t voffs = addr & 0x07ff;
+
+  // upper bank is colour or PCG
   if (offs >= 0x800) {
-    if (m_colourRAMEnabled) {
-      m_colourRAM[0][voffs] = val;
+    if ((m_mode != eOriginal) && m_colourRAMEnabled && !m_fontROMEnabled) {
+      m_colourRAM[voffs] = val;
       RefreshCharAtLoc(voffs);
+      return;
     }
-    else {
-      m_pcgRAM[m_bankSel][voffs] = val;
-      int ch  = 128 + (voffs >> 4);
-      int row = addr & 0xf;
-      SetPCG(ch, row, val);
-    }
+
+    m_pcgRAM[(m_mode < eAlpha) ? 0 : m_bankSel][voffs] = val;
+    int ch  = 128 + (voffs >> 4);
+    int row = addr & 0xf;
+    SetPCG(ch, row, val);
+    return;
   }
-  else if (m_attributeRAMEnabled) {
-    m_attributeRAM[m_bankSel][voffs] = val;
+
+  if ((m_mode != eOriginal) && m_attributeRAMEnabled) {
+    m_attributeRAM[voffs] = val;
+    RefreshCharAtLoc(voffs);
+    return;
   }
-  else if (!m_fontROMEnabled)
+
+  if (!m_fontROMEnabled)
     ColourMemoryMappedScreen::WriteMemoryAtAddress(voffs, val);
 }
 
@@ -251,23 +338,26 @@ uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
   //cout << "mbeevideo: read " << HEXFORMAT0x4(addr) << endl;
   uint16_t offs  = addr & 0x0fff;
   uint16_t voffs = addr & 0x07ff;
+  
+  // upper bank is colour or PCG
   if (offs >= 0x800) {
-    if (m_colourRAMEnabled) {
-      return m_colourRAM[0][voffs];
+    if ((m_mode != eOriginal) && m_colourRAMEnabled && !m_fontROMEnabled) {
+      return m_colourRAM[voffs];
     }
-    else {
-      return m_pcgRAM[m_bankSel][voffs];
-    }
+    return m_pcgRAM[(m_mode < eAlpha) ? 0 : m_bankSel][voffs];
   }
-  else if (m_fontROMEnabled) {
+
+  // lower bank is font, attribute, or char
+  if (m_fontROMEnabled) {
     const CharacterGeneratorROM * chargen = (m_fontOffset == 0) ? &g_charGen_mbee64x16 : &g_charGen_mbee80x24;
     return chargen->m_data[voffs];
   }
-  else if (m_attributeRAMEnabled) {
-    return m_attributeRAM[m_bankSel][voffs];
-  }  
-  else  
-    return ColourMemoryMappedScreen::ReadMemoryAtAddress(voffs);
+
+  if ((m_mode != eOriginal) && m_attributeRAMEnabled) {
+    return m_attributeRAM[voffs];
+  }
+
+  return ColourMemoryMappedScreen::ReadMemoryAtAddress(voffs);
 }
 
 void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
@@ -462,10 +552,10 @@ uint8_t Microbee_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t
       return m_pio.Read(port & 0x3);
     case PORT_6545:
       return m_crtc.Read(port & 1);
-    case PORT_FONT:
-      return 0x00;
-    case PORT_COLOUR:
-      return 0x00;
+    //case PORT_FONT:
+    //  return 0x00;
+    //case PORT_COLOUR:
+    //  return 0x00;
   }
   cerr << "microbee: read port " << HEXFORMAT0x2(port) << endl;
   return 0x00;
@@ -482,9 +572,15 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
       m_video->EnableFontROM((data & 1) != 0);
       return;
     case PORT_COLOUR:
-      m_video->m_colourRAMEnabled = (data & 0x40);
+      m_video->SetColourEnable((data & 0x40) != 0);
       return;
     case PORT_VIATEL:
+      return;
+    case PORT_LVDAT:
+      cerr << "mbee: LVDAT " << HEXFORMAT0x2(data) << endl;
+      m_video->SetPCGBank        (data & 0x0f);
+      m_video->SetAttributeEnable(data & 0x10);
+      m_video->SetAlphaEnable    (data & 0x80);
       return;
   }
   cerr << "microbee: write port " << HEXFORMAT0x2(port) << " " << HEXFORMAT0x2(data) << endl;
@@ -492,27 +588,19 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
 
 void Microbee_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 {
-  #if 0
-  if (id == 8) {
-    uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
-    //if (m_pcgRAM[offs] != val) {
-      m_video->m_pcgRAM[offs] = val;
-      int ch  = 128 + (offs >> 4);
-      int row = addr & 0xf;
-      m_video->SetPCG(ch, row, val);
-    //}
+  if (id == MEMORY_PCG) {
+    m_video->WriteMemoryAtAddress(addr, val);
+    return;
   }
-  #endif
+  Z80Emulator::WriteIOMemory(id, addr, val);
 }
 
 uint8_t Microbee_Emulator::ReadIOMemory(int id, uint16_t addr) const
 {
-  #if 0
-  if (id == 8) {
-    uint16_t offs = addr & (MICROBEE_PCG_SIZE-1);
-    return m_video->m_pcgRAM[offs];
+  if (id == MEMORY_PCG) {
+    return m_video->ReadMemoryAtAddress(addr);
   }
-  #endif
+  return Z80Emulator::ReadIOMemory(id, addr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -588,11 +676,12 @@ Microbee32_Emulator::Microbee32_Emulator()
 
 #define MICROBEE_FIXED_VIDEO() \
   INFO_SCREEN_MEMORY_MAPPED_FIXED("microbee", \
-                          MICROBEE_VIDEO_START_ADDR, MICROBEE_VIDEO_END_ADDR, \
+                          MICROBEE_VIDEO_START_ADDR, MICROBEE_PCG_START_ADDR-1, \
                           MICROBEE_SCREEN_COLS, MICROBEE_SCREEN_ROWS, \
                           MICROBEE_FONT_WIDTH, MICROBEE_FONT_HEIGHT, \
                           MICROBEE_VIRTUAL_FONT_CHARS, \
-                          &g_charGen_mbee64x16, nullptr)
+                          &g_charGen_mbee64x16, nullptr), \
+  INFO_MEM_IO(MICROBEE_PCG_START_ADDR, MICROBEE_VIDEO_END_ADDR, MEMORY_PCG)                        
 
 #define MICROBEE_VARIABLE_VIDEO() \
   INFO_SCREEN_MEMORY_MAPPED_VARIABLE("microbee", 0x800, \
@@ -687,9 +776,6 @@ EmulatorInfo g_microbee56EmulatorInfo =
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-#define MEMORY_LOWER_BANK       0x01
-#define MEMORY_UPPER_BANK       0x02
-
 extern unsigned char g_disk128_ROM[8192];
 
 extern EmulatorInfo g_microbee128EmulatorInfo;
@@ -758,12 +844,6 @@ uint8_t Microbee128_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint1
 void Microbee128_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
 {
   switch (info.m_id) {
-    case PORT_LVDAT:
-      cerr << "mbee128: LVDAT " << HEXFORMAT0x2(data) << endl;
-      m_video->m_bankSel             = data & 0x0f;
-      m_video->m_attributeRAMEnabled = data & 0x10;
-      m_video->m_extendedPCG         = data & 0x80;
-      return;
     case PORT_BANK:
       SetBankSel(data);
       return;
