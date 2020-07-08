@@ -28,7 +28,7 @@ INFO_START(78up5_110)
 
   INFO_MAIN_RAM(RAM_START_ADDR, 32-1, 1, 32-1),
 
-  INFO_TERMINAL(80, 24),
+  INFO_TERMINAL(80, 24)
 }
 INFO_END(78up5_110);
 
@@ -309,6 +309,7 @@ void EA78UP5_Emulator::Reset(int addr)
   m_virtualUART.SetOutHandler(std::bind(&EA78UP5_Emulator::SetSense, this, _1));
 
   // set callbacks to terminal
+  using namespace std::placeholders;
   m_virtualUART.SetRXHandler(std::bind(&Terminal::WriteChar,        m_terminal.get(), _1));
   m_terminal->SetKeyboardHandler(std::bind(&VirtualUART::SerialOut,   &m_virtualUART, _1));
 }

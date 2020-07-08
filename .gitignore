@@ -53,3 +53,5 @@ emulator/z80/microbee/56krom.lst
 6800/autom4te.cache/requests
 6800/autom4te.cache/traces.0
 .gitignore
+emulator/z80/cpm80/newbdos.bin
+emulator/z80/cpm80/newbdos_rom.c

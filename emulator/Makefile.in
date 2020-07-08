@@ -90,7 +90,7 @@ $(OBJDIR)/%.o : %.cc | $(DEPDIR) $(OBJDIR)
 
 endif
 
-all:	$(APP)
+all:	$(APP) 
 
 ################################################################################################	
 
@@ -126,6 +126,7 @@ SRCS_CC = src/main.cc \
 	z80/sorcerer/chargen_sorcerer.cc \
 	z80/dg680/dg680.cc \
 	z80/super80/super80.cc \
+	z80/cpm80/cpm80.cc \
 	2650/2650emulator.cc \
 	2650/cpu_2650.cc \
 	2650/eti685/eti685.cc \
@@ -144,6 +145,7 @@ SRCS_C = z80/trs80/model1/rom_level1.c \
 	z80/microbee/rom_disk56.c \
 	z80/microbee/rom_disk128.c \
 	z80/sorcerer/rom_sorcerer.c \
+	z80/cpm80/newbdos_rom.c \
 	2650/eti685/rom_binbug_6_1.c \
 	2650/78up5/rom_pipbug.c 
 
@@ -169,6 +171,12 @@ $(DEPFILES): $(DEPDIR)
 
 $(DEPDIR):
 	@mkdir -p $@
+
+z80/cpm80/newbdos_rom.c: z80/cpm80/newbdos.bin
+	xxd --include z80/cpm80/newbdos.bin > $@
+	
+z80/cpm80/newbdos.bin: z80/cpm80/newbdos.asm
+	z80asm -o $@ z80/cpm80/newbdos.asm  
 
 include $(wildcard $(DEPFILES))
 

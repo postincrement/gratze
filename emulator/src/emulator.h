@@ -270,6 +270,8 @@ class Emulator
     void LoadFile(const std::string & path);
     bool SaveBlock(unsigned addr, const uint8_t * data, unsigned len);
 
+    uint8_t * GetMainMemoryPtr();
+
   protected:
     static Emulator * m_instance;
 

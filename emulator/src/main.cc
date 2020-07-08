@@ -17,6 +17,7 @@
 #include "z80/super80/super80.h"
 #include "z80/microbee/microbee.h"
 #include "z80/sorcerer/sorcerer.h"
+#include "z80/cpm80/cpm80.h"
 #include "2650/eti685/eti685.h"
 #include "2650/78up5/78up5.h"
 
@@ -55,6 +56,7 @@ void Init()
   AddEmulator<Sorcerer_Emulator>();
   AddEmulator<EA78UP5_PIPBUG_110>();
   AddEmulator<EA78UP5_PIPBUG_300>();
+  AddEmulator<CPM80_Emulator>();
 
   std::vector<std::string> keys;
   g_emulatorFactory.GetKeys(keys);

@@ -1146,6 +1146,16 @@ bool Emulator::SaveBlock(unsigned addr, const uint8_t * data, unsigned len)
   }
 }
 
+uint8_t * Emulator::GetMainMemoryPtr()
+{
+  for (auto & r : m_writeMemoryBlocks) {
+    if (r.m_type == Config::Type::eMainRAM)
+      return r.m_memory;
+  }
+
+  return nullptr;
+}
+
 void Emulator::AddTraceInfo(unsigned addr)
 {
   if (m_options.m_traceLength == 0) {
