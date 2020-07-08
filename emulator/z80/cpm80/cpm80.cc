@@ -9,6 +9,7 @@
 #include "z80/cpm80/cpm80.h"
 
 #include "common/misc.h"
+#include "common/binfile.h"
 
 using namespace std;
 
@@ -117,6 +118,19 @@ CPM80_Emulator::CPM80_Emulator()
 
 void CPM80_Emulator::Instantiate()
 {  
+}
+
+bool CPM80_Emulator::Open(const Options & options)
+{
+  if (!Z80Emulator::Open(options))
+    return false;
+
+  if (options.m_arg.size() > 0) {
+    m_loadFile = options.m_arg[0];
+    cerr << "will load '" << m_loadFile << "'" << endl;
+  }
+
+  return true;
 }
 
 void CPM80_Emulator::Reset(int addr)
@@ -325,6 +339,49 @@ bool CPM80_Emulator::DiskOp(int op)
   return result >= 0;
 }
 
+class CPMCOMFile : public BINFile
+{
+  public:
+    CPMCOMFile(const std::string & fn)
+      : BINFile(fn)
+    { }
+
+    virtual bool Load(std::function<bool (unsigned addr, const uint8_t * ptr, unsigned len)> saver)
+    {
+      int fd = ::open(m_fn.c_str(), O_RDONLY | O_BINARY);
+      if (fd < 0) {
+        cerr << "could not open file '" << m_fn << "'" << endl;
+        return false;
+      }
+
+      // get size of file
+      off_t len = lseek(fd, 0, SEEK_END);
+      lseek(fd, 0, SEEK_SET);
+
+      std::vector<uint8_t> buffer;
+      buffer.resize(len);
+
+      int readLen = read(fd, &buffer[0], len);
+
+      close(fd);
+      if (readLen != len) {
+        cerr << "could not read " << len << " - got " << readLen << endl;
+        return false;
+      }
+
+      if (!saver(0x100, &buffer[0], len)) {
+        cerr << "could not save data of length " << len << endl;
+        return false;
+      }
+
+      m_execAddr = 0x100;
+      m_hasExec = true;
+
+      return true; 
+    }
+};
+
+
 static NewBDOS::Function NewBDOSCommands[] = {
   &NewBDOS::SystemReset,    //  0 - System reset
   &NewBDOS::ConsoleInput,   //  1 - Console input
@@ -442,6 +499,19 @@ void NewBDOS::Boot()
 
   // copy the BIOS/BDOS etc
   memcpy(m_memory + CCPB, z80_cpm80_newbdos_bin, sizeof(z80_cpm80_newbdos_bin));
+
+    if (m_proc.m_loadFile.empty()) {
+      cerr << "no load file" << endl;
+    }
+    else {
+      cerr << "Trying to load '" << m_proc.m_loadFile << "'" << endl;
+      BINFileIdentifier binFile;
+      BINFile::AddFormat<CPMCOMFile>("com");
+      if (!m_proc.LoadFile(m_proc.m_loadFile)) {
+        cerr << "Load of '" << m_proc.m_loadFile << "' failed" << endl;
+      }
+      m_proc.m_loadFile.clear();
+    }
 }
 
 void NewBDOS::ConsoleInput()

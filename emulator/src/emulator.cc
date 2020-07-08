@@ -951,9 +951,9 @@ int Emulator::Run(const Options & options)
   }
 
   // load a file if specified
-  if (!m_options.m_arg.empty()) {
-    LoadFile(m_options.m_arg);
-  }
+  //if (!m_options.m_arg.empty()) {
+  //  LoadFile(m_options.m_arg);
+  //}
 
   // run emulator
   auto lastPoll  = std::chrono::system_clock::now();
@@ -1103,7 +1103,7 @@ void Emulator::CalcCPUSpeed(double secs, uint64_t clocks)
   }
 }
 
-void Emulator::LoadFile()
+bool Emulator::LoadFile()
 {
   nfd_OpenDialogExt extInfo;
   memset(&extInfo, 0, sizeof(extInfo));
@@ -1112,19 +1112,19 @@ void Emulator::LoadFile()
 
   nfdchar_t * path = NULL;
   if (NFD_OpenDialogExt(&extInfo, &path) != NFD_OKAY)
-    return;
+    return false;
 
   return LoadFile(path);
 }
 
 
-void Emulator::LoadFile(const std::string & path)
+bool Emulator::LoadFile(const std::string & path)
 {
   BINFileIdentifier bin;
   BINFile * file = bin.Open(path, false);
 
   if (file == nullptr)
-    return;
+    return false;
 
   using namespace std::placeholders;
 
@@ -1137,6 +1137,7 @@ void Emulator::LoadFile(const std::string & path)
   }
 
   delete file;
+  return loaded;
  }
 
 bool Emulator::SaveBlock(unsigned addr, const uint8_t * data, unsigned len)
@@ -1144,6 +1145,7 @@ bool Emulator::SaveBlock(unsigned addr, const uint8_t * data, unsigned len)
   for (unsigned i = 0; i < len; ++i) {
     WriteMemory(addr++, data[i]);
   }
+  return true;
 }
 
 uint8_t * Emulator::GetMainMemoryPtr()

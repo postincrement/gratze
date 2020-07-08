@@ -33,8 +33,10 @@ BINFile * BINFileIdentifier::Open(const std::string & path, bool readOnly)
   std::string extension = fn.substr(pos+1);
 
   BINFile * file = BINFile::m_binFileFactory.CreateInstance(extension, path);
-  if (file == nullptr)
+  if (file == nullptr) {
+    cerr << "unknown extension '" << extension << "'" << endl;
     return nullptr;
+  }
 
   return file;  
 }
@@ -261,5 +263,3 @@ bool HEXFile::Load(std::function<bool (unsigned addr, const uint8_t * ptr, unsig
 
   return true;
 }
-
-

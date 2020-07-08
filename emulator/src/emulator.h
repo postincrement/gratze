@@ -266,8 +266,8 @@ class Emulator
     int AddRealTimePollDef(double seconds, PollHandler handler);
     int AddCPUTimePollDef(uint64_t cycles, PollHandler handler);
 
-    void LoadFile();
-    void LoadFile(const std::string & path);
+    bool LoadFile();
+    bool LoadFile(const std::string & path);
     bool SaveBlock(unsigned addr, const uint8_t * data, unsigned len);
 
     uint8_t * GetMainMemoryPtr();

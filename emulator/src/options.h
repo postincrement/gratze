@@ -11,7 +11,7 @@ struct Options
   CommandLineArgs m_args;
 
   // first argument after options
-  std::string m_arg;
+  std::vector<std::string> m_arg;
 
   // override default type
   std::string m_typeName;

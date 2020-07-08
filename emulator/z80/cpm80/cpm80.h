@@ -61,6 +61,8 @@ class CPM80_Emulator : public Z80Emulator
 
     void Instantiate() override;
 
+    virtual bool Open(const Options & options) override;
+
     virtual void Reset(int addr = -1) override;
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
@@ -89,6 +91,7 @@ class CPM80_Emulator : public Z80Emulator
     uint16_t m_startAddress;
     int m_driveFiles[4];
     uint8_t * m_memory;
+    std::string m_loadFile;
     std::deque<uint8_t> m_kbQueue;
 };
 

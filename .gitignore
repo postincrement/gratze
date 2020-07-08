@@ -55,3 +55,4 @@ emulator/z80/microbee/56krom.lst
 .gitignore
 emulator/z80/cpm80/newbdos.bin
 emulator/z80/cpm80/newbdos_rom.c
+emulator/Mbasic.com

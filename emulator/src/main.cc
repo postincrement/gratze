@@ -195,8 +195,12 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--kp",    options.m_Kp);
   options.m_args.GetValue("--ki",    options.m_Ki);
 
-  if (optIndex < argc)
-    options.m_arg = argv[optIndex];
+  {
+    int opt = optIndex;
+    while (opt < argc) {
+      options.m_arg.push_back(argv[opt++]);
+    }
+  }
 
   cout << "info: backtrace queue is " << options.m_traceLength << endl;
 
