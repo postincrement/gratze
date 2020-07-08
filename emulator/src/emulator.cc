@@ -1028,9 +1028,9 @@ int Emulator::Run(const Options & options)
       double newBaseline = GET_NOW_AS_DOUBLE()
       double duration_s = newBaseline - prevBaseline;
 
-      if (duration_s >= 0.1) {
+      if (duration_s >= .01) {
         double actual_Hz = (cyclesInBaseline * 1.0) / duration_s;
-        double error = (m_targetCPUClock_Hz - actual_Hz) / 1000000.0;
+        double error = (actual_Hz - m_targetCPUClock_Hz) / 1000000.0;
 
         sigmaError += (error * duration_s);
 
@@ -1046,23 +1046,25 @@ int Emulator::Run(const Options & options)
         }
 
         if (::time(NULL) != prevTIME) {
-          /*
-          cout << "T " << actual_Hz/1000000.0 << " MHz"
-               << ", " << (m_targetCPUClock_Hz / 1000000.0) << " MHz" 
-               << ", duration " << duration_s << " sec";
+          cout << "Actual " << actual_Hz/1000000.0 << " MHz"
+               << ", target " << (m_targetCPUClock_Hz / 1000000.0) << " MHz" 
+               ;
+/*               << ", duration " << duration_s << " sec"
+               ;
           if (m_options.m_delay == 0) {     
             cout << ", PID " << pidOut
                  << ", error " << error 
                  << ", delay " << delay;
           }
+*/          
           cout << endl;
-          */
+          
           prevTIME = ::time(NULL);      
         }
 
         if (delay > 0) {
           volatile int dummy = 0;
-          for (int i = 0; i < delay; ++i) {
+          for (int i = 0; i < delay*100; ++i) {
             for (int j = 0; j < 10000; ++j) {
               dummy = j;
             }

@@ -17,7 +17,7 @@ using namespace std;
 
 #define   INIT_TIME_MS      200
 
-#define   MAX_DRQ_TIME_US   100
+#define   MAX_DRQ_TIME_US   10000
 
 // status for multiple types
 #define   STATUS_BUSY               (1 << 0)    // type I and II
