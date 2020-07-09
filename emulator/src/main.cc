@@ -75,6 +75,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "ram",             'u', "RAM size in k" },
   { ' ', "drive*",          's', "name of file for virtual disk drive" },
   { 'b', "breakpoint",      'x', "breakpoint address"  },
+  { ' ', "sdl",             ' ', "use SDL"},
   { 'f', "font",            's', "use TTF font"},
   { 'F', "fontSize",        'u', "TTF font size" },
   { 's', "scale",           'u', "Screen scale factor" },
@@ -194,6 +195,7 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--delay", options.m_delay);
   options.m_args.GetValue("--kp",    options.m_Kp);
   options.m_args.GetValue("--ki",    options.m_Ki);
+  options.m_args.GetValue("--sdl",   options.m_useSDL);
 
   {
     int opt = optIndex;

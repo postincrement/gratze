@@ -17,27 +17,11 @@ MemoryMappedScreenFactory MemoryMappedScreen::g_memoryMappedScreenFactory;
 
 /////////////////////////////////////////////////////////////////////////////////
 
-VirtualScreen::VirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows)
-  : m_mainWindow(mainWindow)
-  , m_options(options)
+VirtualScreen::VirtualScreen(const Options & options, int cols, int rows)
+  : m_options(options)
   , m_cols(cols)
   , m_rows(rows)
 {
-  m_hscale   = 1;
-  m_vscale   = 1;
-  m_colScale = 1;
-
-  // this will be set when the font is set
-  m_width = 0;
-  m_height = 0;
-
-  m_lazyUpdates = true;
-  m_dirty = true;
-  m_updateTimer = std::chrono::system_clock::now();
-
-  m_visibleSize = m_rows * m_cols;
-  m_visibleMask = m_visibleSize - 1;
-  cout << "info: text window is " << m_cols << " x " << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 }
 
 VirtualScreen::~VirtualScreen()
@@ -58,7 +42,33 @@ int VirtualScreen::GetCols() const
   return m_cols;
 }
 
-void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool update)
+/////////////////////////////////////////////////////////////////////////////////
+
+SDLVirtualScreen::SDLVirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows)
+  : VirtualScreen(options, cols, rows)
+  , m_mainWindow(mainWindow)
+{
+  m_hscale   = 1;
+  m_vscale   = 1;
+  m_colScale = 1;
+
+  // this will be set when the font is set
+  m_width = 0;
+  m_height = 0;
+
+  m_lazyUpdates = true;
+  m_dirty = true;
+  m_updateTimer = std::chrono::system_clock::now();
+
+  m_visibleSize = m_rows * m_cols;
+  m_visibleMask = m_visibleSize - 1;
+  cout << "info: text window is " << m_cols << " x " << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
+}
+
+SDLVirtualScreen::~SDLVirtualScreen()
+{}
+
+void SDLVirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool update)
 {
   if (m_font) {
     SDL_Rect dstRect;
@@ -82,7 +92,7 @@ void VirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool update)
   }
 }
 
-void VirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
+void SDLVirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
   //cout << "render char " << HEXFORMAT0x2(ch) << " " << (isgraph(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
   if (withCursor)
@@ -91,7 +101,7 @@ void VirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * rend
     m_font->RenderChar(ch, renderer, dstRect, fg, bg);
 }
 
-void VirtualScreen::Update(bool hasChanged)
+void SDLVirtualScreen::Update(bool hasChanged)
 {
   if (!m_lazyUpdates) {
     if (!hasChanged || m_dirty)
@@ -112,19 +122,19 @@ void VirtualScreen::Update(bool hasChanged)
   }
 }
 
-void VirtualScreen::OnUpdate()
+void SDLVirtualScreen::OnUpdate()
 {
   m_mainWindow.Update();
 }
 
-void VirtualScreen::RefreshScreen()
+void SDLVirtualScreen::RefreshScreen()
 {
   for (int y = 0; y < m_rows; ++y)
     for (int x = 0; x < m_cols / m_colScale; x++)
       RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
 }
 
-void VirtualScreen::EnableCursor(bool enable)
+void SDLVirtualScreen::EnableCursor(bool enable)
 {
   if (enable == m_cursorEnabled)
     return;
@@ -133,7 +143,7 @@ void VirtualScreen::EnableCursor(bool enable)
   RenderCharAtPos(m_cursorX, m_cursorY, m_cursorEnabled);
 }
 
-void VirtualScreen::SetCursorPos(int x, int y)
+void SDLVirtualScreen::SetCursorPos(int x, int y)
 {
 //  if ((x == m_cursorX) && (y == m_cursorY))
 //    return;
@@ -148,7 +158,7 @@ void VirtualScreen::SetCursorPos(int x, int y)
     RenderCharAtPos(m_cursorX, m_cursorY, true);
 }
 
-bool VirtualScreen::SetFont(Font * font, int cols, int rows)
+bool SDLVirtualScreen::SetFont(Font * font, int cols, int rows)
 {
   m_font.reset(font);
 
@@ -180,7 +190,7 @@ bool VirtualScreen::SetFont(Font * font, int cols, int rows)
   return true;
 }
 
-bool VirtualScreen::ResizeScreen()
+bool SDLVirtualScreen::ResizeScreen()
 {
   int newWidth  = m_cols * m_font->GetWidth() * m_hscale;
   int newHeight = m_rows * m_font->GetHeight() * m_vscale;
@@ -207,7 +217,7 @@ bool VirtualScreen::ResizeScreen()
   return true;
 }
 
-void VirtualScreen::SetScale(int hscale, int vscale)
+void SDLVirtualScreen::SetScale(int hscale, int vscale)
 {
   m_hscale = hscale;
   m_vscale = vscale;
@@ -215,17 +225,17 @@ void VirtualScreen::SetScale(int hscale, int vscale)
   cout << "info: screen scale is " << hscale << "," << vscale << endl;
 }
 
-void VirtualScreen::SetColScale(int scale)
+void SDLVirtualScreen::SetColScale(int scale)
 {
   m_colScale = scale;
 }
 
-int VirtualScreen::MapPosToLoc(int x, int y)
+int SDLVirtualScreen::MapPosToLoc(int x, int y)
 {
   return y * m_cols + (x * m_colScale);
 }
 
-bool VirtualScreen::MapLocToPos(int & x, int & y, int loc)
+bool SDLVirtualScreen::MapLocToPos(int & x, int & y, int loc)
 {
   if (loc >= m_visibleSize)
     return false;
@@ -242,33 +252,33 @@ bool VirtualScreen::MapLocToPos(int & x, int & y, int loc)
   return true;
 }
 
-FontChar VirtualScreen::GetCharAtPos(int x, int y)
+FontChar SDLVirtualScreen::GetCharAtPos(int x, int y)
 {
   int addr = MapPosToLoc(x, y);
   return GetCharAtLoc(addr);
 }
 
-void VirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
+void SDLVirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
 {
   int loc = MapPosToLoc(x, y);
   return GetColourAtLoc(loc, fg, bg);
 }
 
 
-void VirtualScreen::RefreshCharAtLoc(int loc, bool update)
+void SDLVirtualScreen::RefreshCharAtLoc(int loc, bool update)
 {
   int x, y;
   if (MapLocToPos(x, y, loc))
     RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY), update);
 }
 
-FontChar VirtualScreen::GetCharAtLoc(int loc) const
+FontChar SDLVirtualScreen::GetCharAtLoc(int loc) const
 {
   cerr << "screen: GetCharAtLoc or GetCharAtPos not defined" << endl;
   return 0;
 }
 
-void VirtualScreen::GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg)
+void SDLVirtualScreen::GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg)
 {
   cerr << "screen: GetColourAtLoc or GetColourAtPos not defined" << endl;
 }
@@ -284,7 +294,7 @@ MemoryMappedScreen * MemoryMappedScreen::Create(MainWindow & mainWindow,
 }
 
 MemoryMappedScreen::MemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
-  : VirtualScreen(mainWindow, options, info.m_screenCols, info.m_screenRows)
+  : SDLVirtualScreen(mainWindow, options, info.m_screenCols, info.m_screenRows)
   , m_offset(0)
 {
   m_width    = info.m_screenWidth;
@@ -364,7 +374,7 @@ void MemoryMappedScreen::OnUpdate()
     m_pcgDirty.clear();
   }
 
-  VirtualScreen::OnUpdate();
+  SDLVirtualScreen::OnUpdate();
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -425,7 +435,7 @@ void MemoryMappedScreen::SetPCG(FontChar ch, int row, int rowCount, uint8_t * pt
 
 bool MemoryMappedScreen::SetFont(Font * font, int cols, int rows)
 {
-  if (!VirtualScreen::SetFont(font, cols, rows)) 
+  if (!SDLVirtualScreen::SetFont(font, cols, rows)) 
     return false;
 
   RewritePCG();

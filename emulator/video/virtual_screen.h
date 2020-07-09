@@ -18,8 +18,6 @@
 
 class MainWindow;
 
-class VirtualScreen;
-
 namespace Config {
   class Video;
 }
@@ -27,13 +25,53 @@ namespace Config {
 class VirtualScreen
 {
   public:
-    VirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows);
+    VirtualScreen(const Options & options, int cols, int rows);
     virtual ~VirtualScreen();
-
+ 
     virtual bool Open();
-
     virtual int GetRows() const;
     virtual int GetCols() const;
+
+    virtual void Update(bool hasChanged = false) = 0;
+
+
+    virtual void SetScale(int hscale, int vscale) = 0;
+//    virtual void SetColScale(int scale) = 0;
+
+    virtual void EnableCursor(bool enable = true) = 0;
+    virtual void SetCursorPos(int x, int y) = 0;
+/*
+    virtual void RefreshCharAtLoc(int loc, bool update = true) = 0;
+
+    virtual void RefreshScreen() = 0;
+    virtual bool ResizeScreen() = 0;
+*/
+    virtual int MapPosToLoc(int x, int y) = 0;
+/*
+    virtual bool MapLocToPos(int & x, int & y, int addr) = 0;
+
+    // decendant classes must implement one of the following interfaces
+    virtual FontChar GetCharAtPos(int x, int y) = 0;
+    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) = 0;
+
+    virtual FontChar GetCharAtLoc(int addr) const = 0;
+    virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
+*/
+    virtual bool SetFont(Font * font, int cols = -1, int rows = -1) = 0;
+
+//    virtual void OnUpdate() = 0;
+
+  protected:
+    Options m_options;
+    int m_rows;
+    int m_cols;
+};
+
+class SDLVirtualScreen : public VirtualScreen
+{
+  public:
+    SDLVirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows);
+    virtual ~SDLVirtualScreen();
 
     virtual void Update(bool hasChanged = false);
 
@@ -68,10 +106,6 @@ class VirtualScreen
 
   protected:
     MainWindow & m_mainWindow;
-    Options m_options;
-
-    int m_rows;
-    int m_cols;
 
     int m_width;
     int m_height;
@@ -93,13 +127,14 @@ class VirtualScreen
     std::unique_ptr<Font> m_font;
 };
 
+
 /////////////////////////////////////////////////////////////////////////////////
 
 class MemoryMappedScreen;
 
 using MemoryMappedScreenFactory = Factory<MemoryMappedScreen, std::string, MainWindow &, const Options &, const Config::MemoryMappedScreen &>;
 
-class MemoryMappedScreen : public VirtualScreen
+class MemoryMappedScreen : public SDLVirtualScreen
 {
   public:
     MemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info);

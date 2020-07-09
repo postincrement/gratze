@@ -179,12 +179,19 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
 
   // get size of screen
   SDL_DisplayMode mode;
-  SDL_GetDesktopDisplayMode(0, &mode);
-  cout << "info: screen is " << mode.w << "x" << mode.h << endl;
+  if (m_options.m_useSDL) {
+    SDL_GetDesktopDisplayMode(0, &mode);
+    cout << "info: screen is " << mode.w << "x" << mode.h << endl;
+  }
 
   // check for memory mapped screens
   const Config::MemoryMappedScreen * mmapScreenInfo = GetMemoryMappedInfo();
   if (mmapScreenInfo != nullptr) {
+
+    if (!m_options.m_useSDL) {
+      cerr << "error: must use SDL for memory mapped screens" << endl;
+      exit(-1);
+    }
 
     cout << "info: emulated screen is memory mapped" << endl;
 
@@ -220,12 +227,19 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
       exit(-1);
     }
 
-    // create main window with a guess at the size
-    mainWindow.Open(800 * m_options.m_videoScale, 600 * m_options.m_videoScale);
-
     const Config::Terminal & termInfo = block->m_info.m_terminal;
 
-    m_terminal.reset(new Terminal(mainWindow, m_options, termInfo.m_cols, termInfo.m_rows));
+    // create main window with a guess at the size
+    if (m_options.m_useSDL) {
+      cout << "info: using SDL" << endl;
+      mainWindow.Open(800 * m_options.m_videoScale, 600 * m_options.m_videoScale);
+      m_terminal.reset(new SDLTerminal(mainWindow, m_options, termInfo.m_cols, termInfo.m_rows));
+    }
+    else {
+      cout << "info: using console" << endl;
+      m_terminal.reset(new ConsoleTerminal(m_options, termInfo.m_cols, termInfo.m_rows));
+    }
+
     m_screen   = m_terminal->m_screen;
     m_keyboard = m_terminal->m_keyboard;
 
@@ -877,8 +891,8 @@ int Emulator::Run(const Options & options)
 
   CompileConfigBlocks();
 
-  // initlialize SDL
-  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+  // initialize SDL
+  if (options.m_useSDL && (SDL_Init(SDL_INIT_EVERYTHING) != 0)) {
     printf("error initializing SDL: %s\n", SDL_GetError());
     return -1;
   }

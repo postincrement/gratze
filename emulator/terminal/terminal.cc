@@ -5,17 +5,13 @@
 
 using namespace std;
 
-
-Terminal::Terminal(MainWindow & mainWindow, const Options & options, int cols, int rows)
+Terminal::Terminal(const Options & options, int cols, int rows)
   : m_cols(cols)
   , m_rows(rows)
 {
   m_cursorX = 0;
   m_cursorY = 0;
   m_cursorEnabled = true;
-
-  m_screen.reset(new Screen(*this, mainWindow, options, cols, rows));
-  m_keyboard.reset(new ParallelKeyboard());
 }
 
 bool Terminal::Open()
@@ -23,70 +19,168 @@ bool Terminal::Open()
   m_cursorX = 0;
   m_cursorY = 0;
   m_cursorEnabled = true;
-  m_screen->SetCursorPos(m_cursorX, m_cursorY);
-  m_screen->EnableCursor(true);
 }
 
-void Terminal::Update(bool hasChanged)
+void Terminal::SetKeyboardHandler(std::function<void (uint8_t)> handler)
 {
-  m_screen->Update(hasChanged);
+  m_kbHandler = handler;
 }
 
-void Terminal::Clear()
+////////////////////////////////////////////////////////////////////////////////////
+
+ConsoleTerminal::ConsoleTerminal(const Options & options, int cols, int rows)
+  : Terminal(options, cols, rows)
+{
+  ConScreen * scrn = new ConScreen(*this, options, cols, rows);
+  m_screen.reset(scrn);
+  //  );
+  m_keyboard.reset(new ConKeyboard());
+}
+
+bool ConsoleTerminal::Open()
+{
+  return true;
+}
+
+void ConsoleTerminal::Clear()
+{}
+
+void ConsoleTerminal::Update(bool hasChanged)
+{}
+
+void ConsoleTerminal::WriteChar(uint8_t ch)
+{
+  cout << ch;
+}
+
+void ConsoleTerminal::WriteString(const std::string & str)
+{
+  cout << str;
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+ConsoleTerminal::ConScreen::ConScreen(Terminal & terminal, const Options & options, int cols, int rows)
+  : VirtualScreen(options, cols, rows)
 {
 }
 
-void Terminal::WriteString(const std::string & str)
+void ConsoleTerminal::ConScreen::Update(bool hasChanged) 
+{}
+
+void ConsoleTerminal::ConScreen::SetScale(int hscale, int vscale) 
+{}
+
+bool ConsoleTerminal::ConScreen::SetFont(Font * font, int cols, int rows) 
+{ return true; }
+
+int ConsoleTerminal::ConScreen::MapPosToLoc(int x, int y)
+{ return 0; }
+
+void ConsoleTerminal::ConScreen::SetCursorPos(int x, int y)
+{}
+
+void ConsoleTerminal::ConScreen::EnableCursor(bool enable)
+{}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+ConsoleTerminal::ConKeyboard::ConKeyboard()
+{}
+
+void ConsoleTerminal::ConKeyboard::Reset()
+{}
+
+void ConsoleTerminal::ConKeyboard::OnKeyDown(const SDL_Keysym & keysym)
+{}
+
+void ConsoleTerminal::ConKeyboard::OnKeyUp(const SDL_Keysym & keysym)
+{}
+
+
+////////////////////////////////////////////////////////////////////////////////////
+
+SDLTerminal::SDLTerminal(MainWindow & mainWindow, const Options & options, int cols, int rows)
+  : Terminal(options, cols, rows)
+{
+  m_sdlScreen.reset(new SDLScreen(*this, mainWindow, options, cols, rows));
+  m_screen = m_sdlScreen;
+
+  m_keyboard.reset(new ParallelKeyboard());
+}
+
+bool SDLTerminal::Open()
+{
+  if (!Terminal::Open())
+    return false;
+
+  m_sdlScreen->SetCursorPos(m_cursorX, m_cursorY);
+  m_sdlScreen->EnableCursor(true);
+
+  return true;
+}
+
+void SDLTerminal::Update(bool hasChanged)
+{
+  m_sdlScreen->Update(hasChanged);
+}
+
+void SDLTerminal::SetKeyboardHandler(std::function<void (uint8_t)> handler)
+{
+  Terminal::SetKeyboardHandler(handler);
+  m_kbHandler = handler;
+}
+
+void SDLTerminal::Clear()
+{
+}
+
+void SDLTerminal::WriteString(const std::string & str)
 {
   for (auto & r : str)
     WriteChar(r);
 }
 
-void Terminal::WriteChar(uint8_t ch)
+void SDLTerminal::WriteChar(uint8_t ch)
 {
   if (ch == 0x0d) {  // CR
     m_cursorX = 0;
-    m_screen->SetCursorPos(m_cursorX, m_cursorY);
+    m_sdlScreen->SetCursorPos(m_cursorX, m_cursorY);
   }
   else if (ch == 0x0a) { // LF
     if (m_cursorY == m_rows-1) {
-      m_screen->Scroll(1);
+      m_sdlScreen->Scroll(1);
     } 
     else {  
       m_cursorY++;
     }
-    m_screen->SetCursorPos(m_cursorX, m_cursorY);
+    m_sdlScreen->SetCursorPos(m_cursorX, m_cursorY);
   }
   else if ((ch >= 0x20) && (ch <= 0x7e)) {
     int loc = m_screen->MapPosToLoc(m_cursorX, m_cursorY);
-    m_screen->SetCharAtLoc(loc, ch);
-    m_screen->RefreshCharAtLoc(loc);
+    m_sdlScreen->SetCharAtLoc(loc, ch);
+    m_sdlScreen->RefreshCharAtLoc(loc);
     if (m_cursorX < m_cols-1) {
       m_cursorX++;
     }
     else {
       m_cursorX = 0;
       if (m_cursorY == m_rows-1) {
-        m_screen->Scroll(1);
+        m_sdlScreen->Scroll(1);
       }
       else {
         ++m_cursorY;
       }
     }
-    m_screen->SetCursorPos(m_cursorX, m_cursorY);
+    m_sdlScreen->SetCursorPos(m_cursorX, m_cursorY);
     Update(true);
   }
 }
 
-void Terminal::SetKeyboardHandler(std::function<void (uint8_t)> handler)
-{
-  m_keyboard->SetHandler(true, handler);
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Terminal::Screen::Screen(Terminal & terminal, MainWindow & mainWindow, const Options & options, int cols, int rows)
-  : VirtualScreen(mainWindow, options, cols, rows)
+SDLTerminal::SDLScreen::SDLScreen(SDLTerminal & terminal, MainWindow & mainWindow, const Options & options, int cols, int rows)
+  : SDLVirtualScreen(mainWindow, options, cols, rows)
   , m_terminal(terminal)
 {
   m_fg = { 0, 255, 0, 255 };
@@ -97,7 +191,7 @@ Terminal::Screen::Screen(Terminal & terminal, MainWindow & mainWindow, const Opt
     SetCharAtLoc(i, ' ');
 }
 
-bool Terminal::Screen::Screen::Open()
+bool SDLTerminal::SDLScreen::Open()
 {
   if (!VirtualScreen::Open())
     return false;
@@ -105,13 +199,13 @@ bool Terminal::Screen::Screen::Open()
   return m_terminal.Open();
 }
 
-FontChar Terminal::Screen::GetCharAtPos(int x, int y)
+FontChar SDLTerminal::SDLScreen::GetCharAtPos(int x, int y)
 {
   int addr = (y * m_cols) + x;
   return m_chars[addr].m_ch;
 }
 
-void Terminal::Screen::SetCharAtLoc(int loc, uint8_t ch)
+void SDLTerminal::SDLScreen::SetCharAtLoc(int loc, uint8_t ch)
 {
   m_chars[loc].m_ch = ch;
   m_chars[loc].m_fg = m_fg;
@@ -119,14 +213,14 @@ void Terminal::Screen::SetCharAtLoc(int loc, uint8_t ch)
 }
 
 
-void Terminal::Screen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
+void SDLTerminal::SDLScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
 {
   int addr = (y * m_cols) + x;
   fg = m_chars[addr].m_fg;
   bg = m_chars[addr].m_bg;
 }
 
-void Terminal::Screen::Scroll(int lines)
+void SDLTerminal::SDLScreen::Scroll(int lines)
 {
   // move the chars
   int srcAddr = m_cols * lines;
@@ -138,11 +232,10 @@ void Terminal::Screen::Scroll(int lines)
   RefreshScreen();
 }
 
-void Terminal::Screen::ClearToEndOfLine(int col, int line)
+void SDLTerminal::SDLScreen::ClearToEndOfLine(int col, int line)
 {
   int addr = col + (line * m_cols);
   while (col++ < m_cols) {
     SetCharAtLoc(addr++, ' ');
   }  
 }
-

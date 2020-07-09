@@ -10,11 +10,14 @@ struct Options
 {
   CommandLineArgs m_args;
 
-  // first argument after options
+  // argument after options
   std::vector<std::string> m_arg;
 
   // override default type
   std::string m_typeName;
+
+  // use SDL
+  bool m_useSDL = false;
 
   // override default ROM path
   std::string m_romFn;
