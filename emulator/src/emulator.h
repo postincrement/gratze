@@ -8,7 +8,7 @@
 #include <SDL_keyboard.h>
 
 #include "common/factory.h"
-#include "src/config.h"
+#include "common/config.h"
 #include "src/options.h"
 #include "src/emuconfig.h"
 #include "video/virtual_screen.h"

@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "src/config.h"
+#include "common/config.h"
 #include "cassette.h"
 
 using namespace std;

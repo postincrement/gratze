@@ -1,7 +1,7 @@
 #ifndef DG680_H_
 #define DG680_H_
 
-#include "src/config.h"
+#include "common/config.h"
 #include "z80/z80emulator.h"
 #include "src/options.h"
 #include "devices/z80pio.h"

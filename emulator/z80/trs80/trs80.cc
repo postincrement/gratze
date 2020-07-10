@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <memory.h>
 
-#include "src/config.h"
+#include "common/config.h"
 #include "common/misc.h"
 #include "z80/trs80/trs80.h"
 

@@ -6,7 +6,6 @@ fdc.o
 debug.o
 .vscode/settings.json
 mfz80/Z80-081707.zip
-config.h
 config.status
 log
 trs80/model1/rom_level2.o

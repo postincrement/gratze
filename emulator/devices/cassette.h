@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "src/config.h"
+#include "common/config.h"
 
 class VirtualCassetteFile
 {

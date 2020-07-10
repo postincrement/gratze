@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <iostream>
 
-#include "config.h"
+#include "common/config.h"
 #include "mainwindow.h"
 #include "video/virtual_screen.h"
 

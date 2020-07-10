@@ -5,10 +5,13 @@
 #include <iostream>
 #include <iomanip>
 
-#include "src/config.h"
+#include "common/config.h"
 #include "common/misc.h"
-#include "src/mainwindow.h"
 #include "common/cmdargs.h"
+#include "common/factory.h"
+#include "src/cereal.h"
+
+#include "src/mainwindow.h"
 
 #include "z80/trs80/model1/model1.h"
 #include "z80/trs80/model3/model3.h"
@@ -21,8 +24,6 @@
 #include "2650/eti685/eti685.h"
 #include "2650/78up5/78up5.h"
 
-#include "common/factory.h"
-#include "src/cereal.h"
 
 
 using namespace std;

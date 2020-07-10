@@ -1,7 +1,7 @@
 #ifndef SORCERER_H_
 #define SORCERER_H_
 
-#include "src/config.h"
+#include "common/config.h"
 #include "z80/z80emulator.h"
 #include "src/options.h"
 

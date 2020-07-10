@@ -11,7 +11,7 @@
 
 #include "disk/virtual_drive.h"
 #include "common/factory.h"
-#include "src/config.h"
+#include "common/config.h"
 
 class WD_FDC
 {

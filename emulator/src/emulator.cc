@@ -9,7 +9,7 @@
 
 #include "common/misc.h"
 #include "common/binfile.h"
-#include "src/config.h"
+#include "common/config.h"
 #include "src/emulator.h"
 #include "devices/fdc.h"
 #include "video/virtual_screen.h"

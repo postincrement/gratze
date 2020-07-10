@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "common/misc.h"
-#include "src/config.h"
+#include "common/config.h"
 #include "video/virtual_screen.h"
 #include "src/mainwindow.h"
 #include "SDL_FontCache/SDL_FontCache.h"
