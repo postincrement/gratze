@@ -57,7 +57,9 @@ bool Z80Emulator::Start(int addr)
   if (addr < 0)
     addr = GetCPUInfo()->m_resetAddr;
 
-  cout << "resetting Z80 to " << HEXFORMAT0x4(addr) << endl;
+  if (m_options.m_verbose)
+    cout << "resetting Z80 to " << HEXFORMAT0x4(addr) << endl;
+    
   Reset(addr);
   return true;
 }

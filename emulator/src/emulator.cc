@@ -73,7 +73,9 @@ bool Emulator::SetRAMSize_k(int len)
   m_ramSize_bytes = len * 1024; //m_ram.size();
   m_ramMask = (m_ramSize_bytes - 1);
 
-  cout << "info: RAM size " << len << " k, " << m_ramSize_bytes << " bytes, " << HEXFORMAT0x4(m_ramMask) << endl;
+  if (m_options.m_verbose)
+    cout << "info: RAM size " << len << " k, " << m_ramSize_bytes << " bytes, " << HEXFORMAT0x4(m_ramMask) << endl;
+
   return true;
 }
 
@@ -231,17 +233,24 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
 
     // create main window with a guess at the size
     if (m_options.m_useSDL) {
-      cout << "info: using SDL" << endl;
+      if (m_options.m_verbose)
+        cout << "info: using SDL" << endl;
       mainWindow.Open(800 * m_options.m_videoScale, 600 * m_options.m_videoScale);
       m_terminal.reset(new SDLTerminal(mainWindow, m_options, termInfo.m_cols, termInfo.m_rows));
     }
     else {
-      cout << "info: using console" << endl;
+      if (m_options.m_verbose)
+        cout << "info: using console" << endl;
       m_terminal.reset(new ConsoleTerminal(m_options, termInfo.m_cols, termInfo.m_rows));
     }
 
     m_screen   = m_terminal->m_screen;
     m_keyboard = m_terminal->m_keyboard;
+
+    if (!m_terminal->Open()) {
+      cerr << "error: could not open terminal" << endl;
+      exit(-1);
+    }
 
     std::string fontName = m_options.m_font;
     if (fontName.empty())
@@ -259,7 +268,9 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
     return; // false;
   }
 
-  cout << "info: setting screen scale " << m_options.m_videoScale << endl;
+  if (m_options.m_verbose)  
+    cout << "info: setting screen scale " << m_options.m_videoScale << endl;
+
   m_screen->SetScale(m_options.m_videoScale, m_options.m_videoScale);
   m_screen->Open();
 }
@@ -367,18 +378,20 @@ void Emulator::CompileConfigBlocks()
 
   CompileConfigBlocks(m_info->m_blocks, m_info->m_blockCount);
 
-  for (auto & r : m_writeMemoryBlocks) {
-    cout << "WRITE " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; // << " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
-  }
-  for (auto & r : m_readMemoryBlocks) {
-    cout << "READ  " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
-  }
+  if (m_options.m_verbose) {
+    for (auto & r : m_writeMemoryBlocks) {
+      cout << "WRITE " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; // << " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
+    }
+    for (auto & r : m_readMemoryBlocks) {
+      cout << "READ  " << HEXFORMAT0x4(r.m_startAddr) << " - " << HEXFORMAT0x4(r.m_endAddr) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << " " << (void *)r.m_realFunction << endl;
+    }
 
-  for (auto & r : m_writeIOPortBlocks) {
-    cout << "WRITE IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  << " " << (void *)r.m_function << endl;
-  }
-  for (auto & r : m_readIOPortBlocks) {
-    cout << "READ IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << endl;
+    for (auto & r : m_writeIOPortBlocks) {
+      cout << "WRITE IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  << " " << (void *)r.m_function << endl;
+    }
+    for (auto & r : m_readIOPortBlocks) {
+      cout << "READ IO " << HEXFORMAT0x2(r.m_startPort) << " - " << HEXFORMAT0x2(r.m_endPort) << " - " << (int)r.m_type << endl; //  <<  " " << (void *)r.m_function << endl;
+    }
   }
 }
 
@@ -899,8 +912,10 @@ int Emulator::Run(const Options & options)
 
   MainWindow mainWindow;
 
-  cerr << "Creating screen" << endl;
-  cerr << "font size is " << (int)options.m_fontSize << endl;
+  if (options.m_verbose) {
+    cerr << "Creating screen" << endl;
+    cerr << "font size is " << (int)options.m_fontSize << endl;
+  }
 
   CreateScreen(mainWindow);
 
@@ -932,7 +947,6 @@ int Emulator::Run(const Options & options)
       m_terminal->WriteString("\r\n\n");
       m_terminal->WriteString(m_info->m_title);
       m_terminal->WriteString("\r\n\n");
-      m_terminal->Update(true);
     }
 
     if (m_screen) {
@@ -973,7 +987,7 @@ int Emulator::Run(const Options & options)
   auto lastPoll  = std::chrono::system_clock::now();
   auto lastSpeed = std::chrono::system_clock::now();
 
-  if (options.m_turbo) {
+  if (m_options.m_verbose && options.m_turbo) {
     cerr << "turbo mode" << endl;
   }
 
@@ -1146,7 +1160,8 @@ bool Emulator::LoadFile(const std::string & path)
  
   unsigned execAddr;
   if (loaded && file->GetExecAddr(execAddr)) {
-    cerr << "info: setting PC to " << HEXFORMAT0x4(execAddr) << endl;
+    if (m_options.m_verbose)
+      cerr << "info: setting PC to " << HEXFORMAT0x4(execAddr) << endl;
     SetPC(execAddr);    
   }
 

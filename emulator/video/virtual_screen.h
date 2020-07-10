@@ -32,77 +32,87 @@ class VirtualScreen
     virtual int GetRows() const;
     virtual int GetCols() const;
 
-    virtual void Update(bool hasChanged = false) = 0;
+    virtual void SetCharAtLoc(int loc, FontChar ch);
+    virtual FontChar GetCharAtLoc(int addr) const;
 
+    virtual void SetColourAtLoc(int loc, const SDL_Colour & fg, const SDL_Colour & bg);
+    virtual void GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg);
 
-    virtual void SetScale(int hscale, int vscale) = 0;
-//    virtual void SetColScale(int scale) = 0;
+    virtual int MapPosToLoc(int x, int y);
+    virtual bool MapLocToPos(int & x, int & y, int addr);
+    
+    virtual FontChar GetCharAtPos(int x, int y);
+    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg);
 
-    virtual void EnableCursor(bool enable = true) = 0;
-    virtual void SetCursorPos(int x, int y) = 0;
-/*
-    virtual void RefreshCharAtLoc(int loc, bool update = true) = 0;
-
-    virtual void RefreshScreen() = 0;
-    virtual bool ResizeScreen() = 0;
-*/
-    virtual int MapPosToLoc(int x, int y) = 0;
-/*
-    virtual bool MapLocToPos(int & x, int & y, int addr) = 0;
-
-    // decendant classes must implement one of the following interfaces
-    virtual FontChar GetCharAtPos(int x, int y) = 0;
-    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg) = 0;
-
-    virtual FontChar GetCharAtLoc(int addr) const = 0;
-    virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
-*/
-    virtual bool SetFont(Font * font, int cols = -1, int rows = -1) = 0;
-
-//    virtual void OnUpdate() = 0;
-
-  protected:
-    Options m_options;
-    int m_rows;
-    int m_cols;
-};
-
-class SDLVirtualScreen : public VirtualScreen
-{
-  public:
-    SDLVirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows);
-    virtual ~SDLVirtualScreen();
-
-    virtual void Update(bool hasChanged = false);
+    virtual void RefreshCharAtLoc(int loc, bool update = true);
+    virtual void RefreshScreen();
 
     virtual void SetScale(int hscale, int vscale);
     virtual void SetColScale(int scale);
 
     virtual void EnableCursor(bool enable = true);
     virtual void SetCursorPos(int x, int y);
+    virtual void Update(bool hasChanged = false);
+    
+    virtual void OnUpdate() = 0;
+    virtual bool ResizeScreen() = 0;
 
-    virtual void RefreshCharAtLoc(int loc, bool update = true);
+    virtual bool SetFont(Font * font, int cols = -1, int rows = -1) = 0;
 
-    virtual void RefreshScreen();
-    virtual bool ResizeScreen();
+    virtual void RenderCharAtPos(int x, int y, bool withCursor, bool update = true) = 0;
 
-    virtual int MapPosToLoc(int x, int y);
-    virtual bool MapLocToPos(int & x, int & y, int addr);
+//    virtual void RefreshScreen() = 0;
+//    virtual bool ResizeScreen() = 0;
+//    virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
 
-    // decendant classes must implement one of the following interfaces
-    virtual FontChar GetCharAtPos(int x, int y);
-    virtual void GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg);
+    struct CharCell
+    {
+      CharCell()
+        : m_ch(' ')
+      { }
+      CharCell(uint8_t ch)
+        : m_ch(ch)
+      { }
+      FontChar  m_ch;
+      SDL_Color m_fg;
+      SDL_Color m_bg;
+    };
 
-    virtual FontChar GetCharAtLoc(int addr) const;
-    virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg);
+  protected:
+    Options m_options;
+    int m_rows;
+    int m_cols;
+    SDL_Color m_fg;
+    SDL_Color m_bg;
 
-    virtual bool SetFont(Font * font, int cols = -1, int rows = -1);
+    int m_visibleSize = 0;
+    int m_visibleMask = 0;
 
-    virtual void OnUpdate();
+    int m_hscale = 1;
+    int m_vscale = 1;
+    int m_colScale = 1;
 
-  private:
+    bool m_softCursor = false;
+    int m_cursorX = 0;
+    int m_cursorY = 0;
+    bool m_cursorEnabled = false;
+
+    std::vector<CharCell> m_chars;
+};
+
+class SDLVirtualScreen : public VirtualScreen
+{
+  public:
+    SDLVirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows);
+
+    virtual void RenderCharAtPos(int x, int y, bool withCursor, bool update = true) override;
+    virtual void Update(bool hasChanged = false) override;
+    virtual void OnUpdate() override;
+    virtual bool SetFont(Font * font, int cols = -1, int rows = -1) override;
+    virtual bool ResizeScreen() override;
+
+  private:  
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
-    virtual void RenderCharAtPos(int x, int y, bool withCursor, bool update = true);
 
   protected:
     MainWindow & m_mainWindow;
@@ -110,23 +120,11 @@ class SDLVirtualScreen : public VirtualScreen
     int m_width;
     int m_height;
 
-    int m_hscale = 1;
-    int m_vscale = 1;
-    int m_colScale = 1;
-
-    int m_cursorX = 0;
-    int m_cursorY = 0;
-    bool m_cursorEnabled = false;
-
-    int m_visibleSize = 0;
-    int m_visibleMask = 0;
-
     bool m_lazyUpdates;
     bool m_dirty;
     std::chrono::system_clock::time_point m_updateTimer;
     std::unique_ptr<Font> m_font;
 };
-
 
 /////////////////////////////////////////////////////////////////////////////////
 

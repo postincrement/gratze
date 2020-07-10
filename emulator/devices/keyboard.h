@@ -1,6 +1,8 @@
 #ifndef KEYBOARD_H_
 #define KEYBOARD_H_
 
+#include <functional>
+
 #include <SDL.h>
 
 #include "devices/device.h"
@@ -18,6 +20,11 @@ class VirtualKeyboard : public VirtualDevice
 
     // only implemented for KeyboardScanner - saves a cast
     //virtual uint8_t Read(uint16_t rowMask);
+
+    void SetHandler(bool down, std::function<void (uint8_t)> handler);
+
+  protected:  
+    std::function<void (uint8_t)> m_keyHandlers[2] { nullptr, nullptr };
 };
 
 #endif // KEYBOARD_H_

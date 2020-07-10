@@ -22,6 +22,14 @@ VirtualScreen::VirtualScreen(const Options & options, int cols, int rows)
   , m_cols(cols)
   , m_rows(rows)
 {
+  m_fg = { 0, 255, 0, 255 };
+  m_bg = { 0, 0, 0, 0 };
+
+  m_hscale   = 1;
+  m_vscale   = 1;
+  m_colScale = 1;
+
+  m_chars.resize(cols * rows);
 }
 
 VirtualScreen::~VirtualScreen()
@@ -42,16 +50,118 @@ int VirtualScreen::GetCols() const
   return m_cols;
 }
 
+void VirtualScreen::SetScale(int hscale, int vscale)
+{
+  m_hscale = hscale;
+  m_vscale = vscale;
+}
+
+void VirtualScreen::SetColScale(int scale)
+{
+  m_colScale = scale;
+}
+
+void VirtualScreen::SetCharAtLoc(int loc, FontChar ch)
+{
+  m_chars[loc].m_ch = ch;
+  SetColourAtLoc(loc, m_fg, m_bg);
+}
+
+void VirtualScreen::SetColourAtLoc(int loc, const SDL_Colour & fg, const SDL_Colour & bg)
+{
+  m_chars[loc].m_fg = fg;
+  m_chars[loc].m_bg = bg;
+}
+
+FontChar VirtualScreen::GetCharAtLoc(int loc) const
+{
+  return m_chars[loc].m_ch;
+}
+
+void VirtualScreen::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
+{
+  fg = m_chars[loc].m_fg;
+  bg = m_chars[loc].m_bg;
+}
+
+int VirtualScreen::MapPosToLoc(int x, int y)
+{
+  return y * m_cols + (x * m_colScale);
+}
+
+bool VirtualScreen::MapLocToPos(int & x, int & y, int loc)
+{
+  if (loc >= m_visibleSize)
+    return false;
+
+  x = loc % m_cols;
+  if (m_colScale != 1) {
+    if ((x % m_colScale) != 0)
+      return false;
+    x /= m_colScale;
+  }
+
+  y = loc / m_cols;
+
+  return true;
+}
+
+FontChar VirtualScreen::GetCharAtPos(int x, int y)
+{
+  int addr = MapPosToLoc(x, y);
+  return GetCharAtLoc(addr);
+}
+
+void VirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
+{
+  int loc = MapPosToLoc(x, y);
+  return GetColourAtLoc(loc, fg, bg);
+}
+
+void VirtualScreen::RefreshCharAtLoc(int loc, bool update)
+{
+  int x, y;
+  if (MapLocToPos(x, y, loc)) 
+    RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY), update);
+}
+
+void VirtualScreen::EnableCursor(bool enable)
+{
+  if (enable == m_cursorEnabled)
+    return;
+
+  m_cursorEnabled = enable;
+  RenderCharAtPos(m_cursorX, m_cursorY, m_cursorEnabled);
+}
+
+void VirtualScreen::SetCursorPos(int x, int y)
+{
+  if (m_cursorEnabled)
+    RenderCharAtPos(m_cursorX, m_cursorY, false);
+
+  m_cursorX = x;
+  m_cursorY = y;
+
+  if (m_cursorEnabled)
+    RenderCharAtPos(m_cursorX, m_cursorY, true);
+}
+
+void VirtualScreen::RefreshScreen()
+{
+  for (int y = 0; y < m_rows; ++y)
+    for (int x = 0; x < m_cols / m_colScale; x++)
+      RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
+}
+
+void VirtualScreen::Update(bool hasChanged)
+{}
+
 /////////////////////////////////////////////////////////////////////////////////
 
 SDLVirtualScreen::SDLVirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows)
   : VirtualScreen(options, cols, rows)
   , m_mainWindow(mainWindow)
 {
-  m_hscale   = 1;
-  m_vscale   = 1;
-  m_colScale = 1;
-
   // this will be set when the font is set
   m_width = 0;
   m_height = 0;
@@ -64,9 +174,6 @@ SDLVirtualScreen::SDLVirtualScreen(MainWindow & mainWindow, const Options & opti
   m_visibleMask = m_visibleSize - 1;
   cout << "info: text window is " << m_cols << " x " << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 }
-
-SDLVirtualScreen::~SDLVirtualScreen()
-{}
 
 void SDLVirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool update)
 {
@@ -94,9 +201,9 @@ void SDLVirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool updat
 
 void SDLVirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  //cout << "render char " << HEXFORMAT0x2(ch) << " " << (isgraph(ch) ? (char)ch : '.') << " cursor = " << withCursor << endl;
-  if (withCursor)
+  if (withCursor) {
     m_font->RenderChar(ch, renderer, dstRect, bg, fg);
+  }
   else
     m_font->RenderChar(ch, renderer, dstRect, fg, bg);
 }
@@ -127,36 +234,6 @@ void SDLVirtualScreen::OnUpdate()
   m_mainWindow.Update();
 }
 
-void SDLVirtualScreen::RefreshScreen()
-{
-  for (int y = 0; y < m_rows; ++y)
-    for (int x = 0; x < m_cols / m_colScale; x++)
-      RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
-}
-
-void SDLVirtualScreen::EnableCursor(bool enable)
-{
-  if (enable == m_cursorEnabled)
-    return;
-
-  m_cursorEnabled = enable;
-  RenderCharAtPos(m_cursorX, m_cursorY, m_cursorEnabled);
-}
-
-void SDLVirtualScreen::SetCursorPos(int x, int y)
-{
-//  if ((x == m_cursorX) && (y == m_cursorY))
-//    return;
-
-  if (m_cursorEnabled)
-    RenderCharAtPos(m_cursorX, m_cursorY, false);
-
-  m_cursorX = x;
-  m_cursorY = y;
-
-  if (m_cursorEnabled)
-    RenderCharAtPos(m_cursorX, m_cursorY, true);
-}
 
 bool SDLVirtualScreen::SetFont(Font * font, int cols, int rows)
 {
@@ -215,72 +292,6 @@ bool SDLVirtualScreen::ResizeScreen()
   m_font->Open(m_mainWindow.GetRenderer());
 
   return true;
-}
-
-void SDLVirtualScreen::SetScale(int hscale, int vscale)
-{
-  m_hscale = hscale;
-  m_vscale = vscale;
-
-  cout << "info: screen scale is " << hscale << "," << vscale << endl;
-}
-
-void SDLVirtualScreen::SetColScale(int scale)
-{
-  m_colScale = scale;
-}
-
-int SDLVirtualScreen::MapPosToLoc(int x, int y)
-{
-  return y * m_cols + (x * m_colScale);
-}
-
-bool SDLVirtualScreen::MapLocToPos(int & x, int & y, int loc)
-{
-  if (loc >= m_visibleSize)
-    return false;
-
-  x = loc % m_cols;
-  if (m_colScale != 1) {
-    if ((x % m_colScale) != 0)
-      return false;
-    x /= m_colScale;
-  }
-
-  y = loc / m_cols;
-
-  return true;
-}
-
-FontChar SDLVirtualScreen::GetCharAtPos(int x, int y)
-{
-  int addr = MapPosToLoc(x, y);
-  return GetCharAtLoc(addr);
-}
-
-void SDLVirtualScreen::GetColourAtPos(int x, int y, SDL_Colour & fg, SDL_Colour & bg)
-{
-  int loc = MapPosToLoc(x, y);
-  return GetColourAtLoc(loc, fg, bg);
-}
-
-
-void SDLVirtualScreen::RefreshCharAtLoc(int loc, bool update)
-{
-  int x, y;
-  if (MapLocToPos(x, y, loc))
-    RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY), update);
-}
-
-FontChar SDLVirtualScreen::GetCharAtLoc(int loc) const
-{
-  cerr << "screen: GetCharAtLoc or GetCharAtPos not defined" << endl;
-  return 0;
-}
-
-void SDLVirtualScreen::GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg)
-{
-  cerr << "screen: GetColourAtLoc or GetColourAtPos not defined" << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////

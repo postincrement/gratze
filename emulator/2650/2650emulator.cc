@@ -101,7 +101,8 @@ void S2650Emulator::Reset(int addr)
 
   Emulator::Reset(addr);
 
-  cout << "setting PC to " << HEXFORMAT0x4(addr) << endl;
+  if (m_options.m_verbose)
+    cerr << "info: setting PC to " << HEXFORMAT0x4(addr) << endl;
 
   m_cpu->registers.ap = addr;
   m_cpu->registers.na = addr;

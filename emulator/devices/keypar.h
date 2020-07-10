@@ -23,15 +23,12 @@ class ParallelKeyboard : public VirtualKeyboard
     virtual void OnKeyDown(const SDL_Keysym & keysym) override;
     virtual void OnKeyUp(const SDL_Keysym & keysym) override;
 
-    void SetHandler(bool down, std::function<void (uint8_t)> handler);
-
     virtual void Reset() override;
 
   protected:  
     int ConvertKeySymToASCII(const SDL_Keysym & keysym);
 
     Mapping m_mapping;
-    std::function<void (uint8_t)> m_keyHandlers[2] { nullptr, nullptr };
 };
 
 #endif // KEYPAR_H_

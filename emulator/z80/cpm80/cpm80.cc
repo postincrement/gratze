@@ -125,9 +125,12 @@ bool CPM80_Emulator::Open(const Options & options)
   if (!Z80Emulator::Open(options))
     return false;
 
+  m_loadFileDone = false;
+
   if (options.m_arg.size() > 0) {
     m_loadFile = options.m_arg[0];
-    cerr << "will load '" << m_loadFile << "'" << endl;
+    if (m_options.m_verbose)
+      cerr << "info: load '" << m_loadFile << "' on startup" << endl;
   }
 
   return true;
@@ -189,7 +192,6 @@ ofstream * g_debugStream = NULL;
 void CPM80_Emulator::ConsoleOut(char data)
 {
   m_terminal->WriteChar(data);
-  m_terminal->Update(true);
 
 #if 0  
   *g_debugStream << "consoleOutput ";
@@ -467,11 +469,12 @@ void NewBDOS::OnBDOSCommand()
 void NewBDOS::SystemReset()
 {
   //m_proc.m_debug << "BDOS 0: system reset" << endl;
-
-  stringstream strm;
-  strm << "CCP=" << hex << CCPB << ",BDOS=" << BDOS << ",BIOS=" << BIOS << "\r\n$";
-  PrintCPMString(strm.str().c_str());
-  PrintCPMString(ColdBootTitle);
+  if (m_proc.m_loadFile.empty()) {
+    stringstream strm;
+    strm << "CCP=" << hex << CCPB << ",BDOS=" << BDOS << ",BIOS=" << BIOS << "\r\n$";
+    PrintCPMString(strm.str().c_str());
+    PrintCPMString(ColdBootTitle);
+  }
 
   // set current disk to A
   m_proc.WriteMemory(4, 0x00);
@@ -500,18 +503,25 @@ void NewBDOS::Boot()
   // copy the BIOS/BDOS etc
   memcpy(m_memory + CCPB, z80_cpm80_newbdos_bin, sizeof(z80_cpm80_newbdos_bin));
 
+  if (!m_proc.m_loadFileDone) {
     if (m_proc.m_loadFile.empty()) {
-      cerr << "no load file" << endl;
+      if (m_proc.m_options.m_verbose)
+        cerr << "no load file" << endl;
     }
     else {
-      cerr << "Trying to load '" << m_proc.m_loadFile << "'" << endl;
+      if (m_proc.m_options.m_verbose)
+        cerr << "Trying to load '" << m_proc.m_loadFile << "'" << endl;
       BINFileIdentifier binFile;
       BINFile::AddFormat<CPMCOMFile>("com");
       if (!m_proc.LoadFile(m_proc.m_loadFile)) {
-        cerr << "Load of '" << m_proc.m_loadFile << "' failed" << endl;
+        cerr << "error: load of '" << m_proc.m_loadFile << "' failed" << endl;
       }
-      m_proc.m_loadFile.clear();
     }
+    m_proc.m_loadFileDone = true;
+  }
+  else if (!m_proc.m_loadFile.empty()) {
+    exit(0);
+  }
 }
 
 void NewBDOS::ConsoleInput()

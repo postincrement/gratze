@@ -120,7 +120,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  cout << options.m_args.DumpValues();
+  if (options.m_verbose)
+    cout << options.m_args.DumpValues();
 
   if (options.m_args.HasArg("--list")) {
     cout << "Available emulations\n";
@@ -205,11 +206,11 @@ int main(int argc, char *argv[])
     }
   }
 
-  cout << "info: backtrace queue is " << options.m_traceLength << endl;
-
-  cout << "info: using type '" << options.m_typeName << "'" << endl;
-
-  cout << "info: video scale is " << options.m_videoScale << endl;
+  if (options.m_verbose) {
+    cout << "info: backtrace queue is " << options.m_traceLength << endl;
+    cout << "info: using type '" << options.m_typeName << "'" << endl;
+    cout << "info: video scale is " << options.m_videoScale << endl;
+  }
   // attempt to instantiate emulator
   std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(options.m_typeName));
   if (!emulator) {
@@ -217,7 +218,9 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  cout << "info: running " << emulator->GetInfo().m_name << endl;
+  if (options.m_verbose) {
+    cout << "info: running " << emulator->GetInfo().m_name << endl;
+  }
 
   std::string error;
   if (!options.m_args.GetValues("--drive*", options.m_driveFns, error)) {
@@ -241,7 +244,9 @@ int main(int argc, char *argv[])
     else {
       emulator->SetRAMSize_k(ramSize_k);
    }
-    cout << "info: RAM size set to " << dec << ramSize_k << "k" << endl;
+
+    if (options.m_verbose)
+      cout << "info: RAM size set to " << dec << ramSize_k << "k" << endl;
   }
 
   return emulator->Run(options);

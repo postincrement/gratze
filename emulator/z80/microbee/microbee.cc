@@ -366,7 +366,9 @@ void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
   m_rows  = rows;
   m_lines = lines;
 
-  cout << "mbee: setting screen to " << m_cols << "x" << m_rows << "x" << lines << endl;
+  if (m_options.m_verbose)  
+    cout << "mbee: setting screen to " << m_cols << "x" << m_rows << "x" << lines << endl;
+    
   PixelFont * font = new PixelFont(
       (m_fontOffset == 0) ? g_charGen_mbee64x16 : g_charGen_mbee80x24,
       256, 

@@ -310,7 +310,8 @@ void EA78UP5_Emulator::Reset(int addr)
 
   // set callbacks to terminal
   using namespace std::placeholders;
-  m_virtualUART.SetRXHandler(std::bind(&Terminal::WriteChar,        m_terminal.get(), _1));
+  using sig = void (Terminal::*)(uint8_t);
+  m_virtualUART.SetRXHandler(std::bind(static_cast<sig>(&Terminal::WriteChar), m_terminal.get(), _1));
   m_terminal->SetKeyboardHandler(std::bind(&VirtualUART::SerialOut,   &m_virtualUART, _1));
 }
 

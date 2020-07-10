@@ -38,6 +38,13 @@ static char g_shiftKeys[][2] = {
 VirtualKeyboard::~VirtualKeyboard()
 {}
 
+void VirtualKeyboard::SetHandler(bool down, std::function<void (uint8_t)> handler)
+{
+  m_keyHandlers[down ? 0 : 1] = handler;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+
 ParallelKeyboard::ParallelKeyboard()
   : ParallelKeyboard(Mapping())
 {
@@ -50,11 +57,6 @@ ParallelKeyboard::ParallelKeyboard(const Mapping & mapping)
 
 void ParallelKeyboard::Reset()
 {
-}
-
-void ParallelKeyboard::SetHandler(bool down, std::function<void (uint8_t)> handler)
-{
-  m_keyHandlers[down ? 0 : 1] = handler;
 }
 
 int ParallelKeyboard::ConvertKeySymToASCII(const SDL_Keysym & keysym)

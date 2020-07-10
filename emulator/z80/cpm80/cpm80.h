@@ -92,6 +92,7 @@ class CPM80_Emulator : public Z80Emulator
     int m_driveFiles[4];
     uint8_t * m_memory;
     std::string m_loadFile;
+    bool m_loadFileDone = false;
     std::deque<uint8_t> m_kbQueue;
 };
 
