@@ -15,7 +15,6 @@ bool Terminal::Open()
 {
   m_cursorX = 0;
   m_cursorY = 0;
-  Clear();
   m_screen->SetCursorPos(m_cursorX, m_cursorY);
   m_screen->EnableCursor(true);
   return true;
@@ -36,8 +35,10 @@ void Terminal::WriteString(const std::string & str)
 
 void Terminal::Clear()
 {
+  cout << "screen cleared" << endl;
   for (int loc = 0; loc < m_cols*m_rows; ++loc)
     m_screen->SetCharAtLoc(loc, ' ');
+  m_screen->RefreshScreen();  
   Update(true);
 }
 
@@ -93,10 +94,9 @@ void Terminal::Scroll(int lines)
   int srcAddr = m_cols * lines;
   int dstAddr = 0;
   int len     = m_cols * (m_rows - lines);
-  SDL_Color fg, bg;
   FontChar ch;
-  for (int i = i; i < len; ++i) {
-    m_screen->SetCharAtLoc(dstAddr, m_screen->GetCharAtLoc(srcAddr));
+  for (int i = 0; i < len; ++i) {
+    m_screen->SetCharAtLoc(dstAddr++, m_screen->GetCharAtLoc(srcAddr++));
   }
   ClearToEndOfLine(0, m_rows-1);
   m_screen->RefreshScreen();
@@ -109,7 +109,6 @@ void Terminal::ClearToEndOfLine(int col, int line)
     m_screen->SetCharAtLoc(addr++, ' ');
   }  
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -174,6 +173,17 @@ SDLTerminal::SDLTerminal(MainWindow & mainWindow, const Options & options, int c
 {
   m_screen.reset(new SDLVirtualScreen(mainWindow, options, cols, rows));
   m_keyboard.reset(new ParallelKeyboard());
+}
+
+bool SDLTerminal::Open()
+{
+  if (!Terminal::Open())
+    return false;
+
+  m_cursorX = 0;
+  m_cursorY = 0;
+  Clear();
+  return true;
 }
 
 void SDLTerminal::Update(bool hasChanged)

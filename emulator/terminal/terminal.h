@@ -35,7 +35,6 @@ struct Terminal
 
 /////////////////////////////////////////////////////////////////////////////////
 
-
 class ConScreen : public VirtualScreen
 {
   public:
@@ -72,6 +71,7 @@ struct SDLTerminal : public Terminal
 {
   public:
     SDLTerminal(MainWindow & mainWindow, const Options & options, int cols, int rows);
+    virtual bool Open() override;
     virtual void Update(bool hasChanged = false) override;
 };
 

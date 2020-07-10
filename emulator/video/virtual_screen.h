@@ -53,17 +53,13 @@ class VirtualScreen
     virtual void EnableCursor(bool enable = true);
     virtual void SetCursorPos(int x, int y);
     virtual void Update(bool hasChanged = false);
-    
+
     virtual void OnUpdate() = 0;
     virtual bool ResizeScreen() = 0;
 
     virtual bool SetFont(Font * font, int cols = -1, int rows = -1) = 0;
 
     virtual void RenderCharAtPos(int x, int y, bool withCursor, bool update = true) = 0;
-
-//    virtual void RefreshScreen() = 0;
-//    virtual bool ResizeScreen() = 0;
-//    virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg) = 0;
 
     struct CharCell
     {
@@ -201,10 +197,6 @@ class MonoMemoryMappedScreen : public MemoryMappedScreen
     virtual void GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const;
 
     virtual void GetColourAtLoc(int addr, SDL_Colour & fg, SDL_Colour & bg);
-
-  protected:
-    SDL_Color m_bgColour;
-    SDL_Color m_fgColour;
 };
 
 /////////////////////////////////////////////////////////////////////////////////

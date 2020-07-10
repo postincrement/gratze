@@ -379,31 +379,14 @@ void TTFFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & 
     cerr << "font: null renderer" << endl;
   }
   else {
-    if (SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE) != 0) {
-      cerr << "error: SDL_SetTextureBlendMode - " << SDL_GetError() << endl;
-      return;
-    }
-    if (SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b)) {
-      cerr << "error: SDL_SetTextureColorMod - " << SDL_GetError() << endl;
-      return;
-    }
-    if (SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255)) {
-      cerr << "error: SDL_SetRenderDrawColor - " << SDL_GetError() << endl;
-      return;
-    }
-    if (SDL_RenderFillRect(renderer, &dstRect)) {
-      cerr << "error: SDL_RenderFillRect - " << SDL_GetError() << endl;
-      return;
-    }
+    SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);
+    SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b);
+    SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
+    SDL_RenderFillRect(renderer, &dstRect);
 
-    if (SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND)) {
-      cerr << "error: SDL_SetTextureBlendMode - " << SDL_GetError() << endl;
-      return;
-    }
-    if (SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b)) {
-      cerr << "error: SDL_SetTextureColorMod - " << SDL_GetError() << endl;
-      return;
-    }
+    SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b);
+    FC_SetDefaultColor(m_font, fg);
 
     char str[2] = { (char)(ch & 0xff), 0x00 };
     FC_DrawBoxAlign(m_font, renderer, dstRect, FC_ALIGN_CENTER, str); 

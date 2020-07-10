@@ -22,8 +22,8 @@ VirtualScreen::VirtualScreen(const Options & options, int cols, int rows)
   , m_cols(cols)
   , m_rows(rows)
 {
-  m_fg = { 0, 255, 0, 255 };
-  m_bg = { 0, 0, 0, 0 };
+  m_fg = { 0, 255, 0, 255 };  // green
+  m_bg = { 0, 0, 0, 0 };      // black
 
   m_hscale   = 1;
   m_vscale   = 1;
@@ -205,7 +205,7 @@ void SDLVirtualScreen::RenderChar(FontChar ch, bool withCursor, SDL_Renderer * r
     m_font->RenderChar(ch, renderer, dstRect, bg, fg);
   }
   else
-    m_font->RenderChar(ch, renderer, dstRect, fg, bg);
+    m_font->RenderChar(ch, renderer, dstRect, m_fg, m_bg);
 }
 
 void SDLVirtualScreen::Update(bool hasChanged)
@@ -470,27 +470,26 @@ void MemoryMappedScreen::SetRewritePCGHandler(std::function<void ()> handler)
 MonoMemoryMappedScreen::MonoMemoryMappedScreen(MainWindow & mainWindow, const Options & options, const Config::MemoryMappedScreen & info)
   : MemoryMappedScreen(mainWindow, options, info)
 {
-  m_fgColour = { 0xff, 0xff, 0xff, 0xff };
-  m_bgColour = { 0, 0, 0, 0 };
 }
 
 void MonoMemoryMappedScreen::SetFontColour(const SDL_Colour & fg, const SDL_Colour & bg)
 {
-  m_fgColour = fg;
-  m_bgColour = bg;
+  m_fg = fg;
+  m_bg = bg;
 
   RefreshScreen();
 }
 
 void MonoMemoryMappedScreen::GetFontColour(SDL_Colour & fg, SDL_Colour & bg) const
 {
-  fg = m_fgColour;
-  bg = m_bgColour;
+  fg = m_fg;
+  bg = m_bg;
 }
 
 void MonoMemoryMappedScreen::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
 {
-  return GetFontColour(fg, bg);
+  fg = m_fg;
+  bg = m_bg;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
