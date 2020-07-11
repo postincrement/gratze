@@ -160,11 +160,14 @@ class Emulator
     virtual void Instantiate();
 
     int Run(const Options & options);
+    void RunPollers();
+    void RunPollers(double & earliestNextRealTime_s, 
+                    int64_t & earliestNextClockTime);
 
     virtual bool Open(const Options & options);
     virtual const EmulatorInfo & GetInfo() const;
     void UpdateScreen();
-    void CheckKeyboard();
+    void CheckSDLKeyboard();
 
     // info functions
     virtual const Config::Block * GetConfigBlock(Config::Type type) const;

@@ -1,6 +1,22 @@
 #include <iostream>
 
+#include <ncursesw/ncurses.h>
+
+#include <stdlib.h>
+#include <unistd.h>
+
+#ifdef __linux__
+#include <sys/select.h>
+#include <sys/types.h>
+#endif
+
+#if _WIN32
+#include <windows.h>
+#include <io.h>
+#endif
+
 #include "common/misc.h"
+#include "src/emulator.h"
 #include "terminal/terminal.h"
 
 using namespace std;
@@ -110,6 +126,9 @@ void Terminal::ClearToEndOfLine(int col, int line)
   }  
 }
 
+void Terminal::AddPollers(Emulator & emulator)
+{}
+
 ////////////////////////////////////////////////////////////////////////////////////
 
 ConsoleTerminal::ConsoleTerminal(const Options & options, int cols, int rows)
@@ -118,6 +137,12 @@ ConsoleTerminal::ConsoleTerminal(const Options & options, int cols, int rows)
   ConScreen * scrn = new ConScreen(*this, options, cols, rows);
   m_screen.reset(scrn);
   m_keyboard.reset(new ConKeyboard());
+
+//#if _WIN32
+//  // set non-blocking mode on Windows
+//  u_long mode = 0;
+//  ioctlsocket(STDIN_FILENO, FIONBIO, &mode);
+//#endif
 }
 
 void ConsoleTerminal::Clear()
@@ -131,6 +156,62 @@ void ConsoleTerminal::WriteChar(uint8_t ch)
 void ConsoleTerminal::WriteString(const std::string & str)
 {
   cout << str;
+}
+
+void ConsoleTerminal::AddPollers(Emulator & emulator)
+{
+  emulator.AddRealTimePollDef(0.01, std::bind(&ConsoleTerminal::CheckConsoleKeyboard, this));
+}
+
+void ConsoleTerminal::CheckConsoleKeyboard()
+{
+  int fd = STDIN_FILENO;
+
+#if __linux__
+  fd_set fds;
+  FD_ZERO(&fds);
+  FD_SET(fd, &fds);
+  timeval t;
+  t.tv_sec  = 0;
+  t.tv_usec = 0;
+  int result = select(fd+1, &fds, NULL, NULL, &t);
+  if (result < 1)
+    return;
+  int ch = getch();
+#endif
+
+#if _WIN32
+  HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD events;
+  INPUT_RECORD buffer;
+  PeekConsoleInput( handle, &buffer, 1, &events );
+  if (events <= 0)
+    return;
+
+  ReadConsoleInput(handle, &buffer, 1, &events);
+  if (buffer.EventType != KEY_EVENT)
+    return;
+
+  int ch = buffer.Event.KeyEvent.wVirtualKeyCode;    
+#endif
+
+  switch (ch) {
+    case 0x0a:
+      ch = 0x0d;
+    default:
+      break;
+  }
+
+#if __linux__
+  m_keyboard->OnASCIIKeyDown(ch);
+#endif
+
+#if _WIN32
+  if (buffer.Event.KeyEvent.bKeyDown)
+    m_keyboard->OnASCIIKeyDown(ch);
+  else  
+    m_keyboard->OnASCIIKeyUp(ch);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////

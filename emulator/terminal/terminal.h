@@ -4,6 +4,8 @@
 #include "video/virtual_screen.h"
 #include "devices/keypar.h"
 
+class Emulator;
+
 struct Terminal
 {
   public:
@@ -20,6 +22,8 @@ struct Terminal
     virtual void ClearToEndOfLine(int col, int line);
 
     virtual void Update(bool hasChanged = false);
+
+    virtual void AddPollers(Emulator & emulator);
 
     std::shared_ptr<VirtualScreen> m_screen;
     std::shared_ptr<VirtualKeyboard> m_keyboard;
@@ -63,6 +67,8 @@ struct ConsoleTerminal : public Terminal
     virtual void Clear() override;
     virtual void WriteChar(uint8_t ch) override;
     virtual void WriteString(const std::string & str) override;
+    virtual void AddPollers(Emulator & emulator) override;
+    void CheckConsoleKeyboard();
 };
 
 /////////////////////////////////////////////////////////////////////////////////

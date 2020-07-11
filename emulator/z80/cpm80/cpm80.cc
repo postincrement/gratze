@@ -171,20 +171,6 @@ void CPM80_Emulator::OnKeyboard(uint8_t ch)
 bool CPM80_Emulator::ConsoleStatus()
 {
   return m_kbQueue.size() > 0;
-//  m_terminal->Update(true);
-//  usleep(10000);
-#if 0
-  int fd = 0;
-  fd_set fds;
-  FD_ZERO(&fds);
-  FD_SET(fd, &fds);
-  timeval t;
-  t.tv_sec  = 0;
-  t.tv_usec = 0;
-  int result = select(fd+1, &fds, NULL, NULL, &t);
-  return result > 0;
-#endif
-  return false;  
 }
 
 ofstream * g_debugStream = NULL;
@@ -597,16 +583,12 @@ void NewBDOS::ReadLine()
 
   bool done = false;
   while (!done) {
+
     int ch = m_proc.ConsoleIn();
     if (ch < 0) {
-      m_proc.m_terminal->Update(false);
-      m_proc.CheckKeyboard();
+      m_proc.RunPollers();
       continue;
     }
-
-    //m_proc.m_debug << "consoleIn returned ";
-    //debugOutputChar(m_proc.m_debug, ch);
-    //m_proc.m_debug << endl;
 
     switch (ch) {
       case 'C'-0x40:

@@ -63,8 +63,14 @@ void Emulator::Reset(int addr)
 
   using namespace std::placeholders;
   AddRealTimePollDef(1.0,   std::bind(&Emulator::CalcCPUSpeed,  this, _1, _2));
-  AddRealTimePollDef(0.01,  std::bind(&Emulator::CheckKeyboard, this));
-  AddCPUTimePollDef(100000, std::bind(&Emulator::UpdateScreen,  this));
+
+  if (m_options.m_useSDL) {
+    AddRealTimePollDef(0.01,   std::bind(&Emulator::CheckSDLKeyboard, this));
+    AddRealTimePollDef(100000, std::bind(&Emulator::UpdateScreen,  this));
+    AddRealTimePollDef(0.1,    std::bind(&Emulator::UpdateScreen,  this));
+  }
+
+  m_terminal->AddPollers(*this);
 }
 
 bool Emulator::SetRAMSize_k(int len)
@@ -91,11 +97,12 @@ double Emulator::GetActualCPUSpeed_Hz() const
 
 void Emulator::UpdateScreen()
 {
-  if (m_screen)
+  if (m_screen) {
     m_screen->Update(false);
+  }
 }
 
-void Emulator::CheckKeyboard()
+void Emulator::CheckSDLKeyboard()
 {
   SDL_Event event;
   if (SDL_PollEvent(&event)) {
@@ -978,11 +985,6 @@ int Emulator::Run(const Options & options)
     }
   }
 
-  // load a file if specified
-  //if (!m_options.m_arg.empty()) {
-  //  LoadFile(m_options.m_arg);
-  //}
-
   // run emulator
   auto lastPoll  = std::chrono::system_clock::now();
   auto lastSpeed = std::chrono::system_clock::now();
@@ -1001,32 +1003,9 @@ int Emulator::Run(const Options & options)
     SetTrace(true);
 
   for (;;) {
-    now                            = GET_NOW_AS_DOUBLE();
-    double  earliestNextRealTime_s = now + 1.0;
-    int64_t earliestNextClockTime  = m_cycleCounter + 1e+6;
-
-    // run pollers
-    for (auto & r : m_pollers.m_list) {
-      PollDef & def = r.second;
-      if (def.m_pollIsTime) {
-        if (now >= def.m_nextTime) {
-          def.Execute(now - def.m_lastTime, m_cycleCounter - def.m_lastClock);
-          def.m_lastTime  = now;
-          def.m_lastClock = m_cycleCounter;
-          def.m_nextTime  = def.m_nextTime + def.m_timeInterval;
-        }
-        earliestNextRealTime_s = std::min<double>(earliestNextRealTime_s, def.m_nextTime);
-      }
-      else if (!def.m_pollIsTime) {
-        if (m_cycleCounter >= def.m_nextClock) {
-          def.Execute(now - def.m_lastTime, m_cycleCounter - def.m_lastClock);
-          def.m_lastTime  = now;
-          def.m_lastClock = m_cycleCounter;
-          def.m_nextClock = def.m_nextClock + def.m_clockInterval;
-        }
-        earliestNextClockTime = std::min<uint64_t>(earliestNextClockTime, def.m_nextClock);
-      }
-    }
+    double earliestNextRealTime_s; 
+    int64_t earliestNextClockTime;
+    RunPollers(earliestNextRealTime_s, earliestNextClockTime);
 
     // calculate number of cycles until next poll
     uint64_t cyclesToDo = earliestNextClockTime - m_cycleCounter;
@@ -1107,6 +1086,45 @@ int Emulator::Run(const Options & options)
     m_cycleCounter += cyclesDone;
   }
 }
+
+void Emulator::RunPollers()
+{
+  double earliestNextRealTime_s; 
+  int64_t earliestNextClockTime;
+  RunPollers(earliestNextRealTime_s, earliestNextClockTime);
+}
+
+void Emulator::RunPollers(double & earliestNextRealTime_s, 
+                          int64_t & earliestNextClockTime)
+{
+  double now = GET_NOW_AS_DOUBLE();
+  earliestNextRealTime_s = now + 1.0;
+  earliestNextClockTime  = m_cycleCounter + 1e+6;
+
+  // run pollers
+  for (auto & r : m_pollers.m_list) {
+    PollDef & def = r.second;
+    if (def.m_pollIsTime) {
+      if (now >= def.m_nextTime) {
+        def.Execute(now - def.m_lastTime, m_cycleCounter - def.m_lastClock);
+        def.m_lastTime  = now;
+        def.m_lastClock = m_cycleCounter;
+        def.m_nextTime  = def.m_nextTime + def.m_timeInterval;
+      }
+      earliestNextRealTime_s = std::min<double>(earliestNextRealTime_s, def.m_nextTime);
+    }
+    else if (!def.m_pollIsTime) {
+      if (m_cycleCounter >= def.m_nextClock) {
+        def.Execute(now - def.m_lastTime, m_cycleCounter - def.m_lastClock);
+        def.m_lastTime  = now;
+        def.m_lastClock = m_cycleCounter;
+        def.m_nextClock = def.m_nextClock + def.m_clockInterval;
+      }
+      earliestNextClockTime = std::min<uint64_t>(earliestNextClockTime, def.m_nextClock);
+    }
+  }
+}
+
 
 int Emulator::AddRealTimePollDef(double seconds, PollHandler handler)
 {

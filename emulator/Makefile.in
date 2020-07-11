@@ -26,7 +26,6 @@ SDL_TARGETS=SDL2.dll
 SDL_DIR=$(SDL_BASE)/$(MING_ARCH)-w64-mingw32
 SDL_TARGET_SRC=$(addprefix $(SDL_DIR)/bin/,$(SDL_TARGETS))
 
-
 SDL_TTF_BASE=SDL2_ttf-$(SDL_TTF_VERSION)
 SDL_TTF_TGZ=SDL2_ttf-devel-$(SDL_TTF_VERSION)-mingw.tar.gz
 SDL_TTF_URL=https://www.libsdl.org/projects/SDL_ttf/release/$(SDL_TTF_TGZ)
@@ -37,6 +36,12 @@ SDL_TTF_TARGET_SRC=$(addprefix $(SDL_TTF_DIR)/bin/,$(SDL_TTF_TARGETS))
 
 SDL_INC=-I$(SDL_DIR)/include/SDL2 -I$(SDL_TTF_DIR)/include/SDL2
 SDL_LDFLAGS=-L$(SDL_DIR)/lib -L$(SDL_TTF_DIR)/lib
+
+NCURSES_ARCH=@NCURSES_ARCH@
+NCURSES_DIR=$(shell pwd)/ncurses_$(NCURSES_ARCH)
+
+NCURSES_INC=-I$(NCURSES_DIR)/include
+NCURSES_LDFLAGS=-L$(NCURSES_DIR)/lib
 
 endif # MINGW_ENABLED
 
@@ -56,11 +61,11 @@ CEREAL_INCLUDE_DIR=$(CEREAL_DIR)/include
 CC=@CC@
 CXX=@CXX@
 
-CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS) -I$(CEREAL_INCLUDE_DIR) -I..
-CFLAGS   := @CFLAGS@   $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS)
+CXXFLAGS := @CXXFLAGS@ $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS) $(NCURSES_INC) -I$(CEREAL_INCLUDE_DIR) -I..
+CFLAGS   := @CFLAGS@   $(INC_DIRS) $(SDL_INC) $(MFZ_FLAGS) $(NCURSES_INC)
 
-LDFLAGS=$(SDL_LDFLAGS) @LDFLAGS@ -g -L ../disk
-LDLIBS=@LDLIBS@ -lgrzdisk
+LDFLAGS=$(SDL_LDFLAGS) $(NCURSES_LDFLAGS) @LDFLAGS@ -g -L ../disk
+LDLIBS=@LDLIBS@ -lgrzdisk -lncursesw
 
 COMPILE.c  = $(CC) $(DEPFLAGS) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 COMPILE.cc = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
@@ -161,7 +166,7 @@ test:
 
 $(APP):	$(OBJS)
 
-gratze:	nfd sdl ttf cereal $(OBJS)
+gratze:	nfd sdl ttf cereal ncurses $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
 $(OBJDIR):
@@ -186,6 +191,8 @@ include $(wildcard $(DEPFILES))
 #
 
 ifeq ($(MINGW_ENABLED),1)
+
+LDLIBS += -lwsock32 -lws2_32
 
 #
 # MingW SDL
@@ -269,6 +276,23 @@ $(MHASH_SRC_DIR)/configure: $(MHASH_SRC_DIR)
 $(MHASH_SRC_DIR):
 	git clone https://git.code.sf.net/p/mhash/code mhash-code
 
+#
+# Mingw ncurses
+#
+
+NCURSES_DLL=libncursesw6.dll
+
+ncurses: $(NCURSES_DIR) $(NCURSES_DLL)
+
+$(NCURSES_DLL): $(NCURSES_DIR)
+	cp $(NCURSES_DIR)/bin/$(NCURSES_DLL) .
+
+$(NCURSES_DIR):
+	mkdir $(NCURSES_DIR) && \
+	cd $(NCURSES_DIR) && \
+	wget -O ncurses_mingw.zip https://invisible-island.net/datafiles/release/mingw64.zip && \
+	unzip ncurses_mingw.zip
+
 
 ################################################################################################	
 
@@ -277,6 +301,8 @@ else
 sdl:		# configure uses packages on other platforms
 
 ttf:		# configure uses packages on other platforms
+
+mcurses:# configure uses packages on other platforms
 
 endif # ($(MINGW_ENABLED),)
 

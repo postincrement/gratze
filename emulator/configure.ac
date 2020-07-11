@@ -72,6 +72,8 @@ AC_SUBST(NFD_BUILD_TYPE)
 AC_SUBST(NFD_LIB_DIR)
 AC_SUBST(NFD_LIB_NAME)
 
+AC_SUBST(NCURSES_ARCH)
+
 case "$target" in
         *-darwin*)
                 NFD_BUILD_DIR=gmake_macosx
@@ -127,6 +129,8 @@ case "$target" in
 
                 MING_ARCH=i686
                 MING_SDL_BUILD_TYPE=i686-w64-mingw32
+
+                NCURSES_ARCH=mingw32
                 ;;
         x86_64-*)
                 NFD_BUILD_TYPE=release_x64
@@ -134,6 +138,8 @@ case "$target" in
 
                 MING_ARCH=x86_64
                 MING_SDL_BUILD_TYPE=x86_64-w64-mingw32
+
+                NCURSES_ARCH=mingw64
                 ;;
         # none of the above        
         *)

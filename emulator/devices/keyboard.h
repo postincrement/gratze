@@ -15,11 +15,11 @@ class VirtualKeyboard : public VirtualDevice
     virtual void OnKeyDown(const SDL_Keysym & keysym) = 0;
     virtual void OnKeyUp(const SDL_Keysym & keysym) = 0;
 
-    // only implemented for KeyboardScanner - saves a cast
-    virtual uint8_t Read(uint16_t rowMask);
+    virtual void OnASCIIKeyDown(uint8_t asc);
+    virtual void OnASCIIKeyUp(uint8_t asc);
 
     // only implemented for KeyboardScanner - saves a cast
-    //virtual uint8_t Read(uint16_t rowMask);
+    virtual uint8_t Read(uint16_t rowMask);
 
     void SetHandler(bool down, std::function<void (uint8_t)> handler);
 

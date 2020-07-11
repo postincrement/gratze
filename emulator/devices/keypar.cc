@@ -43,6 +43,18 @@ void VirtualKeyboard::SetHandler(bool down, std::function<void (uint8_t)> handle
   m_keyHandlers[down ? 0 : 1] = handler;
 }
 
+void VirtualKeyboard::OnASCIIKeyDown(uint8_t ascii)
+{
+  if (m_keyHandlers[0])
+    m_keyHandlers[0](ascii);
+}
+
+void VirtualKeyboard::OnASCIIKeyUp(uint8_t ascii)
+{
+  if (m_keyHandlers[1])
+    m_keyHandlers[1](ascii);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////
 
 ParallelKeyboard::ParallelKeyboard()
@@ -122,13 +134,13 @@ int ParallelKeyboard::ConvertKeySymToASCII(const SDL_Keysym & keysym)
 void ParallelKeyboard::OnKeyDown(const SDL_Keysym & keysym)
 {
   int ascii = ConvertKeySymToASCII(keysym);
-  if ((ascii >= 0) && m_keyHandlers[0])
-    m_keyHandlers[0](ascii);
+  if (ascii >= 0)
+    OnASCIIKeyDown((uint8_t)ascii);
 }
 
 void ParallelKeyboard::OnKeyUp(const SDL_Keysym & keysym)
 {
   int ascii = ConvertKeySymToASCII(keysym);
-  if ((ascii >= 0) && m_keyHandlers[1])
-    m_keyHandlers[1](ascii);
+  if (ascii >= 0)
+    OnASCIIKeyUp((uint8_t)ascii);
 }
