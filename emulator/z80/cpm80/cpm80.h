@@ -2,56 +2,28 @@
 #define CPM80_H_
 
 #include "common/config.h"
+#include "common/misc.h"
+#include "common/binfile.h"
 #include "z80/z80emulator.h"
+#include "z80/cpm80/newbdos.h"
 #include "src/options.h"
 
-#include <dirent.h>
-#include <iostream>
+////////////////////////////
+//
+// must match defines in cmp80.cpp, newbdos.asm, and newbios.asm
+//
 
-class CPM80_Emulator;
+#define	MEM	    64
+#define	CCPLEN	0x800
+#define	BDOSLEN	0x100
+#define	BIOSLEN	0x100
 
-struct NewBDOS
-{
-  NewBDOS(CPM80_Emulator & proc);
-  ~NewBDOS();
+#define	MEM_TOP	(MEM * 1024)
 
-  typedef void (NewBDOS::* Function)();
+#define CCPB	(MEM_TOP - BIOSLEN - BDOSLEN - CCPLEN)
+#define	BDOS	(MEM_TOP - BIOSLEN - BDOSLEN)
+#define	BIOS	(MEM_TOP - BIOSLEN)
 
-  void OnBDOSCommand();
-
-  void SystemReset();    //  0 - System reset
-  void ConsoleInput();   //  1 - Console input
-  void ConsoleOutput();  //  2 - Console output
-  void ConsoleDirect();  //  6 - Direct console access
-  void PrintString();    //  9 - Print string
-  void ReadLine();       // 10 - Read console buffer
-  void ConsoleStatus();  // 11 - Get console status
-  void ReturnVersion();  // 12 - Return Version
-  void ResetDisk();      // 13 - Read console buffer
-  void SelDisk();        // 14 - Select disk
-  void OpenFile();       // 15 - Open File
-  void SearchFirst();    // 17 - Search for first
-  void SearchNext();     // 18 - Search for next
-  void DeleteFile();     // 19 - Delete file
-  void ReadSeq();        // 20 - Read Sequential
-  void GetCurrDisk();    // 25 - Return current disk
-  void SetDMAAddress();  // 26 - Set DMA address
-  void GetSetUser();     // 32 - Set/get user code
-  void ReadRandom();     // 33 - Read random
-
-  int FindFile(uint8_t disk, const char * fcb);
-  void Boot();
-  void PrintCPMString(const char * str);
-
-  CPM80_Emulator & m_proc;
-  uint16_t m_dmaAddress;
-  DIR * m_fileFind;
-  uint16_t m_findFCB;
-  uint8_t m_userCode;
-  uint8_t m_currDisk;
-  std::string m_currPath;
-  uint8_t * m_memory;
-};
 
 
 class CPM80_Emulator : public Z80Emulator

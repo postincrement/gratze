@@ -150,6 +150,7 @@ SRCS_C = z80/trs80/model1/rom_level1.c \
 	z80/microbee/rom_disk56.c \
 	z80/microbee/rom_disk128.c \
 	z80/sorcerer/rom_sorcerer.c \
+	z80/cpm80/newbdos.cc \
 	z80/cpm80/newbdos_rom.c \
 	2650/eti685/rom_binbug_6_1.c \
 	2650/78up5/rom_pipbug.c 
