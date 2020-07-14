@@ -70,7 +70,8 @@ void Emulator::Reset(int addr)
     AddRealTimePollDef(0.1,    std::bind(&Emulator::UpdateScreen,  this));
   }
 
-  m_terminal->AddPollers(*this);
+  if (m_terminal)
+    m_terminal->AddPollers(*this);
 }
 
 bool Emulator::SetRAMSize_k(int len)
