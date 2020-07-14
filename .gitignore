@@ -61,3 +61,6 @@ emulator/disks/LD351-2.DSK
 disk/arcade_1_ds80.dsk
 disk/56k_system_master_84_01_ds40.dsk
 emulator/bdos_debug.txt
+emulator/ncurses_mingw32
+emulator/gratze.exe
+disk/grzdisk.exe

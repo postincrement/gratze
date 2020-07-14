@@ -165,51 +165,56 @@ void ConsoleTerminal::CheckConsoleKeyboard()
 {
   int fd = STDIN_FILENO;
 
+  for (;;) {
 #if __linux__
-  fd_set fds;
-  FD_ZERO(&fds);
-  FD_SET(fd, &fds);
-  timeval t;
-  t.tv_sec  = 0;
-  t.tv_usec = 0;
-  int result = select(fd+1, &fds, NULL, NULL, &t);
-  if (result < 1)
-    return;
-  int ch = getch();
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(fd, &fds);
+    timeval t;
+    t.tv_sec  = 0;
+    t.tv_usec = 0;
+    int result = select(fd+1, &fds, NULL, NULL, &t);
+    if (result < 1)
+      return;
+    int ch = getch();
 #endif
 
 #if _WIN32
-  HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
-  DWORD events;
-  INPUT_RECORD buffer;
-  PeekConsoleInput( handle, &buffer, 1, &events );
-  if (events <= 0)
-    return;
+    HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD events;
+    INPUT_RECORD buffer;
+    PeekConsoleInput( handle, &buffer, 1, &events );
+    if (events <= 0)
+      return;
 
-  ReadConsoleInput(handle, &buffer, 1, &events);
-  if (buffer.EventType != KEY_EVENT)
-    return;
+    ReadConsoleInput(handle, &buffer, 1, &events);
+    if (buffer.EventType != KEY_EVENT)
+      return;
 
-  int ch = buffer.Event.KeyEvent.wVirtualKeyCode;    
+    int ch = buffer.Event.KeyEvent.uChar.AsciiChar;
+    if (ch == 0)
+      continue;
 #endif
 
-  switch (ch) {
-    case 0x0a:
-      ch = 0x0d;
-    default:
-      break;
-  }
+    switch (ch) {
+      case 0x0a:
+        ch = 0x0d;
+      default:
+        break;
+    }
 
 #if __linux__
-  m_keyboard->OnASCIIKeyDown(ch);
-#endif
-
-#if _WIN32
-  if (buffer.Event.KeyEvent.bKeyDown)
     m_keyboard->OnASCIIKeyDown(ch);
-  else  
-    m_keyboard->OnASCIIKeyUp(ch);
 #endif
+
+#if _WIN32
+    if (buffer.Event.KeyEvent.bKeyDown)
+      m_keyboard->OnASCIIKeyDown(ch);
+    else  
+      m_keyboard->OnASCIIKeyUp(ch);
+#endif
+    return;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +228,9 @@ void ConScreen::OnUpdate()
 {}
 
 bool ConScreen::ResizeScreen()
-{}
+{
+  return true;
+}
 
 bool ConScreen::SetFont(Font * font, int cols, int rows) 
 { return true; }
