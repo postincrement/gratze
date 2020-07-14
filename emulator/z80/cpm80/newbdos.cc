@@ -1,4 +1,4 @@
-
+#include "common/misc.h"
 
 #include "z80/cpm80/cpm80.h"
 #include "z80/cpm80/newbdos.h"
@@ -327,7 +327,7 @@ void NewBDOS::OnBDOSCommand()
 void NewBDOS::SystemReset()
 {
   m_debug << "BDOS 0: system reset" << endl;
-  if (m_proc.m_loadFile.empty()) {
+  if (m_proc.m_options.m_arg.empty()) {
     stringstream strm;
     strm << "CCP=" << hex << CCPB << ",BDOS=" << BDOS << ",BIOS=" << BIOS << "\r\n$";
     PrintCPMString(strm.str().c_str());
@@ -344,6 +344,8 @@ void NewBDOS::SystemReset()
 
 void NewBDOS::Boot()
 {
+  memset(m_memory, 0, 0x100);
+
   // set warm boot vector at 0x0000 to BIOS + 3
   m_memory[0x0000] = 0xc3;
   m_memory[0x0001] = (BIOS + 3) & 0xff;
@@ -363,25 +365,69 @@ void NewBDOS::Boot()
   // copy the BIOS/BDOS etc
   memcpy(m_memory + CCPB, z80_cpm80_newbdos_bin, sizeof(z80_cpm80_newbdos_bin));
 
-  if (!m_proc.m_loadFileDone) {
-    if (m_proc.m_loadFile.empty()) {
-      if (m_proc.m_options.m_verbose)
-        cerr << "no load file" << endl;
+  // if no load file, nothing to do
+  if (m_proc.m_options.m_arg.empty()) {
+    return;
+  }
+
+  // if we already loaded the file, exit
+  if (m_proc.m_loadFileDone)
+    exit(0);
+
+  std::string loadFile = m_proc.m_options.m_arg[0];
+
+  BINFileIdentifier binFile;
+  BINFile::AddFormat<CPMCOMFile>("com");
+
+  // note this sets the PC if it loads
+  if (!m_proc.LoadFile(loadFile)) {
+    cerr << "error: load of '" << loadFile << "' failed" << endl;
+    return;
+  }
+
+  int fcbOffs = 0x5c;
+  for (int pass = 1; pass < 3; ++pass) {
+    if (pass >= m_proc.m_options.m_arg.size())
+      break;  
+    Filename fn(m_proc.m_options.m_arg[pass]);
+
+    BINFileIdentifier binFile;
+    BINFile::AddFormat<CPMCOMFile>("com");
+
+    std::string filename = fn.GetFilename();
+    if (m_driveInfoMap.count(0) == 0)
+      UpdateDriveInfo(0);
+    DriveInfo & driveA = m_driveInfoMap[0];
+    auto r = driveA.m_nativeToCPM.find(filename);
+    std::string cpm;
+    if (r != driveA.m_nativeToCPM.end()) {
+      cpm = r->second;
     }
     else {
-      if (m_proc.m_options.m_verbose)
-        cerr << "Trying to load '" << m_proc.m_loadFile << "'" << endl;
-      BINFileIdentifier binFile;
-      BINFile::AddFormat<CPMCOMFile>("com");
-      if (!m_proc.LoadFile(m_proc.m_loadFile)) {
-        cerr << "error: load of '" << m_proc.m_loadFile << "' failed" << endl;
-      }
+      cpm = ShortenFilename(filename);
+      cerr << "warning: filename '" << loadFile << "' does not map to native file - using '" << cpm << "'" << endl;
     }
-    m_proc.m_loadFileDone = true;
+    m_memory[fcbOffs] = 1;
+    memcpy(m_memory+fcbOffs+1, cpm.c_str(), 8+3);
+    fcbOffs += 16;
   }
-  else if (!m_proc.m_loadFile.empty()) {
-    exit(0);
+
+  std::string cmdLine;
+  std::string prefix;
+  for (int i = 1; i < m_proc.m_options.m_arg.size(); ++i) {
+    std::string str = cmdLine + prefix + m_proc.m_options.m_arg[i];
+    if (cmdLine.length() > 64)
+      break;
+    cmdLine = str;  
+    prefix = ' ';
   }
+
+  if (cmdLine.length() > 0) {
+    m_memory[0x80] = cmdLine.length();
+    memcpy(m_memory+0x81, cmdLine.c_str(), cmdLine.length());
+  }
+
+  m_proc.m_loadFileDone = true;
 }
 
 void NewBDOS::ConsoleInput()
@@ -669,6 +715,7 @@ void NewBDOS::ReadSeq()
   else {
     if (c < 128)
       memset(p + c, 0x1a, 128-c);
+    c = 128;
     m_proc.m_cpu.AF.B.h = 0x00;
   }
 
@@ -697,6 +744,7 @@ void NewBDOS::ReadRandom()
       if (c < 128)
         memset(p + c, 0x1a, 128-c);
       m_proc.m_cpu.AF.B.h = 0x00;
+      c = 128;
     }
   }
 

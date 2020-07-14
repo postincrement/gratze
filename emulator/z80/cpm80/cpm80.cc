@@ -91,12 +91,6 @@ bool CPM80_Emulator::Open(const Options & options)
 
   m_loadFileDone = false;
 
-  if (options.m_arg.size() > 0) {
-    m_loadFile = options.m_arg[0];
-    if (m_options.m_verbose)
-      cerr << "info: load '" << m_loadFile << "' on startup" << endl;
-  }
-
   return true;
 }
 

@@ -80,4 +80,20 @@ std::string Print(const Columns & columns, char * sepStrings[Cols])
 
 } // namespace ColumnFormatter
 
+//////////////////////////////////////////////////////////////////
+
+class Filename : public std::string
+{
+  public:
+    Filename();
+    Filename(const std::string & str);
+
+    Filename & operator =(const std::string & str);
+
+    std::string GetDir() const;
+    std::string GetFilename() const;
+    std::string GetBasename() const;
+    std::string GetExtension() const;
+};
+
 #endif // MISC_H_

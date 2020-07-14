@@ -10,7 +10,7 @@ struct Options
 {
   CommandLineArgs m_args;
 
-  // argument after options
+  // arguments after options
   std::vector<std::string> m_arg;
 
   // override default type

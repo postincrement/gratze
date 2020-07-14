@@ -122,3 +122,51 @@ std::string Print(const Columns & columns, char * sepStrings[Cols])
 
 } // namespace ColumnFormatter
 
+//////////////////////////////////////////////////////////////////////
+
+Filename::Filename()
+{ }
+
+Filename::Filename(const std::string & str)
+  : std::string(str)
+{ }
+
+Filename & Filename::operator =(const std::string & str)
+{ this->std::string::operator=(str); return *this; }
+
+std::string Filename::GetDir() const
+{ 
+  size_t pos = find_last_of('/');
+  if (pos == std::string::npos)
+    return "";
+  return substr(0, pos);
+}
+
+std::string Filename::GetFilename() const
+{ 
+  std::string fn;
+  size_t pos = find_last_of('/');
+  if (pos == std::string::npos)
+    fn = *this;
+  else
+    fn = substr(pos+1);
+  return fn;
+}
+
+std::string Filename::GetBasename() const
+{ 
+  std::string base = GetFilename();      
+  size_t pos = base.find_last_of('.');      
+  if (pos != std::string::npos)
+    base = base.substr(0, pos);
+  return base;
+}
+
+std::string Filename::GetExtension() const
+{ 
+  std::string ext = GetFilename();      
+  size_t pos = ext.find_last_of('.');      
+  if (pos == std::string::npos)
+    return "";
+  return ext.substr(pos);
+}
