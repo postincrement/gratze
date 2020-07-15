@@ -180,14 +180,16 @@ bool VirtualCassetteFile::ReadOpen(const std::string & name)
     return false;
   }
 
-  // read file
-  off_t len = lseek(fd, 0, SEEK_END);
-  if (len < 0) {
-    cerr << "error: cannot get length of '" << name << "'" << endl;
+  // get length
+  struct stat stbuf;
+  if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+    cerr << "error: '" << name << "' inaccessible or not a regular file" << endl;
     return false;
-  }
+  }  
+  off_t len = stbuf.st_size;  
+
+  // read file
   m_rawFile.resize(len);
-  lseek(fd, 0, SEEK_SET);
   ::read(fd, &m_rawFile[0], len);
   ::close(fd);
 

@@ -113,12 +113,12 @@ bool Disassembler::Open(const CommandLineArgs & args, const std::string & fn)
   m_origin = 0;
   args.GetValue("--org", m_origin);
 
-  // read file
-  off_t len = lseek(fd, 0, SEEK_END);
-  if (len < 0) {
-    cerr << "error: cannot get length of '" << fn << "'" << endl;
+  struct stat stbuf;
+  if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+    cerr << "error: '" << fn << "' inaccessible or not a regular file" << endl;
     return false;
-  }
+  }  
+  off_t len = stbuf.st_size;  
 
   // allocate and read data
   m_image.resize(len);

@@ -28,6 +28,7 @@ struct NewBDOS
   void ResetDisk();      // 13 - Read console buffer
   void SelDisk();        // 14 - Select disk
   void OpenFile();       // 15 - Open File
+  void CloseFile();       // 15 - Open File
   void SearchFirst();    // 17 - Search for first
   void SearchNext();     // 18 - Search for next
   void DeleteFile();     // 19 - Delete file
@@ -37,6 +38,7 @@ struct NewBDOS
   void GetSetUser();     // 32 - Set/get user code
   void ReadRandom();     // 33 - Read random
 
+  void ReadFile(uint8_t * fcb, int code, off_t offs);
   uint8_t FindFile(int disk, const std::string & fn);
   void Boot();
   void PrintCPMString(const char * str);
@@ -47,9 +49,20 @@ struct NewBDOS
   using StringMap = std::map<std::string, std::string>;
 
   struct DriveInfo {
-    std::string m_dir;;
+    std::string m_dir;
     StringMap m_cpmToNative;
     StringMap m_nativeToCPM;
+  };
+
+  struct FileInfo {
+    FileInfo();  
+    ~FileInfo();  
+    std::string m_fn;
+    int m_fd = -1;
+    off_t m_len = 0;
+    off_t m_pos = 0;
+    bool m_isText = false;
+    std::vector<uint8_t> m_data;
   };
 
   CPM80_Emulator & m_proc;
@@ -63,6 +76,7 @@ struct NewBDOS
   std::ofstream m_debug;
 
   std::map<int, DriveInfo> m_driveInfoMap;
+  std::map<int, FileInfo> m_fileMap;
 };
 
 #endif // CPM80_NEWBDOS_H_

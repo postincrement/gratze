@@ -34,7 +34,7 @@ static NewBDOS::Function NewBDOSCommands[] = {
   &NewBDOS::ResetDisk,      // 13 - Reset disk system
   &NewBDOS::SelDisk,        // 14 - Select disk
   &NewBDOS::OpenFile,       // 15 - Open file
-  NULL,                     // 16 - Close file
+  &NewBDOS::CloseFile,      // 16 - Close file
   &NewBDOS::SearchFirst,    // 17 - Search for first
   &NewBDOS::SearchNext,     // 18 - Search for next
   &NewBDOS::DeleteFile,     // 19 - Delete file
@@ -70,14 +70,19 @@ class CPMCOMFile : public BINFile
     {
       int fd = ::open(m_fn.c_str(), O_RDONLY | O_BINARY);
       if (fd < 0) {
-        cerr << "could not open file '" << m_fn << "'" << endl;
+        //m_debug << "could not open file '" << m_fn << "'" << endl;
         return false;
       }
 
-      // get size of file
-      off_t len = lseek(fd, 0, SEEK_END);
-      lseek(fd, 0, SEEK_SET);
+      // get length
+      struct stat stbuf;
+      if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+        //m_debug << "error: '" << m_fn << "' inaccessible or not a regular file" << endl;
+        return false;
+      }  
+      off_t len = stbuf.st_size;  
 
+      // read file
       std::vector<uint8_t> buffer;
       buffer.resize(len);
 
@@ -85,12 +90,12 @@ class CPMCOMFile : public BINFile
 
       close(fd);
       if (readLen != len) {
-        cerr << "could not read " << len << " - got " << readLen << endl;
+        //m_debug << "could not read " << len << " - got " << readLen << endl;
         return false;
       }
 
       if (!saver(0x100, &buffer[0], len)) {
-        cerr << "could not save data of length " << len << endl;
+        //m_debug << "could not save data of length " << len << endl;
         return false;
       }
 
@@ -281,6 +286,20 @@ bool NewBDOS::FCBToFilename(std::string & fn, const char * fcb)
 
 //////////////////////////////////////////////////////////////
 
+NewBDOS::FileInfo::FileInfo()
+  : m_fd(-1)
+{}
+
+NewBDOS::FileInfo::~FileInfo()
+{ 
+  if (m_fd >= 0) {
+    ::close(m_fd);
+    //m_debug << "closed " << m_fd << endl;
+  }
+}
+
+//////////////////////////////////////////////////////////////
+
 NewBDOS::NewBDOS(CPM80_Emulator & proc)
   : m_proc(proc)
   , m_fileFind(NULL)
@@ -303,12 +322,12 @@ void NewBDOS::OnBDOSCommand()
 {
   int code = m_proc.m_cpu.BC.B.l;
   if (code == 0xff) {
-    //cerr << "BDOS " << code << "0xff" << endl;
+    //m_debug << "BDOS " << code << "0xff" << endl;
     Boot();
     return;
   }
   if (code >= sizeof(NewBDOSCommands)/sizeof(NewBDOSCommands[0])) {
-    //cerr << "BDOS " << code << ": not handled" << endl;
+    //m_debug << "BDOS " << code << ": not handled" << endl;
     m_proc.m_cpu.AF.B.h = 0;
     return;
   }
@@ -316,10 +335,10 @@ void NewBDOS::OnBDOSCommand()
   Function func = NewBDOSCommands[code];
   if (func == NULL) {
     m_proc.m_cpu.AF.B.h = 0;
-    //cerr << "BDOS " << dec << code << ": NULL handler" << endl;
+    //m_debug << "BDOS " << dec << code << ": NULL handler" << endl;
   }
   else {
-    //cerr << "BDOS " << dec << code << " called" << endl;
+    //m_debug << "BDOS " << dec << code << " called" << endl;
     (this->*func)();
   }
 }
@@ -344,6 +363,8 @@ void NewBDOS::SystemReset()
 
 void NewBDOS::Boot()
 {
+  m_fileMap.clear();
+
   memset(m_memory, 0, 0x100);
 
   // set warm boot vector at 0x0000 to BIOS + 3
@@ -381,7 +402,7 @@ void NewBDOS::Boot()
 
   // note this sets the PC if it loads
   if (!m_proc.LoadFile(loadFile)) {
-    cerr << "error: load of '" << loadFile << "' failed" << endl;
+    m_debug << "error: load of '" << loadFile << "' failed" << endl;
     return;
   }
 
@@ -405,7 +426,7 @@ void NewBDOS::Boot()
     }
     else {
       cpm = ShortenFilename(filename);
-      cerr << "warning: filename '" << loadFile << "' does not map to native file - using '" << cpm << "'" << endl;
+      m_debug << "warning: filename '" << loadFile << "' does not map to native file - using '" << cpm << "'" << endl;
     }
     m_memory[fcbOffs] = 1;
     memcpy(m_memory+fcbOffs+1, cpm.c_str(), 8+3);
@@ -586,29 +607,108 @@ void NewBDOS::DeleteFile()
   m_proc.m_cpu.AF.B.h = 0xff;
 }
 
+bool IsATextFile(const Filename & fn)
+{
+  return (fn.GetExtension() == ".bas");
+}
+
 void NewBDOS::OpenFile()
 {
+  m_proc.m_cpu.AF.B.h = 0xff;
+
   char * fcb = (char *)m_memory + m_proc.m_cpu.DE.W;
   std::string fn;
   if (!FCBToFilename(fn, fcb)) {
     m_debug << "BDOS 15: open file '" << fn << "' not found" << endl;
-    m_proc.m_cpu.AF.B.h = 0xff;
     return;
   }
 
   // attempt open with raw filename
-  int * fd = (int *)(fcb + eFCB_User);
-  *fd = open(fn.c_str(), O_RDONLY | O_BINARY);
-  if (*fd < 0) {
+  FileInfo fileInfo;
+  fileInfo.m_fn = fn;
+  fileInfo.m_fd = open(fn.c_str(), O_RDONLY | O_BINARY);
+  if (fileInfo.m_fd < 0) {
     m_debug << "BDOS 15: open file '" << fn << "' failed" << endl;
-    m_proc.m_cpu.AF.B.h = 0xff;
     return;
   }
 
+  struct stat stbuf;
+  if ((fstat(fileInfo.m_fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+    m_debug << "error: '" << fn << "' inaccessible or not a regular file" << endl;
+    return;
+  }
+  fileInfo.m_len = stbuf.st_size;
+
+  // if file is a text file, convert newlines
+  if (IsATextFile(fn)) {
+
+    std::vector<uint8_t> rawData(fileInfo.m_len);
+    if (read(fileInfo.m_fd, &rawData[0], fileInfo.m_len) != fileInfo.m_len) {
+      m_debug << "error: '" << fn << "' could not read all data" << endl;
+      return;
+    }
+
+    const uint8_t * src = &rawData[0];
+    std::vector<uint8_t> & dst = fileInfo.m_data;
+    dst.reserve(fileInfo.m_len);
+
+    for (off_t i = 0; i < fileInfo.m_len; ++i) {
+      switch (*src) {
+        case 0x0d:
+          dst.push_back(0x0d);
+          dst.push_back(0x0a);
+          ++i;
+          if (i < fileInfo.m_len) {
+            if (*++src != 0x0a)
+              fileInfo.m_isText = true;  
+          }
+          break;  
+
+        case 0x0a:
+          dst.push_back(0x0d);
+          dst.push_back(0x0a);
+          fileInfo.m_isText = true;  
+          break;
+
+        default:
+          dst.push_back(*src);
+          break;
+      }
+      ++src;
+    }
+    if (!fileInfo.m_isText) {
+      fileInfo.m_data.resize(0);
+    }
+    else {
+      fileInfo.m_len = fileInfo.m_data.size(); 
+    }
+  }
+
   // save file handle for later use
-  m_debug << "BDOS 15: open file '" << fn << "' open using fd " << *fd << endl;
+  *(int *)(fcb + eFCB_User) = fileInfo.m_fd;
+  m_debug << "BDOS 15: open file '" << fn << "' open using fd " << fileInfo.m_fd << endl;
+
+  // put file into map
+  m_fileMap[fileInfo.m_fd] = std::move(fileInfo);
+  fileInfo.m_fd = -1;
+
   m_proc.m_cpu.AF.B.h = 0x0;
   return;
+}
+
+void NewBDOS::CloseFile()
+{
+  m_proc.m_cpu.AF.B.h = 0xff;
+  char * fcb = (char *)m_memory + m_proc.m_cpu.DE.W;
+  int fd = *(int *)(fcb + eFCB_User);
+  m_debug << "BDOS 15: close file  " << fd << endl;
+  auto r = m_fileMap.find(fd);
+  if (r == m_fileMap.end()) {
+    m_debug << "error: file not found " << endl;
+    return;
+  }
+
+  m_fileMap.erase(r);
 }
 
 void NewBDOS::SearchFirst()
@@ -703,50 +803,65 @@ void NewBDOS::GetSetUser()
 
 void NewBDOS::ReadSeq()
 {
-  char * fcb = (char *)m_memory + m_proc.m_cpu.DE.W;
-  int * fd = (int *)(fcb + eFCB_User);
-
-  uint8_t * p = m_memory + m_dmaAddress;
-  int c = read(*fd, p, 128);
-  if (c <= 0) {
-    m_debug << "read error " << strerror(errno) << endl;
-    m_proc.m_cpu.AF.B.h = 0x01;
-  }
-  else {
-    if (c < 128)
-      memset(p + c, 0x1a, 128-c);
-    c = 128;
-    m_proc.m_cpu.AF.B.h = 0x00;
-  }
-
-  m_debug << "BDOS 20: read from fd " << *fd << " returned " << c << ", s = " << (int)m_proc.m_cpu.AF.B.h << endl;
+  uint8_t * fcb = (uint8_t *)m_memory + m_proc.m_cpu.DE.W;
+  ReadFile(fcb, 20, -1);
 }
 
 void NewBDOS::ReadRandom()
 {
-  char * fcb = (char *)m_memory + m_proc.m_cpu.DE.W;
-  int * fd = (int *)(fcb + eFCB_User);
-
+  uint8_t * fcb = (uint8_t *)m_memory + m_proc.m_cpu.DE.W;
   unsigned int offs = (fcb[eFCB_R0] + (fcb[eFCB_R1] << 8) + (fcb[eFCB_R2] << 16)) << 7;
-  unsigned fileEnd = lseek(*fd, 0, SEEK_END);
+  ReadFile(fcb, 33, offs);
+}
+
+void NewBDOS::ReadFile(uint8_t * fcb, int code, off_t offs)
+{
+  m_proc.m_cpu.AF.B.h = 0xff;
+
+  int fd = *(int *)(fcb + eFCB_User);
+
+  auto r = m_fileMap.find(fd);
+  if (r == m_fileMap.end()) {
+    m_debug << "error: unknown file" << endl;
+    return;
+  }  
+
+  FileInfo & fileInfo = r->second;
+
+  if (offs < 0)
+    offs = fileInfo.m_pos;
 
   int c = -1;
-  if (offs > fileEnd) {
+  if (offs > fileInfo.m_len) {
     m_proc.m_cpu.AF.B.h = 0x01;
   }
   else {
-    unsigned newPos = lseek(*fd, offs, SEEK_SET);
     uint8_t * p = m_memory + m_dmaAddress;
-    c = read(*fd, p, 128);
-    if (c <= 0)
-      m_proc.m_cpu.AF.B.h = 0x01;
-    else {
-      if (c < 128)
-        memset(p + c, 0x1a, 128-c);
-      m_proc.m_cpu.AF.B.h = 0x00;
+    int len = std::min<int>(128, fileInfo.m_len - offs);
+    if (fileInfo.m_isText) {
+      memcpy(p, &fileInfo.m_data[offs], len);
       c = 128;
     }
+    else {
+      off_t o = lseek(fd, offs, SEEK_SET);
+      if (o != offs) {
+        m_debug << "error: " << o << " seeking " << offs << " : " << strerror(errno) << endl;
+        return;
+      }
+      c = read(fd, p, len);
+      if (c < len) {
+        m_debug << "error: " << c << " reading " << len << " : " << strerror(errno) << endl;
+        return;
+      }
+    } 
+    memset(p+len, 0x1a, 128-len);
+    fileInfo.m_pos = offs + 128;
+    m_proc.m_cpu.AF.B.h = 0x00;
   }
 
-  m_debug << "BDOS 33: random read from fd " << *fd << " at " << (int)offs << " returned " << c << ", s = " << (int)m_proc.m_cpu.AF.B.h << endl;
+  m_debug << "BDOS " << code << ": read from fd " << fd << " at " << (int)offs << " returned " << c << ", s = " << (int)m_proc.m_cpu.AF.B.h << endl;
+
+  if (m_proc.m_cpu.AF.B.h == 0x00)
+    m_debug << DumpMemory(m_memory + m_dmaAddress, 128);
+
 }

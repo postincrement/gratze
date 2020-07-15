@@ -59,9 +59,14 @@ VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly
     return nullptr;
   }
 
-  // get size of file
-  off_t len = lseek(fd, 0, SEEK_END);
-  lseek(fd, 0, SEEK_SET);
+  // get length
+  struct stat stbuf;
+  if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+    cerr << "error: '" << fn << "' inaccessible or not a regular file" << endl;
+    return nullptr;
+  }  
+  off_t len = stbuf.st_size;
+  
 
   // get the filename extension
   std::string extension;

@@ -26,6 +26,12 @@ Use the following commands:
 MingW
 -----
   sudo apt-get install g++-mingw-w64-i686
+
+Linux
+-----
+  sudo apt-get install libsdl2-dev
+  sudo apt-get install libsdl2-ttf-dev
+  sudo apt-get install libfreetype6-dev
  
 Various I/O Ports
 -----------------

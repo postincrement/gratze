@@ -101,18 +101,20 @@ bool GRZFile::Load(std::function<bool (unsigned addr, const uint8_t * ptr, unsig
 
   std::string fn = dir + grz.m_filename;
 
+  // open file
   int fd = ::open(fn.c_str(), O_RDONLY);
   if (fd < 0) {
     cerr << "error: cannot open '" << m_fn << "' - " << strerror(errno) << endl;
-    return false;
+    return false;    
   }
 
-  // read file
-  off_t len = lseek(fd, 0, SEEK_END);
-  if (len < 0) {
-    cerr << "error: cannot get length of '" << m_fn << "'" << endl;
+  // get length
+  struct stat stbuf;
+  if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+    cerr << "error: '" << m_fn << "' inaccessible or not a regular file" << endl;
     return false;
   }
+  off_t len = stbuf.st_size;
 
   // check offset
   unsigned offset = grz.m_hasOffs ? grz.m_offs : 0;
