@@ -1,3 +1,6 @@
+#include <limits.h>
+#include <stdlib.h>
+
 #include "common/misc.h"
 
 #include "z80/cpm80/cpm80.h"
@@ -116,6 +119,13 @@ static void DebugOutputChar(ostream & strm, uint8_t ch)
     strm << "'" << (char)ch << "'";
 }
 
+static void Replace(std::string & str, char from, char to)
+{
+  size_t pos = 0;
+  while ((pos = str.find(from)) != std::string::npos)
+    str[pos] = to;
+}
+
 static std::string ShortenFilename(const std::string & in)
 {
   std::string str(in);
@@ -125,16 +135,12 @@ static std::string ShortenFilename(const std::string & in)
     r = toupper(r);
 
   // commas and square brackets changed to "_"
-  size_t pos = 0;
-  while ((pos = str.find('[')) != std::string::npos)
-    str[pos] = '_';
-  while ((pos = str.find(']')) != std::string::npos)
-    str[pos] = '_';
-  while ((pos = str.find(',')) != std::string::npos)
-    str[pos] = ',';
+  Replace(str, '[', '_');
+  Replace(str, ']', '_');
+  Replace(str, ',', '_');
 
   // get length of extension and base
-  pos = str.rfind('.');
+  size_t pos = str.rfind('.');
   std::string extension;
   if (pos == std::string::npos) {
     pos = str.length();
@@ -152,8 +158,10 @@ static std::string ShortenFilename(const std::string & in)
   str = str.substr(0, pos);
   while (str.length() < 8)
     str += ' ';
+  Replace(str, '.', '_');
   while (extension.length() < 3)
     extension += ' ';  
+  Replace(extension, '.', '_');
   str += extension;
 
   return str;
@@ -165,7 +173,25 @@ void NewBDOS::UpdateDriveInfo(int drive)
   // A    = ./
   // else = ./drive
 
-  std::string path = "./";
+  std::string root = "./";
+  char * canonicalPath;
+
+#if __linux__  
+  canonicalPath = realpath(root.c_str(), NULL);
+#endif
+#if __WIN32
+  canonicalPath  = _fullpath(NULL, root.c_str(), 0);
+#endif
+
+  if (canonicalPath == NULL) {
+    m_debug << "cannot get real path for '" << root << "'" << endl;
+    return;
+  }
+
+  m_debug << "'" << root << "' resolved to '" << canonicalPath << "'" << endl;
+  std::string path(canonicalPath);
+  free(canonicalPath);
+
   if (drive != 0) {
     path += (char)('a' + drive);
     path += "/";
@@ -200,11 +226,15 @@ void NewBDOS::UpdateDriveInfo(int drive)
     // and ignore any non-regular files
     struct stat attr;
     std::string s = path + fn;
-    if (stat(s.c_str(), &attr) != 0)
+    if (stat(s.c_str(), &attr) != 0) {
+      m_debug << "error: cannot stat " << s << endl;
       continue;
+    }
 
-    if ((attr.st_mode & S_IFMT) != S_IFREG)
+    if ((attr.st_mode & S_IFMT) != S_IFREG) {
+      //m_debug << "not a regular file: " << s << endl;
       continue;
+    }
 
     // convert native filename to 8.3
     std::string cpmFilename = ShortenFilename(dirEnt->d_name);
@@ -226,6 +256,7 @@ void NewBDOS::UpdateDriveInfo(int drive)
       else {
         break;
       }
+      ++index;
     }
 
     if (index >= 1000) {
@@ -238,6 +269,8 @@ void NewBDOS::UpdateDriveInfo(int drive)
 
     m_debug << "native '" << dirEnt->d_name << "' mapped to CP/M '" << cpmFilename << "'" << endl;
   }
+
+  m_debug << "finished mapping" << endl;
 }
 
 std::string NewBDOS::FCBToRegex(const char * fcb)
@@ -327,7 +360,7 @@ void NewBDOS::OnBDOSCommand()
     return;
   }
   if (code >= sizeof(NewBDOSCommands)/sizeof(NewBDOSCommands[0])) {
-    //m_debug << "BDOS " << code << ": not handled" << endl;
+    m_debug << "BDOS " << code << ": not handled" << endl;
     m_proc.m_cpu.AF.B.h = 0;
     return;
   }
@@ -335,10 +368,10 @@ void NewBDOS::OnBDOSCommand()
   Function func = NewBDOSCommands[code];
   if (func == NULL) {
     m_proc.m_cpu.AF.B.h = 0;
-    //m_debug << "BDOS " << dec << code << ": NULL handler" << endl;
+    m_debug << "BDOS " << dec << code << ": NULL handler" << endl;
   }
   else {
-    //m_debug << "BDOS " << dec << code << " called" << endl;
+    m_debug << "BDOS " << dec << code << " called" << endl;
     (this->*func)();
   }
 }
@@ -363,6 +396,8 @@ void NewBDOS::SystemReset()
 
 void NewBDOS::Boot()
 {
+  m_debug << "booting" << endl;
+
   m_fileMap.clear();
 
   memset(m_memory, 0, 0x100);
@@ -388,14 +423,19 @@ void NewBDOS::Boot()
 
   // if no load file, nothing to do
   if (m_proc.m_options.m_arg.empty()) {
+    m_debug << "no file to load" << endl;
     return;
   }
 
   // if we already loaded the file, exit
-  if (m_proc.m_loadFileDone)
+  if (m_proc.m_loadFileDone) {
+    m_debug << "exiting" << endl;
     exit(0);
+  }
 
   std::string loadFile = m_proc.m_options.m_arg[0];
+
+  m_debug << "load file = " << loadFile << endl;
 
   BINFileIdentifier binFile;
   BINFile::AddFormat<CPMCOMFile>("com");
@@ -406,10 +446,17 @@ void NewBDOS::Boot()
     return;
   }
 
+  m_debug << "loaded '" << loadFile << "'" << endl;
+
+  std::vector<std::string> args;
+
   int fcbOffs = 0x5c;
   for (int pass = 1; pass < 3; ++pass) {
     if (pass >= m_proc.m_options.m_arg.size())
-      break;  
+      break;
+
+    m_debug << "info: arg " << pass << " " << m_proc.m_options.m_arg[pass] << endl;
+
     Filename fn(m_proc.m_options.m_arg[pass]);
 
     BINFileIdentifier binFile;
@@ -426,18 +473,30 @@ void NewBDOS::Boot()
     }
     else {
       cpm = ShortenFilename(filename);
-      m_debug << "warning: filename '" << loadFile << "' does not map to native file - using '" << cpm << "'" << endl;
+      m_debug << "warning: filename '" << filename << "' does not map to native file - using '" << cpm << "'" << endl;
     }
     m_memory[fcbOffs] = 1;
     memcpy(m_memory+fcbOffs+1, cpm.c_str(), 8+3);
     fcbOffs += 16;
+
+    std::string argName(cpm.substr(0, 8));
+    while ((argName.length() > 1) && isspace(argName[argName.length()-1]))
+      argName = argName.substr(0, argName.length()-1);
+    argName += ".";
+    argName += cpm.substr(8);
+
+    args.push_back(argName);
   }
 
   std::string cmdLine;
   std::string prefix;
   for (int i = 1; i < m_proc.m_options.m_arg.size(); ++i) {
-    std::string str = cmdLine + prefix + m_proc.m_options.m_arg[i];
-    if (cmdLine.length() > 64)
+    std::string str = cmdLine + prefix;
+    if ((i-1) < args.size())
+      str += args[i-1];
+    else  
+      str += m_proc.m_options.m_arg[i];
+    if (str.length() > 64)
       break;
     cmdLine = str;  
     prefix = ' ';
@@ -447,6 +506,8 @@ void NewBDOS::Boot()
     m_memory[0x80] = cmdLine.length();
     memcpy(m_memory+0x81, cmdLine.c_str(), cmdLine.length());
   }
+
+  m_debug << "info: cmdline = " << cmdLine << endl;
 
   m_proc.m_loadFileDone = true;
 }
