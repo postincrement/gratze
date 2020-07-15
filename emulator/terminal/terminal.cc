@@ -136,11 +136,9 @@ ConsoleTerminal::ConsoleTerminal(const Options & options, int cols, int rows)
   m_screen.reset(scrn);
   m_keyboard.reset(new ConKeyboard());
 
-//#if _WIN32
-//  // set non-blocking mode on Windows
-//  u_long mode = 0;
-//  ioctlsocket(STDIN_FILENO, FIONBIO, &mode);
-//#endif
+#if _WIN32
+  setmode(STDOUT_FILENO, O_BINARY);
+#endif
 }
 
 void ConsoleTerminal::Clear()
@@ -148,12 +146,13 @@ void ConsoleTerminal::Clear()
 
 void ConsoleTerminal::WriteChar(uint8_t ch)
 {
-  cout << ch;
+  write(STDOUT_FILENO, &ch, 1);
 }
 
 void ConsoleTerminal::WriteString(const std::string & str)
 {
-  cout << str;
+  for (auto r : str)
+    WriteChar(r);
 }
 
 void ConsoleTerminal::AddPollers(Emulator & emulator)
