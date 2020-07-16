@@ -133,8 +133,16 @@ bool CPM80_Emulator::ConsoleStatus()
 
 ofstream * g_debugStream = NULL;
 
+extern void DebugOutputChar(ostream & strm, uint8_t ch);
+
 void CPM80_Emulator::ConsoleOut(char data)
 {
+#if 0  
+  m_newBDOS->m_debug << "consoleOutput ";
+  DebugOutputChar(m_newBDOS->m_debug, data);
+  m_newBDOS->m_debug << endl;
+#endif
+
   m_terminal->WriteChar(data);
 
 #if 0  

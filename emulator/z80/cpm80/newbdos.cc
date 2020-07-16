@@ -111,7 +111,7 @@ class CPMCOMFile : public BINFile
 
 //////////////////////////////////////////////////////////////
 
-static void DebugOutputChar(ostream & strm, uint8_t ch)
+void DebugOutputChar(ostream & strm, uint8_t ch)
 {
   if (ch < 0x20)
     strm << "'^" << (char)(ch + 0x40) << "'";
@@ -565,7 +565,13 @@ void NewBDOS::PrintCPMString(const char * str)
 void NewBDOS::PrintString()
 {
   m_debug << "BDOS 9: print string" << endl;
-  PrintCPMString((char *)m_memory + m_proc.m_cpu.DE.W);
+  char * ptr = (char *)m_memory + m_proc.m_cpu.DE.W;
+  m_debug << "output string: ";
+  for (int i = 0; ptr[i] != '$'; ++i)
+    DebugOutputChar(m_debug, ptr[i]);
+  m_debug << endl;
+
+  PrintCPMString(ptr);
 }
 
 void NewBDOS::ConsoleStatus()
