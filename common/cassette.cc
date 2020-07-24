@@ -48,7 +48,7 @@ SYSTEM tape data block
 
 */
 
-static const char * g_formatNames[(int)VirtualCassetteFile::Format::eCount] = {
+static const char * g_encodingNames[(int)VirtualCassetteFile::Encoding::eCount] = {
   "Unknown",
   "CAS",
   "CPT",
@@ -59,16 +59,24 @@ static const char * g_formatNames[(int)VirtualCassetteFile::Format::eCount] = {
 VirtualCassetteFile::VirtualCassetteFile()
 {
   m_fd = -1;
+  m_encoding = Encoding::eUnknown;
+  m_format = Format::eUnknown;
 }
 
 VirtualCassetteFile::~VirtualCassetteFile()
 {
 }
 
-VirtualCassetteFile::Format VirtualCassetteFile::FormatFromExtension(const std::string & name)
+VirtualCassetteFile::Format VirtualCassetteFile::GetFormat() const
 {
-  Format format = Format::eUnknown;
-  // identify the file format from the name
+  return m_format;
+}
+
+VirtualCassetteFile::Encoding VirtualCassetteFile::EncodingFromExtension(const std::string & name)
+{
+  Encoding encoding = Encoding::eUnknown;
+
+  // identify the file encoding from the name
   std::string extension;
   size_t pos = name.rfind('.');
   if (pos != std::string::npos) {
@@ -77,14 +85,14 @@ VirtualCassetteFile::Format VirtualCassetteFile::FormatFromExtension(const std::
     for (auto & r : extension) r = tolower(r);
 
     if (extension == "wav")
-      format     = Format::eWAV;
+      encoding     = Encoding::eWAV;
     else if (extension == "cpt")
-      format     = Format::eCPT;
+      encoding     = Encoding::eCPT;
     else if (extension == "cas")
-      format     = Format::eCAS;
+      encoding     = Encoding::eCAS;
   }
 
-  return format;
+  return encoding;
 }
 
 size_t VirtualCassetteFile::FindHeader() const
@@ -93,7 +101,6 @@ size_t VirtualCassetteFile::FindHeader() const
 
   // ignore implausibly short files
   if (len < (256 + 10)) {
-    cerr << "too short" << endl;
     return std::string::npos;
   }
 
@@ -105,25 +112,26 @@ size_t VirtualCassetteFile::FindHeader() const
 
   // it's all headers!
   if (i >= (len-1)) {
-    cerr << "all header " << (int)len << endl;
     return std::string::npos;
   }
 
   // it's all headers!
   if (m_rawFile[i] != 0xa5) {
-    cerr << "no sync" << endl;
     return std::string::npos;
   }
 
   return i+1;
 }
 
-std::string VirtualCassetteFile::GetFilename() const
+VirtualCassetteFile::Format VirtualCassetteFile::IdentifyFormat() const
 {
-  std::stringstream name;
+  Format format = Format::eUnknown;
 
   size_t pos = FindHeader();
-  if (pos != std::string::npos) {
+  if (pos == std::string::npos) {
+    cerr << "error: could not find end of header" << endl;
+  }
+  else {
     size_t remaining = m_rawFile.size() - pos;
     if (remaining > 8) {
       if (
@@ -132,9 +140,33 @@ std::string VirtualCassetteFile::GetFilename() const
           (m_rawFile[pos+2] == 0xd3) &&
           isalpha(m_rawFile[pos+3])
          ) {
-        name << (char)m_rawFile[pos+3] << "_bas.cas";
+         format = Format::eTRS80BAS;
       }
       else if (m_rawFile[pos+0] == 0x55) {
+        int i = 0;
+        while (i < 6) {
+          if (!isalnum(m_rawFile[pos+1+i]))
+            break;
+          i++;
+        }
+        if (i > 0) {
+          format = Format::eTRS80System;
+        }
+      }
+    }
+  }
+
+  return format;
+}
+
+std::string VirtualCassetteFile::GetFilename() const
+{
+  std::stringstream name;
+
+  switch (m_format) {
+    case Format::eTRS80System:
+      {
+        size_t pos = FindHeader();
         int i = 0;
         while (i < 6) {
           if (!isalnum(m_rawFile[pos+1+i]))
@@ -145,7 +177,13 @@ std::string VirtualCassetteFile::GetFilename() const
           name << std::string((char *)&m_rawFile[pos+1], i) << "_sys.cas";
         }
       }
-    }
+      break;
+    case Format::eTRS80BAS:
+      {
+        size_t pos = FindHeader();
+        name << (char)m_rawFile[pos+3] << "_bas.cas";
+      }
+      break;
   }
 
   string str = name.str();
@@ -153,7 +191,6 @@ std::string VirtualCassetteFile::GetFilename() const
 
   return str;
 }
-
 
 bool VirtualCassetteFile::IsReading() const
 {
@@ -169,10 +206,11 @@ bool VirtualCassetteFile::WriteOpen()
 
 bool VirtualCassetteFile::ReadOpen(const std::string & name)
 {
-  m_name    = name;
-  m_reading = true;
-  m_format  = Format::eUnknown;
-  m_readPtr = 0;
+  m_name       = name;
+  m_reading    = true;
+  m_encoding   = Encoding::eUnknown;
+  m_format     = Format::eUnknown;
+  m_readPtr    = 0;
 
   int fd = ::open(name.c_str(), O_RDONLY);
   if (fd < 0) {
@@ -198,49 +236,60 @@ bool VirtualCassetteFile::ReadOpen(const std::string & name)
     return false;
   }
 
-  m_format = FormatFromExtension(name);
-  if (m_format != Format::eUnknown) {
-    cerr << "info: file '" << name << "' set to format '" << g_formatNames[(int)m_format] << "' using file extension" << endl;
+  m_encoding = EncodingFromExtension(name);
+  if (m_encoding != Encoding::eUnknown) {
+    cerr << "info: file '" << name << "' set to format '" << g_encodingNames[(int)m_encoding] << "' using file extension" << endl;
   }
 
   // check if CAS file is masquerading as some other format
-  if (m_format == Format::eCAS) {
+  if (m_encoding == Encoding::eCAS) {
 
-    Format oldFormat = m_format;
+    Encoding oldEncoding = m_encoding;
 
     // see if WAV file (RIFF header)
     if (memcmp(&m_rawFile[0], "RIFF", 4) == 0)
-      m_format = Format::eWAV;
+      m_encoding = Encoding::eWAV;
 
     else if (FindHeader() != std::string::npos)
-      m_format = Format::eCAS;
+      m_encoding = Encoding::eCAS;
 
-    if (m_format != oldFormat)
-      cerr << "info: file '" << name << "' is really '" << g_formatNames[(int)m_format] << "'" << endl;
+    if (m_encoding != oldEncoding)
+      cerr << "info: file '" << name << "' is '" << g_encodingNames[(int)m_encoding] << "' masquerading as CAS" << endl;
   }
 
   std::stringstream formatError;
-  switch (m_format) {
-    case Format::eCAS:
+  switch (m_encoding) {
+    case Encoding::eCAS:
       ReadCAS(formatError);
       break;
-    case Format::eCPT:
+    case Encoding::eCPT:
       ReadCPT(formatError);
       break;
-    case Format::eWAV:
+    case Encoding::eWAV:
       ReadWAV(formatError);
       break;
-    case Format::eUnknown:
-      cerr << "error: cannot identify format of file '" << name << "'" << endl;
+    case Encoding::eUnknown:
+      cerr << "error: cannot identify encoding of file '" << name << "'" << endl;
       return false;
   }
 
   if (formatError.str().length() > 0) {
-    cerr << "error: file '" << name << "' is not valid for " << g_formatNames[(int)m_format] << " - " << formatError.str() << endl;
+    cerr << "error: file '" << name << "' is not valid for " << g_encodingNames[(int)m_encoding] << " - " << formatError.str() << endl;
+    return false;
+  }
+
+  m_format = IdentifyFormat();
+  if (m_format == Format::eUnknown) {
+    cerr << "error: cannot identify format of file '" << name << "'" << endl;
     return false;
   }
 
   return true;
+}
+
+const std::vector<uint8_t> & VirtualCassetteFile::GetRawData() const
+{
+  return m_rawFile;
 }
 
 void VirtualCassetteFile::WriteByte(uint8_t val)
@@ -284,6 +333,7 @@ bool VirtualCassetteFile::WriteClose(const std::string & filename)
 
 void VirtualCassetteFile::ReadCAS(std::stringstream & formatError)
 {
+
 }
 
 void VirtualCassetteFile::ReadWAV(std::stringstream & formatError)

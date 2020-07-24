@@ -10,12 +10,18 @@ class VirtualCassetteFile
 {
   public:
     // update g_formatNames in fdc.cc if this is changed
-    enum class Format {
+    enum class Encoding {
       eUnknown,
       eCAS,     // bytes being encoded
       eCPT,     // pulse train with 1ms resolution
       eWAV,     // wav file recorded from tape
       eCount
+    };
+
+    enum class Format {
+      eUnknown,
+      eTRS80System,
+      eTRS80BAS,
     };
 
     VirtualCassetteFile();
@@ -34,14 +40,20 @@ class VirtualCassetteFile
     void WriteByte(uint8_t val);
     uint8_t ReadByte();
 
+    const std::vector<uint8_t> & GetRawData() const;
+
     std::string GetFilename() const;
-    static Format FormatFromExtension(const std::string & name);
+    Format GetFormat() const;
+    size_t FindHeader() const;
 
   protected:
-    size_t FindHeader() const;
+    Format IdentifyFormat() const;
+    static Encoding EncodingFromExtension(const std::string & name);
+
     std::string m_name;
     bool m_reading;
     int m_fd;
+    Encoding m_encoding;
     Format m_format;
     std::vector<uint8_t> m_rawFile;
     size_t m_readPtr;

@@ -10,12 +10,17 @@ ColumnFormatter::StringVector ColumnFormatter::Columns::m_dummy;
 
 std::string DumpMemory(const uint8_t * memory, int memoryLen)
 {
+  return DumpMemory(0, memory, memoryLen);
+}
+
+std::string DumpMemory(uint16_t addr, const uint8_t * memory, int memoryLen)
+{
   stringstream strm;
 
   int cols = 16;
   int p = 0;
   while (p < memoryLen) {
-    strm << HEXFORMAT0x4(p) << "  ";
+    strm << HEXFORMAT0x4(addr + p) << "  ";
     int len = std::min(memoryLen-p, cols);
     int i;
     for (i = 0; i < len; ++i)

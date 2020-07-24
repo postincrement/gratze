@@ -5,7 +5,7 @@
 #include <sstream>
 #include <iomanip>
 
-#include "src/cereal.h"
+#include "cereal.h"
 
 struct GRZ
 {

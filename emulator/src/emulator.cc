@@ -1177,7 +1177,7 @@ bool Emulator::LoadFile(const std::string & path)
 
   bool loaded = file->Load(std::bind(&Emulator::SaveBlock, this, _1, _2, _3));
  
-  unsigned execAddr;
+  uint16_t execAddr;
   if (loaded && file->GetExecAddr(execAddr)) {
     if (m_options.m_verbose)
       cerr << "info: setting PC to " << HEXFORMAT0x4(execAddr) << endl;
