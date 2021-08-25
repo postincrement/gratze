@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "common/config.h"
 #include "common/misc.h"
 #include "virtual_drive.h"
 

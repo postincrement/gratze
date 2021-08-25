@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "common/config.h"
+#include "config.h"
 #include "cassette.h"
 
 using namespace std;
@@ -184,6 +184,9 @@ std::string VirtualCassetteFile::GetFilename() const
         name << (char)m_rawFile[pos+3] << "_bas.cas";
       }
       break;
+
+    case Format::eUnknown:
+      assert(false);
   }
 
   string str = name.str();
@@ -269,6 +272,7 @@ bool VirtualCassetteFile::ReadOpen(const std::string & name)
       ReadWAV(formatError);
       break;
     case Encoding::eUnknown:
+    case Encoding::eCount:
       cerr << "error: cannot identify encoding of file '" << name << "'" << endl;
       return false;
   }

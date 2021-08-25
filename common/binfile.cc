@@ -7,7 +7,6 @@ using namespace std;
 
 #include "binfile.h"
 #include "grz.h"
-#include "config.h"
 #include "misc.h"
 
 #include "cassette.h"

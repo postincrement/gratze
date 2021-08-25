@@ -10,7 +10,8 @@
 #include <map>
 #include <sstream>
 
-#include "common/factory.h"
+#include "config.h"
+#include "factory.h"
 
 class BINFile;
 class VirtualCassetteFile;

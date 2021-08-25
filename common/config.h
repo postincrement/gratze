@@ -1,4 +1,3 @@
-/* common/config.h.  Generated from config.h.in by configure.  */
 #ifndef CONFIG_H_
 #define CONFIG_H_
 

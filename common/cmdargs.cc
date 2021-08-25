@@ -458,6 +458,8 @@ bool CommandLineArgs::OptionValue::GetValue<int>(int & value) const
     case OptionValue::Type::eInteger:
       value = m_integer;
       return true;
+    default:
+      break;  
   }
   return false;
 }
@@ -473,6 +475,8 @@ bool CommandLineArgs::OptionValue::GetValue(unsigned & value) const
       value = (int)m_unsigned;
       cerr << "warning: value " << m_unsigned << " is not int" << endl;
       return true;
+    default:
+      break;  
   }
   return false;
 }

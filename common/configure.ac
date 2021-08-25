@@ -14,7 +14,7 @@ AC_INIT([grzcommon], [0.1])
 AC_PREREQ([2.68])
 
 # Safety check - list a source file that wouldn't be in other directories:
-AC_CONFIG_SRCDIR([dmk.cc])
+AC_CONFIG_SRCDIR([binfile.cc])
 
 # Put autotools auxiliary files in subdirectories to reduce clutter:
 AC_CONFIG_AUX_DIR([build-aux])
@@ -28,7 +28,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 #
 # add Makefile
 #
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile config.h])
 #AC_SUBST(CFLAGS)
 AC_SUBST(CXXFLAGS)
 #AC_SUBST(LDLIBS)
