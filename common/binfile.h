@@ -35,6 +35,9 @@ class BINFile
       : m_fn(fn)
     {}
 
+    virtual ~BINFile()
+    {}
+
     struct Data 
     {
       struct Block {

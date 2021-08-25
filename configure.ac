@@ -12,5 +12,5 @@ AC_PREREQ([2.68])
 AC_PROG_CXX
 
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_SUBDIRS(common disk emulator)
+AC_CONFIG_SUBDIRS(common disk grzbin emulator)
 AC_OUTPUT

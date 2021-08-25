@@ -64,3 +64,15 @@ emulator/bdos_debug.txt
 emulator/ncurses_mingw32
 emulator/gratze.exe
 disk/grzdisk.exe
+aclocal.m4
+depcomp
+install-sh
+Makefile.in
+build-aux/config.guess
+build-aux/config.sub
+build-aux/install-sh
+common/aclocal.m4
+grzbin
+common/libgrzcommon.a
+common/libgrzcommon_a-binfile.o
+common/autom4te.cache/requests

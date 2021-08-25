@@ -7,11 +7,7 @@
 #
 # Initialize autoconf.
 #
-AC_INIT([grzbin], 
-        [0.1], 
-        [craig@postincrement.com],
-        [gratze-tar.gz], 
-        [http://www.postincrement.com])
+AC_INIT([grzbin], [0.1])
 
 
 # Force autoconf to be at least this version number:
@@ -22,12 +18,10 @@ AC_CONFIG_SRCDIR([grzbin.cc])
 
 # Put autotools auxiliary files in subdirectories to reduce clutter:
 AC_CONFIG_AUX_DIR([build-aux])
-AC_CONFIG_MACRO_DIR([m4])
-
-# get system type
-AC_CANONICAL_SYSTEM
+#AC_CONFIG_MACRO_DIR([m4])
 
 # Enable "automake" to simplify creating makefiles:
+AM_INIT_AUTOMAKE([-Wall -Werror foreign  subdir-objects])
 #AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror])
 
 ##########################################################
@@ -35,10 +29,10 @@ AC_CANONICAL_SYSTEM
 # add Makefile
 #
 AC_CONFIG_FILES([Makefile])
-AC_SUBST(CFLAGS)
+#AC_SUBST(CFLAGS)
 AC_SUBST(CXXFLAGS)
-AC_SUBST(LDLIBS)
-AC_SUBST(LDFLAGS)
+#AC_SUBST(LDLIBS)
+#AC_SUBST(LDFLAGS)
 
 ##########################################################
 #
@@ -46,40 +40,8 @@ AC_SUBST(LDFLAGS)
 #
 AC_PROG_CXX
 AC_PROG_CC
-
-##########################################################
-#
-# settings based on architecture
-#
-
-AC_SUBST(MING_ARCH)
-AC_SUBST(MINGW_ENABLED)
-
-case "$target" in
-        *-darwin*)
-		;;
-		
-        *-mingw32)
-                MINGW_ENABLED=1
-                MING_LDLIBS="-static-libgcc -static-libstdc++ -lmingw32" 
-                ;;
-
-        *-linux-*)
-                ;;
-esac
-
-case "$target" in
-        # generic linux systems
-        i686-*)
-                MING_ARCH=i686
-                ;;
-        x86_64-*)
-                MING_ARCH=x86_64
-                ;;
-        # none of the above        
-        *)
-                ;;
-esac
+AC_PROG_RANLIB
+AM_PROG_AR
 
 ##########################################################
 #
@@ -105,8 +67,8 @@ esac
 #
 #  construct final flags
 #
-LDFLAGS="$MING_LDFLAGS"
-LDLIBS="$MING_LDLIBS"
+LDFLAGS=
+LDLIBS=
 
 ##########################################################
 #
