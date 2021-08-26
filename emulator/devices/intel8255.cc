@@ -34,6 +34,7 @@ uint8_t Intel8255::Read(uint8_t reg)
     case 3:
       return ReadControl();
   }
+  return 0; // not needed, but avoids a compiler warning
 }
 
 void Intel8255::Write(uint8_t reg, uint8_t data)

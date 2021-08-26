@@ -4,7 +4,7 @@
 #include "common/config.h"
 #include "z80/z80emulator.h"
 #include "devices/fdc.h"
-#include "devices/cassette.h"
+#include "common/cassette.h"
 #include "devices/keyscan.h"
 #include "video/virtual_screen.h"
 #include "video/chargen_mcm6674.h"

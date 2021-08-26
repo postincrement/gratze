@@ -11,7 +11,16 @@ AC_PREREQ([2.68])
 
 AC_PROG_CXX
 
-AC_CONFIG_COMMANDS([run-cereal], [[if test \! -d cereal ; then git clone -b v1.3.0 https://github.com/USCiLab/cereal.git]] ; fi)
+CXXFLAGS=std=gnu++17
+
+AC_CONFIG_COMMANDS([co-cereal], 
+                   [[if test \! -d cereal ; then \
+                       git clone -b v1.3.0 https://github.com/USCiLab/cereal.git ; \
+                     fi]])
+AC_CONFIG_COMMANDS([co-nativefiledialog], 
+                   [[if test \! -d nativefiledialog ; then \
+                       git clone https://github.com/postincrement/nativefiledialog.git ; \
+                     fi]])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_SUBDIRS(common disk grzbin emulator)

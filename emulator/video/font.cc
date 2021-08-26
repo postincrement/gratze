@@ -236,7 +236,7 @@ void PixelFont::Modify(FontChar ch, int rowStart, int rowCount, uint8_t * rowDat
 
   for (int y = 0; y < rowCount; ++y) {
     uint8_t data = *rowData++;
-    data << shiftBits;
+    //data << shiftBits;
     unsigned mask = 1 << (m_config.m_width - 1);
     uint32_t * dstPixels = (uint32_t *)pixels;
     for (int x = 0; x < m_config.m_width; ++x) {

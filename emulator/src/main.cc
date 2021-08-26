@@ -9,7 +9,7 @@
 #include "common/misc.h"
 #include "common/cmdargs.h"
 #include "common/factory.h"
-#include "src/cereal.h"
+#include "common/cereal.h"
 
 #include "src/mainwindow.h"
 
@@ -23,8 +23,6 @@
 #include "z80/cpm80/cpm80.h"
 #include "2650/eti685/eti685.h"
 #include "2650/78up5/78up5.h"
-
-
 
 using namespace std;
 

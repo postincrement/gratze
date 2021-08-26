@@ -76,3 +76,11 @@ grzbin
 common/libgrzcommon.a
 common/libgrzcommon_a-binfile.o
 common/autom4te.cache/requests
+*.o
+.dirstamp
+common/autom4te.cache/output.0
+common/autom4te.cache/output.1
+common/autom4te.cache/output.2
+common/autom4te.cache/traces.0
+common/autom4te.cache/traces.1
+common/autom4te.cache/traces.2

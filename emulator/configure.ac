@@ -26,13 +26,38 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign  subdir-objects])
 
 ##########################################################
 #
+# SDL
+#
+SDL_VERSION=2.0.0
+AM_PATH_SDL($SDL_VERSION,
+        :,
+        AC_MSG_ERROR([*** SDL version $SDL_VERSION not found!])
+)
+CXXFLAGS="$CXXFLAGS $SDL_CFLAGS"
+CFLAGS="$CFLAGS $SDL_CFLAGS"
+LIBS="$LIBS $SDL_LIBS"
+AC_SEARCH_LIBS([TTF_Quit], [SDL2_ttf], [],[
+  AC_MSG_ERROR([SDL2_ttf not installed])
+],[-lSDL2])
+
+
+##########################################################
+#
 # add Makefile
 #
-AC_CONFIG_FILES([Makefile])
-#AC_SUBST(CFLAGS)
+CFLAGS="$CFLAGS"
+AC_SUBST(CFLAGS)
+
+CXXFLAGS="$CXXFLAGS"
 AC_SUBST(CXXFLAGS)
+
+LIBS="$LIBS"
+AC_SUBST(LIBS)
+
 #AC_SUBST(LDLIBS)
 #AC_SUBST(LDFLAGS)
+
+AC_CONFIG_FILES([Makefile])
 
 ##########################################################
 #

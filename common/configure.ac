@@ -28,11 +28,12 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 #
 # add Makefile
 #
-AC_CONFIG_FILES([Makefile])
 #AC_SUBST(CFLAGS)
-AC_SUBST(CXXFLAGS)
+#AC_SUBST(CXXFLAGS)
 #AC_SUBST(LDLIBS)
 #AC_SUBST(LDFLAGS)
+
+AC_CONFIG_FILES([Makefile])
 
 ##########################################################
 #

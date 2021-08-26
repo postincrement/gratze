@@ -598,7 +598,7 @@ int WD_FDC::ForceIntCommand(uint8_t cmd)
     m_bufferLen = 0;
     m_bufferPtr = 0;
     m_reading = false;
-    m_status &= !STATUS_BUSY;
+    m_status &= ~STATUS_BUSY;
     if (m_currentCommand < 0) {
       if (m_debug)
         cerr << "FDC: force int on busy with no command" << endl;

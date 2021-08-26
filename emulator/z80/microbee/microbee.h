@@ -56,9 +56,9 @@ class MicrobeeDisk_Emulator : public Microbee_Emulator
   public:
     MicrobeeDisk_Emulator(const EmulatorInfo * info);
 
-    bool Open(const Options & options);
+    bool Open(const Options & options) override;
 
-    bool MountDrive(int driveNum, VirtualDrive *drive, bool readOnly);
+    bool MountDrive(int driveNum, VirtualDrive *drive, bool readOnly) override;
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;

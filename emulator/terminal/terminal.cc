@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#ifdef __linux__
+#if __linux__ || __APPLE__
 #include <sys/select.h>
 #include <sys/types.h>
+#include <curses.h>
 #endif
 
 #if _WIN32
@@ -165,7 +166,7 @@ void ConsoleTerminal::CheckConsoleKeyboard()
   int fd = STDIN_FILENO;
 
   for (;;) {
-#if __linux__
+#if __linux__ || __APPLE__
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(fd, &fds);

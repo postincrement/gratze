@@ -11,7 +11,7 @@ class Font
 {
   public:
     Font(int charCount);
-    ~Font();
+    virtual ~Font();
 
     virtual int GetWidth() const = 0;
     virtual int GetHeight() const = 0;

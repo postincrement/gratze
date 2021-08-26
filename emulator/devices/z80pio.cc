@@ -33,6 +33,7 @@ uint8_t Z80PIO::Read(uint8_t reg)
     case 3:
       return m_ports[1].ReadControl();
   }
+  return 0; // not needed, but avoids a compiler warning
 }
 
 void Z80PIO::Write(uint8_t reg, uint8_t data)
