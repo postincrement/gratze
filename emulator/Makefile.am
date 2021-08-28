@@ -1,20 +1,28 @@
 
 bin_PROGRAMS = gratze
 
+noinst_LIBRARIES = libnfd.a
+
 gratze_CXXFLAGS =  -std=c++17  -Wno-register \
+									 -DEXECZ80 \
                    -I$(abs_top_builddir)/../cereal/include \
                    -I$(abs_top_builddir)/../nativefiledialog/src/include/ \
                    -I$(top_srcdir)/.. \
-                   -I$(top_srcdir)
+                   -I$(top_srcdir) \
+									 -I$(top_srcdir)/nativefiledialog/src/include
 
 gratze_LDADD = $(abs_top_builddir)/../disk/libgrzdisk.a \
-               $(abs_top_builddir)/../common/libgrzcommon.a
+               $(abs_top_builddir)/../common/libgrzcommon.a \
+							 libnfd.a 
 
 
-gratze_CFLAGS   =  #-Wno-register                   
+gratze_LDFLAGS = -framework Foundation -framework AppKit
+
+
+gratze_CFLAGS   = -DEXECZ80             
 
 gratze_SOURCES = \
-        src/main.cc \
+    src/main.cc \
 		src/mainwindow.cc \
 		src/emulator.cc \
 		../common/cmdargs.cc \
@@ -54,16 +62,24 @@ gratze_SOURCES = \
 		z80/trs80/model1/rom_level1.c \
 		z80/trs80/model1/rom_level2.c \
 		z80/trs80/model3/rom_model3.c \
-  		z80/mfz80/Z80.c \
-		z80/mfz80/Debug.c \
-		z80/mfz80/dasm.c \
 		z80/dg680/rom_dgos1_4.c \
 		z80/super80/rom_super80.c \
 		z80/microbee/rom_basic5_22e.c \
 		z80/microbee/rom_disk56.c \
 		z80/microbee/rom_disk128.c \
 		z80/sorcerer/rom_sorcerer.c \
+		z80/mfz80/Z80.c \
+		z80/mfz80/Debug.c \
+		z80/mfz80/dasm.c \
 		z80/cpm80/newbdos.cc \
 		z80/cpm80/newbdos_rom.c \
 		2650/eti685/rom_binbug_6_1.c \
 		2650/78up5/rom_pipbug.c 
+
+
+libnfd_a_OBJCFLAGS = -I$(top_srcdir)/nativefiledialog/src/include
+
+libnfd_a_SOURCES = nativefiledialog/src/nfd_common.c \
+									nativefiledialog/src/nfd_cocoa.m
+
+libnfd_a_CFLAGS = -I$(top_srcdir)/nativefiledialog/src/include

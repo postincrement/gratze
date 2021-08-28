@@ -101,9 +101,6 @@ class SDLVirtualScreen : public VirtualScreen
   public:
     SDLVirtualScreen(MainWindow & mainWindow, const Options & options, int cols, int rows);
 
-    virtual ~SDLVirtualScreen()
-    {}
-
     virtual void RenderCharAtPos(int x, int y, bool withCursor, bool update = true) override;
     virtual void Update(bool hasChanged = false) override;
     virtual void OnUpdate() override;

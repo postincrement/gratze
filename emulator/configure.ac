@@ -24,6 +24,14 @@ AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign  subdir-objects])
 #AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror])
 
+AC_PROG_OBJC
+
+AC_CONFIG_COMMANDS([co-nativefiledialog], 
+                   [[if test \! -d nativefiledialog ; then \
+                       git clone https://github.com/postincrement/nativefiledialog.git ; \
+                     fi]])
+
+
 ##########################################################
 #
 # SDL
@@ -36,10 +44,14 @@ AM_PATH_SDL($SDL_VERSION,
 CXXFLAGS="$CXXFLAGS $SDL_CFLAGS"
 CFLAGS="$CFLAGS $SDL_CFLAGS"
 LIBS="$LIBS $SDL_LIBS"
+
 AC_SEARCH_LIBS([TTF_Quit], [SDL2_ttf], [],[
   AC_MSG_ERROR([SDL2_ttf not installed])
 ],[-lSDL2])
 
+AC_SEARCH_LIBS([wgetch], [ncurses], [],[
+  AC_MSG_ERROR([ncurses not installed])
+],[-lncurses])
 
 ##########################################################
 #

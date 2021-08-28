@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <unistd.h>
 
 class CPM80_Emulator;
 
