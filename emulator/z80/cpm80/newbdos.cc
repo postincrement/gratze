@@ -176,7 +176,7 @@ void NewBDOS::UpdateDriveInfo(int drive)
   std::string root = "./";
   char * canonicalPath;
 
-#if __linux__  
+#if __linux__ || __APPLE__ 
   canonicalPath = realpath(root.c_str(), NULL);
 #endif
 #if __WIN32
@@ -191,6 +191,10 @@ void NewBDOS::UpdateDriveInfo(int drive)
   m_debug << "'" << root << "' resolved to '" << canonicalPath << "'" << endl;
   std::string path(canonicalPath);
   free(canonicalPath);
+
+  size_t len = path.length();
+  if ((len > 0) && (path[len-1] != DIR_SEPERATOR))
+    path += DIR_SEPERATOR;
 
   if (drive != 0) {
     path += (char)('a' + drive);
@@ -227,7 +231,7 @@ void NewBDOS::UpdateDriveInfo(int drive)
     struct stat attr;
     std::string s = path + fn;
     if (stat(s.c_str(), &attr) != 0) {
-      m_debug << "error: cannot stat " << s << endl;
+      m_debug << "error: stat error " << strerror(errno) << " - " << s << endl;
       continue;
     }
 
@@ -291,7 +295,7 @@ bool NewBDOS::FCBToFilename(std::string & fn, const char * fcb)
   // get drive number
   int drive = fcb[0] & 0xf;
   if (drive == 0)
-    drive == m_currDisk;
+    drive = m_currDisk;
   else
     --drive;
     

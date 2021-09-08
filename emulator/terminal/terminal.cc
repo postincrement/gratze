@@ -163,6 +163,7 @@ void ConsoleTerminal::AddPollers(Emulator & emulator)
 
 void ConsoleTerminal::CheckConsoleKeyboard()
 {
+
   int fd = STDIN_FILENO;
 
   for (;;) {
@@ -172,11 +173,13 @@ void ConsoleTerminal::CheckConsoleKeyboard()
     FD_SET(fd, &fds);
     timeval t;
     t.tv_sec  = 0;
-    t.tv_usec = 0;
+    t.tv_usec = 1;
     int result = select(fd+1, &fds, NULL, NULL, &t);
     if (result < 1)
       return;
     int ch = getch();
+    if (ch < 0)
+      return;
 #endif
 
 #if _WIN32
@@ -197,13 +200,16 @@ void ConsoleTerminal::CheckConsoleKeyboard()
 #endif
 
     switch (ch) {
+      case 0x03:
+        exit(-1);
+        
       case 0x0a:
         ch = 0x0d;
       default:
         break;
     }
 
-#if __linux__
+#if __linux__ || __APPLE__
     m_keyboard->OnASCIIKeyDown(ch);
 #endif
 
@@ -222,7 +228,14 @@ void ConsoleTerminal::CheckConsoleKeyboard()
 ConScreen::ConScreen(Terminal & terminal, const Options & options, int cols, int rows)
   : VirtualScreen(options, cols, rows)
 {
+  initscr();
+  scrollok(stdscr,TRUE);
+
+  raw();
+//  keypad(stdscr, TRUE);
+  noecho();
 }
+
 
 void ConScreen::OnUpdate()
 {}

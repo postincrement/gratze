@@ -24,6 +24,9 @@ AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign  subdir-objects])
 #AM_INIT_AUTOMAKE([subdir-objects -Wall -Werror])
 
+# test for endianness
+AC_C_BIGENDIAN([CCFLAGS=-DMSB_FIRST],[CFLAGS=-DLSB_FIRST])
+
 AC_PROG_OBJC
 
 AC_CONFIG_COMMANDS([co-nativefiledialog], 

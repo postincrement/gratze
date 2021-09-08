@@ -128,7 +128,7 @@ class MicrobeeVideo : public ColourMemoryMappedScreen
     uint16_t GetFontOffset() const
     { return m_fontOffset; }
 
-    virtual bool IsPCG(FontChar ch) const
+    virtual bool IsPCG(FontChar ch) const override
     { return (ch >= 0x80) && (ch < 0x100); }
 
     void SetUpdateHandler(std::function<void ()> handler)
@@ -276,7 +276,7 @@ void MicrobeeVideo::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
   if (m_mode != eOriginal) {
     uint8_t attr = m_colourRAM[loc & 0x7ff];
 
-    if (m_mode = eColour) {
+    if (m_mode == eColour) {
       fgIndex = g_originalFgColours[attr & 0x1f];
       bgIndex = g_originalBgColours[(attr >> 5) & 0x7];
     }

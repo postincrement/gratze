@@ -3,8 +3,10 @@ bin_PROGRAMS = gratze
 
 noinst_LIBRARIES = libnfd.a
 
+gratze_CFLAGS   = $(CFLAGS) -DEXECZ80
+
 gratze_CXXFLAGS =  -std=c++17  -Wno-register \
-									 -DEXECZ80 \
+									 $(gratze_CFLAGS) \
                    -I$(abs_top_builddir)/../cereal/include \
                    -I$(abs_top_builddir)/../nativefiledialog/src/include/ \
                    -I$(top_srcdir)/.. \
@@ -18,8 +20,6 @@ gratze_LDADD = $(abs_top_builddir)/../disk/libgrzdisk.a \
 
 gratze_LDFLAGS = -framework Foundation -framework AppKit
 
-
-gratze_CFLAGS   = -DEXECZ80             
 
 gratze_SOURCES = \
     src/main.cc \

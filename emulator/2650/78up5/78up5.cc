@@ -101,8 +101,8 @@ class VirtualUART : public VirtualDevice
     unsigned m_outData;
     std::queue<uint8_t> m_outQueue;
 
-    bool m_debugOut = false; //true;
-    bool m_debugIn = false; //true;
+    bool m_debugOut = false;
+    bool m_debugIn = false;
 };
 
 void VirtualUART::Reset()
