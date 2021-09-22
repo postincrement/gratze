@@ -25,59 +25,50 @@ MainWindow::~MainWindow()
 
 bool MainWindow::Open(int width, int height)
 {
-  cout << "info: virtual screen is " << width << "x" << height << endl;
-
-  m_left = 10;
-  m_top  = 10;
-
   // save information
   m_screenWidth  = width;
   m_screenHeight = height;
 
-  // side panel width
-  m_panelWidth = 200;
-
   // calcuate screen rect
-  m_screenRect = { m_left, m_top, m_screenWidth, m_screenHeight };
-
-  cout << "info: window screen area is " << m_screenRect.w << "x" << m_screenRect.h << endl;
-
-  // calculate panel rect
-  m_panelRect  = { m_left + m_screenRect.w + m_left, 0, m_panelWidth, m_screenRect.h };
+  m_screenRect = { m_leftBorder, m_topBorder, m_screenWidth, m_screenHeight };
 
   // create window
-  int totalHeight = m_top  + m_screenRect.h + m_top ;
-  int totalWidth  = m_left + m_screenRect.w + m_left + m_panelWidth; 
+  int totalHeight = m_topBorder  + m_screenRect.h + m_topBorder;
+  int totalWidth  = m_leftBorder + m_screenRect.w + m_leftBorder; 
 
-  cerr << "info: main window is " << dec << totalWidth << "x" << totalHeight << endl;
+  cout << "info: main window is "        << dec << totalWidth << "x" << totalHeight << endl;
+  cout << "info: virtual screen is "     << width << "x" << height << endl;
+  cout << "info: window screen area is " << m_screenRect.w << "x" << m_screenRect.h << endl;
 
   if (m_window == nullptr) {
     m_window = SDL_CreateWindow(m_title.c_str(), 
                                 SDL_WINDOWPOS_CENTERED, 
                                 SDL_WINDOWPOS_CENTERED, 
-                                totalWidth, totalHeight, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE); 
+                                totalWidth, totalHeight, 
+                                SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE); 
     // create renderer
-    m_renderer = SDL_CreateRenderer(m_window, -1, 0);
+    m_renderer = SDL_CreateRenderer(m_window, -1,     
+                                SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 
     cout << "window created" << endl;
   }
   else {
-    //SDL_DestroyRenderer(m_renderer);
     SDL_SetWindowSize(m_window, totalWidth, totalHeight);
     cout << "window resized" << endl;
+
+    SDL_DestroyTexture(m_screenTexture);
   }
 
-  SDL_Color bg = { 0, 0, 0 };
-  SDL_SetRenderDrawColor(m_renderer, bg.r, bg.g, bg.b, 255);
+  // create texture
+  m_screenTexture = SDL_CreateTexture(m_renderer, 
+                              SDL_PIXELFORMAT_RGBA32, 
+                              SDL_TEXTUREACCESS_TARGET, 
+                              m_screenRect.w, 
+                              m_screenRect.h);
 
-  // set border color
-//  SDL_Rect borderRect = { 0, 0, m_screenRect.w, screenAreaHeight };
-//  SDL_RenderFillRect(m_renderer, &borderRect);
-
-  // set panel color
-  SDL_Color panelColor = { 80,   80,   80 };
-  SDL_SetRenderDrawColor(m_renderer, panelColor.r, panelColor.g, panelColor.b, 255);
-  SDL_RenderFillRect(m_renderer, &m_panelRect);
+  SDL_SetRenderTarget(m_renderer, m_screenTexture);
+  SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
+  SDL_RenderClear(m_renderer);
 
   Update();
 
@@ -86,9 +77,17 @@ bool MainWindow::Open(int width, int height)
 
 void MainWindow::GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h, int hscale, int vscale)
 {
+  /*
   rect = { 
            (m_screenRect.x - m_left) + (m_left / hscale) + x,
            (m_screenRect.y - m_top) + (m_top / vscale) + y, 
+           w, 
+           h 
+         };
+  */
+  rect = { 
+           x, // + (x * hscale),
+           y, //  + (y * vscale), 
            w, 
            h 
          };
@@ -101,6 +100,11 @@ SDL_Renderer * MainWindow::GetRenderer()
 
 void MainWindow::Update()
 {
+  SDL_SetRenderTarget(m_renderer, NULL);
+  SDL_RenderClear(m_renderer);
+  SDL_RenderCopy(m_renderer, m_screenTexture, NULL, &m_screenRect);
   SDL_RenderPresent(m_renderer);
+
+  SDL_SetRenderTarget(m_renderer, m_screenTexture);
 }
 

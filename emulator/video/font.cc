@@ -258,16 +258,26 @@ void PixelFont::Modify(FontChar ch, int rowStart, int rowCount, uint8_t * rowDat
 
 void PixelFont::RenderChar(FontChar ch, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg)
 {
+  #if 1
   SDL_Rect srcRect = { 0, ch * m_config.m_height, m_config.m_width, m_config.m_height };
   
+  // set background
   SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_NONE);
   SDL_SetTextureColorMod(m_texture, bg.r, bg.g, bg.b);
   SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
   SDL_RenderFillRect(renderer, &dstRect);
 
+  // set foreground
   SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
   SDL_SetTextureColorMod(m_texture, fg.r, fg.g, fg.b);
   SDL_RenderCopy(renderer, m_texture, &srcRect, &dstRect);
+
+  #else
+
+  SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+  SDL_RenderFillRect(renderer, &dstRect);
+
+  #endif
 }
 
 /////////////////////////////////////////////////////////////////////////////

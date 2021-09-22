@@ -192,7 +192,8 @@ void SDLVirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool updat
 
     SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale * m_colScale, m_vscale);
 
-    RenderChar(GetCharAtPos(x, y), withCursor, m_mainWindow.GetRenderer(), dstRect, fg, bg);
+    FontChar ch = GetCharAtPos(x, y);    
+    RenderChar(ch, withCursor, m_mainWindow.GetRenderer(), dstRect, fg, bg);
 
     if (update)
       Update(true);
@@ -233,7 +234,6 @@ void SDLVirtualScreen::OnUpdate()
 {
   m_mainWindow.Update();
 }
-
 
 bool SDLVirtualScreen::SetFont(Font * font, int cols, int rows)
 {

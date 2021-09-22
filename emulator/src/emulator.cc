@@ -940,6 +940,10 @@ int Emulator::Run(const Options & options)
       const Config::MemoryMappedScreen * mmapInfo = GetMemoryMappedInfo();
       for (int i = 0; i < mmapInfo->m_screenCols * mmapInfo->m_screenRows; ++i) {
         m_memMapScreen->WriteMemoryAtAddress(i, i);
+        m_memMapScreen->Update(true);
+        double earliestNextRealTime_s; 
+        int64_t earliestNextClockTime;
+        RunPollers(earliestNextRealTime_s, earliestNextClockTime);
       }
       m_memMapScreen->Update(true);
     }
@@ -961,8 +965,11 @@ int Emulator::Run(const Options & options)
       auto now = std::chrono::system_clock::now();
       auto finish = std::chrono::system_clock::now() + std::chrono::seconds(4);
       while (std::chrono::system_clock::now() < finish) {
-        usleep(1000);
-        m_screen->Update(false);
+        usleep(10000);
+        m_screen->Update(true);
+        double earliestNextRealTime_s; 
+        int64_t earliestNextClockTime;
+        RunPollers(earliestNextRealTime_s, earliestNextClockTime);
       }
     }
   }

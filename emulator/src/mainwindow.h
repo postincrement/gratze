@@ -28,16 +28,14 @@ class MainWindow
   protected:
     int m_screenHeight;
     int m_screenWidth;
-    int m_panelWidth;
-    int m_left = 12;   // divisible by 2, 3, 4, 6
-    int m_top = 12;    // divisible by 2, 3, 5, 6
+    int m_leftBorder = 10;
+    int m_topBorder = 10;
 
     std::string m_title;
 
-    SDL_Rect m_panelRect;
-
     SDL_Window * m_window;
     SDL_Renderer * m_renderer;
+    SDL_Texture * m_screenTexture;
 
     // virtual video screen
     SDL_Rect  m_screenRect;
