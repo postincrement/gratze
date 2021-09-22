@@ -66,10 +66,6 @@ bool MainWindow::Open(int width, int height)
                               m_screenRect.w, 
                               m_screenRect.h);
 
-  SDL_SetRenderTarget(m_renderer, m_screenTexture);
-  SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
-  SDL_RenderClear(m_renderer);
-
   Update();
 
   return true;
@@ -77,20 +73,7 @@ bool MainWindow::Open(int width, int height)
 
 void MainWindow::GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h, int hscale, int vscale)
 {
-  /*
-  rect = { 
-           (m_screenRect.x - m_left) + (m_left / hscale) + x,
-           (m_screenRect.y - m_top) + (m_top / vscale) + y, 
-           w, 
-           h 
-         };
-  */
-  rect = { 
-           x, // + (x * hscale),
-           y, //  + (y * vscale), 
-           w, 
-           h 
-         };
+  rect = { x, y, w, h };
 }
 
 SDL_Renderer * MainWindow::GetRenderer()
@@ -101,7 +84,10 @@ SDL_Renderer * MainWindow::GetRenderer()
 void MainWindow::Update()
 {
   SDL_SetRenderTarget(m_renderer, NULL);
+  SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
   SDL_RenderClear(m_renderer);
+
+  SDL_SetRenderTarget(m_renderer, NULL);
   SDL_RenderCopy(m_renderer, m_screenTexture, NULL, &m_screenRect);
   SDL_RenderPresent(m_renderer);
 
