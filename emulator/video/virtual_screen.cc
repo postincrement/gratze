@@ -254,12 +254,12 @@ bool SDLVirtualScreen::SetFont(Font * font, int cols, int rows)
     return false;
   }
 
-  cout << "info: font size = " << m_font->GetWidth() << "x" << m_font->GetHeight() << endl;
+  cout << "info: font size is " << m_font->GetWidth() << "x" << m_font->GetHeight() << endl;
 
   if ((cols > 0) && (rows > 0)) {
     m_cols = cols;
     m_rows = rows;
-    cout << "info: new screen size = " << m_cols << "x" << m_rows << endl;
+    cout << "info: new screen size is " << m_cols << "x" << m_rows << endl;
   }
 
   ResizeScreen();
@@ -273,7 +273,7 @@ bool SDLVirtualScreen::ResizeScreen()
   int newHeight = m_rows * m_font->GetHeight() * m_vscale;
 
   if ((m_width == 0) || (m_height == 0)) {
-    cout << "info: screen size set to " << newWidth << "x" << newHeight << endl;
+    cout << "info: screen size set to " << newWidth << "x" << newHeight << " at scale " << m_hscale << "," << m_vscale << endl;
   }
   else {
     if ((newHeight == m_height) && (newWidth == m_width))
@@ -286,7 +286,7 @@ bool SDLVirtualScreen::ResizeScreen()
 
   m_visibleSize = m_rows * m_cols;
   m_visibleMask = m_visibleSize - 1;
-  cout << "info: text window is " << m_cols << " x " << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
+  cout << "info: text window is " << m_cols << "x" << m_rows << " chars, " << m_visibleSize << " chars total, mask is " << HEXFORMAT0x4(m_visibleMask) << endl;
 
   m_mainWindow.Open(newWidth, newHeight);
   m_font->Open(m_mainWindow.GetRenderer());

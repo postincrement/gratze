@@ -50,7 +50,6 @@ void Terminal::WriteString(const std::string & str)
 
 void Terminal::Clear()
 {
-  cout << "screen cleared" << endl;
   for (int loc = 0; loc < m_cols*m_rows; ++loc)
     m_screen->SetCharAtLoc(loc, ' ');
   m_screen->RefreshScreen();  
@@ -236,7 +235,6 @@ ConScreen::ConScreen(Terminal & terminal, const Options & options, int cols, int
   noecho();
 }
 
-
 void ConScreen::OnUpdate()
 {}
 
@@ -267,10 +265,11 @@ void ConKeyboard::OnKeyUp(const SDL_Keysym & keysym)
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-SDLTerminal::SDLTerminal(MainWindow & mainWindow, const Options & options, int cols, int rows)
+SDLTerminal::SDLTerminal(MainWindow & mainWindow, const Options & options, int cols, int rows, int hscale, int vscale)
   : Terminal(options, cols, rows)
 {
-  m_screen.reset(new SDLVirtualScreen(mainWindow, options, cols, rows));
+  m_screen.reset  (new SDLVirtualScreen(mainWindow, options, cols, rows));
+  m_screen->SetScale(hscale, vscale);
   m_keyboard.reset(new ParallelKeyboard());
 }
 
@@ -281,6 +280,7 @@ bool SDLTerminal::Open()
 
   m_cursorX = 0;
   m_cursorY = 0;
+
   Clear();
   return true;
 }

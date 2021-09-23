@@ -6,6 +6,10 @@
 
 class Emulator;
 
+//
+//  Terminal abstraction: contains keyboard and screen
+//
+
 struct Terminal
 {
   public:
@@ -76,7 +80,7 @@ struct ConsoleTerminal : public Terminal
 struct SDLTerminal : public Terminal
 {
   public:
-    SDLTerminal(MainWindow & mainWindow, const Options & options, int cols, int rows);
+    SDLTerminal(MainWindow & mainWindow, const Options & options, int cols, int rows, int hscale, int vscale);
     virtual bool Open() override;
     virtual void Update(bool hasChanged = false) override;
 };

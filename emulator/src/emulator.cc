@@ -176,9 +176,6 @@ void Emulator::SetKeyboard(VirtualKeyboard * kb)
 
 void Emulator::CreateScreen(MainWindow & mainWindow)
 {
-  int top = 10;
-  int left = 10;                // border top and left
-
   int vdup = 1;                 // duplicate lines for fields
 
   int pixelCols;
@@ -191,7 +188,7 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
   SDL_DisplayMode mode;
   if (m_options.m_useSDL) {
     SDL_GetDesktopDisplayMode(0, &mode);
-    cout << "info: screen is " << mode.w << "x" << mode.h << endl;
+    cout << "info: desktop size is " << mode.w << "x" << mode.h << endl;
   }
 
   // check for memory mapped screens
@@ -205,15 +202,21 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
 
     cout << "info: emulated screen is memory mapped" << endl;
 
-    const Config::Block * block = GetConfigBlock(Config::Type::eMonitor);
+    const Config::Block * block     = GetConfigBlock(Config::Type::eMonitor);
     const Config::Monitor * monitor = (block == nullptr) ? nullptr : &block->m_info.m_monitor;
 
     // display video output pixels
     pixelCols = mmapScreenInfo->m_screenWidth;
     pixelRows = mmapScreenInfo->m_screenHeight;
 
+    if (m_options.m_verbose)
+      cout << "info: virtual screen base pixel size is " << pixelCols << "x" << pixelRows << endl;
+
     width  = pixelCols * m_options.m_videoScale;
     height = pixelRows * m_options.m_videoScale;
+
+    if (m_options.m_verbose)
+      cout << "info: scaled virtual screen pixel size is " << width << "x" << height << endl;
 
     // create main window
     mainWindow.Open(width, height);
@@ -237,6 +240,9 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
       exit(-1);
     }
 
+    if (m_options.m_verbose)
+      cout << "info: using terminal" << endl;
+
     const Config::Terminal & termInfo = block->m_info.m_terminal;
 
     // create main window with a guess at the size
@@ -244,7 +250,7 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
       if (m_options.m_verbose)
         cout << "info: using SDL" << endl;
       mainWindow.Open(800 * m_options.m_videoScale, 600 * m_options.m_videoScale);
-      m_terminal.reset(new SDLTerminal(mainWindow, m_options, termInfo.m_cols, termInfo.m_rows));
+      m_terminal.reset(new SDLTerminal(mainWindow, m_options, termInfo.m_cols, termInfo.m_rows, m_options.m_videoScale, m_options.m_videoScale));
     }
     else {
       if (m_options.m_verbose)

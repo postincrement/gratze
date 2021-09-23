@@ -354,7 +354,7 @@ bool TTFFont::Open(SDL_Renderer * renderer)
     return false;
   }
 
-  cerr << "info: TTF font '" << m_name << " " << (int)m_fontSize << " is " << dec << m_width << "x" << m_height << endl;
+  cerr << "info: TTF font '" << m_name << "', size " << (int)m_fontSize << " is " << dec << m_width << "x" << m_height << endl;
 
   return true;
 }

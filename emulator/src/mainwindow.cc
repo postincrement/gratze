@@ -49,13 +49,9 @@ bool MainWindow::Open(int width, int height)
     // create renderer
     m_renderer = SDL_CreateRenderer(m_window, -1,     
                                 SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
-
-    cout << "window created" << endl;
   }
   else {
     SDL_SetWindowSize(m_window, totalWidth, totalHeight);
-    cout << "window resized" << endl;
-
     SDL_DestroyTexture(m_screenTexture);
   }
 
