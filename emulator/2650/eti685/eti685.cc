@@ -70,7 +70,7 @@ bool ETI685::Open(const Options & options)
 
   // when ASCII key available, call ETI685::SetKeyboardData
   using namespace std::placeholders;
-  kb->SetASCIICallback(std::bind(&ETI685::SetKeyboardData, this, _1));
+  kb->SetKeyCharCallback(std::bind(&ETI685::SetKeyboardData, this, _1));
 
   return true;
 }

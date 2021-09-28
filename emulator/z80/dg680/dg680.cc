@@ -78,7 +78,7 @@ bool DG680_Emulator::Open(const Options & options)
 
   // when ASCII key available, call Z80PIO::SetData
   using namespace std::placeholders;
-  kb->SetASCIICallback(std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
+  kb->SetKeyCharCallback(std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
 
   return true;
 }

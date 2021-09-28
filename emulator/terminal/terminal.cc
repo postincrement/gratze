@@ -38,7 +38,7 @@ bool Terminal::Open()
 void Terminal::SetKeyboardHandler(std::function<void (uint8_t)> handler)
 {
   m_kbHandler = handler;
-  m_keyboard->SetASCIICallback(handler);
+  m_keyboard->SetKeyCharCallback(handler);
 }
 
 void Terminal::WriteString(const std::string & str)

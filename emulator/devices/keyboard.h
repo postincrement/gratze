@@ -14,18 +14,27 @@ class VirtualKeyboard : public VirtualDevice
 
     virtual void Reset() override;
 
+    // called when SDL key pressed
     virtual void OnKeyDown(const SDL_Keysym & keysym);
+
+    // called when SDL key released
     virtual void OnKeyUp(const SDL_Keysym & keysym);
-    virtual void OnKeyText(const std::string & str);
+
+    // called for SDL text input, or non-SDL input
     virtual void OnKeyChar(char ch);
+
+    // calls OnKeyChar for each character in the string
+    virtual void OnKeyText(const std::string & str);
 
     // only implemented for ScannedKeyboard - saves a cast
     virtual uint8_t Read(uint16_t rowMask);
 
-    void SetASCIICallback(std::function<void (uint8_t)> handler);
+    // set callback for when text chars pressed
+    // used to trigger interrupt driven devices like parallel ports
+    void SetKeyCharCallback(std::function<void (uint8_t)> handler);
 
   protected:  
-    std::function<void (uint8_t)> m_asciiCallBack = nullptr;
+    std::function<void (uint8_t)> m_keyCharCallBack = nullptr;
 };
 
 #endif // KEYBOARD_H_

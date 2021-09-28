@@ -25,22 +25,27 @@ void VirtualKeyboard::OnKeyUp(const SDL_Keysym & keysym)
 {}
 
 // called for SDL text input, or non-SDL input
+void VirtualKeyboard::OnKeyChar(char ch)
+{
+  if (m_keyCharCallBack)
+    m_keyCharCallBack(ch);
+}
+
+// set handler for text chars
+void VirtualKeyboard::SetKeyCharCallback(std::function<void (uint8_t)> callback)
+{
+  m_keyCharCallBack = callback;
+}
+
 void VirtualKeyboard::OnKeyText(const std::string & str)
 {
   for (auto r : str)
     OnKeyChar(r);
 }
 
-void VirtualKeyboard::OnKeyChar(char ch)
+uint8_t VirtualKeyboard::Read(uint16_t rowMask)
 {
-  if (m_asciiCallBack)
-    m_asciiCallBack(ch);
-}
-
-// called to set handler for key up/down
-void VirtualKeyboard::SetASCIICallback(std::function<void (uint8_t)> callback)
-{
-  m_asciiCallBack = callback;
+  return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
