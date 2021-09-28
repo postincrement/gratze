@@ -98,6 +98,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "fdcDebug",        ' ', "display FDC debug on console" },
   { ' ', "turbo",           ' ', "do not throttle CPU speed"},
   { ' ', "list",            ' ', "list all emulations"},
+  { ' ', "gamekb",          ' ', "set keyboard game mode" },
 
   { ' ', "delay",           'u', "manual CPU delay"},
   { ' ', "kp",              'f', "Kp for CPU delay control"},
@@ -192,10 +193,11 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--logpc",    options.m_logPC);
   options.m_args.GetValue("--trace",    options.m_trace);
 
-  options.m_args.GetValue("--delay", options.m_delay);
-  options.m_args.GetValue("--kp",    options.m_Kp);
-  options.m_args.GetValue("--ki",    options.m_Ki);
-  options.m_args.GetValue("--sdl",   options.m_useSDL);
+  options.m_args.GetValue("--delay",  options.m_delay);
+  options.m_args.GetValue("--kp",     options.m_Kp);
+  options.m_args.GetValue("--ki",     options.m_Ki);
+  options.m_args.GetValue("--sdl",    options.m_useSDL);
+  options.m_args.GetValue("--gamekb", options.m_gameKb);
 
   {
     int opt = optIndex;

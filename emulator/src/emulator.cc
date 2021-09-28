@@ -113,6 +113,15 @@ void Emulator::CheckSDLKeyboard()
         exit(0);
         break;
 
+      case SDL_TEXTINPUT:
+        if (m_keyboard != nullptr) {
+          m_keyboard->OnKeyText(event.text.text);
+        }
+        else {
+          OnKeyText(event.text.text);
+        }
+        break;
+
       case SDL_KEYDOWN:
         if (event.key.repeat == 0) {
           if (event.key.keysym.sym == TRACE_SYM)
@@ -330,6 +339,11 @@ void Emulator::OnKeyDown(const SDL_Keysym &keysym)
 void Emulator::OnKeyUp(const SDL_Keysym &keysym)
 {
   cerr << "warning: emulator got key up sym code " << HEXFORMAT0x2(keysym.sym) << endl;
+}
+
+void Emulator::OnKeyText(const std::string & str)
+{
+  cerr << "warning: emulator got key string '" << str << "'" << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -919,9 +933,12 @@ int Emulator::Run(const Options & options)
   CompileConfigBlocks();
 
   // initialize SDL
-  if (options.m_useSDL && (SDL_Init(SDL_INIT_EVERYTHING) != 0)) {
-    printf("error initializing SDL: %s\n", SDL_GetError());
-    return -1;
+  if (options.m_useSDL) {
+    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+      printf("error initializing SDL: %s\n", SDL_GetError());
+      return -1;
+    }
+    SDL_StartTextInput();
   }
 
   MainWindow mainWindow;

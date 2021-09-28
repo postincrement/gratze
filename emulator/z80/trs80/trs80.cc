@@ -33,7 +33,7 @@ using namespace std;
 #define RTC_INTERVAL_MS 40
 
 
-const KeyboardScanner::ScanCode keys[8*8] = {
+const ScannedKeyboard::ScanCode keys[8*8] = {
   { "@" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
   { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
   { "P" },      { "Q" },      { "R" },      { "S" },    { "T"},     { "U" } ,   { "V" } ,     { "W" } ,
@@ -44,7 +44,7 @@ const KeyboardScanner::ScanCode keys[8*8] = {
   { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 }
 };
 
-const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
+const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
   { "@" },      { "a" },      { "b" },      { "c" },    { "d"},     { "e" } ,   { "f" } ,     { "g" } ,
   { "h" },      { "i" },      { "j" },      { "k" },    { "l"},     { "m" } ,   { "n" } ,     { "o" } ,
   { "p" },      { "q" },      { "r" },      { "s" },    { "t"},     { "u" } ,   { "v" } ,     { "w" } ,
@@ -55,8 +55,9 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
   { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 }
 };
 
-static KeyboardScanner::ScanLayout g_trs80Keys = {
+static ScannedKeyboard::ScanLayout g_trs80Keys = {
   8, 8,
+  NULL,
   keys,
   shiftedkeys,
   {
@@ -91,7 +92,7 @@ bool TRS80Emulator::Open(const Options & options)
   if (!Z80Emulator::Open(options))
     return false;
 
-  KeyboardScanner * kb = new KeyboardScanner();
+  ScannedKeyboard * kb = new ScannedKeyboard();
   SetKeyboard(kb);
   kb->Compile(g_trs80Keys);
 

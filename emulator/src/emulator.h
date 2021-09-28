@@ -251,6 +251,7 @@ class Emulator
     // keyboard functions
     virtual void OnKeyDown(const SDL_Keysym & keysym);
     virtual void OnKeyUp(const SDL_Keysym & keysym);
+    virtual void OnKeyText(const std::string & str);
 
     // ROM functions
     bool ReadROMFromFile(const std::string & filename, unsigned char * ptr, int len = -1);

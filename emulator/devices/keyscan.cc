@@ -15,24 +15,54 @@ uint8_t VirtualKeyboard::Read(uint16_t rowMask)
   return 0;
 }
 
-void KeyboardScanner::Reset()
+void ScannedKeyboard::Reset()
 {
-  m_shiftStatus = 0;
+  m_leftShift  = false;
+  m_rightShift = false;
 }
 
-void KeyboardScanner::Compile(const ScanLayout & scanLayout)
+void ScannedKeyboard::Compile(const ScanLayout & scanLayout)
 {
-  m_keys.clear();
-
   m_rows = scanLayout.m_rows;
   m_cols = scanLayout.m_cols;
 
   m_kbData.resize(((m_cols + 7) / 8) * m_rows);
-  Compile(m_rows, m_cols, scanLayout.m_keyCodes,        false);
-  Compile(m_rows, m_cols, scanLayout.m_shiftedKeyCodes, true);
 
+  // compile text keymaps
+  m_textKeys.clear();
+  Compile(m_textKeys, m_rows, m_cols, scanLayout.m_keyCodes,        false);
+  Compile(m_textKeys, m_rows, m_cols, scanLayout.m_shiftedKeyCodes, true);
   for (auto & equivalent : scanLayout.m_equivalents)
-    AddEquivalent(equivalent.m_from, equivalent.m_to);
+    AddEquivalent(m_textKeys, equivalent.m_from, equivalent.m_to);
+
+  // find text modifiers
+  {
+    const ScanCode * keyCodeMap = scanLayout.m_keyCodes;
+    for (int row = 0; row < m_rows; ++row) {
+      for (int col = 0; col < m_cols; ++col) {
+        const ScanCode * code = keyCodeMap++;
+        if (code->m_name == 0) {
+          continue;
+        }
+        if (strcasecmp(code->m_name, "shift") == 0) {
+          cerr << "kb: shift key is " << col << "," << row << endl;
+          m_shiftRowCol = KeyRowColInfo(row, col, false, false);
+        }
+        else if (strcasecmp(code->m_name, "control") == 0) {
+          m_controlRowCol = KeyRowColInfo(row, col, false, false);
+        }
+        else if (strcasecmp(code->m_name, "capslock") == 0) {
+          m_capsLockRowCol = KeyRowColInfo(row, col, false, false);
+        }
+      }
+    }
+  }
+
+  // compile game key maps
+  m_gameKeys.clear();
+  if (scanLayout.m_gameKeys != NULL) {
+    Compile(m_gameKeys, m_rows, m_cols, scanLayout.m_gameKeys, false);
+  }
 }
 
 static struct VirtualKeyMap {
@@ -62,7 +92,9 @@ static struct VirtualKeyMap {
   { '?',  SDLK_SLASH }
 };
 
-bool KeyboardScanner::AddEquivalent(const std::string & fromName, const std::string & toName)
+bool ScannedKeyboard::AddEquivalent(KeyRowColMap & keyMap,
+                               const std::string & fromName, 
+                              const std::string & toName)
 {
   stringstream strm;
   strm << " for equivalent mapping from " << fromName << " to " << toName << endl;
@@ -83,25 +115,24 @@ bool KeyboardScanner::AddEquivalent(const std::string & fromName, const std::str
     return false;
   }
 
-  KeyRowColMap::iterator r = m_keys.find(toKeycode);
-  if (r == m_keys.end()) {
+  KeyRowColMap::iterator r = keyMap.find(toKeycode);
+  if (r == keyMap.end()) {
     cerr << "error: no row/col found for destination key " << strm.str();
     return false;
   }
 
   cout << "info: mapping " << fromName << "(" HEXFORMAT0x4(fromKeycode) << ") to " << r->second.m_row << "," << r->second.m_col << endl;
-  m_keys.insert(KeyRowColMap::value_type(fromKeycode, r->second));
+  keyMap.insert(KeyRowColMap::value_type(fromKeycode, r->second));
 
   return true;
 }
 
-bool KeyboardScanner::FindKey(const std::string & name, SDL_Keycode & keycode, bool & shifted) const
+bool ScannedKeyboard::FindKey(const std::string & name, SDL_Keycode & keycode, bool & shifted) const
 {
   // check for shifted "virtual" keys
   if (name.length() == 1) {
     for (int i = 0; i < sizeof(g_virtualKeys) / sizeof(g_virtualKeys[0]); ++i) {
       if (g_virtualKeys[i].m_key == name[0]) {
-        const char * keyName = SDL_GetKeyName(g_virtualKeys[i].m_code);
         keycode = g_virtualKeys[i].m_code;
         shifted = true;
         return true;
@@ -119,7 +150,11 @@ bool KeyboardScanner::FindKey(const std::string & name, SDL_Keycode & keycode, b
   return true;
 }
 
-void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCodeMap, bool shifted)
+void ScannedKeyboard::Compile(KeyRowColMap & keyMap,
+                                         int rowCount, 
+                                         int colCount,
+                            const ScanCode * keyCodeMap, 
+                                        bool hostIsShifted)
 {
   for (int row = 0; row < rowCount; ++row) {
     for (int col = 0; col < colCount; ++col) {
@@ -128,29 +163,34 @@ void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCo
       if (code->m_name == 0) {
         continue;
       }
+
       if (strcasecmp(code->m_name, "shift") == 0) {
-        if (!shifted) {
-          //cerr << "kb: shift key is " << col << "," << row << endl;
-          m_shiftKey = KeyRowColInfo(row, col, false, false);
+        if (!hostIsShifted) {
+          cerr << "kb: shift key is " << col << "," << row << endl;
+          m_shiftRowCol = KeyRowColInfo(row, col, false, false);
         }
       }
       else if (strcasecmp(code->m_name, "control") == 0) {
-        if (!shifted) {
-          m_controlKey = KeyRowColInfo(row, col, false, false);
+        if (!hostIsShifted) {
+          m_controlRowCol = KeyRowColInfo(row, col, false, false);
         }
       }
       else if (strcasecmp(code->m_name, "capslock") == 0) {
-        if (!shifted) {
-          m_capsLockKey = KeyRowColInfo(row, col, false, false);
+        if (!hostIsShifted) {
+          m_capsLockRowCol = KeyRowColInfo(row, col, false, false);
         }
       }
       else {
         SDL_Keycode keycode;
-        bool shiftSource;
-        if (FindKey(code->m_name, keycode, shiftSource)) {
-          //const char * keyName = SDL_GetKeyName(g_virtualKeys[i].m_code);
-          //cout << "kb: mapped virtual '" << code->m_name << "' to name '" << keyName << "' = " << HEXFORMAT0x8(g_virtualKeys[i].m_code) << " + shift" << endl;
-          m_keys.insert(KeyRowColMap::value_type(keycode, KeyRowColInfo(row, col, shiftSource, shifted)));
+        bool destIsShifted;
+        if (FindKey(code->m_name, keycode, destIsShifted)) {
+          cout << "kb: mapped host '" << code->m_name << "' mapped to device row " << row << ", col " << col;
+          if (hostIsShifted) cout << " + shift";
+          cout << endl;
+          keyMap.insert(
+            KeyRowColMap::value_type(keycode, 
+                                     KeyRowColInfo(row, col, destIsShifted, hostIsShifted)
+          ));
         }
         else {
           cerr << "error: unknown keycode name '" << code->m_name << "'" << endl;
@@ -160,13 +200,18 @@ void KeyboardScanner::Compile(int rowCount, int colCount, const ScanCode * keyCo
   }
 }
 
-bool KeyboardScanner::Open()
+bool ScannedKeyboard::Open()
 {
   VECTOR_ZERO(m_kbData);
   return true;
 }
 
-uint8_t KeyboardScanner::Read(uint16_t rowMask)
+void ScannedKeyboard::SetGameMode(bool mode)
+{
+  m_gameMode = mode;
+}
+
+uint8_t ScannedKeyboard::Read(uint16_t rowMask)
 {
   uint16_t mask = 1;
   uint8_t value = 0x00;
@@ -192,7 +237,7 @@ void MaskDown(bool down, Type mask, Type & val)
 }
 
 
-void KeyboardScanner::ActivateKey(const KeyRowColInfo & rowCol, bool down)
+void ScannedKeyboard::ActivateKey(const KeyRowColInfo & rowCol, bool down)
 {
   if (rowCol.m_row < 0)
     return;
@@ -201,122 +246,115 @@ void KeyboardScanner::ActivateKey(const KeyRowColInfo & rowCol, bool down)
 
   MaskDown<uint8_t>(down, 1 << rowCol.m_col, m_kbData[rowCol.m_row]);
 
-  //if (down)
-  //  cout << "kb: activating row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
+  if (down)
+    cout << "kb: activating row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
 }
 
-void KeyboardScanner::KeyAction(const SDL_Keysym & keysym, bool down)
+void ScannedKeyboard::KeyAction(const SDL_Keysym & keysym, bool down)
 {
-  // handle modifiers
+  // handle modifiers in game mode
   switch (keysym.sym) {
     case SDLK_LSHIFT:
-      if (down) {
-        m_shiftStatus |= 1;
-        m_shiftStatus &= ~4;
-      }
-      else {
-        m_shiftStatus &= ~1;
-      }
-      //cerr << "kb: shift key " << (down ? "down" : "up") << endl;
-      ActivateKey(m_shiftKey, down);
+      m_leftShift = down;
+      if (m_gameMode)
+        ActivateKey(m_shiftRowCol, down);
       return;
 
     case SDLK_RSHIFT:
-      if (down) {
-        m_shiftStatus |= 2;
-        m_shiftStatus &= ~4;
-      }
-      else {
-        m_shiftStatus &= ~2;
-        m_kbData[7] &= ~1;
-      }
-      ActivateKey(m_shiftKey, down);
+      m_rightShift = down;
+      if (m_gameMode)
+        ActivateKey(m_shiftRowCol, down);
       return;
 
     case SDLK_LCTRL:
     case SDLK_RCTRL:
-      ActivateKey(m_controlKey, down);
+      if (m_gameMode)
+        ActivateKey(m_controlRowCol, down);
       return;
 
     case SDLK_CAPSLOCK:
-      ActivateKey(m_capsLockKey, down);
+      if (m_gameMode)
+        ActivateKey(m_capsLockRowCol, down);
       return;
   }
 
+  // select the correct keymap
+  KeyRowColMap & keyMap = m_gameMode ? m_gameKeys : m_textKeys;
+
+  // get the status of the shift keys
+  bool shiftStatus = (m_leftShift || m_rightShift);
+
+  // see if the keycode code is mapped to a rowcol
   SDL_Keycode ascii = keysym.sym;
-
-  bool shiftDown = (m_shiftStatus != 0);
-
-/*
-  bool makeUpper = (m_defaultUpper != shiftDown);
-
-  if (islower(sym)) {
-    sym = makeUpper ? toupper(sym) : tolower(sym);
-    if (keysym.mod & KMOD_CTRL)
-      sym = toupper(sym) - 0x40;
-  }
-*/
-
-  int count = m_keys.count(ascii);
-  if ((count == 0) && islower(ascii)) {
-    ascii = toupper(ascii);
-    count = m_keys.count(ascii);
-  }
+  int count = keyMap.count(ascii);
   if (count == 0) {
     cerr << "warning: unmapped keyboard " << (down ? "down" : "up") << " code " << HEXFORMAT0x8(keysym.sym) << endl;
     return;
   }
-  //cerr << "info: found " << count << " entries for " << HEXFORMAT0x8(keysym.sym) << endl;
 
-  KeyRowColMap::iterator r = m_keys.find(ascii);
-  int i;
-  for (i = 0; i < count; ++i) {
-    //cout << "kb: rec " << i << " has shift status " << r->second.m_shiftSource << " " <<  r->second.m_shiftOut << endl;
-    if (r->second.m_shiftSource == ((m_shiftStatus & 3) != 0))
-      break;
-    ++r;
-  }
-  if (i >= count) {
-    //cerr << "warning: mapped keyboard " << (down ? "down" : "up") << " code " << HEXFORMAT0x8(keysym.sym) << " with unmatched shift state " << ((shiftDown ? "down" : "up")) << endl;
+  // get first mapping for this keycode
+  KeyRowColMap::iterator r = keyMap.find(ascii);
+  KeyRowColInfo rowCol;
+
+  // handle game mode
+  if (m_gameMode) {
+    int i;
+    for (i = 0; i < count; ++i) {
+      if (!r->second.m_hostIsShifted) {
+        rowCol = r->second;
+        break;
+      }
+      ++r;
+    }
+    if (i < count) {
+      const char * keyName = SDL_GetKeyName(r->first);
+      cerr << "info: mapped key '" << keyName << "' " << (down ? "down" : "up") << " to row " << rowCol.m_row << ", col " << rowCol.m_col << " in " << (m_gameMode ? "game" : "text") << " mode" << endl;
+      ActivateKey(rowCol, down);
+    }
     return;
   }
 
-  // if shift status
-  KeyRowColInfo & rowCol = r->second;
-
-  if (down) {
-    // activate keys with the correct shift sense
-    if (shiftDown == rowCol.m_shiftOut) {
-      //cerr << "kb: no virtual shift change" << endl;
-      m_shiftStatus &= ~4;
+  // handle text mode
+  int i;
+  for (i = 0; i < count; ++i) {
+    if (r->second.m_hostIsShifted == shiftStatus) {
+      rowCol = r->second;
+      break;
     }
-
-    // activate keys that need to be shifted
-    else if (rowCol.m_shiftOut) {
-      //cerr << "kb: virtual shift key down" << endl;
-      VECTOR_ZERO(m_kbData);
-      ActivateKey(m_shiftKey, true);
-      m_shiftStatus = 4;
-    }
-
-    // acivate keys that need to be unshifted
-    else {
-      //cerr << "kb: virtual shift key up" << endl;
-      VECTOR_ZERO(m_kbData);
-      ActivateKey(m_shiftKey, false);
-      m_shiftStatus = 0;
+    ++r;
+  }
+  if (i == count) {
+    for (i = 0; i < count; ++i) {
+      if (r->second.m_hostIsShifted) {
+        rowCol = r->second;
+        break;
+      }
     }
   }
-
-  ActivateKey(rowCol, down);
+  if (i < count) {
+    if (m_virtualShift != r->second.m_destIsShifted) {
+      m_virtualShift = r->second.m_destIsShifted;
+      cerr << "info: virtual shift now " << (m_virtualShift ? "up" : "down") << endl;
+      ActivateKey(m_shiftRowCol, m_virtualShift);
+    }
+    if (down) {
+      const char * keyName = SDL_GetKeyName(r->first);
+      cerr << "info: mapped key '" << keyName << "' " << (down ? "down" : "up") << " to row " << rowCol.m_row << ", col " << rowCol.m_col << " in " << (m_gameMode ? "game" : "text") << " mode" << endl;
+    }
+    ActivateKey(rowCol, down);
+  }
 }
 
-void KeyboardScanner::OnKeyDown(const SDL_Keysym & keysym)
+void ScannedKeyboard::OnKeyDown(const SDL_Keysym & keysym)
 {
   KeyAction(keysym, true);
 }
 
-void KeyboardScanner::OnKeyUp(const SDL_Keysym & keysym)
+void ScannedKeyboard::OnKeyUp(const SDL_Keysym & keysym)
 {
   KeyAction(keysym, false);
+}
+
+void ScannedKeyboard::OnKeyText(const std::string & str)
+{
 }

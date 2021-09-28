@@ -13,6 +13,8 @@ struct CPU2650
     unsigned short na;        // next address (not part of 2650 regsiter set)
     unsigned short ea;        // effective address (not part of 2650 regsiter set)
   };
+
+  virtual ~CPU2650();
   
   regset2650 registers;
 

@@ -354,6 +354,9 @@ struct instructions
 ** 2650 Emulator
 ***************************************/
 
+CPU2650::~CPU2650()
+{}
+
 // perform add and set ICD, CY and OVF accordingly
 // this seems to work correctly
 unsigned char CPU2650::add(unsigned char byte1, unsigned char byte2)
@@ -1266,7 +1269,7 @@ void CPU2650::disassemble(void)
      fprintf(stdout, "%02X   ", instrbyte2);
      break;
     default :
-     fprintf(stdout, "     ", registers.ea);
+     fprintf(stdout, "     ");
      break;
   }
   switch(instrdata[instrbyte1].format)
@@ -1293,21 +1296,21 @@ void CPU2650::disassemble(void)
       switch(instrbyte2&0x60)
       {
         case 0x20 :
-          fprintf(stdout, "#+ ", registers.ea);
+          fprintf(stdout, "#+ ");
           break;
         case 0x40 :
-          fprintf(stdout, "#- ", registers.ea);
+          fprintf(stdout, "#- ");
           break;
         case 0x60 :
-          fprintf(stdout, "#  ", registers.ea);
+          fprintf(stdout, "#  ");
           break;
         default :
-          fprintf(stdout, "   ", registers.ea);
+          fprintf(stdout, "   ");
           break;
       }
       break;
     default :
-      fprintf(stdout, "   ", registers.ea);
+      fprintf(stdout, "   ");
       break;
   }
   fprintf(stdout, "%02X ", registers.r[0]);

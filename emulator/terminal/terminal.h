@@ -61,6 +61,7 @@ class ConKeyboard : public VirtualKeyboard
     virtual void Reset() override;
     virtual void OnKeyDown(const SDL_Keysym & keysym) override;
     virtual void OnKeyUp(const SDL_Keysym & keysym) override;
+    virtual void OnKeyText(const std::string & str) override;
 };
 
 struct ConsoleTerminal : public Terminal

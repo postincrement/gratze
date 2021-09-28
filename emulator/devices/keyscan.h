@@ -7,7 +7,7 @@
 
 #include "devices/keyboard.h"
 
-class KeyboardScanner : public VirtualKeyboard
+class ScannedKeyboard : public VirtualKeyboard
 {
   public:
     struct ScanCode {
@@ -25,6 +25,7 @@ class KeyboardScanner : public VirtualKeyboard
       int m_cols;
       int m_rows;
 
+      const ScanCode * m_gameKeys;
       const ScanCode * m_keyCodes;
       const ScanCode * m_shiftedKeyCodes;
 
@@ -34,35 +35,38 @@ class KeyboardScanner : public VirtualKeyboard
     struct KeyRowColInfo
     {
       KeyRowColInfo() = default;
-      KeyRowColInfo(int row, int col, bool shiftSource, bool shiftOut)
+      KeyRowColInfo(int row, int col, bool destIsShifted, bool hostIsShifted)
         : m_row(row)
         , m_col(col)
-        , m_shiftSource(shiftSource)
-        , m_shiftOut(shiftOut)
+        , m_destIsShifted(destIsShifted)
+        , m_hostIsShifted(hostIsShifted)
         { }
       int m_row = -1;
       int m_col = -1;
-      bool m_shiftSource = false;
-      bool m_shiftOut = false;
+      bool m_destIsShifted = false;   // destination keycode needs to be shifted 
+      bool m_hostIsShifted = false;   // host keycode is shifted
     };
 
     typedef std::multimap<SDL_Keycode, KeyRowColInfo> KeyRowColMap;
 
     bool Open();
 
+    void SetGameMode(bool mode);
+
     virtual void Reset() override;
 
     uint8_t Read(uint16_t rowMask) override;
 
     void Compile(const ScanLayout & scanLayout);
-    void Compile(int row, int cols, const ScanCode * keyCodes, bool shifted);
-    bool AddEquivalent(const std::string & fromName, const std::string & toName);
+    void Compile(KeyRowColMap & keyMap, int row, int cols, const ScanCode * keyCodes, bool shifted);
+    bool AddEquivalent(KeyRowColMap & keyMap, const std::string & fromName, const std::string & toName);
 
     void KeyAction(const SDL_Keysym & keysym, bool down);
     void ActivateKey(const KeyRowColInfo & rowCol, bool down);
 
     virtual void OnKeyDown(const SDL_Keysym & keysym) override;
     virtual void OnKeyUp(const SDL_Keysym & keysym) override;
+    virtual void OnKeyText(const std::string & str) override;
 
   public:
     bool FindKey(const std::string & name, SDL_Keycode & keycode, bool & shifted) const;
@@ -72,14 +76,19 @@ class KeyboardScanner : public VirtualKeyboard
     int m_rows = -1;
     int m_cols = -1;
 
-    KeyRowColInfo m_shiftKey;
-    KeyRowColInfo m_controlKey;
-    KeyRowColInfo m_capsLockKey;
+    KeyRowColInfo m_shiftRowCol;
+    KeyRowColInfo m_controlRowCol;
+    KeyRowColInfo m_capsLockRowCol;
 
     bool m_defaultUpper = true;
-    uint8_t m_shiftStatus;
+    bool m_leftShift = false;
+    bool m_rightShift = false;
+    bool m_virtualShift = false;
 
-    KeyRowColMap m_keys;
+    bool m_gameMode = false;
+
+    KeyRowColMap m_textKeys;
+    KeyRowColMap m_gameKeys;
 };
 
 #endif // KEYSCAN_H_

@@ -76,8 +76,9 @@ bool DG680_Emulator::Open(const Options & options)
   using namespace std::placeholders;
   m_pio.SetInterruptHandler(std::bind(&DG680_Emulator::OnPIOInterrupt, this, _1));
 
+  // when ASCII key available, call Z80PIO::SetData
   using namespace std::placeholders;
-  kb->SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
+  kb->SetASCIICallback(std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
 
   return true;
 }

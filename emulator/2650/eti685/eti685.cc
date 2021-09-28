@@ -68,9 +68,9 @@ bool ETI685::Open(const Options & options)
   ParallelKeyboard * kb = new ParallelKeyboard();
   SetKeyboard(kb);
 
-  // set keyboard handler
+  // when ASCII key available, call ETI685::SetKeyboardData
   using namespace std::placeholders;
-  kb->SetHandler(true, std::bind(&ETI685::SetKeyboardData, this, _1));
+  kb->SetASCIICallback(std::bind(&ETI685::SetKeyboardData, this, _1));
 
   return true;
 }

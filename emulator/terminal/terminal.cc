@@ -38,7 +38,7 @@ bool Terminal::Open()
 void Terminal::SetKeyboardHandler(std::function<void (uint8_t)> handler)
 {
   m_kbHandler = handler;
-  m_keyboard->SetHandler(true, handler);
+  m_keyboard->SetASCIICallback(handler);
 }
 
 void Terminal::WriteString(const std::string & str)
@@ -162,7 +162,6 @@ void ConsoleTerminal::AddPollers(Emulator & emulator)
 
 void ConsoleTerminal::CheckConsoleKeyboard()
 {
-
   int fd = STDIN_FILENO;
 
   for (;;) {
@@ -209,14 +208,12 @@ void ConsoleTerminal::CheckConsoleKeyboard()
     }
 
 #if __linux__ || __APPLE__
-    m_keyboard->OnASCIIKeyDown(ch);
+    m_keyboard->OnKeyText(std::string(1, (char)ch));
 #endif
 
 #if _WIN32
     if (buffer.Event.KeyEvent.bKeyDown)
-      m_keyboard->OnASCIIKeyDown(ch);
-    else  
-      m_keyboard->OnASCIIKeyUp(ch);
+      m_keyboard->OnKeyText(std::string(1, ch));
 #endif
     return;
   }
@@ -261,6 +258,9 @@ void ConKeyboard::OnKeyDown(const SDL_Keysym & keysym)
 {}
 
 void ConKeyboard::OnKeyUp(const SDL_Keysym & keysym)
+{}
+
+void ConKeyboard::OnKeyText(const std::string & str)
 {}
 
 ////////////////////////////////////////////////////////////////////////////////////

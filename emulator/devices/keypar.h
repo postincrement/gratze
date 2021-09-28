@@ -20,14 +20,10 @@ class ParallelKeyboard : public VirtualKeyboard
 
     ParallelKeyboard();
     ParallelKeyboard(const Mapping & mapping);
-    virtual void OnKeyDown(const SDL_Keysym & keysym) override;
-    virtual void OnKeyUp(const SDL_Keysym & keysym) override;
 
-    virtual void Reset() override;
+    virtual void OnKeyChar(char ch);
 
-  protected:  
-    int ConvertKeySymToASCII(const SDL_Keysym & keysym);
-
+  protected:    
     Mapping m_mapping;
 };
 

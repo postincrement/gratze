@@ -19,6 +19,9 @@ struct Options
   // use SDL
   bool m_useSDL = false;
 
+  // true if to use game kb mapping, if available
+  bool m_gameKb = false;
+
   // override default ROM path
   std::string m_romFn;
 

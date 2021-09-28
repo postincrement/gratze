@@ -12,19 +12,20 @@ class VirtualKeyboard : public VirtualDevice
   public:
     virtual ~VirtualKeyboard();
 
-    virtual void OnKeyDown(const SDL_Keysym & keysym) = 0;
-    virtual void OnKeyUp(const SDL_Keysym & keysym) = 0;
+    virtual void Reset() override;
 
-    virtual void OnASCIIKeyDown(uint8_t asc);
-    virtual void OnASCIIKeyUp(uint8_t asc);
+    virtual void OnKeyDown(const SDL_Keysym & keysym);
+    virtual void OnKeyUp(const SDL_Keysym & keysym);
+    virtual void OnKeyText(const std::string & str);
+    virtual void OnKeyChar(char ch);
 
-    // only implemented for KeyboardScanner - saves a cast
+    // only implemented for ScannedKeyboard - saves a cast
     virtual uint8_t Read(uint16_t rowMask);
 
-    void SetHandler(bool down, std::function<void (uint8_t)> handler);
+    void SetASCIICallback(std::function<void (uint8_t)> handler);
 
   protected:  
-    std::function<void (uint8_t)> m_keyHandlers[2] { nullptr, nullptr };
+    std::function<void (uint8_t)> m_asciiCallBack = nullptr;
 };
 
 #endif // KEYBOARD_H_

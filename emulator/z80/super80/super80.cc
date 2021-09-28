@@ -74,7 +74,7 @@ static EmulatorInfo g_emulatorInfo =
 
 //////////////////////////////////////////////////////////////////////////////////
 
-const KeyboardScanner::ScanCode keys[8*8] = {
+const ScannedKeyboard::ScanCode keys[8*8] = {
   { "@" }, { "H" }, { "P" },  {  "X" }, { "1"},  {     "9" } ,  {         " " } , {     "REP" } ,
   { "A" }, { "I" }, { "Q" },  {  "Y" }, { "2"},  {     ":" } ,  { "Backspace" } , {   "Shift" } ,
   { "B" }, { "J" }, { "R" },  {  "Z" }, { "3"},  {     ";" } ,  {       "Tab" } , {        0  } ,
@@ -85,7 +85,7 @@ const KeyboardScanner::ScanCode keys[8*8] = {
   { "G" }, { "O" }, { "W" },  {  "-" }, { "8"},  {     "0" } ,  {    "Insert" } , {        0  }
 };
 
-const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
+const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
   { "`" }, { "h" }, { "p" },  {  "x" }, {  "!"},  {     ")" } ,  {         " " } , {     "REP" } ,
   { "a" }, { "i" }, { "q" },  {  "y" }, { "\""},  {     "*" } ,  { "Backspace" } , {   "Shift" } ,
   { "b" }, { "j" }, { "r" },  {  "z" }, {  "#"},  {     "+" } ,  {       "Tab" } , {        0  } ,
@@ -96,8 +96,9 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
   { "g" }, { "o" }, { "w" },  {  "=" }, {  "("},  {     "0" } ,  {    "Insert" } , {        0  }
 };
 
-static KeyboardScanner::ScanLayout g_super80Keys = {
+static ScannedKeyboard::ScanLayout g_super80Keys = {
   8, 8,
+  NULL,
   keys,
   shiftedkeys,
   { }
@@ -165,7 +166,7 @@ bool Super80_Emulator::Open(const Options & options)
   // 0xd  = screen full of @                               JUMPER B
   // 0xe  = monitor?                                       JUMPER A
   m_options = 0xe;
-  KeyboardScanner * kb = new KeyboardScanner();
+  ScannedKeyboard * kb = new ScannedKeyboard();
   SetKeyboard(kb);
   kb->Compile(g_super80Keys);
 

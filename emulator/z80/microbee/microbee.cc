@@ -69,7 +69,18 @@ extern EmulatorInfo g_microbeeEmulatorInfo;
 
   */
 
-const KeyboardScanner::ScanCode keys[8*8] = {
+const ScannedKeyboard::ScanCode gameKeys[8*8] = {
+  { "'" },      { "a" },          { "b" },    { "c" },    { "d"},       { "e" } ,       { "f" } ,     { "g" } ,
+  { "h" },      { "i" },          { "j" },    { "k" },    { "l"},       { "m" } ,       { "n" } ,     { "o" } ,
+  { "p" },      { "q" },          { "r" },    { "s" },    { "t"},       { "u" } ,       { "v" } ,     { "w" } ,
+  { "x" },      { "y" },          { "z" },    { "[" },    { "'"},       { "]" } ,       { 0   } ,     { "Delete" } ,
+  { "0" },      { "1" },          { "2" },    { "3" },    { "4"},       { "5" } ,       { "6" } ,     { "7" } ,
+  { "8" },      { "9" },          { "-" },    { ";" },    { ","},       { "="   } ,     { "." } ,   { "/" } ,
+  { "Escape" }, { "Backspace" },  { "Tab" },  { "\\"},    { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
+  { 0 },        { "Control" },    { 0 },      { 0   },    { 0 },        { 0 },          { 0 },        { "Shift" }
+};
+
+const ScannedKeyboard::ScanCode keys[8*8] = {
   { "@" },      { "a" },          { "b" },    { "c" },    { "d"},       { "e" } ,       { "f" } ,     { "g" } ,
   { "h" },      { "i" },          { "j" },    { "k" },    { "l"},       { "m" } ,       { "n" } ,     { "o" } ,
   { "p" },      { "q" },          { "r" },    { "s" },    { "t"},       { "u" } ,       { "v" } ,     { "w" } ,
@@ -80,8 +91,8 @@ const KeyboardScanner::ScanCode keys[8*8] = {
   { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" }
 };
 
-const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
-  { "@" },      { "A" },          { "B" },    { "C" },    { "D"},       { "E" } ,       { "F" } ,     { "G" } ,
+const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
+  { "`" },      { "A" },          { "B" },    { "C" },    { "D"},       { "E" } ,       { "F" } ,     { "G" } ,
   { "H" },      { "I" },          { "J" },    { "K" },    { "L"},       { "M" } ,       { "N" } ,     { "O" } ,
   { "P" },      { "Q" },          { "R" },    { "S" },    { "T"},       { "U" } ,       { "V" } ,     { "W" } ,
   { "X" },      { "Y" },          { "Z" },    { "{" },    { "|" },      { "}" } ,       { "~" } ,     { "Delete" } ,
@@ -92,8 +103,9 @@ const KeyboardScanner::ScanCode shiftedkeys[8*8] = {
 };
 
 
-static KeyboardScanner::ScanLayout g_microbeeKeys = {
+static ScannedKeyboard::ScanLayout g_microbeeKeys = {
   8, 8,
+  gameKeys,
   keys,
   shiftedkeys,
   { }
@@ -406,7 +418,8 @@ bool Microbee_Emulator::Open(const Options & options)
   if (!Z80Emulator::Open(options))
     return false;
 
-  KeyboardScanner * kb = new KeyboardScanner();
+  ScannedKeyboard * kb = new ScannedKeyboard();
+  kb->SetGameMode(options.m_gameKb);
   SetKeyboard(kb);
   kb->Compile(g_microbeeKeys);
 
@@ -418,9 +431,6 @@ bool Microbee_Emulator::Open(const Options & options)
   m_crtc.SetCursorAddressHandler(std::bind(&Microbee_Emulator::OnSetCursorAddress, this, _1));
   m_crtc.SetCursorShapeHandler(std::bind(&Microbee_Emulator::OnSetCursorShape, this, _1, _2, _3));
   m_crtc.SetUpdateHandler(std::bind(&Microbee_Emulator::OnKeyboardScan, this, _1, _2));
-
-  //using namespace std::placeholders;
-  //m_keyboard.SetHandler(true, std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
 
   return true;
 }
@@ -438,7 +448,7 @@ void Microbee_Emulator::Reset(int addr)
 static int FindBitSet(uint8_t val)
 {
   int pos = 0;
-  while ((pos < 8) && ~(val & 1)) {
+  while ((pos < 8) && ((val & 1) == 0)) {
     ++pos;
     val = val >> 1;
   }
@@ -462,7 +472,9 @@ bool Microbee_Emulator::ScanKeyboard(uint16_t & addr)
   for (int row = 0; row < 8; row++) {
     uint8_t out = m_keyboard->Read(1 << row);
     if (out != 0x00) {
-      addr = (row << 7) + (FindBitSet(out) << 4);
+      int col = FindBitSet(out);
+      //cout << "scan out " << hex << (int)out << " = " << row << ", " << col << endl;
+      addr = (row << 7) + (col << 4);
       return true;
     }
     mask = mask << 1;
@@ -489,7 +501,7 @@ bool Microbee_Emulator::OnKeyboardScan(bool doUpdate, uint16_t & addr)
   }
 
   if (ScanKeyboard(addr)) {
-    //cout << "microbee: new keyboard code " << GetRowCol(addr) << endl;
+    //cout << "microbee: new keyboard code " << hex << addr << " " << GetRowCol(addr) << endl;
     return true;
   }
 
