@@ -25,7 +25,7 @@ class Our2650 : public CPU2650
       m_emulator.WritePortC(data); 
     }
 
-    virtual unsigned char ReadPortD()
+    virtual unsigned char ReadPortD() override
     {
       return m_emulator.ReadPortD();
     }
@@ -35,7 +35,7 @@ class Our2650 : public CPU2650
       m_emulator.WritePortD(data); 
     }
 
-    virtual unsigned char ReadExtPort(unsigned char port)
+    virtual unsigned char ReadExtPort(unsigned char port) override
     {
       return m_emulator.ReadPort(port);
     }
@@ -45,12 +45,12 @@ class Our2650 : public CPU2650
       m_emulator.WritePort(port, data); 
     }
 
-    virtual unsigned char ReadMemory(unsigned short addr)
+    virtual unsigned char ReadMemory(unsigned short addr) override
     { 
       return m_emulator.ReadMemory(addr); 
     }
 
-    virtual void WriteMemory(unsigned short addr, unsigned char data)
+    virtual void WriteMemory(unsigned short addr, unsigned char data) override
     { 
       m_emulator.WriteMemory(addr, data); 
     }
