@@ -132,13 +132,27 @@ void Terminal::AddPollers(Emulator & emulator)
 ConsoleTerminal::ConsoleTerminal(const Options & options, int cols, int rows)
   : Terminal(options, cols, rows)
 {
-  ConScreen * scrn = new ConScreen(*this, options, cols, rows);
-  m_screen.reset(scrn);
+  m_screen.reset(new ConScreen(*this, options, cols, rows));
   m_keyboard.reset(new ConKeyboard());
 
-#if _WIN32
-  setmode(STDOUT_FILENO, O_BINARY);
+  m_useCurses = true;
+}
+
+bool ConsoleTerminal::Open()
+{
+#if __linux__ || __APPLE__
+  SCREEN * s = newterm(NULL, stdin, stdout);
+  set_term(s);
+
+  //initscr();
+  scrollok(stdscr,TRUE);
+
+  raw();
+  keypad(stdscr, TRUE);
+  noecho();
+  nodelay(stdscr, TRUE);
 #endif
+  return true;
 }
 
 void ConsoleTerminal::Clear()
@@ -162,25 +176,37 @@ void ConsoleTerminal::AddPollers(Emulator & emulator)
 
 void ConsoleTerminal::CheckConsoleKeyboard()
 {
-  int fd = STDIN_FILENO;
+  char keyCode;
 
-  for (;;) {
 #if __linux__ || __APPLE__
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(fd, &fds);
-    timeval t;
-    t.tv_sec  = 0;
-    t.tv_usec = 1;
-    int result = select(fd+1, &fds, NULL, NULL, &t);
-    if (result < 1)
-      return;
+  if (m_useCurses) {
     int ch = getch();
     if (ch < 0)
       return;
+    keyCode = (char)ch;  
+  }
+  else {
+    int fd = STDIN_FILENO;
+
+    //for (;;) {
+      fd_set fds;
+      FD_ZERO(&fds);
+      FD_SET(fd, &fds);
+      timeval t;
+      t.tv_sec  = 0;
+      t.tv_usec = 1;
+      int result = select(fd+1, &fds, NULL, NULL, &t);
+      if (result < 1)
+        return;
+
+      if (read(fd, &keyCode, 1) < 1)
+        return ;
+    //}
+  }
 #endif
 
 #if _WIN32
+  for (;;) {
     HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
     DWORD events;
     INPUT_RECORD buffer;
@@ -195,28 +221,22 @@ void ConsoleTerminal::CheckConsoleKeyboard()
     int ch = buffer.Event.KeyEvent.uChar.AsciiChar;
     if (ch == 0)
       continue;
-#endif
-
-    switch (ch) {
-      case 0x03:
-        exit(-1);
-        
-      case 0x0a:
-        ch = 0x0d;
-      default:
-        break;
-    }
-
-#if __linux__ || __APPLE__
-    m_keyboard->OnKeyText(std::string(1, (char)ch));
-#endif
-
-#if _WIN32
-    if (buffer.Event.KeyEvent.bKeyDown)
-      m_keyboard->OnKeyText(std::string(1, ch));
-#endif
-    return;
   }
+#endif
+
+  switch (keyCode) {
+    case 0x03:
+      exit(-1);
+    
+    case 0x0a:
+      keyCode = 0x0d;
+      break;
+
+    default:
+      break;
+  }
+
+  m_keyboard->OnKeyText(std::string((char *)&keyCode, 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -224,12 +244,6 @@ void ConsoleTerminal::CheckConsoleKeyboard()
 ConScreen::ConScreen(Terminal & terminal, const Options & options, int cols, int rows)
   : VirtualScreen(options, cols, rows)
 {
-  initscr();
-  scrollok(stdscr,TRUE);
-
-  raw();
-//  keypad(stdscr, TRUE);
-  noecho();
 }
 
 void ConScreen::OnUpdate()
@@ -260,8 +274,10 @@ void ConKeyboard::OnKeyDown(const SDL_Keysym & keysym)
 void ConKeyboard::OnKeyUp(const SDL_Keysym & keysym)
 {}
 
-void ConKeyboard::OnKeyText(const std::string & str)
-{}
+//void ConKeyboard::OnKeyText(const std::string & str)
+//{
+//  cerr << "con OnKeyText " << str << endl;
+//}
 
 ////////////////////////////////////////////////////////////////////////////////////
 

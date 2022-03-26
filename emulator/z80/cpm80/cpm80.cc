@@ -338,6 +338,7 @@ void CPM80_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, register uin
 
     // console output
     case zed80_conout:
+      m_newBDOS->m_debug << "conout " << HEXFORMAT0x2(data) << endl;
       ConsoleOut(data);
       break;
 

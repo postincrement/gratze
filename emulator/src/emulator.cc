@@ -917,7 +917,7 @@ int Emulator::Run(const Options & options)
   }
 
   // get the drives
-  for (auto &r : options.m_driveFns) {
+  for (auto & r : options.m_driveFns) {
     std::string fn(r.second);
     VirtualFileIdentifier fileId;
     VirtualDrive * drive = fileId.Open(fn, true);

@@ -7,6 +7,10 @@
 
 #include "devices/device.h"
 
+//
+//  Base class for all virtual keyboard imlementations
+//
+
 class VirtualKeyboard : public VirtualDevice
 {
   public:

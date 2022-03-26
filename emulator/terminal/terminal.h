@@ -4,10 +4,18 @@
 #include "video/virtual_screen.h"
 #include "devices/keypar.h"
 
+#if __linux__ || __APPLE__
+#include <sys/select.h>
+#include <sys/types.h>
+#include <curses.h>
+#endif
+
+
 class Emulator;
 
 //
-//  Terminal abstraction: contains keyboard and screen
+// Base class for a terminal abstraction
+// Keyboard and display device like a serial terminal
 //
 
 struct Terminal
@@ -33,6 +41,7 @@ struct Terminal
     std::shared_ptr<VirtualKeyboard> m_keyboard;
 
   protected:  
+
     virtual void WriteChar(uint8_t ch, bool update);
     int m_cols = 0;
     int m_rows = 0;
@@ -61,22 +70,38 @@ class ConKeyboard : public VirtualKeyboard
     virtual void Reset() override;
     virtual void OnKeyDown(const SDL_Keysym & keysym) override;
     virtual void OnKeyUp(const SDL_Keysym & keysym) override;
-    virtual void OnKeyText(const std::string & str) override;
+    //virtual void OnKeyText(const std::string & str) override;
 };
+
+/////////////////////////////////////////////////////////////////////////////////
+
+//
+//  A terminal that uses the host native terminal implementation
+//
 
 struct ConsoleTerminal : public Terminal
 {
   public:
     ConsoleTerminal(const Options & options, int cols, int rows);
 
+    virtual bool Open() override;
+
     virtual void Clear() override;
     virtual void WriteChar(uint8_t ch) override;
     virtual void WriteString(const std::string & str) override;
     virtual void AddPollers(Emulator & emulator) override;
     void CheckConsoleKeyboard();
+
+  protected:
+    bool m_useCurses;  
+    SCREEN * m_curScreen;
 };
 
 /////////////////////////////////////////////////////////////////////////////////
+
+//
+//  A terminal that uses an SDL window
+//
 
 struct SDLTerminal : public Terminal
 {

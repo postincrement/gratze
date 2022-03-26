@@ -276,6 +276,9 @@ class Emulator
 
     uint8_t * GetMainMemoryPtr();
 
+    std::shared_ptr<VirtualKeyboard>    m_keyboard;
+    std::shared_ptr<VirtualScreen>      m_screen;
+
   protected:
     static Emulator * m_instance;
 
@@ -308,8 +311,6 @@ class Emulator
 
     Options m_options;
 
-    std::shared_ptr<VirtualKeyboard>    m_keyboard;
-    std::shared_ptr<VirtualScreen>      m_screen;
     std::shared_ptr<MemoryMappedScreen> m_memMapScreen;
     std::shared_ptr<Terminal>           m_terminal;
 
