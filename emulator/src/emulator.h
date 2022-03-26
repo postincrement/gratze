@@ -168,6 +168,7 @@ class Emulator
     virtual const EmulatorInfo & GetInfo() const;
     void UpdateScreen();
     void CheckSDLKeyboard();
+    void SendKeyText(const SDL_Event & event);
 
     // info functions
     virtual const Config::Block * GetConfigBlock(Config::Type type) const;

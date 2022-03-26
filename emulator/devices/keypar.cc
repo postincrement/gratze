@@ -27,6 +27,7 @@ void VirtualKeyboard::OnKeyUp(const SDL_Keysym & keysym)
 // called for SDL text input, or non-SDL input
 void VirtualKeyboard::OnKeyChar(char ch)
 {
+  cerr << "VirtualKeyboard::OnKeyChar " << HEXFORMAT0x2(ch) << endl;
   if (m_keyCharCallBack)
     m_keyCharCallBack(ch);
 }
@@ -39,8 +40,10 @@ void VirtualKeyboard::SetKeyCharCallback(std::function<void (uint8_t)> callback)
 
 void VirtualKeyboard::OnKeyText(const std::string & str)
 {
-  for (auto r : str)
+  for (auto r : str) {
+    cerr << "VirtualKeyboard::OnKeyText " << HEXFORMAT0x2(r) << endl;
     OnKeyChar(r);
+  }
 }
 
 uint8_t VirtualKeyboard::Read(uint16_t rowMask)

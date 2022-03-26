@@ -103,54 +103,94 @@ void Emulator::UpdateScreen()
   }
 }
 
+void Emulator::SendKeyText(const SDL_Event & event)
+{
+  if (m_keyboard == nullptr)
+    return;
+
+  SDL_Keycode keycode = event.key.keysym.sym;
+
+  char ascii;
+  SDL_Keymod mod = SDL_GetModState();
+  bool shift = (mod & (KMOD_LSHIFT | KMOD_RSHIFT)) != 0;
+  bool ctrl  = (mod & (KMOD_LCTRL  | KMOD_RCTRL)) != 0;
+
+  // control codes
+  if (keycode < 0x20) {
+    if (keycode == SDLK_RETURN)
+      ascii = 0x0d;
+  }
+
+  // above ASCII
+  else if (keycode >= 0x7f) {
+    return;
+  }
+
+  // alpha
+  else if ((keycode >= 'a') && (keycode <= 'z')){
+    if (ctrl)
+      ascii = keycode & 0x1f;
+    else if (shift)
+      ascii = keycode - 0x20;
+    else
+      ascii = keycode;
+  }
+
+  // else
+  else {
+    ascii = keycode;
+  }
+
+  cerr << "SendKeyText::OnKeyText " << HEXFORMAT0x2(ascii) << " " << shift << " " << ctrl << endl;
+
+  m_keyboard->OnKeyText(std::string(&ascii, 1));
+}
+
 void Emulator::CheckSDLKeyboard()
 {
   SDL_Event event;
-  if (SDL_PollEvent(&event)) {
-    switch (event.type) {
+  if (!SDL_PollEvent(&event))
+    return;
 
-      case SDL_QUIT:
-        exit(0);
-        break;
+  switch (event.type) {
 
-      case SDL_TEXTINPUT:
-        if (m_keyboard != nullptr) {
-          m_keyboard->OnKeyText(event.text.text);
+    case SDL_QUIT:
+      exit(0);
+      break;
+
+    case SDL_TEXTINPUT:
+      break;
+
+    case SDL_KEYDOWN:
+      SendKeyText(event);
+
+      if (event.key.repeat == 0) {
+        if (event.key.keysym.sym == TRACE_SYM)
+          SetTrace(true);
+
+        if (event.key.keysym.sym == TRACE_SYM + 1)
+          SetTrace(false);
+
+        if (event.key.keysym.sym == COLOUR_SYM) {
+          ChangeVideoColour();
+        }
+        else if (event.key.keysym.sym == DUMP_SYM) {
+          MemoryDump();
+        }
+        else if (event.key.keysym.sym == LOAD_SYM) {
+          LoadFile();
+        }
+        else if (event.key.keysym.sym == REBOOT_SYM) {
+          Reset();
+        }
+        else if (m_keyboard != nullptr) {
+          if (m_options.m_keyboardDebug) {
+            cerr << "debug: key down " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
+          }
+          m_keyboard->OnKeyDown(event.key.keysym);
         }
         else {
-          OnKeyText(event.text.text);
-        }
-        break;
-
-      case SDL_KEYDOWN:
-        if (event.key.repeat == 0) {
-          if (event.key.keysym.sym == TRACE_SYM)
-            SetTrace(true);
-
-          if (event.key.keysym.sym == TRACE_SYM + 1)
-            SetTrace(false);
-
-          if (event.key.keysym.sym == COLOUR_SYM) {
-            ChangeVideoColour();
-          }
-          else if (event.key.keysym.sym == DUMP_SYM) {
-            MemoryDump();
-          }
-          else if (event.key.keysym.sym == LOAD_SYM) {
-            LoadFile();
-          }
-          else if (event.key.keysym.sym == REBOOT_SYM) {
-            Reset();
-          }
-          else if (m_keyboard != nullptr) {
-            if (m_options.m_keyboardDebug) {
-              cerr << "debug: key down " << HEXFORMAT0x8(event.key.keysym.sym) << endl;
-            }
-            m_keyboard->OnKeyDown(event.key.keysym);
-          }
-          else {
-            OnKeyDown(event.key.keysym);
-          }
+          OnKeyDown(event.key.keysym);
         }
         break;
 
@@ -938,7 +978,7 @@ int Emulator::Run(const Options & options)
       printf("error initializing SDL: %s\n", SDL_GetError());
       return -1;
     }
-    SDL_StartTextInput();
+    //SDL_StartTextInput();
   }
 
   MainWindow mainWindow;

@@ -123,6 +123,19 @@ void CPM80_Emulator::Reset(int addr)
 
 void CPM80_Emulator::OnKeyboard(uint8_t ch)
 {
+  cerr << "OnKeyboard " << HEXFORMAT0x2(ch) << endl;
+  switch (ch) {
+    case 0x03:
+      exit(-1);
+    
+    case 0x0a:
+      ch = 0x0d;
+      break;
+
+    default:
+      break;
+  }
+
   m_kbQueue.push_back(ch);
 }
 
