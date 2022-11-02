@@ -97,7 +97,10 @@ class ScannedKeyboard : public VirtualKeyboard
   //
   protected:  
     bool FindKey(const std::string & name, SDL_Keycode & keycode) const;
-    void KeyAction(const SDL_Keysym & keysym, bool down);
+
+    void GameKeyAction(const SDL_Keysym & keysym, bool down);
+    void TextKeyAction(const SDL_Keysym & keysym, bool down);
+
     void ActivateKey(const KeyRowColInfo & rowCol, bool down);
 
     bool m_gameMode = false;

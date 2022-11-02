@@ -167,6 +167,7 @@ bool Super80_Emulator::Open(const Options & options)
   // 0xe  = monitor?                                       JUMPER A
   m_options = 0xe;
   ScannedKeyboard * kb = new ScannedKeyboard();
+  kb->SetGameMode(options.m_gameKb);
   SetKeyboard(kb);
   kb->Compile(g_super80Keys);
 

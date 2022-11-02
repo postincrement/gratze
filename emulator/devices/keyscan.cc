@@ -79,15 +79,18 @@ void ScannedKeyboard::Compile(const ScanLayout & scanLayout)
 
   // compile game key map, if present
   m_gameKeys.clear();
-  if (scanLayout.m_gameKeys != NULL) {
+  if (scanLayout.m_gameKeys == NULL) {
+    cerr << "no gamekeys" << endl;
+  }
+  else {
     Compile(m_gameKeys, m_rows, m_cols, scanLayout.m_gameKeys);
-    if (m_shiftRowCol.m_col != 0) {
+    if (m_shiftRowCol.m_col >= -1) {
       if (m_gameKeys.count(SDLK_LSHIFT) == 0)
         m_gameKeys.insert(SDLKeyRowColMap::value_type(SDLK_LSHIFT, m_shiftRowCol));
       if (m_gameKeys.count(SDLK_RSHIFT) == 0)
         m_gameKeys.insert(SDLKeyRowColMap::value_type(SDLK_RSHIFT, m_shiftRowCol));
     }
-    if (m_controlRowCol.m_col != 0) {
+    if (m_controlRowCol.m_col >= 0) {
       if (m_gameKeys.count(SDLK_LCTRL) == 0)
         m_gameKeys.insert(SDLKeyRowColMap::value_type(SDLK_LCTRL, m_controlRowCol));
       if (m_gameKeys.count(SDLK_RCTRL) == 0)
@@ -125,6 +128,7 @@ void ScannedKeyboard::Compile(SDLKeyRowColMap & keyMap,
           SDLKeyRowColMap::value_type(keycode, 
                                     KeyRowColInfo(row, col)
         ));
+        cerr << "mapped " << code->m_name << " to sym " << HEXFORMAT0x2(keycode) << " at " << row << "," << col << endl; 
       }
       else {
         cerr << "error: unknown SDL keycode name '" << code->m_name << "'" << endl;
@@ -188,10 +192,18 @@ void ScannedKeyboard::Compile(TextKeyRowColMap & keyMap,
         continue;
       }
 
-      keyMap.insert(
-        TextKeyRowColMap::value_type(code->m_name[0], 
-                                     KeyRowColInfo(row, col, shifted)
-        ));
+      char key = code->m_name[0];
+      if (strlen(code->m_name) > 1) {
+        if (strcasecmp(code->m_name, "return") == 0)
+          key = 0x0d;
+        else if (strcasecmp(code->m_name, "escape") == 0)
+          key = 0x1b;
+        else
+          cerr << "warning: unmapped keysym name '" << code->m_name << "'" << endl;  
+      }
+      cerr << "info: key name '" << code->m_name << "' mapped to " << HEXFORMAT0x2(key) << endl;
+
+      keyMap.emplace(key, KeyRowColInfo(row, col, shifted));
     }
   }
 }
@@ -220,7 +232,7 @@ void ScannedKeyboard::ActivateKey(const KeyRowColInfo & rowCol, bool down)
     cout << "kb: activating row " << rowCol.m_row << ", col " << rowCol.m_col << endl;
 }
 
-void ScannedKeyboard::KeyAction(const SDL_Keysym & keysym, bool down)
+void ScannedKeyboard::GameKeyAction(const SDL_Keysym & keysym, bool down)
 {
   // see if the keycode code is mapped to a rowcol
   SDLKeyRowColMap::iterator r = m_gameKeys.find(keysym.sym);
@@ -236,20 +248,48 @@ void ScannedKeyboard::KeyAction(const SDL_Keysym & keysym, bool down)
   ActivateKey(rowCol, down);
 }
 
+void ScannedKeyboard::TextKeyAction(const SDL_Keysym & keysym, bool down)
+{
+  // see if the keycode code is mapped to a rowcol
+  auto r = m_textKeys.find(keysym.sym);
+  if (r == m_textKeys.end()) {
+    cerr << "warning: unmapped keyboard " << (down ? "down" : "up") << " code " << HEXFORMAT0x8(keysym.sym) << endl;
+    return;
+  }
+
+  KeyRowColInfo & rowCol = r->second;
+
+  const char * keyName = SDL_GetKeyName(r->first);
+  cerr << "info: mapped key '" << keyName << "' " << (down ? "down" : "up") << " to row " << rowCol.m_row << ", col " << rowCol.m_col << " in " << (m_gameMode ? "game" : "text") << " mode" << endl;
+  ActivateKey(rowCol, down);
+}
+
 void ScannedKeyboard::OnKeyDown(const SDL_Keysym & keysym)
 {
-  if (m_gameMode)
-    KeyAction(keysym, true);
+  if (m_gameMode) {
+    cerr << "OnKeyDown in gamemode " << HEXFORMAT0x8(keysym.sym) << endl;;
+    GameKeyAction(keysym, true);
+  }
+  else {
+    cerr << "OnKeyDown in text mode " << HEXFORMAT0x8(keysym.sym) << endl;;
+    TextKeyAction(keysym, true);
+  }
 }
 
 void ScannedKeyboard::OnKeyUp(const SDL_Keysym & keysym)
 {
-  if (m_gameMode)
-    KeyAction(keysym, false);
+  if (m_gameMode) {
+    cerr << "OnKeyDown in gamemode " << HEXFORMAT0x8(keysym.sym) << endl;;
+    GameKeyAction(keysym, false);
+  }
+  else {
+    cerr << "OnKeyUp in text mode " << HEXFORMAT0x8(keysym.sym) << endl;;
+    TextKeyAction(keysym, false);
+  }
 }
 
 void ScannedKeyboard::OnKeyChar(char ch)
 {
   if (m_gameMode)
-    return;  
+    return;
 }

@@ -644,14 +644,14 @@ uint8_t MicrobeeDisk_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint
   switch (info.m_id) {
     case PORT_FDC:
       {
-        uint8_t v = m_fdc->Read(port & 0x3);
+        uint8_t v = 0; //m_fdc->Read(port & 0x3);
         //if ((port & 0x03) == 0)
         //  cerr << "mbee: fdc port 0x44 = " << HEXFORMAT0x2(v) << endl;
         return v;
       }
     case PORT_DRVSEL:
       {
-        uint8_t val = (m_fdc->GetDRQ() || m_fdc->GetInterrupt()) ? 0x80 : 0x00;
+        uint8_t val = 0; //(m_fdc->GetDRQ() || m_fdc->GetInterrupt()) ? 0x80 : 0x00;
         //m_fdcPending = false;
         //cerr << "mbee: port 0x48 return " << HEXFORMAT0x2(val) << endl;
         return val;
@@ -664,8 +664,10 @@ void MicrobeeDisk_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint1
 {
   switch (info.m_id) {
     case PORT_FDC:
-      return m_fdc->Write(port & 0x3, data);
+      return; // m_fdc->Write(port & 0x3, data);
+
     case PORT_DRVSEL:
+    /*
     {
       m_drive   = data & 0x03;
       m_fdc->SelectDrive(m_drive);
@@ -673,6 +675,7 @@ void MicrobeeDisk_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint1
       m_fdc->SelectSide(m_side);
       m_density = (data & 0x08) != 0;
     }
+    */
     return;
   }
   return Microbee_Emulator::WriteIOPort(info, port, data);
@@ -791,15 +794,18 @@ EmulatorInfo g_microbee56EmulatorInfo =
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 extern unsigned char g_disk128_ROM[8192];
+extern unsigned char g_bn5443_ROM[8192];
 
 extern EmulatorInfo g_microbee128EmulatorInfo;
+extern EmulatorInfo g_microbee128bnEmulatorInfo;
 
-Microbee128_Emulator::Microbee128_Emulator()
-  : MicrobeeDisk_Emulator(&g_microbee128EmulatorInfo)
+Microbee128_BaseEmulator::Microbee128_BaseEmulator(const unsigned char * rom, const EmulatorInfo * info)
+  : MicrobeeDisk_Emulator(info)
+  , m_0x8000_ROM(rom)
 {
 }
 
-bool Microbee128_Emulator::Open(const Options & options)
+bool Microbee128_BaseEmulator::Open(const Options & options)
 {
   if (!MicrobeeDisk_Emulator::Open(options))
     return false;
@@ -807,7 +813,7 @@ bool Microbee128_Emulator::Open(const Options & options)
   return true;
 }
 
-void Microbee128_Emulator::Reset(int addr)
+void Microbee128_BaseEmulator::Reset(int addr)
 {
   MicrobeeDisk_Emulator::Reset(addr);
   SetBankSel(0x00);
@@ -828,7 +834,7 @@ static int g_bankMap[4] = {
   3,    // 11 -> bank 1, upper
 };
 
-void Microbee128_Emulator::SetBankSel(uint8_t data)
+void Microbee128_BaseEmulator::SetBankSel(uint8_t data)
 {
   m_bankSel          = data;
   m_currentLowerBank = m_bankedMemory[data & 3]; //g_bankMap[data & 3]];
@@ -845,7 +851,7 @@ void Microbee128_Emulator::SetBankSel(uint8_t data)
   */     
 }
 
-uint8_t Microbee128_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
+uint8_t Microbee128_BaseEmulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
 {
 //  switch (info.m_id) {
 //    case PORT_BANK:
@@ -855,7 +861,7 @@ uint8_t Microbee128_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint1
   return MicrobeeDisk_Emulator::ReadIOPort(info, port);
 }
 
-void Microbee128_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
+void Microbee128_BaseEmulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
 {
   switch (info.m_id) {
     case PORT_BANK:
@@ -865,7 +871,7 @@ void Microbee128_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16
   return MicrobeeDisk_Emulator::WriteIOPort(info, port, data);
 }
 
-void Microbee128_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
+void Microbee128_BaseEmulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 {
   switch (id) {
     case MEMORY_LOWER_BANK:
@@ -893,7 +899,7 @@ void Microbee128_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 }
 
 
-uint8_t Microbee128_Emulator::ReadIOMemory(int id, uint16_t addr) const
+uint8_t Microbee128_BaseEmulator::ReadIOMemory(int id, uint16_t addr) const
 {
   switch (id) {
     case MEMORY_LOWER_BANK:          // 0x0000 to 0x7ffff
@@ -909,7 +915,7 @@ uint8_t Microbee128_Emulator::ReadIOMemory(int id, uint16_t addr) const
         }
       }  
       if (!m_romDisable && (addr < 0xa000)) {  
-        return g_disk128_ROM[addr & 0x1fff];
+        return m_0x8000_ROM[addr & 0x1fff];
       }
       return m_bankedMemory[UPPER_BANK][addr & 0x7fff];
   }
@@ -918,6 +924,11 @@ uint8_t Microbee128_Emulator::ReadIOMemory(int id, uint16_t addr) const
 }
 
 #define   MICROBEE_128k_DISK_ROM_START_ADDR     0x8000
+
+Microbee128_Emulator::Microbee128_Emulator()
+  : Microbee128_BaseEmulator(g_disk128_ROM, &g_microbee128EmulatorInfo)
+{
+}
 
 INFO_START(microbee128)
 {
@@ -936,6 +947,11 @@ INFO_START(microbee128)
 }
 INFO_END(microbee128);
 
+Microbee128_BN_Emulator::Microbee128_BN_Emulator()
+  : Microbee128_BaseEmulator(g_bn5443_ROM, &g_microbee128bnEmulatorInfo)
+{
+}
+
 EmulatorInfo g_microbee128EmulatorInfo =
 {
   "mbee128",                  // command line option
@@ -944,5 +960,22 @@ EmulatorInfo g_microbee128EmulatorInfo =
 
   INFO_INSERT(microbee128)
 };
+
+INFO_START(microbee128bn)
+{
+  INFO_CPU(4, MICROBEE_128k_DISK_ROM_START_ADDR),
+  INFO_PARENT(microbee128)
+}
+INFO_END(microbee128bn);
+
+EmulatorInfo g_microbee128bnEmulatorInfo =
+{
+  "mbee128bn",                  // command line option
+  "Microbee 128k BN",            // short name
+  "Microbee 128k BN",            // long name
+
+  INFO_INSERT(microbee128bn)
+};
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////

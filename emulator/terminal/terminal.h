@@ -4,13 +4,6 @@
 #include "video/virtual_screen.h"
 #include "devices/keypar.h"
 
-#if __linux__ || __APPLE__
-#include <sys/select.h>
-#include <sys/types.h>
-#include <curses.h>
-#endif
-
-
 class Emulator;
 
 //
@@ -94,7 +87,6 @@ struct ConsoleTerminal : public Terminal
 
   protected:
     bool m_useCurses;  
-    SCREEN * m_curScreen;
 };
 
 /////////////////////////////////////////////////////////////////////////////////

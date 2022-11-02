@@ -86,10 +86,10 @@ class Microbee56_Emulator : public MicrobeeDisk_Emulator
   protected:  
 };
 
-class Microbee128_Emulator : public MicrobeeDisk_Emulator
+class Microbee128_BaseEmulator : public MicrobeeDisk_Emulator
 {
   public:
-    Microbee128_Emulator();
+    Microbee128_BaseEmulator(const unsigned char * rom, const EmulatorInfo * info);
 
     bool Open(const Options & options) override;
     virtual void Reset(int addr = -1) override;
@@ -109,7 +109,19 @@ class Microbee128_Emulator : public MicrobeeDisk_Emulator
     bool m_romDisable   = false;
     bool m_videoDisable = false;
     bool m_videoLower   = false;
+    const unsigned char * m_0x8000_ROM;
+};
 
+class Microbee128_Emulator : public Microbee128_BaseEmulator
+{
+  public:
+    Microbee128_Emulator();
+};
+
+class Microbee128_BN_Emulator : public Microbee128_BaseEmulator
+{
+  public:
+    Microbee128_BN_Emulator();
 };
 
 #endif // DG680_H_

@@ -33,7 +33,7 @@ using namespace std;
 #define RTC_INTERVAL_MS 40
 
 
-const ScannedKeyboard::ScanCode keys[8*8] = {
+static const ScannedKeyboard::ScanCode keys[8*8] = {
   { "@" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
   { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
   { "P" },      { "Q" },      { "R" },      { "S" },    { "T"},     { "U" } ,   { "V" } ,     { "W" } ,
@@ -44,7 +44,7 @@ const ScannedKeyboard::ScanCode keys[8*8] = {
   { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 }
 };
 
-const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
+static const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
   { "@" },      { "a" },      { "b" },      { "c" },    { "d"},     { "e" } ,   { "f" } ,     { "g" } ,
   { "h" },      { "i" },      { "j" },      { "k" },    { "l"},     { "m" } ,   { "n" } ,     { "o" } ,
   { "p" },      { "q" },      { "r" },      { "s" },    { "t"},     { "u" } ,   { "v" } ,     { "w" } ,
@@ -57,14 +57,13 @@ const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
 
 static ScannedKeyboard::ScanLayout g_trs80Keys = {
   8, 8,
-  NULL,
-  keys,
-  shiftedkeys,
+  NULL,          // gamekeys
+  keys,          // text keys
+  shiftedkeys,   // shifted text keys
   {
     { "Backspace", "Left" },
   }
 };
-
 
 /////////////////////////////////////////////////////////////
 
@@ -93,7 +92,9 @@ bool TRS80Emulator::Open(const Options & options)
     return false;
 
   ScannedKeyboard * kb = new ScannedKeyboard();
+  kb->SetGameMode(options.m_gameKb);
   SetKeyboard(kb);
+  cerr << "compiling keyboard" << endl;
   kb->Compile(g_trs80Keys);
 
   m_rtcTimer   = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);

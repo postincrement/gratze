@@ -141,8 +141,6 @@ void Emulator::SendKeyText(const SDL_Event & event)
     ascii = keycode;
   }
 
-  cerr << "SendKeyText::OnKeyText " << HEXFORMAT0x2(ascii) << " " << shift << " " << ctrl << endl;
-
   m_keyboard->OnKeyText(std::string(&ascii, 1));
 }
 

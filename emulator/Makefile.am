@@ -67,6 +67,7 @@ gratze_SOURCES = \
 		z80/microbee/rom_basic5_22e.c \
 		z80/microbee/rom_disk56.c \
 		z80/microbee/rom_disk128.c \
+		z80/microbee/rom_bn5443.c \
 		z80/sorcerer/rom_sorcerer.c \
 		z80/mfz80/Z80.c \
 		z80/mfz80/Debug.c \
