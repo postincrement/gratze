@@ -101,12 +101,12 @@ std::shared_ptr<VirtualDrive> VirtualFileIdentifier::Open(const std::string & fn
     }
     else if (drive->OpenFile(fd, len, header, sizeof(header))) {
       if (m_verbose)
-        cout << "info: file is format '" << drive->GetFormat() << "'" << endl;
+        cerr << "info: file is format '" << drive->GetFormat() << "'" << endl;
       return drive;
     }
     else {
       if (m_verbose)
-        cout << "info: file has '" << drive->GetFormat() << "' extension but not '" << drive->GetFormat() << "' format" << endl;
+        cerr << "info: file has '" << drive->GetFormat() << "' extension but not '" << drive->GetFormat() << "' format" << endl;
       break;
     }
   }
@@ -116,19 +116,19 @@ std::shared_ptr<VirtualDrive> VirtualFileIdentifier::Open(const std::string & fn
     drive = std::shared_ptr<VirtualDrive>(VirtualDrive::m_virtualDriveFactory.CreateInstance(r));
 
     if (m_verbose) {
-      cout << "info: checking format '" << drive->GetFormat() << "'" << endl;
+      cerr << "info: checking format '" << drive->GetFormat() << "'" << endl;
       drive->SetVerbose(true);
     }
   
     lseek(fd, 0, SEEK_SET);
     if (drive->OpenFile(fd, len, header, sizeof(header))) {
       if (m_verbose)
-        cout << "info: file is format '" << drive->GetFormat() << "'" << endl;
+        cerr << "info: file is format '" << drive->GetFormat() << "'" << endl;
       break;
     }
 
     if (m_verbose && !drive->GetError().empty()) {
-      cout << "error: " << drive->GetError() << endl;
+      cerr << "error: " << drive->GetError() << endl;
     }
 
     drive = nullptr;
@@ -382,7 +382,7 @@ int VirtualDriveFile::ReadSector(int side, int track, int sector, SectorInfo & i
   info = *sectorInfo;
 
   if (m_verbose)
-    cout << "drive: read side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
+    cerr << "drive: read side " << side << ",track " << (int)track << ",sector " << sector << " = offset " << info.m_offset << " (" << HEXFORMAT0x4(info.m_offset) << ")" << endl;
 
   if (lseek(m_fd, info.m_offset, SEEK_SET) < 0) {
     m_error << "cannot seek for sector " << dec << sector << " and track " << track;
@@ -395,7 +395,7 @@ int VirtualDriveFile::ReadSector(int side, int track, int sector, SectorInfo & i
 
   int rlen = ::read(m_fd, data, len);
   //if (rlen > 0)
-  //  cout << DumpMemory((const uint8_t *)data, rlen);
+  //  cerr << DumpMemory((const uint8_t *)data, rlen);
   return rlen;  
 }
 

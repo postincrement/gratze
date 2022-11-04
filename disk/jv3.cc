@@ -18,7 +18,7 @@ VirtualDriveJV3::VirtualDriveJV3()
 bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t headerSize) 
 {
   if (m_verbose)
-    cout << "jv3 - reading data" << endl;
+    cerr << "jv3 - reading data" << endl;
 
   uint8_t jv3Header[JV3_SECTOR_COUNT*3];
   int ret = ::read(fd, jv3Header, sizeof(jv3Header));
@@ -28,7 +28,7 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
   }
 
   if (m_verbose)
-    cout << "jv3 - reading data" << endl;
+    cerr << "jv3 - reading data" << endl;
 
   uint8_t * ptr = jv3Header;
   off_t offs = JV3_SECTOR_COUNT*3 + 1;
@@ -107,7 +107,7 @@ bool VirtualDriveJV3::OpenFile(int fd, off_t len, const uint8_t * header, size_t
       }
     
       if (m_verbose)
-        cout << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
+        cerr << "jv3: dam=" << HEXFORMAT0x2(dam) << ","
               << "track=" << (int)track << "," 
               << "sector=" << (int)sector << "," 
               << "dam=" << HEXFORMAT0x2(dam) << endl;

@@ -36,7 +36,7 @@ bool VirtualDriveJV1::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     uint8_t dam = (track == 17) ? 0xf8 : 0xfb;
     for (int sector = 0; sector < SD_SECTOR_COUNT; ++sector) {
       if (m_verbose)
-        cout << "jv1: dam=" << HEXFORMAT0x2(dam) << ","
+        cerr << "jv1: dam=" << HEXFORMAT0x2(dam) << ","
                 << "track=" << (int)track << "," 
                 << "sector=" << (int) sector << "," 
                 << "dam=" << HEXFORMAT0x2(dam) << endl; 

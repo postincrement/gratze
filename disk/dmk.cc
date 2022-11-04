@@ -69,19 +69,19 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     return false;
 
   if (m_verbose)
-    cout << "dmk: wrtProt=" << (int)dmk->m_wrtProt << ",tracks=" << (int)dmk->m_trackCount << endl;
+    cerr << "dmk: wrtProt=" << (int)dmk->m_wrtProt << ",tracks=" << (int)dmk->m_trackCount << endl;
 
   if (dmk->m_options & (1 << 4)) {
     if (m_verbose)
-      cout << "dmk: disk is single density only" << endl;
+      cerr << "dmk: disk is single density only" << endl;
   }  
   if (dmk->m_options & (1 << 6)) {
     if (m_verbose)
-      cout << "dmk: disk is single density with double option" << endl;
+      cerr << "dmk: disk is single density with double option" << endl;
   }  
   if (dmk->m_options & (1 << 7)) {
     if (m_verbose)
-      cout << "dmk: disk is double density with single option" << endl;
+      cerr << "dmk: disk is double density with single option" << endl;
   }  
 
   int j;
@@ -133,7 +133,7 @@ bool VirtualDriveDMK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
         }
         else {
           if (m_verbose)
-            cout << "dmk: idam=" << HEXFORMAT0x2(sector.m_idam) << ","
+            cerr << "dmk: idam=" << HEXFORMAT0x2(sector.m_idam) << ","
                 << "track=" << (int) sector.m_track << "," 
                 << "sector=" << (int) sector.m_sector << "," 
                 << "dam=" << HEXFORMAT0x2(sector.m_dam) << ","

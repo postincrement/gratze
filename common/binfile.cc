@@ -97,7 +97,7 @@ bool GRZFile::Load(std::function<bool (unsigned addr, const uint8_t * ptr, unsig
   {
     std::ifstream file(m_fn);
     if (!file.is_open()) {
-      cout << "cannot open " << m_fn << endl;
+      cerr << "cannot open " << m_fn << endl;
       return false;
     }
     std::string line;
@@ -106,7 +106,7 @@ bool GRZFile::Load(std::function<bool (unsigned addr, const uint8_t * ptr, unsig
     }
     file.close();
   }
-  cout << "json: " << json << endl;
+  cerr << "json: " << json << endl;
   GRZ grz;
   std::stringstream strm(json);
   try {
@@ -166,7 +166,7 @@ bool GRZFile::Load(std::function<bool (unsigned addr, const uint8_t * ptr, unsig
   if (!saver(grz.m_addr, &m_data[0], m_data.size()))
     return false;
 
-   cout << "info: loaded " << HEXFORMAT0x4(length) << " bytes to " << HEXFORMAT0x4(grz.m_addr) << endl;
+   cerr << "info: loaded " << HEXFORMAT0x4(length) << " bytes to " << HEXFORMAT0x4(grz.m_addr) << endl;
    return true;
 }
 
@@ -311,7 +311,7 @@ bool CASBINFile::Load(std::function<bool (unsigned addr, const uint8_t * ptr, un
       cerr << "error: TRS80 BASIC files not supported" << endl;
       return false;
     case VirtualCassetteFile::Format::eTRS80System:
-      cout << "reading TRS80 system file" << endl;
+      cerr << "reading TRS80 system file" << endl;
       return ReadTRS80SystemFile(casFile, saver);
     default:
       cerr << "error: unknown format " << (int)casFile.GetFormat() << endl;
@@ -360,7 +360,7 @@ bool CASBINFile::ReadTRS80SystemFile(VirtualCassetteFile & casFile,
 
   for (;;) {
 
-    cout << "info: scanning for leader from " << HEXFORMAT0x4(ptr - start) << endl;
+    cerr << "info: scanning for leader from " << HEXFORMAT0x4(ptr - start) << endl;
 
     // skip leader
     while ((ptr < end) && (*ptr == 0x00))

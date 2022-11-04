@@ -182,7 +182,7 @@ bool CPMFileSystem::Open()
     return false;
   }
 
-  cout << "info: using format '" << m_dpb->m_name << "'" << endl;
+  cerr << "info: using format '" << m_dpb->m_name << "'" << endl;
 
   // save some parameters
   m_recordsPerSector = 1 << m_dpb->m_sec;
@@ -198,11 +198,11 @@ bool CPMFileSystem::Open()
   unsigned directorySize = ((m_dpb->m_drm + 1) * 32);
 
 #if 0
-  cout << "  block size     : " << m_blockSize << " bytes" << endl;
-  cout << "  extent size    : " << FIXEDFORMAT3(m_extentSize / 1024.0) << " kb (" << (m_extentSize / 128) << " records)"  << endl;
-  cout << "  directory size : " << FIXEDFORMAT3(directorySize / 1024.0) << " kb (" << (directorySize / 128) << " records, " << (directorySize / m_blockSize) << " blocks)"  << endl;
-  cout << "  max file size  : " << FIXEDFORMAT3(32 * m_extentSize / 1024.0) << " kb (" << (32 * m_extentSize / 128) << " records)" << endl;
-  cout << "  max disk size  : " << FIXEDFORMAT3((m_dpb->m_dsm + 1) * m_blockSize / 1024.0) << " kb" << endl;
+  cerr << "  block size     : " << m_blockSize << " bytes" << endl;
+  cerr << "  extent size    : " << FIXEDFORMAT3(m_extentSize / 1024.0) << " kb (" << (m_extentSize / 128) << " records)"  << endl;
+  cerr << "  directory size : " << FIXEDFORMAT3(directorySize / 1024.0) << " kb (" << (directorySize / 128) << " records, " << (directorySize / m_blockSize) << " blocks)"  << endl;
+  cerr << "  max file size  : " << FIXEDFORMAT3(32 * m_extentSize / 1024.0) << " kb (" << (32 * m_extentSize / 128) << " records)" << endl;
+  cerr << "  max disk size  : " << FIXEDFORMAT3((m_dpb->m_dsm + 1) * m_blockSize / 1024.0) << " kb" << endl;
 #endif
 
   if (!ReadDirectory()) {
@@ -250,7 +250,7 @@ bool CPMFileSystem::ReadDirectory()
 
   for (;;) {
     if (!ReadSector(track, sector, &m_sectorBuffer[0])) {
-      cout << "error: could not read sector" << endl;
+      cerr << "error: could not read sector" << endl;
       return false;
     }
 
@@ -342,7 +342,7 @@ bool CPMFileSystem::ReadBlock(unsigned blockNum, uint8_t * blockBuffer)
   unsigned track  = sectorNum / m_sectorsPerTrack;
 
   for (unsigned offs = 0; offs < m_blockSize; offs += m_sectorSize) {
-    cout << "reading block " << HEXFORMAT0x4(blockNum) << "/" << offs/m_sectorSize << " = " << track << " " << sector << endl;
+    //cerr << "reading block " << HEXFORMAT0x4(blockNum) << "/" << offs/m_sectorSize << " = " << track << " " << sector << endl;
     if (!ReadSector(track, sector, blockBuffer + offs))
       return false;
     if (++sector > m_sectorsPerTrack) {

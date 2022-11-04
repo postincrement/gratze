@@ -1,5 +1,6 @@
 #include <sstream>
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <set>
 
@@ -21,14 +22,20 @@ using namespace std;
 static CommandLineArgs::Option g_options[] = {
   { 'f', "file",        's',   "disk image to use" },
   { 'h', "help",        ' ',   "display this help message" },
+  { 'i', "info",        ' ',   "display info on disk format" },
   { 'v', "verbose",     ' ',   "enable verbose reporting" },
   { 'm', "map",         ' ',   "display sector map" },
   { 'd', "data",        ' ',   "display all data" },
   { 'D', "dumpDir",     ' ',   "display dir sectors" },
   { ' ', "list",        ' ',   "list supported disk types"},
+  { 'o', "output",      ' ',   "set output file" },
+  { ' ', "text",        ' ',   "force read as text file" },
+  { ' ', "binary",      ' ',   "force read as binary file" },
 
   { 0, 0, 0, 0}
 };
+
+static 
 
 bool IsEmpty(const uint8_t * data, int len)
 {
@@ -84,8 +91,14 @@ std::string IdentifyChunk(const uint8_t * data, int len)
   return NORM_CHUNK;
 }
 
-bool DisplayInfo(std::shared_ptr<VirtualDrive> drive, bool displayMap, bool displayData, bool displayDir)
+////////////////////////////////////////////////////////////
+
+bool DisplayInfo(CommandLineArgs & args, std::shared_ptr<VirtualDrive> drive)
 {
+  bool displayMap = args.HasArg("-m");
+  bool displayData = args.HasArg("-d");
+  bool displayDir = args.HasArg("-D");
+
   VirtualDrive::SideList & sideList = drive->GetSides();
 
   if (sideList.size() == 0) {
@@ -292,7 +305,7 @@ std::string ExpandMatchExpression(const std::string & expr)
       match += toupper(expr[pos]);
     else {
       while (match.length() < 8)
-        match += ' ';
+        match += '?';
     }
     ++pos;
   }
@@ -311,7 +324,7 @@ std::string ExpandMatchExpression(const std::string & expr)
         match += toupper(expr[pos]);
       else {
         while (match.length() < 12)
-          match += ' ';
+          match += '?';
       }
       ++pos;
     }
@@ -361,6 +374,39 @@ void Dir(const std::map<std::string, CPMFileSystem::FileInfo> & m_fileList, cons
     cout << "\n" << totalFiles << " file" << ((totalFiles > 1) ? "s" : "") << ", " << FormatSize(totalSize) << endl;
 }
 
+int CopyAsText(const std::string & filename, const std::vector<uint8_t> & data)
+{
+  cerr << "writing to '" << filename << "'" << endl;
+  ofstream output;
+  output.open(filename, ios::trunc);
+  unsigned len = 0;
+  for (auto & v : data) {
+
+    // ^Z is EOF  
+    if (v == 0x1a) 
+      break;
+
+    char c = v & 0x7f;  
+
+    // output data
+    output.write(&c, 1);
+    len += 1;
+  }
+  cerr << "info: wrote " << len << " bytes to '" << filename << "'" << endl;
+  output.close();
+  return 0;
+}
+
+int CopyAsBinary(const std::string & filename, const std::vector<uint8_t> & data)
+{
+  ofstream output;
+  output.open(filename, ios::binary | ios::trunc);
+  output.write((const char *)&data[0], data.size());
+  output.close();
+  cerr << "info: wrote " << data.size() << " bytes to '" << filename << "'" << endl;
+  return 0;
+}
+
 /////////////////////////////////////////////////////////////////
 
 void Usage(CommandLineArgs & args)
@@ -406,12 +452,8 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  bool displayMap = args.HasArg("-m");
-  bool displayData = args.HasArg("-d");
-  bool displayDir = args.HasArg("-D");
-
-  if (!DisplayInfo(drive, displayMap, displayData, displayDir)) {
-    return -1;
+  if (args.HasArg("-i")) {
+    return DisplayInfo(args, drive);
   }
 
   CPMFileSystem cpmfs(drive);
@@ -436,19 +478,79 @@ int main(int argc, char *argv[])
     }  
   }
 
-  else if ((cmd == "read") || (cmd == "get")) {
+  else if ((cmd == "read") || (cmd == "get") || (cmd == "dump")) {
     if (arg1.empty()) {
       cout << "usage: grdisk [opts] -f file read filespec" << endl;
       return 0;
     }
-    arg1 = ExpandMatchExpression(arg1);
+
+    std::string matchExpr = ExpandMatchExpression(arg1);
+    std::string filename;
+    {
+      std::vector<std::string> matches;
+      for (auto & r : cpmfs.m_fileList) {
+        const CPMFileSystem::FileInfo & file = r.second;
+        if (Match(r.first, matchExpr)) {
+          matches.push_back(r.first);
+        }
+      }
+
+      if (matches.size() == 0) {
+        cerr << "error: no files found matching '" << matchExpr << "'" << endl;
+        return -1;
+      }
+      if (matches.size() != 1) {
+        cerr << "error: more than one file found matching '" << matchExpr << "'\n"
+              << "chose one of:\n";
+        for (auto & r : matches) {
+          cerr << "  " << r << endl;
+        }
+        return -1;
+      }
+      filename = matches[0];
+    }
+
     std::vector<uint8_t> data;
-    if (!cpmfs.Read(arg1, data)) {
-      cerr << "error: could not read '" << arg1 << "'" << endl;
+    if (!cpmfs.Read(filename, data)) {
+      cerr << "error: could not read '" << filename << "'" << endl;
       return -1;
     }
-    cout << "info: read " << data.size() << " bytes from '" << arg1 << "'" << endl;
-    cout << DumpMemory((const uint8_t *)&data[0], data.size());
+    cerr << "info: read " << data.size() << " bytes from '" << filename << "'" << endl;
+
+    if (cmd == "dump") {
+      cout << DumpMemory((const uint8_t *)&data[0], data.size());
+      return 0;
+    }
+
+    else {
+      if (args.HasArg("--text")) {
+        cerr << "info: forcing text format for '" << filename << "'" << endl;
+        return CopyAsText(arg1, data);
+      }
+      else if (args.HasArg("--binary")) {
+        cerr << "info: forcing binary format for '" << filename << "'" << endl;
+        return CopyAsBinary(arg1, data);
+      }
+      else {
+        size_t dot = filename.find('.');
+        if (dot == string::npos) {
+          cerr << "info: no filename extension - assuming binary" << endl;
+          return CopyAsBinary(arg1, data);
+        }
+        std::string ext = filename.substr(dot+1);
+        if (ext == "COM") {
+          cerr << "info: " << ext << " file is binary" << endl;
+          return CopyAsBinary(arg1, data);
+        }
+        if ((ext == "TXT") || (ext == "DOC")) {
+          cerr << "info: " << ext << " file is text" << endl;
+          return CopyAsText(arg1, data);
+        }
+
+        cerr << "info: unable to identify file type " << ext << " - assuming binary" << endl;
+        return CopyAsBinary(arg1, data);
+      }
+    }
   }
 
   else {

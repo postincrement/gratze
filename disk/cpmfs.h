@@ -69,6 +69,7 @@ class CPMFileSystem
     CPMFileSystem(std::shared_ptr<VirtualDrive> drive);
 
     bool Open();
+    size_t FindMatching(const std::string & expr);
     bool Read(const std::string & filename, std::vector<uint8_t> & data);
 
     struct FileInfo

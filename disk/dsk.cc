@@ -118,7 +118,7 @@ bool VirtualDriveDSK::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     return false;
   }
 
-  cout << "dsk: track length = " << dskHeader.m_trackSize << endl;
+  //cerr << "dsk: track length = " << dskHeader.m_trackSize << endl;
 
   int trackCount = dskHeader.m_tracks;
   off_t offs = 0x100;
