@@ -111,8 +111,38 @@ unsigned CPMFileSystem::DirectoryEntry::GetEntryNumber(const DPB & dpb) const
 
 unsigned CPMFileSystem::DirectoryEntry::GetRecordCount(const DPB & dpb) const
 { 
-  return ((m_ex & dpb.m_exm) * 128) + (m_rc & 0x7f); 
+  return ((m_ex & dpb.m_exm) * 128) + m_rc; 
 }
+
+unsigned CPMFileSystem::DirectoryEntry::GetBlockCount(const DPB & dpb)
+{
+  return dpb.m_exm ? 8 : 16; 
+}
+
+unsigned CPMFileSystem::DirectoryEntry::GetBlock(const DPB & dpb, int i)
+{
+  if (dpb.m_exm) {
+    return m_al[i];
+  }
+  i = i << 1;
+  return (m_al[i+1] << 8) + m_al[i];
+}
+
+unsigned CPMFileSystem::DirectoryEntry::GetUser() const
+{
+  return m_uu & 0x1f;
+}
+
+bool CPMFileSystem::DirectoryEntry::IsReadOnly() const
+{
+  return (m_ext[0] & 0x80) != 0;
+}
+
+bool CPMFileSystem::DirectoryEntry::IsHidden() const
+{
+  return (m_ext[1] & 0x80) != 0;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -167,13 +197,41 @@ bool CPMFileSystem::Open()
 
   unsigned directorySize = ((m_dpb->m_drm + 1) * 32);
 
+#if 0
   cout << "  block size     : " << m_blockSize << " bytes" << endl;
   cout << "  extent size    : " << FIXEDFORMAT3(m_extentSize / 1024.0) << " kb (" << (m_extentSize / 128) << " records)"  << endl;
   cout << "  directory size : " << FIXEDFORMAT3(directorySize / 1024.0) << " kb (" << (directorySize / 128) << " records, " << (directorySize / m_blockSize) << " blocks)"  << endl;
   cout << "  max file size  : " << FIXEDFORMAT3(32 * m_extentSize / 1024.0) << " kb (" << (32 * m_extentSize / 128) << " records)" << endl;
   cout << "  max disk size  : " << FIXEDFORMAT3((m_dpb->m_dsm + 1) * m_blockSize / 1024.0) << " kb" << endl;
+#endif
 
-  return ReadDirectory();
+  if (!ReadDirectory()) {
+    cerr << "could not read directory" << endl;
+    return false;
+  }
+#if 0
+  int col = 0;
+  for (auto r : m_allocatedBlocks) {
+    cout << (r ? "X" : ".");
+    if (++col == 16) {
+      col = 0;
+      cout << endl;
+    }
+  }
+#endif
+
+  return true;
+}
+
+void CPMFileSystem::AllocateFromMask(uint8_t bits, unsigned offs)
+{
+  uint8_t mask = 0x80;
+  while (mask != 0) {
+    if (bits & mask)
+      m_allocatedBlocks[offs] = true;
+    ++offs;
+    mask = mask >> 1;
+  }
 }
 
 
@@ -182,6 +240,13 @@ bool CPMFileSystem::ReadDirectory()
   int track = 0;
   int sector = 1;
   int dirIndex = 0;
+
+  // initialize allocation bitmask
+  m_allocatedBlocks.resize(m_dpb->m_dsm + 1);
+  std::fill(m_allocatedBlocks.begin(), m_allocatedBlocks.end(), false);
+
+  AllocateFromMask(m_dpb->m_al0, 0);
+  AllocateFromMask(m_dpb->m_al1, 8);
 
   for (;;) {
     if (!ReadSector(track, sector)) {
@@ -193,14 +258,30 @@ bool CPMFileSystem::ReadDirectory()
     for (int i = 0; i < m_sectorSize; i += 128) {
       for (int x = 0; x < 128; x += 32) {
         DirectoryEntry * entry = (DirectoryEntry *)record;
+        //cout << DumpMemory((const uint8_t *)entry, 32);
         if (!entry->IsDeleted()) {
-          cout << dirIndex << " : " 
-               << entry->GetFilename() 
-               << "  " 
-               << entry->GetExtentCounter(*m_dpb) 
-               << "  " 
-               << entry->GetRecordCount(*m_dpb) 
-               << endl;
+          std::string filename = entry->GetFilename();
+          if (m_fileList.count(filename) == 0) {
+            FileInfo info;
+            info.m_name     = filename;
+            info.m_user     = entry->GetUser();
+            info.m_readonly = entry->IsReadOnly();
+            info.m_hidden   = entry->IsHidden();
+
+            info.m_size = entry->GetRecordCount(*m_dpb) * 128;
+            info.m_entries.emplace(entry->GetExtentCounter(*m_dpb), *entry);
+            m_fileList.emplace(filename, info);
+          }
+          else {
+            FileInfo & info = m_fileList.at(filename);
+            info.m_size += entry->GetRecordCount(*m_dpb) * 128;
+            info.m_entries.emplace(entry->GetExtentCounter(*m_dpb), *entry);
+          }
+          for (int b = 0; b < entry->GetBlockCount(*m_dpb); ++b) {
+            unsigned block = entry->GetBlock(*m_dpb, b);
+            if (block != 0)
+              m_allocatedBlocks[block] = true;
+          }     
         }
         dirIndex++;
         if (dirIndex > m_dpb->m_drm) {
@@ -241,7 +322,7 @@ bool CPMFileSystem::ReadSector(int track, int sector)
   // adjust sector for skew
   sector = m_dpb->m_skew[(sector - 1) % m_dpb->m_skew.size()];
 
-  cout << "track/sector " << otrack << "/" << osector << " -> size/track/sector " << side << "/" << track << "/" << sector << endl;
+  //cout << "track/sector " << otrack << "/" << osector << " -> size/track/sector " << side << "/" << track << "/" << sector << endl;
 
   // read the sector
   VirtualDrive::SectorInfo sectorInfo;

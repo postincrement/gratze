@@ -19,6 +19,7 @@ using namespace std;
 #define CHUNK_SIZE    128
 
 static CommandLineArgs::Option g_options[] = {
+  { 'f', "file",        's',   "disk image to use" },
   { 'h', "help",        ' ',   "display this help message" },
   { 'v', "verbose",     ' ',   "enable verbose reporting" },
   { 'm', "map",         ' ',   "display sector map" },
@@ -82,8 +83,6 @@ std::string IdentifyChunk(const uint8_t * data, int len)
 
   return NORM_CHUNK;
 }
-
-
 
 bool DisplayInfo(std::shared_ptr<VirtualDrive> drive, bool displayMap, bool displayData, bool displayDir)
 {
@@ -258,16 +257,122 @@ bool DisplayInfo(std::shared_ptr<VirtualDrive> drive, bool displayMap, bool disp
   return true;
 }
 
+/////////////////////////////////////////////////////////////////
+
+std::string FormatSize(unsigned bytes)
+{
+  stringstream strm;
+  if (bytes < 10000)
+    strm << bytes << "B";
+  else
+    strm << FIXEDFORMAT(2, bytes / 1024.0) << "k";
+  return strm.str();  
+}
+
+std::string ExpandMatchExpression(const std::string & expr)
+{
+  
+  if (expr.length() == 0)
+    return "???????????";
+
+  std::string match;
+  size_t dot = expr.find('.');
+  size_t end = dot;
+  if (end == string::npos)
+    end = expr.length();
+  if (end > 8)
+    end = 8;
+
+  size_t pos = 0;
+  while (match.length() < 8) {
+    if (pos >= end)
+      match += "?";
+    if (expr[pos] != '*')
+      match += toupper(expr[pos]);
+    else {
+      while (match.length() < 8)
+        match += '?';
+    }
+    ++pos;
+  }
+
+  match += ".";
+
+  if (dot == string::npos) {
+    match += "???";
+  }
+  else {
+    size_t pos = dot + 1;
+    while (match.length() < 12) {
+      if (pos >= expr.length())
+        match += "?";
+      else if (expr[pos] != '*')
+        match += toupper(expr[pos]);
+      else {
+        while (match.length() < 12)
+          match += '?';
+      }
+      ++pos;
+    }
+  }
+
+  return match;
+}
+
+bool Match(const std::string & filename, const std::string & expr)
+{
+  if (expr.empty())
+    return true;
+
+  if ((filename.length() != 12) || (expr.length() != 12)) {
+    cerr << "internal error: wildcard match args not correct length" << endl;
+    exit(-1);
+  }
+
+  for (size_t i = 0; i < 12; ++i) {
+    if ((expr[i] != '?') && (expr[i] != filename[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void Dir(const std::map<std::string, CPMFileSystem::FileInfo> & m_fileList, const std::string & matchExpr = "")
+{
+  unsigned totalSize = 0;
+  unsigned totalFiles = 0;
+  for (auto & r : m_fileList) {
+    const CPMFileSystem::FileInfo & file = r.second;
+    if (Match(r.first, matchExpr)) {
+      cout << setw(2) << (int)file.m_user << ":" << file.m_name 
+          << "   " << setw(8) << FormatSize(file.m_size)
+          << "   " << setw(3) << file.m_entries.size() 
+          << "   " << (file.m_readonly ? "r" : "w") << (file.m_hidden ? "s" : "-")
+          << endl;
+      totalFiles += 1;
+      totalSize  += file.m_size;
+    }
+  }
+  if (totalFiles == 0)
+    cout << "no files found" << endl;
+  else 
+    cout << "\n" << totalFiles << " file" << ((totalFiles > 1) ? "s" : "") << ", " << FormatSize(totalSize) << endl;
+}
+
+/////////////////////////////////////////////////////////////////
+
+void Usage(CommandLineArgs & args)
+{
+  cerr << "usage: grzdisk [opts] -f inputfile [cmds...]\n"
+      << "where opts are:\n"
+      << args.Usage();
+}
+
 int main(int argc, char *argv[])
 {
   CommandLineArgs args;
   int opt = args.Parse(g_options, argc, argv);
-  if ((argc - opt) < 1) {
-    cerr << "usage: grzdisk [opts] inputfile\n"
-         << "where opts are:\n"
-         << args.Usage();
-    return -1;
-  }
 
   VirtualDrive::Init();
 
@@ -283,12 +388,12 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  if (args.HasArg("-h")) {
-    cout << args.Usage();
+  std::string fn;
+  if (args.HasArg("-h") || !args.GetValue("-f", fn)) {
+    Usage(args);
     return 0;
   }
- 
-  std::string fn(argv[opt]);
+
   VirtualFileIdentifier fileId;
 
   if (args.HasArg("-v"))
@@ -310,7 +415,32 @@ int main(int argc, char *argv[])
 
   CPMFileSystem cpmfs(drive);
 
-  cpmfs.Open();
+  if (!cpmfs.Open())
+    return -1;
+
+  if ((argc - opt) < 1) {
+    Dir(cpmfs.m_fileList);
+    return 0;
+  }
+
+  std::string cmd(argv[opt]);
+  std::string arg1(((argc - opt) < 2) ? "" : argv[opt+1]);
+
+  if ((cmd == "dir") || (cmd == "ls")) {
+    if (arg1.empty())
+      Dir(cpmfs.m_fileList);
+    else {
+      std::string matchExpr = ExpandMatchExpression(arg1);
+      Dir(cpmfs.m_fileList, matchExpr);
+    }  
+  }
+
+  else {
+    cerr << "error: unknown command '" << cmd << "'" << endl;
+    return -1;
+  }
 
   return 0;
 }
+
+

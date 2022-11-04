@@ -1,6 +1,11 @@
 #ifndef CPM_FS_
 #define CPM_FS_
 
+#include <map>
+#include <string>
+#include <vector>
+#include <stdint.h>
+
 #include "virtual_drive.h"
 
 class CPMFileSystem
@@ -45,10 +50,17 @@ class CPMFileSystem
       std::string GetFilename()  const;
       std::string GetBasename()  const;
       std::string GetExtension() const;
+      unsigned GetUser() const;
 
       unsigned GetExtentCounter(const DPB & dpb) const;
       unsigned GetEntryNumber(const DPB & dpb) const;
       unsigned GetRecordCount(const DPB & dpb) const;
+
+      unsigned GetBlockCount(const DPB & dpb);
+      unsigned GetBlock(const DPB & dpb, int i);
+
+      bool IsReadOnly() const;
+      bool IsHidden() const;
     };
     #pragma pack()
 
@@ -57,6 +69,8 @@ class CPMFileSystem
     bool Open();
 
     bool ReadDirectory();
+
+    void AllocateFromMask(uint8_t mask, unsigned offs);
 
     bool ReadSector(int track, int sector);
 
@@ -71,6 +85,21 @@ class CPMFileSystem
     unsigned m_sectorsPerTrack;
     unsigned m_extentSize;
     unsigned m_blockSize;
+
+    std::vector<bool> m_allocatedBlocks;
+
+    struct FileInfo
+    {
+      uint8_t     m_user;
+      std::string m_name;
+      unsigned m_size = 0;
+      bool m_readonly = false;
+      bool m_hidden   = false;
+
+      std::map<unsigned, DirectoryEntry> m_entries;
+    };
+
+    std::map<std::string, FileInfo> m_fileList;
 };
 
 #endif // CPM_FS_
