@@ -7,6 +7,7 @@
 #include "../common/misc.h"
 
 #include "virtual_drive.h"
+#include "cpmfs.h"
 
 using namespace std;
 
@@ -82,53 +83,15 @@ std::string IdentifyChunk(const uint8_t * data, int len)
   return NORM_CHUNK;
 }
 
-int main(int argc, char *argv[])
+
+
+bool DisplayInfo(std::shared_ptr<VirtualDrive> drive, bool displayMap, bool displayData, bool displayDir)
 {
-  CommandLineArgs args;
-  int opt = args.Parse(g_options, argc, argv);
-  if ((opt < 0) || (argc < 1)) {
-    cerr << "usage: grzdisk [opts] inputfile\n"
-         << "where opts are:\n"
-         << args.Usage();
-    return -1;
-  }
-
-  VirtualDrive::Init();
-
-  if (args.HasArg("--list")) {
-    std::vector<std::string> types;
-    VirtualDrive::m_virtualDriveFactory.GetKeys(types);
-
-    stringstream strm;
-    for (auto & r : types)
-      strm << r << endl;
-    cout << strm.str();
-
-    return 0;
-  }
-
-  if (args.HasArg("-h")) {
-    cout << args.Usage();
-    return 0;
-  }
- 
-  std::string fn(argv[opt]);
-  VirtualFileIdentifier fileId;
-
-  if (args.HasArg("-v"))
-    fileId.SetVerbose(true);
-
-  VirtualDrive * drive = fileId.Open(fn, true);
-  if (drive == nullptr) {
-    cerr << "error: " << fileId.GetError() << endl;
-    return -1;
-  }
-
   VirtualDrive::SideList & sideList = drive->GetSides();
 
   if (sideList.size() == 0) {
     cerr << "error: disk has no sides" << endl;
-    return -1;
+    return false;
   }
 
   VirtualDrive::SideInfo & side0 = sideList.begin()->second;
@@ -136,7 +99,7 @@ int main(int argc, char *argv[])
 
   if (side0Tracks.size() == 0) {
     cerr << "error: side 0 has no tracks" << endl;
-    return -1;
+    return false;
   }
 
   VirtualDrive::TrackInfo & side0Track0         = side0Tracks.begin()->second;
@@ -144,7 +107,7 @@ int main(int argc, char *argv[])
 
   if (side0Track0Sectors.size() == 0) {
     cerr << "error: side 0, track 0 has no sectors" << endl;
-    return -1;
+    return false;
   }
 
   // calculate capacity and get various min and max numbers
@@ -167,7 +130,7 @@ int main(int argc, char *argv[])
   }
   
   cout << "Format:      " << drive->GetFormat() << endl
-       << "Capacity:    " << (capacity / 1024) << " k" << endl
+       << "Capacity:    " << (capacity / 1024) << " kb" << endl
        << "Sides:       " << sideList.size() << endl
        << "Density:     " << (drive->GetDensity() ? "double" : "single") << endl
        << "Tracks:      " << side0Tracks.size() << endl
@@ -240,7 +203,7 @@ int main(int argc, char *argv[])
       auto & sideData = diskData[sideNum];
       for (auto sectorNum : sectorNums) {
         std::stringstream strm;
-        VirtualDrive::SectorInfo * sector = drive->GetInfo(sideNum, trackNum, sectorNum);
+        const VirtualDrive::SectorInfo * sector = drive->GetInfo(sideNum, trackNum, sectorNum);
         if (sector == nullptr) {
           if (chunkCount > 1) {
             for (int chunk = 0; chunk < chunkCount; ++chunk) {
@@ -265,11 +228,8 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (args.HasArg("-m"))
+  if (displayMap)
     cout << ColumnFormatter::Print(output, 0);
-
-  bool displayData = args.HasArg("-d");
-  bool displayDir = args.HasArg("-D");
 
   if (displayData || displayDir) {
 
@@ -295,6 +255,62 @@ int main(int argc, char *argv[])
     }
   }     
 
+  return true;
+}
+
+int main(int argc, char *argv[])
+{
+  CommandLineArgs args;
+  int opt = args.Parse(g_options, argc, argv);
+  if ((argc - opt) < 1) {
+    cerr << "usage: grzdisk [opts] inputfile\n"
+         << "where opts are:\n"
+         << args.Usage();
+    return -1;
+  }
+
+  VirtualDrive::Init();
+
+  if (args.HasArg("--list")) {
+    std::vector<std::string> types;
+    VirtualDrive::m_virtualDriveFactory.GetKeys(types);
+
+    stringstream strm;
+    for (auto & r : types)
+      strm << r << endl;
+    cout << strm.str();
+
+    return 0;
+  }
+
+  if (args.HasArg("-h")) {
+    cout << args.Usage();
+    return 0;
+  }
+ 
+  std::string fn(argv[opt]);
+  VirtualFileIdentifier fileId;
+
+  if (args.HasArg("-v"))
+    fileId.SetVerbose(true);
+
+  std::shared_ptr<VirtualDrive> drive = fileId.Open(fn, true);
+  if (drive == nullptr) {
+    cerr << "error: " << fileId.GetError() << endl;
+    return -1;
+  }
+
+  bool displayMap = args.HasArg("-m");
+  bool displayData = args.HasArg("-d");
+  bool displayDir = args.HasArg("-D");
+
+  if (!DisplayInfo(drive, displayMap, displayData, displayDir)) {
+    return -1;
+  }
+
+  CPMFileSystem cpmfs(drive);
+
+  cpmfs.Open();
 
   return 0;
 }

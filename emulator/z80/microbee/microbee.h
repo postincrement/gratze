@@ -122,6 +122,8 @@ class Microbee128_BN_Emulator : public Microbee128_BaseEmulator
 {
   public:
     Microbee128_BN_Emulator();
+
+    void OnPIOAWrite(uint8_t data, bool ie);
 };
 
 #endif // DG680_H_

@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <iomanip>
 
 #include "common/config.h"
 #include "common/misc.h"
@@ -35,7 +36,7 @@ std::string VirtualFileIdentifier::GetError() const
   return m_error.str();
 }
 
-VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly)
+std::shared_ptr<VirtualDrive> VirtualFileIdentifier::Open(const std::string & fn, bool readOnly)
 {
   // see if file exists
   if (::access(fn.c_str(), 0) != 0) {
@@ -90,13 +91,13 @@ VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly
   VirtualDriveFactory::KeyList keys;
   VirtualDrive::m_virtualDriveFactory.GetKeys(keys);
 
-  VirtualDrive * drive = nullptr;
+  std::shared_ptr<VirtualDrive> drive;
 
   // give priority to formats that match the extension
   for (auto & r : keys) {
-    drive = VirtualDrive::m_virtualDriveFactory.CreateInstance(r);
+    drive = std::shared_ptr<VirtualDrive>(VirtualDrive::m_virtualDriveFactory.CreateInstance(r));
     if (extension != drive->GetExtension()) {
-      delete drive;
+      ;
     }
     else if (drive->OpenFile(fd, len, header, sizeof(header))) {
       if (m_verbose)
@@ -106,14 +107,13 @@ VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly
     else {
       if (m_verbose)
         cout << "info: file has '" << drive->GetFormat() << "' extension but not '" << drive->GetFormat() << "' format" << endl;
-      delete drive;
       break;
     }
   }
 
   // try all formats
   for (auto & r : keys) {
-    drive = VirtualDrive::m_virtualDriveFactory.CreateInstance(r);
+    drive = std::shared_ptr<VirtualDrive>(VirtualDrive::m_virtualDriveFactory.CreateInstance(r));
 
     if (m_verbose) {
       cout << "info: checking format '" << drive->GetFormat() << "'" << endl;
@@ -131,7 +131,6 @@ VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly
       cout << "error: " << drive->GetError() << endl;
     }
 
-    delete drive;
     drive = nullptr;
   }
 
@@ -140,6 +139,39 @@ VirtualDrive * VirtualFileIdentifier::Open(const std::string & fn, bool readOnly
   }
 
   return drive;
+}
+
+/////////////////////////////////////////////////////////////
+
+int VirtualDrive::GetSectorSize() const
+{
+  const SectorInfo * info = GetInfo(0, 0, 1);
+  if (info == nullptr) {
+    return 0;
+  }
+
+  return info->m_size;
+}
+
+int VirtualDrive::GetSectorCount() const
+{
+  const TrackInfo * trackInfo = GetTrack(0, 0);
+  if (!trackInfo)
+    return 0;
+
+  return trackInfo->GetSectorCount();  
+}
+
+int VirtualDrive::GetTrackCount() const
+{
+  const VirtualDrive::SideList & sideList = GetSides();
+  if (sideList.size() == 0) {
+    return 0;
+  }
+
+  const VirtualDrive::SideInfo & side0 = sideList.begin()->second;
+  const VirtualDrive::TrackList & side0Tracks = side0.GetTracks();
+  return side0Tracks.size();
 }
 
 /////////////////////////////////////////////////////////////
@@ -331,7 +363,7 @@ bool VirtualDriveFile::Mount(bool readonly)
   return true;
 }
 
-VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int sideNum, int trackNum, int sectorNum)
+const VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int sideNum, int trackNum, int sectorNum) const
 {
   auto * trackInfo = GetTrack(sideNum, trackNum);
   if (trackInfo != nullptr) {
@@ -341,17 +373,12 @@ VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int sideNum, int trackNum, 
     }
   }
 
-  m_error << "request for unknown side " << dec << sideNum 
-          << ", track " << dec << trackNum 
-          << ", sector " << dec << sectorNum 
-          << endl;
-
   return nullptr;
 }
 
 int VirtualDriveFile::ReadSector(int side, int track, int sector, SectorInfo & info, uint8_t * data, int len)
 {
-  auto sectorInfo = GetInfo(side, track, sector);
+  auto const sectorInfo = GetInfo(side, track, sector);
   info = *sectorInfo;
 
   if (m_verbose)

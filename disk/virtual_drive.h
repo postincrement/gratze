@@ -28,7 +28,7 @@ class VirtualFileIdentifier
 
     std::string GetError() const;
 
-    VirtualDrive * Open(const std::string & fn, bool readOnly);
+    std::shared_ptr<VirtualDrive> Open(const std::string & fn, bool readOnly);
 
   protected:
     bool m_verbose;
@@ -109,12 +109,15 @@ class VirtualDrive
     virtual SideList & GetSides();
     virtual const SideList & GetSides() const;
 
+    virtual int GetSectorSize() const;
+    virtual int GetSectorCount() const;
+    virtual int GetTrackCount() const;
     virtual int GetSideCount() const;
     virtual int GetDensity() const;
 
     virtual std::string GetError() const;
 
-    virtual SectorInfo * GetInfo(int side, int track, int sector) = 0;
+    virtual const SectorInfo * GetInfo(int side, int track, int sector) const = 0;
     virtual int ReadSector(int side, int track, int sector, SectorInfo & info, uint8_t * data, int len) = 0;
     virtual int WriteSector(int side, int track, int sector, uint8_t * data, int len) = 0;
 
@@ -152,7 +155,7 @@ class VirtualDriveFile : public VirtualDrive
 
     virtual bool Mount(bool readOnly) override;
 
-    virtual SectorInfo * GetInfo(int side, int track, int sector) override;
+    virtual const SectorInfo * GetInfo(int side, int track, int sector) const override;
     virtual int ReadSector(int side, int track, int sector, SectorInfo & info, uint8_t * data, int len) override;
     virtual int WriteSector(int side, int track, int sector, uint8_t * data, int len) override;
 

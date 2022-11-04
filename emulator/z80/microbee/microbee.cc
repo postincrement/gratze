@@ -579,6 +579,20 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
 {
   switch (info.m_id) {
     case PORT_PIO:
+      switch (port & 0x3) {
+        case 0:
+          //cerr << "PIO A data write: " << HEXFORMAT0x2(data) << endl;
+          break;
+        case 1:  
+          //cerr << "PIO A control write: " << HEXFORMAT0x2(data) << endl;
+          break;
+        case 2:
+          //cerr << "PIO B data write: " << HEXFORMAT0x2(data) << endl;
+          break;
+        case 3:  
+          //cerr << "PIO B control write: " << HEXFORMAT0x2(data) << endl;
+          break;
+      }
       return m_pio.Write(port & 0x3, data);
     case PORT_6545:
       return m_crtc.Write(port & 1, data);
@@ -947,10 +961,27 @@ INFO_START(microbee128)
 }
 INFO_END(microbee128);
 
+////////////////////////////////////////////////////////////////////////////
+
+#include "starnet/starnet.h"
+StarnetDecoder starnet;
+
+////////////////////////////////////////////////////////////////////////////
+
 Microbee128_BN_Emulator::Microbee128_BN_Emulator()
   : Microbee128_BaseEmulator(g_bn5443_ROM, &g_microbee128bnEmulatorInfo)
 {
+  using namespace std::placeholders;
+  m_pio.SetWriteHandler(0, std::bind(&Microbee128_BN_Emulator::OnPIOAWrite, this, _1, _2));
 }
+
+void Microbee128_BN_Emulator::OnPIOAWrite(uint8_t data, bool ie)
+{
+  //cerr << "starnet write: " << HEXFORMAT0x2(data) << endl;
+  starnet.OnReceive(data, ie);
+  m_pio.GetData(0); 
+}
+
 
 EmulatorInfo g_microbee128EmulatorInfo =
 {
