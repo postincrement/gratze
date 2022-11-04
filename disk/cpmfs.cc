@@ -22,7 +22,7 @@ static CPMFileSystem::DPB microbeeSD = {
   18,     // m_spt = # of 128 byte record per track 
   3,      // m_bsh = block shift: 0x03 = 1k, 0x04 = 2k, 0x05 = 4k
   7,      // m_blm = block mask: 0x07 = 1k, 0x0f = 2k, 0x1f = 4k
-  0,      // m_exm = 0 = one byte alloc (< 256 blocks), 1 = two byte alloc (> 255 blocks)
+  0,      // extent mask ??
   172,    // m_dsm = disk size - 1 
   63,     // m_drm = # of directory entries - 1
   0xc0,   // al0
@@ -46,7 +46,7 @@ static CPMFileSystem::DPB microbeeDD = {
   40,     // m_spt = # of 128 byte record per track 
   4,      // m_bsh = block shift: 0x03 = 1k, 0x04 = 2k, 0x05 = 4k
   0xf,    // m_blm = block mask: 0x07 = 1k, 0x0f = 2k, 0x1f = 4k
-  1,      // 0 = one byte alloc (< 256 blocks), 1 = two byte alloc (> 255 blocks)
+  1,      // extent mask ??
   194,    // m_dsm = disk size - 1 
   127,    // m_drm = # of directory entries - 1
   0xc0,   // al0
@@ -116,15 +116,15 @@ unsigned CPMFileSystem::DirectoryEntry::GetRecordCount(const DPB & dpb) const
 
 unsigned CPMFileSystem::DirectoryEntry::GetBlockCount(const DPB & dpb)
 {
-  return dpb.m_exm ? 8 : 16; 
+  return dpb.Use16BitBlockNumber() ? 8 : 16; 
 }
 
 unsigned CPMFileSystem::DirectoryEntry::GetBlock(const DPB & dpb, int i)
 {
-  if (dpb.m_exm) {
-    return m_al[i];
+  if (!dpb.Use16BitBlockNumber()) {
+    return m_al[i & 0xf];
   }
-  i = i << 1;
+  i = (i & 7) << 1;
   return (m_al[i+1] << 8) + m_al[i];
 }
 
@@ -192,8 +192,8 @@ bool CPMFileSystem::Open()
   m_blockSize        = (1 << m_dpb->m_bsh) * 128;
   m_extentSize       = (16 * m_blockSize) / (m_dpb->m_exm + 1);
 
-  m_deblock.resize(m_sectorSize);
-
+  m_sectorBuffer.resize(m_sectorSize);
+  m_blockBuffer.resize(m_blockSize);
 
   unsigned directorySize = ((m_dpb->m_drm + 1) * 32);
 
@@ -249,12 +249,12 @@ bool CPMFileSystem::ReadDirectory()
   AllocateFromMask(m_dpb->m_al1, 8);
 
   for (;;) {
-    if (!ReadSector(track, sector)) {
+    if (!ReadSector(track, sector, &m_sectorBuffer[0])) {
       cout << "error: could not read sector" << endl;
       return false;
     }
 
-    uint8_t * record = &m_deblock[0];
+    uint8_t * record = &m_sectorBuffer[0];
     for (int i = 0; i < m_sectorSize; i += 128) {
       for (int x = 0; x < 128; x += 32) {
         DirectoryEntry * entry = (DirectoryEntry *)record;
@@ -269,13 +269,13 @@ bool CPMFileSystem::ReadDirectory()
             info.m_hidden   = entry->IsHidden();
 
             info.m_size = entry->GetRecordCount(*m_dpb) * 128;
-            info.m_entries.emplace(entry->GetExtentCounter(*m_dpb), *entry);
+            info.m_extents.emplace(entry->GetExtentCounter(*m_dpb), *entry);
             m_fileList.emplace(filename, info);
           }
           else {
             FileInfo & info = m_fileList.at(filename);
             info.m_size += entry->GetRecordCount(*m_dpb) * 128;
-            info.m_entries.emplace(entry->GetExtentCounter(*m_dpb), *entry);
+            info.m_extents.emplace(entry->GetExtentCounter(*m_dpb), *entry);
           }
           for (int b = 0; b < entry->GetBlockCount(*m_dpb); ++b) {
             unsigned block = entry->GetBlock(*m_dpb, b);
@@ -300,7 +300,7 @@ bool CPMFileSystem::ReadDirectory()
   return true;
 }
 
-bool CPMFileSystem::ReadSector(int track, int sector)
+bool CPMFileSystem::ReadSector(int track, int sector, uint8_t * sectorBuffer)
 {
   int otrack = track;
   int osector = sector;
@@ -326,6 +326,61 @@ bool CPMFileSystem::ReadSector(int track, int sector)
 
   // read the sector
   VirtualDrive::SectorInfo sectorInfo;
-  return m_drive->ReadSector(side, track, sector, sectorInfo, &m_deblock[0], m_sectorSize);
+  return m_drive->ReadSector(side, track, sector, sectorInfo, sectorBuffer, m_sectorSize);
+}
+
+bool CPMFileSystem::ReadBlock(unsigned blockNum, uint8_t * blockBuffer)
+{
+  // convert to record
+  unsigned recordInBytes = blockNum * m_blockSize;
+
+  // convert to sector
+  unsigned sectorNum = recordInBytes / m_sectorSize;
+
+  // get track and sector
+  unsigned sector = (sectorNum % m_sectorsPerTrack) + 1;
+  unsigned track  = sectorNum / m_sectorsPerTrack;
+
+  for (unsigned offs = 0; offs < m_blockSize; offs += m_sectorSize) {
+    cout << "reading block " << HEXFORMAT0x4(blockNum) << "/" << offs/m_sectorSize << " = " << track << " " << sector << endl;
+    if (!ReadSector(track, sector, blockBuffer + offs))
+      return false;
+    if (++sector > m_sectorsPerTrack) {
+      sector = 1;
+      ++track;
+    }
+  }
+
+  return true;
+}
+
+bool CPMFileSystem::Read(const std::string & filename, std::vector<uint8_t> & data)
+{
+  // find filename in list
+  if (m_fileList.count(filename) == 0) {
+    return false;
+  }
+
+  FileInfo & info = m_fileList.at(filename);
+
+  for (auto & r : info.m_extents) {
+    auto & extent = r.second;
+    unsigned extentSize = extent.GetRecordCount(*m_dpb) * 128;
+    unsigned startOffs = data.size();
+    for (unsigned blockIndex = 0; blockIndex < extent.GetBlockCount(*m_dpb); ++blockIndex) {
+      unsigned blockNumber = extent.GetBlock(*m_dpb, blockIndex);
+      if (blockNumber != 0) {
+        unsigned offs = data.size();
+        data.resize(offs + m_blockSize);
+        if (!ReadBlock(blockNumber, &data[offs])) {
+          data.resize(offs);
+          return false;
+        }
+      }
+    }
+    data.resize(startOffs + extentSize); 
+  }
+
+  return true;
 }
 

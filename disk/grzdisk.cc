@@ -273,11 +273,12 @@ std::string ExpandMatchExpression(const std::string & expr)
 {
   
   if (expr.length() == 0)
-    return "???????????";
+    return "????????.???";
 
   std::string match;
   size_t dot = expr.find('.');
   size_t end = dot;
+
   if (end == string::npos)
     end = expr.length();
   if (end > 8)
@@ -286,12 +287,12 @@ std::string ExpandMatchExpression(const std::string & expr)
   size_t pos = 0;
   while (match.length() < 8) {
     if (pos >= end)
-      match += "?";
-    if (expr[pos] != '*')
+      match += " ";
+    else if (expr[pos] != '*')
       match += toupper(expr[pos]);
     else {
       while (match.length() < 8)
-        match += '?';
+        match += ' ';
     }
     ++pos;
   }
@@ -310,7 +311,7 @@ std::string ExpandMatchExpression(const std::string & expr)
         match += toupper(expr[pos]);
       else {
         while (match.length() < 12)
-          match += '?';
+          match += ' ';
       }
       ++pos;
     }
@@ -347,7 +348,7 @@ void Dir(const std::map<std::string, CPMFileSystem::FileInfo> & m_fileList, cons
     if (Match(r.first, matchExpr)) {
       cout << setw(2) << (int)file.m_user << ":" << file.m_name 
           << "   " << setw(8) << FormatSize(file.m_size)
-          << "   " << setw(3) << file.m_entries.size() 
+          << "   " << setw(3) << file.m_extents.size() 
           << "   " << (file.m_readonly ? "r" : "w") << (file.m_hidden ? "s" : "-")
           << endl;
       totalFiles += 1;
@@ -433,6 +434,21 @@ int main(int argc, char *argv[])
       std::string matchExpr = ExpandMatchExpression(arg1);
       Dir(cpmfs.m_fileList, matchExpr);
     }  
+  }
+
+  else if ((cmd == "read") || (cmd == "get")) {
+    if (arg1.empty()) {
+      cout << "usage: grdisk [opts] -f file read filespec" << endl;
+      return 0;
+    }
+    arg1 = ExpandMatchExpression(arg1);
+    std::vector<uint8_t> data;
+    if (!cpmfs.Read(arg1, data)) {
+      cerr << "error: could not read '" << arg1 << "'" << endl;
+      return -1;
+    }
+    cout << "info: read " << data.size() << " bytes from '" << arg1 << "'" << endl;
+    cout << DumpMemory((const uint8_t *)&data[0], data.size());
   }
 
   else {

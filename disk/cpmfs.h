@@ -17,7 +17,7 @@ class CPMFileSystem
       uint16_t m_spt;   // # of 128 byte record per track 
       uint8_t  m_bsh;   // block shift: 0x03 = 1k, 0x04 = 2k, 0x05 = 4k
       uint8_t  m_blm;   // block mask:  0x07 = 1k, 0x0f = 2k, 0x1f = 4k
-      uint8_t  m_exm;   // extent mask : 0 = one byte alloc (< 256 blocks), 1 = two byte alloc (> 255 blocks)
+      uint8_t  m_exm;   // extent mask ??
       uint16_t m_dsm;   // disk size - 1 
       uint16_t m_drm;   // # of directory entries - 1
       uint8_t  m_al0;   // directory allocation byte 0
@@ -33,6 +33,8 @@ class CPMFileSystem
 
       unsigned GetSectorSize() const { return 128 * (1 << m_sec); }
       unsigned GetBlockSize() const  { return 128 * (1 << m_bsh); }
+
+      bool Use16BitBlockNumber() const { return m_dsm > 255; }
     };
 
     #pragma pack(1)
@@ -67,26 +69,7 @@ class CPMFileSystem
     CPMFileSystem(std::shared_ptr<VirtualDrive> drive);
 
     bool Open();
-
-    bool ReadDirectory();
-
-    void AllocateFromMask(uint8_t mask, unsigned offs);
-
-    bool ReadSector(int track, int sector);
-
-    bool m_open = false;
-    std::shared_ptr<VirtualDrive> m_drive;
-    std::shared_ptr<DPB> m_dpb;
-
-    std::vector<uint8_t> m_deblock;
-    unsigned m_sectorSize;
-    unsigned m_tracksPerSide;
-    unsigned m_recordsPerSector;
-    unsigned m_sectorsPerTrack;
-    unsigned m_extentSize;
-    unsigned m_blockSize;
-
-    std::vector<bool> m_allocatedBlocks;
+    bool Read(const std::string & filename, std::vector<uint8_t> & data);
 
     struct FileInfo
     {
@@ -96,10 +79,35 @@ class CPMFileSystem
       bool m_readonly = false;
       bool m_hidden   = false;
 
-      std::map<unsigned, DirectoryEntry> m_entries;
+      std::map<unsigned, DirectoryEntry> m_extents;
     };
 
     std::map<std::string, FileInfo> m_fileList;
+
+  protected:  
+    bool ReadDirectory();
+
+    void AllocateFromMask(uint8_t mask, unsigned offs);
+
+    bool ReadSector(int track, int sector, uint8_t * sectorBuffer);
+
+    bool ReadBlock(unsigned block, uint8_t * blockBuffer);
+
+    bool m_open = false;
+    std::shared_ptr<VirtualDrive> m_drive;
+    std::shared_ptr<DPB> m_dpb;
+
+    std::vector<uint8_t> m_sectorBuffer;
+    std::vector<uint8_t> m_blockBuffer;
+    unsigned m_sectorSize;
+    unsigned m_tracksPerSide;
+    unsigned m_recordsPerSector;
+    unsigned m_sectorsPerTrack;
+    unsigned m_extentSize;
+    unsigned m_blockSize;
+
+    std::vector<bool> m_allocatedBlocks;
+
 };
 
 #endif // CPM_FS_
