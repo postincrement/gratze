@@ -264,7 +264,7 @@ class Emulator
     virtual void ChangeVideoColour();
 
     // Floppy/hard drive functions
-    virtual bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
+    virtual bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly);
 
     void SetKeyboard(VirtualKeyboard * keyboard);
 

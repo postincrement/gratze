@@ -138,7 +138,7 @@ void WD_FDC::SetDriveChangedHandler(std::function<void (int, bool)> handler)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
-bool WD_FDC::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
+bool WD_FDC::MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly)
 {
   if ((driveNum < 0) || (driveNum >= MAX_DRIVE))
     return false;
@@ -147,7 +147,7 @@ bool WD_FDC::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
     m_drives.resize(driveNum+1);
   }
 
-  m_drives[driveNum].reset(drive);
+  m_drives[driveNum] = drive;
   return m_drives[driveNum]->Mount(readOnly);
 }
 

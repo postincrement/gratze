@@ -82,8 +82,10 @@ void Z80PIO::SetData(int portNum, uint8_t data)
   port.m_data = (port.m_data & ~port.m_inputMask) | (data & port.m_inputMask);
 
   // send interrupt if required
-  if ((port.m_mode == Mode::Input) && port.m_ie && m_interruptHandler)
+  if ((port.m_mode == Mode::Input) && port.m_ie && m_interruptHandler) {
+    cerr << "z80pio: port " << ((portNum == 0) ? 'A' : 'B') << " interrupt" << endl;
     m_interruptHandler(port.m_vector);
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,17 +150,17 @@ void Z80PIO::Port::WriteControl(uint8_t data)
             m_inputMask = 0x00;
             break;
         }
-        if (m_port == 0)
-          cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " in mode " << (int)m_mode << endl;
+        //if (m_port == 0)
+        //  cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " in mode " << (int)m_mode << endl;
       }
       else if ((data & 0x01) == 0) {
         m_vector = data;
-        if (m_port == 0)
-          cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " interrupt vector set to " << HEXFORMAT0x2(m_vector) << endl;
+        //if (m_port == 0)
+        //  cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " interrupt vector set to " << HEXFORMAT0x2(m_vector) << endl;
       }
       else {
-        if (m_port == 0)
-          cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " received unknown command " << HEXFORMAT0x2(data) << endl;
+        //if (m_port == 0)
+        //  cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " received unknown command " << HEXFORMAT0x2(data) << endl;
       }
       break;
 
@@ -204,8 +206,9 @@ uint8_t Z80PIO::Port::ReadData()
   }
   else if (m_mode != Mode::Output) {
     if (m_readHandler) {
-      uint8_t data = m_readHandler();
-      m_data = (data & m_inputMask) | (m_data & ~m_inputMask);
+      m_readHandler();
+      //uint8_t data = m_readHandler();
+      //m_data = (data & m_inputMask) | (m_data & ~m_inputMask);
     }
   }
 

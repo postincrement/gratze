@@ -25,7 +25,7 @@ class WD_FDC
 
     WD_FDC(unsigned int mode, bool debug);
 
-    bool MountDrive(int driveNum, VirtualDrive * drive, bool readOnly);
+    bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive>, bool readOnly);
 
     void Write(uint16_t addr, uint8_t val);
     uint8_t Read(uint16_t addr);
@@ -124,7 +124,7 @@ class WD_FDC
     uint8_t m_data;
 
     std::function<void (bool)> m_interruptHandler;
-    std::vector<std::unique_ptr<VirtualDrive>> m_drives;
+    std::vector<std::shared_ptr<VirtualDrive>> m_drives;
 
     std::function<void (int, bool)> m_driveChangedHandler;
 

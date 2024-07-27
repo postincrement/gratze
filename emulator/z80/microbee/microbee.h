@@ -58,7 +58,7 @@ class MicrobeeDisk_Emulator : public Microbee_Emulator
 
     bool Open(const Options & options) override;
 
-    bool MountDrive(int driveNum, VirtualDrive *drive, bool readOnly) override;
+    bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly) override;
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
@@ -124,6 +124,7 @@ class Microbee128_BN_Emulator : public Microbee128_BaseEmulator
     Microbee128_BN_Emulator();
 
     void OnPIOAWrite(uint8_t data, bool ie);
+    uint8_t OnPIOARead();
 };
 
 #endif // DG680_H_

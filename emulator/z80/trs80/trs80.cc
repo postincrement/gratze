@@ -201,7 +201,7 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr) const
 
 /////////////////////////////////////////////////////////////
 
-bool TRS80Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
+bool TRS80Emulator::MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly)
 {
   if (!m_fdcEnabled || !m_fdc) {
     cerr << "error: cannot mount drives when FDC is disabled" << endl;

@@ -1,0 +1,528 @@
+
+
+               MICROBEE HARDDISK STARNET 
+                    PRACTICAL NOTES
+
+USING THE STARNET NETWORK
+-------------------------
+
+The Starnet is very similar to a large computer network found  in 
+the  workplace.   Very  few  businesses can afford  to  buy  each 
+employee  a computer of their own.  Instead,  they all share one.  
+This  saves  lots  of time and  money,  as  everyone  shares  the 
+expensive Disk Drive units,  programs,  and data.  For this to be 
+practical  a  great  deal of security has to be  built  into  the 
+system.   Each  person using the system has to be segrigated from 
+the others to keep their work safe.
+
+The easiest way to understand this is to think of the Bank Teller 
+Machines.   When you use the Bank's computer they have to be very 
+careful that you can only access your own money.  They do this by 
+restricting you to your own account.   Firstly,  the bank  issues 
+you with an account (you open your dealings with it by sticking a 
+plastic  card  into the machine) and entering  a  password  (some 
+banks issue numeric passwords called PIN numbers,  others let you 
+use  words).   ONLY,  after  you prove your identity by doing  it 
+correctly do you have access to your accounts.
+
+The  Starnet  works the same way.   To secure the system we  have 
+given no Workstation permission to change the information on  the 
+Hard disk.  The disk comes divided into 4 different drives called 
+A,B,C and D.   The Floppy drive is called the E drive.  These are 
+called the Public drives,  and can only be changed by the  Master.  
+(You  do  have the ability to give the Workstations permission  to 
+the  Public  areas,   however,  under  normal  circumstances  you 
+wouldn't.)   Of  course  the  Workstations  can  access  or  load 
+anything  on ABCD or E  ......  but .....  they can never  change 
+anything by saving or deleting etc.
+
+If you want to SAVE any work,  or PRINT out your work,  you  must 
+first  be LOGGED IN to your account - called a WORKSPACE .   This 
+gives you your own little piece of the disk called the P drive (P 
+for PERSONAL).   Within your workspace you have total freedom  to 
+save, erase, print, or whatever.
+
+So, before you start a lesson think of all the things you plan to 
+do  in  that lesson.   If you just want to show  the  children  a 
+program  you can just go straight into it.   If you want them  to 
+save their work, to finish later, or print it out, you MUST START 
+OFF BY CREATING SOME WORKSPACES AND THEN HAVE THEM LOG INTO  THEM 
+FIRST.  THEN LOAD THE PROGRAM.
+
+Let's use Wordstar as an example.   You intend to do some process 
+writing  with the children.    Before the lesson go to the master 
+station and select
+
+          D - Diskette/Workspace management
+
+then      W - Create or change a Workspace
+
+
+The  screen will fill with the directory and in the second bottom 
+section  you  will see the cursor after  the  question  Workspace 
+name:     I would suggest leaving the A drive for only commercial 
+software  and  keeping  your  Workspaces on  B,C  or  D.   It  is 
+important  then  to use the BACKSPACE  key to move back over  the 
+letter  "A" and type a B over it.   Then type in the name of  the 
+first Workspace.   Start out with your own surname,  (but keep it 
+to a maximum of 8 letters).  Forget about anything after the full 
+stop  - it  is too much of a nuisance to type it  in  each  time.  
+Then press the RETURN key.
+
+It will see it as a new Workspace.   If you want to change an old 
+one  you  just  use  the same proceedure - except  that  it  will 
+realise that it already exists and display whatever it has on it.
+
+Type  in a password that you will be able  to  remember.   Notice 
+that  the  system  will allocate 32K of space.   If this  is  not 
+adequate move down and increase it.  The manual will explain too, 
+that  once it is created you can never decrease it only  increase 
+it otherwise you may corrupt the information stored inside it.
+
+When you are happy type the RETURN key and a Y to confirm.
+
+Now  you will need to RESET the Workstations to access  this  new 
+information.  Then select 2 - Network functions
+                          1 - Log in/out workspace
+
+Remember it is            P for personal  (RETURN)
+Then the name          eg FRED   (RETURN)
+and the password          SECRET (RETURN)
+
+Now  that they are logged in they will need to hold the ESC   key 
+to go back to the main shell screen.
+
+The select   1 - Application Programs
+
+             1 - Wordprocessing
+
+
+You  can  see  there are half a dozen steps involved  and  it  is 
+possible for them to forget to log in first.   They would type up 
+all their work and right at the end when they tried to save it it 
+would tell them that the don't have permission to do so.
+
+To save any heart ache we have saved this chain of events as a
+"USER  DEFINED" key.   Go back to the master and I will show you 
+where and how we have done it.
+
+Select    C - Configuration
+          W - Workspace Shell Configuration
+          U - Default User Command Definition
+
+
+
+
+The screen will fill with the numbers 0 - 9 and some rather funny 
+looking commands following each one.  To explain - let's take the 
+number  1  for example.   It will firstly  put  the  workstations 
+screen  into the shell (sh) - this is what normally happens  when 
+you  turn  a workstation on.   Instead of just stopping there  it 
+will  then automatically move on to LOGIN and force the child  to 
+log in to their P drive.   Once done, it will then go back to the 
+A drive whrer it will go on and load the Wordstar program.  
+
+Try  it  out on a workstation.   To activate the User  keys  just 
+select  a  number 4   -  then the 1  for  Wordstar.   Follow  the 
+screen  by  typing  in a Workspace name and  password.   See  how 
+foolproof it is. 
+
+Look down those User defined keys and you will see that 
+
+0 = Graphic Wordbee
+1 = Wordstar        -    Wordprocessing
+2 = Multiplan       -    Spreadsheet
+3 = SimplyDB        -    Database
+4 = Telcom          -    Telecommunications
+5 = Basic           -    Microbee's own Basic
+6 = Logo+           -    Premium Logo
+7 = Simply Write    -    Our latest Wordprocessor
+8 = Screen Dump     -    To print out screens 
+9 = Microsoft Basic -    The Basic written by Microsoft
+
+We  have  deliberately used the same order as the  programs  were 
+stored under  1 - Application Programs
+
+Now  you  have a choise of using our short-cut User keys  if  you 
+want.
+
+If  you  prefer  to use Simply Write as the  usual  wordprocessor 
+instead of Wordstar just reverse the commands in 1 and 7 and also 
+change  the  Configuration   - Application Programs  to  read  WP 
+instead of WS on the master.
+
+Likewise you may prefer to have Microsoft Basic as the Basic most 
+often taught in your school over Microbee's own Microworld basic.  
+Just  swap  the  commands  for  No 5 and  9  and  again  go  into 
+configuration  on the Master and change Application program no  5 
+to read MBASIC instead of the Basic that is there.
+
+ 
+USING GRAPHIC WORDBEE ON THE HARD DISK SYSTEM
+---------------------------------------------
+
+To  log the students in and then load Graphic Wordbee all they do 
+is select           4 - User Commands
+then                0 - Wordbee   (RETURN) 
+
+
+
+
+You  can  use  Graphic  Wordbee  as  usual.    Loading  alternate 
+lettering  styles  (FONTS) by selecting G  - Load  Graphics,  and 
+choosing any font in the system.  You can tell a font by the .FON 
+extension at the end of the file name.
+
+SAVING
+
+Remember,  before you try to save your work you need to move back 
+to the P: drive.  Select     C - Change Disk
+                             P - to pick your personal drive
+
+Now the system will find your workspace.   If you want to load  a 
+new graphic font,  file or anything that is stored on the A drive 
+you will have to remember to change back to it first.
+
+PRINTING
+
+When you want to print out your work you just select 
+
+                    P - Print    (as normal)
+
+The  file  will be sent down to your spool file.   When  you  are 
+completely finished you just select
+
+                    E - Exit   are you sure?   Y
+
+The system will take you back to the Workstation Shell.
+
+Select              2 - Network functions
+
+Notice  that  under  the section marked Printer:  you  have  some 
+spooled data:       eg 2K
+
+                    2 - Print spooled data
+
+The printer will activate.
+
+USING WORDSTAR ON THE STARNET HARD DISK SYSTEM
+---------------------------------------------- 
+
+THEY MUST LOG INTO THE WORKSPACE FIRST.
+
+You can have them log in and then load Wordstar, or remember they 
+can just pick       4 - User keys
+                    1 - Wordstar
+
+This will force them to log in and then load Word Star for them.
+
+The  very first thing they must do is to select 
+
+                    L - change logged drive
+                    P: - to let it know P is where to save to.
+
+They would then go on and  D - Open a Document
+Give their story a name and start work.
+
+Follow  the  Wordstar Manual for  instructions,  within  wordstar 
+itself there are no changes.     
+
+When they are finished typing, and whish to print their work they 
+must save it first.  Use CTRL KD.  We are now back at the OPENING 
+MENU.   To  print it out  pick the P option from this front menu.  
+Notice  nothing prints out.   Infact,  it has printed it onto the 
+disks  printer buffer.   It is now waiting for you to "spool"  it 
+down to the printer.   (This allows the operating system to  keep 
+track  of all the printer requests and make sure that only one is 
+sent to the printer at a time,  and not get all the work  muddled 
+up.)
+
+
+Now lets print it.
+    
+Type  R -  Run A Program ( from the  SYSTEM COMMAND  section  of 
+the OPENING MENU.)
+
+It will ask you.....               COMMAND?    
+TYPE.....                          SH PRINT
+
+It  will then say               Hit any key to return to Wordstar.
+
+It will too.
+
+TO EXIT BACK TO THE WORKSTATION SHELL.
+-------------------------------------
+Choose                   X  exit to system.
+
+This takes you back to CP/M itself.
+
+Type                     sh   to get your workspace shell back.
+
+Note.  You're still logged in, but no longer in Wordstar.
+
+
+
+
+SETTING UP WORD STAR FILES SO EVERYONE CAN USE THEM.
+----------------------------------------------------
+
+Lets  say you want to type up a story with lots of  spelling  and 
+grammar mistakes for your class to correct.  To do this you  will 
+need to have Write Permission to a public area of the disk.  
+
+I would recommend that you do this first before you start typing, 
+(to save time.)  If you decided after the work was done  (eg if a 
+student  wrote  something  brilliant that the whole  class  could 
+benefit from using) don`t panic. Just have them save their work,
+then  exit  out  of Wordstar,  change the  write  permissions  as 
+follows and  then copy it over.   
+
+Log into a workspace from a Workstation.
+
+Go to the master File Server and choose
+
+                         S    Statistics  (this will let you see
+                               which Workstation Number you are.)
+
+then                     C    Configuration
+then                     A    Access permission
+then                     W    Write permissions
+
+Using  Ctrl E X S D move over to your Workspace and give yourself 
+permission to either drive A,B,C or D. (using Y for yes).
+
+Note.  Only one workstation can have write permission to a public 
+drive at a time.
+
+On the Workstation select
+
+                         4  Request /release write permission.
+It  will  ask  which  drive  (select the one  you  gave  yourself 
+permission for)
+
+Type the ESC key to go back to the main workstation menu.
+
+Create you Wordstar Document as above (within your workspace).
+Save the finished work using Ctrl KD.  
+
+Select                   O  Copy a file (from the Opening Menu)
+It asks                  Name of a file to copy from?
+Type                     your file name
+It asks                  Name of file to copy to?
+
+Type the drive name and then the name of the file.
+EG                       a:name.doc     Hit return
+
+
+All  the  other workstations are now free to load this  file  and 
+save their corrected versions to their own workspaces.
+
+NB. Remember to turn off your write permission when you`re finished
+
+
+USING MULTIPLAN ON THE STAR NETWORK
+-----------------------------------                         
+
+Multiplan  is  a program that uses multiple files to  run.   This 
+means for Multiplan to work you need to tell the network where  to 
+look for these additional files .
+
+This is all taken care for you under those User Defined keys.
+
+All  your  students  have to do now, whenever  they  want  to  use 
+multiplan, is to hold the reset key.
+
+
+Select                        4   User commands
+                              2   Multiplan
+
+then hit the return key
+
+It will stop to force them to login,  then automatically continue 
+on to load multiplan.
+
+Once  in Multiplan the students will need to let the system  know 
+where their workspace resides.  
+
+
+Select                        T  Transfer
+                              O  Options
+
+Tab across to Setup and type  P:    
+
+The  computer now knows that it will find its Multiplan files  on 
+the  A drive,  but,   is to save its work to the P drive.   (your 
+workspace).
+
+TO PRINT MULTIPLAN
+------------------
+
+Complete your work session.
+
+Select                   P  print
+                         P  printer
+it then displays         Print on the printer
+
+(  NB   Like  wordstar  this is just putting it  into  the  print 
+queue......  we will need to exit right out of multiplan to  send 
+the file down to the printer).
+
+BEFORE WE DO THIS MAKE SURE YOU SAVE YOUR WORK.
+Use                           T  transfer  
+                              S  save
+
+
+Now                      Q quit  (you are now out in CP/M)
+
+You then type            sh print
+
+USING TELCOM ON THE STARNET
+---------------------------
+
+When  you  have  loaded  Telcom you will  be  confronted  with  a 
+Command?  question.   Before you can save any files  you need  to 
+type  a P:  (RETURN).   Now any files you receive over  Telephone 
+Modem will be safely saved in your workspace.
+
+To  print them out you will have to leave Telcom by typing either 
+CPM  or CTRL C to go back to the Workspace Shell.  
+Then select              5 - File Manager
+                         4 - print file
+
+
+
+type in the name you gave to your file and (RETURN)
+This will send the file to the Spool file.   Now type the ESC key 
+twice to move back to the first set of options and then select
+                         2 - Network functions
+                         2 - Print spooled data
+
+
+The printer will activate.
+
+
+
+
+USING BASIC ON THE STARNET
+--------------------------
+
+
+If  you  just want to play a Basic game you do not need to  login 
+first, just select       1 - Application Programs
+                         5 - Basic 
+
+
+and load the game you want by     run"name" (RETURN)
+
+
+If you want to write your own program, wish to save or print, you 
+should use the user keys to login and load Basic.
+Select                   4 - User commands
+                         5 - Basic
+
+
+It  actually loads a file called NBASIC.COM  this file looks down 
+the line and loads PNBASIC.COM into Premium Microbees or  SNBASIC 
+into Standard Microbees.
+
+At some stage before you attempt to save you should type in
+                         diskreset "P" (RETURN)
+
+Now  you can type SAVE "NAME" (RETURN) (With the name you want to 
+give the program)
+
+To print out a listing of your program type   LLIST (RETURN)
+Then     SYSTEM (RETURN) to move  back to the Workstation Shell
+then                     2 - Network functions
+                         2 - Print spooled data
+
+If  a  program  prints out as part of its operation  it  will  be 
+caught  by  the spool file.   At the completion of the  operation 
+just type   SYSTEM (RETURN) to move back to the Workstation Shell
+then                     2 - Network functions
+                         2 - Print spooled data
+
+and the work will be printed out.
+USING SIMPLY WRITE ON THE HARDDISK
+----------------------------------
+
+Select the appropriate User Keys to load the program
+
+The Opening Menu screen will appear.
+
+Select ESC 2 and move the cursor down to the line that reads -
+CHANGE FILE DRIVE  and press <return>.
+     Type      - P <return>
+
+Then select ESC 2 again and move the cursor down to the line that 
+reads - CHANGE FONT DRIVE <return>.
+     Type      - A: <return>.
+
+Hit the ESC key and the 5 key to go into your document and create 
+your docoment as normal.   When you are finished and wish to save 
+it hit the ESC key and 1 to return to the Opening menu and ESC  2 
+to enter the Disk functions.
+
+Move  the  cursor down using the arrows to SAVE CURRENT FILE  and 
+press  <return>  Type in the name you wish to save it  under  and 
+again press <return>.
+
+To  print out that document again select ESC 3 the cursor will be 
+on the print option so just press <return>.   Again, like all the 
+network programs the buffer will catch the file.  
+
+Once  you  have sent your file/files to the printer   you  should 
+exit back to the shell by typing an ESC 1
+
+You then select 2 - NETWORK FUNCTIONS
+                2 - PRINT
+
+and your work will print out.
+
+COPYING FLOPPY DISKS ACROSS ONTO THE HARDDISK
+---------------------------------------------
+
+The  solution  is  to put the floppy into drive E:  and  copy  it 
+across from there.
+
+First  you will have to go to the master File Server and go  into 
+
+                         C - Configuration.    
+Then  select             M - Miscellaneous Configuration.   
+
+Then make sure the number of  File Server Disks to be  5.
+This way it knows that the floppy drive exists.
+
+Now ESC back to          D - Diskette/Workspace Management
+                         T - Transfer
+
+You will see the cursor jump to the middle of the screen  waiting 
+for you to enter the file name.  You can enter them one at a time 
+or have it copy every single file by using the wild cards *.*
+
+The  BACKSPACE  key  will let you move far enough to  change  the 
+Drive  letter.   Normally you would want to copy every file  from 
+the floppy E drive to the A drive
+
+You would enter         E:*.*   RETURN
+
+                        A:
+It will take each file from E one at a time and give it the  same 
+name on the A drive.
+
+Now if you later wanted to copy another floppy you will only have 
+to tell it that their is a new floppy in by:
+
+selecting -
+                         D   Diskette / Work management
+                         C   Change Diskette.
+
+Move  the  cursor down to E  (again this means  the  floppy)  and 
+press the return key.
+
+The screen will tell you to insert any new disk and press return. 
+Once the floppy is in press the return key.
+
+Then you can escape back and repeat the Transfer process.
+
+

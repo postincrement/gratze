@@ -13,6 +13,7 @@
 #include "jv3.h"
 #include "dmk.h"
 #include "dsk.h"
+#include "td0.h"
 
 using namespace std;
 
@@ -253,6 +254,7 @@ void VirtualDrive::Init()
   AddFormat<VirtualDriveJV3>();
   AddFormat<VirtualDriveDMK>();
   AddFormat<VirtualDriveDSK>();
+  AddFormat<VirtualDriveTD0>();
 }
 
 VirtualDrive::VirtualDrive()

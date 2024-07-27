@@ -873,7 +873,7 @@ void Emulator::DumpStack(int count)
   DumpStack(stack);
 }
 
-bool Emulator::MountDrive(int driveNum, VirtualDrive * drive, bool readOnly)
+bool Emulator::MountDrive(int driveNum, std::shared_ptr<VirtualDrive>, bool readOnly)
 {
   return false;
 }
@@ -958,7 +958,7 @@ int Emulator::Run(const Options & options)
   for (auto & r : options.m_driveFns) {
     std::string fn(r.second);
     VirtualFileIdentifier fileId;
-    VirtualDrive * drive = fileId.Open(fn, true);
+    std::shared_ptr<VirtualDrive> drive = fileId.Open(fn, true);
     if (drive == nullptr)
       return false;
     if (!MountDrive(r.first, drive, true)) {

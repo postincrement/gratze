@@ -374,12 +374,9 @@ void Dir(const std::map<std::string, CPMFileSystem::FileInfo> & m_fileList, cons
     cout << "\n" << totalFiles << " file" << ((totalFiles > 1) ? "s" : "") << ", " << FormatSize(totalSize) << endl;
 }
 
-int CopyAsText(const std::string & filename, const std::vector<uint8_t> & data)
+std::string GetAsText(const std::vector<uint8_t> & data)
 {
-  cerr << "writing to '" << filename << "'" << endl;
-  ofstream output;
-  output.open(filename, ios::trunc);
-  unsigned len = 0;
+  std::stringstream strm; 
   for (auto & v : data) {
 
     // ^Z is EOF  
@@ -389,10 +386,19 @@ int CopyAsText(const std::string & filename, const std::vector<uint8_t> & data)
     char c = v & 0x7f;  
 
     // output data
-    output.write(&c, 1);
-    len += 1;
+    strm.write(&c, 1);
   }
-  cerr << "info: wrote " << len << " bytes to '" << filename << "'" << endl;
+  return strm.str();
+}
+
+int CopyAsText(const std::string & filename, const std::vector<uint8_t> & data)
+{
+  cerr << "writing to '" << filename << "'" << endl;
+  std::string str = GetAsText(data);
+  ofstream output;
+  output.open(filename, ios::trunc);
+  output << str;
+  cerr << "info: wrote " << str.length() << " bytes to '" << filename << "'" << endl;
   output.close();
   return 0;
 }
@@ -478,7 +484,7 @@ int main(int argc, char *argv[])
     }  
   }
 
-  else if ((cmd == "read") || (cmd == "get") || (cmd == "dump")) {
+  else if ((cmd == "read") || (cmd == "get") || (cmd == "dump") || (cmd == "cat")) {
     if (arg1.empty()) {
       cout << "usage: grdisk [opts] -f file read filespec" << endl;
       return 0;
@@ -519,6 +525,10 @@ int main(int argc, char *argv[])
 
     if (cmd == "dump") {
       cout << DumpMemory((const uint8_t *)&data[0], data.size());
+      return 0;
+    }
+    else if (cmd == "cat") {
+      cout << GetAsText(data);
       return 0;
     }
 

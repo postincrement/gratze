@@ -638,7 +638,7 @@ MicrobeeDisk_Emulator::MicrobeeDisk_Emulator(const EmulatorInfo * info)
 {
 }
 
-bool MicrobeeDisk_Emulator::MountDrive(int driveNum, VirtualDrive *drive, bool readOnly)
+bool MicrobeeDisk_Emulator::MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly)
 {
   return m_fdc->MountDrive(driveNum, drive, readOnly);
 }
@@ -973,6 +973,7 @@ Microbee128_BN_Emulator::Microbee128_BN_Emulator()
 {
   using namespace std::placeholders;
   m_pio.SetWriteHandler(0, std::bind(&Microbee128_BN_Emulator::OnPIOAWrite, this, _1, _2));
+  m_pio.SetReadHandler (0, std::bind(&Microbee128_BN_Emulator::OnPIOARead,  this));
 }
 
 void Microbee128_BN_Emulator::OnPIOAWrite(uint8_t data, bool ie)
@@ -980,6 +981,14 @@ void Microbee128_BN_Emulator::OnPIOAWrite(uint8_t data, bool ie)
   //cerr << "starnet write: " << HEXFORMAT0x2(data) << endl;
   starnet.OnReceive(data, ie);
   m_pio.GetData(0); 
+}
+
+uint8_t Microbee128_BN_Emulator::OnPIOARead()
+{
+  cerr << "starnet read" << endl;
+  m_pio.SetData(0, starnet.OnSend());
+  return 0;
+
 }
 
 
