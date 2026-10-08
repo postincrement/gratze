@@ -60,6 +60,7 @@ add_executable(gratze
   video/chargen_mcm6574.cc
   video/chargen_mcm6674.cc
   terminal/terminal.cc
+  terminal/noca_mode.cc
   z80/z80emulator.cc
   z80/trs80/trs80.cc
   z80/trs80/model1/model1.cc

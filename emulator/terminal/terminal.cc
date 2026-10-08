@@ -37,6 +37,10 @@ static struct termios g_originalTermios;
 static bool g_haveOriginalTermios = false;
 static bool g_consoleActive = false;
 
+// Defined in noca_mode.cc. term.h's macros collide with the rest of this file.
+extern void DisableAlternateScreen();
+extern void LeaveAlternateScreen();
+
 static void RestoreConsoleTerminal()
 {
   if (g_consoleActive) {
@@ -205,6 +209,7 @@ bool ConsoleTerminal::Open()
     return true;
   }
   set_term(s);
+  DisableAlternateScreen();
 
   //initscr();
   scrollok(stdscr,TRUE);
@@ -213,8 +218,15 @@ bool ConsoleTerminal::Open()
   keypad(stdscr, TRUE);
   noecho();
   nodelay(stdscr, TRUE);
-  // Finish curses startup while the screen is still blank. The first
-  // refresh clears the display, and text drawn before that is discarded.
+  // Curses wants to clear on its first refresh, and it enters the
+  // alternate screen there. Cancel the clear, leave that screen, and
+  // continue from the bottom line of the terminal as it already is.
+  clearok(stdscr, FALSE);
+  if (curscr != nullptr)
+    clearok(curscr, FALSE);
+  refresh();
+  LeaveAlternateScreen();
+  move(LINES - 1, 0);
   refresh();
   g_consoleActive = true;
 #endif
