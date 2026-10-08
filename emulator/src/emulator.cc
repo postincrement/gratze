@@ -3,9 +3,11 @@
 #include <iostream>
 #include <iomanip>
 #include <unistd.h>
-#include <time.h>
 #include <functional>
 #include <math.h>
+#include <algorithm>
+#include <chrono>
+#include <thread>
 
 #include "common/misc.h"
 #include "common/binfile.h"
@@ -31,6 +33,31 @@ using namespace std;
 
 
 Emulator * Emulator::m_instance = nullptr;
+
+static double SteadyNowSeconds()
+{
+  return std::chrono::duration<double>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+// Sleep the bulk of a lead, then spin out the last millisecond. Host sleep
+// wakes late by about a millisecond, and the spin absorbs that overshoot.
+static void WaitUntilVirtual(std::chrono::steady_clock::time_point virtualNow)
+{
+  using clock = std::chrono::steady_clock;
+  auto host = clock::now();
+  if (virtualNow <= host)
+    return;
+
+  if (virtualNow - host > std::chrono::milliseconds(2)) {
+    auto wake = virtualNow - std::chrono::milliseconds(1);
+    if (wake > host)
+      std::this_thread::sleep_until(wake);
+  }
+
+  while (clock::now() < virtualNow)
+    ;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -1035,11 +1062,8 @@ int Emulator::Run(const Options & options)
     }
   }
 
-#define GET_NOW_AS_DOUBLE() \
-  std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
-
   m_cycleCounter = 0;
-  double now = GET_NOW_AS_DOUBLE();
+  double now = SteadyNowSeconds();
 
   // initialise real time pollers
   for (auto & r : m_pollers.m_list) {
@@ -1054,105 +1078,66 @@ int Emulator::Run(const Options & options)
     }
   }
 
-  // run emulator
-  auto lastPoll  = std::chrono::system_clock::now();
-  auto lastSpeed = std::chrono::system_clock::now();
-
   if (m_options.m_verbose && options.m_turbo) {
     cerr << "turbo mode" << endl;
   }
 
-  time_t prevTIME = time(NULL);
-
-  double prevBaseline = GET_NOW_AS_DOUBLE();
-  uint64_t cyclesInBaseline = 0;
-  double sigmaError = 0;
-
   if (m_options.m_trace)
     SetTrace(true);
 
+  // One millisecond of emulated time, and at least a few hundred cycles so a
+  // slow CPU still does a useful batch per wait.
+  const uint64_t quantumCycles = std::max<uint64_t>(
+      500, (uint64_t)std::llround(m_targetCPUClock_Hz * 0.001));
+  const uint64_t turboBatchCycles = 10000;
+
+  using clock = std::chrono::steady_clock;
+  auto origin = clock::now();
+  const auto lagCap = std::chrono::milliseconds(50);
+
   for (;;) {
-    double earliestNextRealTime_s; 
+    now = SteadyNowSeconds();
+
+    double earliestNextRealTime_s;
     int64_t earliestNextClockTime;
     RunPollers(earliestNextRealTime_s, earliestNextClockTime);
 
-    // calculate number of cycles until next poll
-    uint64_t cyclesToDo = earliestNextClockTime - m_cycleCounter;
+    uint64_t batchCap = options.m_turbo ? turboBatchCycles : quantumCycles;
+    uint64_t cyclesToDo = batchCap;
 
-    // calculate seconds until next poll
-    double   timeToDo_s = earliestNextRealTime_s - now;
+    if (earliestNextClockTime > (int64_t)m_cycleCounter) {
+      uint64_t untilClock = (uint64_t)earliestNextClockTime - m_cycleCounter;
+      if (untilClock < cyclesToDo)
+        cyclesToDo = untilClock;
+    }
 
-    // calculate cycles to do until next poll
-    uint64_t cyclesForTime = timeToDo_s * m_targetCPUClock_Hz;
-    if (cyclesForTime < cyclesToDo)
-      cyclesToDo = cyclesForTime;
+    double timeToDo_s = earliestNextRealTime_s - now;
+    if (timeToDo_s > 0.0) {
+      uint64_t cyclesForTime = (uint64_t)(timeToDo_s * m_targetCPUClock_Hz);
+      if (cyclesForTime < cyclesToDo)
+        cyclesToDo = cyclesForTime;
+    }
+    if (cyclesToDo < 1)
+      cyclesToDo = 1;
 
-    // if in turbo mode, execute "cyclesToDo" without delays
-    // else insert something to slow down
-    int remaining;
-    int cyclesDone;
-    if (options.m_turbo) {
-      remaining = Exec(cyclesToDo);
-      cyclesDone = cyclesToDo - remaining;
+    int remaining = Exec((int)cyclesToDo);
+    int cyclesDone = (int)cyclesToDo - remaining;
+    if (cyclesDone < 0)
+      cyclesDone = 0;
+    m_cycleCounter += (uint64_t)cyclesDone;
+
+    if (options.m_turbo || m_targetCPUClock_Hz <= 0.0)
+      continue;
+
+    auto emulated = std::chrono::duration<double>(double(m_cycleCounter) / m_targetCPUClock_Hz);
+    auto virtualNow = origin + std::chrono::duration_cast<clock::duration>(emulated);
+    auto hostNow = clock::now();
+    if (hostNow > virtualNow + lagCap) {
+      origin = hostNow - std::chrono::duration_cast<clock::duration>(emulated);
     }
     else {
-      uint64_t cycles = std::min<int64_t>(cyclesToDo, 1);
-      remaining = Exec(cycles);
-      cyclesDone = cycles - remaining;
-      cyclesInBaseline += cyclesDone;
-
-      double newBaseline = GET_NOW_AS_DOUBLE()
-      double duration_s = newBaseline - prevBaseline;
-
-      if (duration_s >= .01) {
-        double actual_Hz = (cyclesInBaseline * 1.0) / duration_s;
-        double error = (actual_Hz - m_targetCPUClock_Hz) / 1000000.0;
-
-        sigmaError += (error * duration_s);
-
-        double pidOut = m_options.m_Kp * error + options.m_Ki * sigmaError;
-
-        unsigned delay;
-        if (m_options.m_delay > 0)
-          delay = m_options.m_delay;
-        else {
-          delay = pidOut;
-          if (delay > 10000)
-            delay = 10000;
-        }
-
-        if (::time(NULL) != prevTIME) {
-          cout << "Actual " << actual_Hz/1000000.0 << " MHz"
-               << ", target " << (m_targetCPUClock_Hz / 1000000.0) << " MHz" 
-               ;
-/*               << ", duration " << duration_s << " sec"
-               ;
-          if (m_options.m_delay == 0) {     
-            cout << ", PID " << pidOut
-                 << ", error " << error 
-                 << ", delay " << delay;
-          }
-*/          
-          cout << endl;
-          
-          prevTIME = ::time(NULL);      
-        }
-
-        if (delay > 0) {
-          volatile int dummy = 0;
-          for (int i = 0; i < delay*100; ++i) {
-            for (int j = 0; j < 10000; ++j) {
-              dummy = j;
-            }
-          }
-        }
-        prevBaseline = newBaseline;
-        cyclesInBaseline = 0;
-      }
-    }  
-
-    // calculate how many any actually done
-    m_cycleCounter += cyclesDone;
+      WaitUntilVirtual(virtualNow);
+    }
   }
 }
 
@@ -1166,7 +1151,7 @@ void Emulator::RunPollers()
 void Emulator::RunPollers(double & earliestNextRealTime_s, 
                           int64_t & earliestNextClockTime)
 {
-  double now = GET_NOW_AS_DOUBLE();
+  double now = SteadyNowSeconds();
   earliestNextRealTime_s = now + 1.0;
   earliestNextClockTime  = m_cycleCounter + 1e+6;
 

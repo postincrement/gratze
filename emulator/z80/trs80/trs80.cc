@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <memory.h>
+#include <cmath>
 
 #include "common/config.h"
 #include "common/misc.h"
@@ -30,7 +31,7 @@ extern "C" {
 
 using namespace std;
 
-#define RTC_INTERVAL_MS 40
+static constexpr double kRtcInterval_s = 0.040;
 
 
 static const ScannedKeyboard::ScanCode keys[8*8] = {
@@ -97,7 +98,6 @@ bool TRS80Emulator::Open(const Options & options)
   cerr << "compiling keyboard" << endl;
   kb->Compile(g_trs80Keys);
 
-  m_rtcTimer   = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
   m_rtcPending = false;
   m_fdcPending = 0;
 
@@ -117,7 +117,10 @@ void TRS80Emulator::Reset(int addr)
 
   using namespace std::placeholders;
   if (m_rtcEnabled) {
-    AddRealTimePollDef(0.04, std::bind(&TRS80Emulator::RTCInterrupt, this));
+    uint64_t rtcCycles = (uint64_t)std::llround(kRtcInterval_s * m_targetCPUClock_Hz);
+    if (rtcCycles < 1)
+      rtcCycles = 1;
+    AddCPUTimePollDef(rtcCycles, std::bind(&TRS80Emulator::RTCInterrupt, this));
   }
   // init floppy drive
   InitFDC();
@@ -155,13 +158,9 @@ bool TRS80Emulator::CreatePixelFont(const Config::Font & fontInfo, std::vector<u
 
 void TRS80Emulator::RTCInterrupt()
 {
-  auto now = std::chrono::system_clock::now();
-  if (now > m_rtcTimer) {
-    if (!m_rtcPending) {
-      m_rtcTimer = std::chrono::system_clock::now() + std::chrono::milliseconds(RTC_INTERVAL_MS);
-      m_rtcPending = true;
-      Interrupt();
-    }
+  if (!m_rtcPending) {
+    m_rtcPending = true;
+    Interrupt();
   }
 }
 

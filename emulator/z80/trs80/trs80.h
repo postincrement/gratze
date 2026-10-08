@@ -122,7 +122,6 @@ class TRS80Emulator : public Z80Emulator
 
     bool m_rtcEnabled = false;
     mutable bool m_rtcPending = false;
-    std::chrono::system_clock::time_point m_rtcTimer;
 
     bool m_cassette2 = false;
     bool m_cassetteMotor = false;

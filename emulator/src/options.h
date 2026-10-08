@@ -71,11 +71,6 @@ struct Options
 
   // log program counter
   bool m_logPC = false;
-
-  // manual delay for CPU
-  unsigned m_delay = 0;
-  double m_Kp = 0.4;
-  double m_Ki = 0.4;
 };
 
 #endif // OPTIONS_H_
