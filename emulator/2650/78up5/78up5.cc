@@ -37,6 +37,7 @@ static EmulatorInfo g_pipbug110Info =
   "78up5-110",                                            // command line option
   "78UP5 with PIPBUG at 100 baud",                        // short name
   "Electronics Australia 78UP5 with PIPBUG at 110 baud",  // long name
+  false,                                                  // host console
 
   INFO_INSERT(78up5_110)
 };
@@ -59,6 +60,7 @@ static EmulatorInfo g_pipbug300Info =
   "78up5",                                                // command line option
   "78UP5 with PIPBUG at 300 baud",                        // short name
   "Electronics Australia 78UP5 with PIPBUG at 300 baud",  // long name
+  false,                                                  // host console
 
   INFO_INSERT(78up5_300)
 };

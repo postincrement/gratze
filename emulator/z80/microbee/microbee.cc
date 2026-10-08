@@ -762,6 +762,7 @@ EmulatorInfo g_microbee32EmulatorInfo =
   "mbee32",                  // command line option
   "Microbee 32k",            // short name
   "Microbee 32k",            // long name
+  true,                      // SDL window
 
   INFO_INSERT(microbee32)
 };
@@ -802,6 +803,7 @@ EmulatorInfo g_microbee56EmulatorInfo =
   "mbee56",                  // command line option
   "Microbee 56k",            // short name
   "Microbee 56k",            // long name
+  true,                      // SDL window
 
   INFO_INSERT(microbee56)
 };
@@ -998,6 +1000,7 @@ EmulatorInfo g_microbee128EmulatorInfo =
   "mbee128",                  // command line option
   "Microbee 128k",            // short name
   "Microbee 128k",            // long name
+  true,                       // SDL window
 
   INFO_INSERT(microbee128)
 };
@@ -1014,6 +1017,7 @@ EmulatorInfo g_microbee128bnEmulatorInfo =
   "mbee128bn",                  // command line option
   "Microbee 128k BN",            // short name
   "Microbee 128k BN",            // long name
+  true,                          // SDL window
 
   INFO_INSERT(microbee128bn)
 };

@@ -279,6 +279,8 @@ TTFFont::TTFFont(const std::string & fontName, int fontSize)
   , m_name(fontName)
   , m_fontSize(fontSize)
   , m_font(nullptr)
+  , m_width(0)
+  , m_height(0)
 {
 }
 
@@ -304,19 +306,51 @@ int TTFFont::GetHeight() const
   return m_height; 
 }
 
+static const char * FallbackMonospaceFont()
+{
+  static const char * fonts[] = {
+#ifdef __APPLE__
+    "/System/Library/Fonts/SFNSMono.ttf",
+    "/System/Library/Fonts/Monaco.ttf",
+    "/System/Library/Fonts/Supplemental/Courier New.ttf",
+#endif
+    nullptr
+  };
+
+  for (const char ** name = fonts; *name != nullptr; ++name) {
+    if (access(*name, R_OK) == 0)
+      return *name;
+  }
+  return nullptr;
+}
+
 bool TTFFont::Open(SDL_Renderer * renderer)
 {
-  if (m_font)
+  if (m_font) {
     FC_FreeFont(m_font);
+    m_font = nullptr;
+  }
 
   if (m_pixelFont && !m_pixelFont->Open(renderer))
-    return false;  
+    return false;
 
-  m_font = FC_CreateFont();  
-  FC_LoadFont(m_font, renderer, m_name.c_str(), m_fontSize, FC_MakeColor(255, 255, 255, 255), TTF_STYLE_NORMAL); 
+  if (access(m_name.c_str(), R_OK) != 0) {
+    const char * fallback = FallbackMonospaceFont();
+    if (fallback == nullptr) {
+      cerr << "error: could not load font " << m_name << endl;
+      return false;
+    }
+    cerr << "info: font '" << m_name << "' not found, using '" << fallback << "'" << endl;
+    m_name = fallback;
+  }
 
-  if (!m_font) {
+  m_font = FC_CreateFont();
+  if ((m_font == nullptr) || !FC_LoadFont(m_font, renderer, m_name.c_str(), m_fontSize, FC_MakeColor(255, 255, 255, 255), TTF_STYLE_NORMAL)) {
     cerr << "error: could not load font " << m_name << endl;
+    if (m_font != nullptr) {
+      FC_FreeFont(m_font);
+      m_font = nullptr;
+    }
     return false;
   }
 
@@ -328,7 +362,11 @@ bool TTFFont::Open(SDL_Renderer * renderer)
 
   {
     // calculate maximum character width - the hard way
-    TTF_Font * ttf = TTF_OpenFont(m_name.c_str(), m_fontSize);  
+    TTF_Font * ttf = TTF_OpenFont(m_name.c_str(), m_fontSize);
+    if (ttf == nullptr) {
+      cerr << "error: could not load font " << m_name << ": " << TTF_GetError() << endl;
+      return false;
+    }
     m_height = TTF_FontHeight(ttf);
     m_width = 0;
     char str[2] = { 0x00, 0x00 };

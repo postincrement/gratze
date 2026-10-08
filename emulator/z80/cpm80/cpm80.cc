@@ -70,6 +70,7 @@ static EmulatorInfo g_emulatorInfo =
   "cpm80",               // command line option
   "CPM 2.2 on Z80",      // short name
   "CPM 2.2 on Z80",      // long name
+  false,                 // host console
 
   INFO_INSERT(cpm80)
 };

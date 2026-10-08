@@ -75,7 +75,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "ram",             'u', "RAM size in k" },
   { ' ', "drive*",          's', "name of file for virtual disk drive" },
   { 'b', "breakpoint",      'x', "breakpoint address"  },
-  { ' ', "sdl",             ' ', "use SDL"},
+  { ' ', "sdl",             ' ', "use an SDL window for a terminal emulation"},
   { 'f', "font",            's', "use TTF font"},
   { 'F', "fontSize",        'u', "TTF font size" },
   { 's', "scale",           'u', "Screen scale factor" },
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 
   if (options.m_args.HasArg("--list")) {
     cout << "Available emulations\n";
-    ColumnFormatter::Columns columns(2);
+    ColumnFormatter::Columns columns(3);
     std::vector<std::string> keys;
     g_emulatorFactory.GetKeys(keys);
 
@@ -130,9 +130,10 @@ int main(int argc, char *argv[])
       std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(r));
       const EmulatorInfo & info = emulator->GetInfo();
       columns[1].push_back(info.m_title);
+      columns[2].push_back(info.m_sdl ? "SDL" : "console or SDL");
     }
 
-    cout << ColumnFormatter::Print(columns, { "   ", "   " });
+    cout << ColumnFormatter::Print(columns, { "   ", "   ", "   " });
     exit(0);
   }
 

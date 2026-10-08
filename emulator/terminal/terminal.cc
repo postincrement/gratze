@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdio.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,6 +7,8 @@
 #if __linux__ || __APPLE__
 #include <sys/select.h>
 #include <sys/types.h>
+#include <termios.h>
+#include <signal.h>
 #include <curses.h>
 #endif
 
@@ -25,6 +28,50 @@ Terminal::Terminal(const Options & options, int cols, int rows)
   , m_rows(rows)
 {
 }
+
+Terminal::~Terminal()
+{}
+
+#if __linux__ || __APPLE__
+static struct termios g_originalTermios;
+static bool g_haveOriginalTermios = false;
+static bool g_consoleActive = false;
+
+static void RestoreConsoleTerminal()
+{
+  if (g_consoleActive) {
+    endwin();
+    g_consoleActive = false;
+  }
+  if (g_haveOriginalTermios) {
+    tcsetattr(STDIN_FILENO, TCSANOW, &g_originalTermios);
+    g_haveOriginalTermios = false;
+    write(STDOUT_FILENO, "\n", 1);
+  }
+}
+
+static void ConsoleSignal(int sig)
+{
+  // Curses is not safe to shut down from a signal. Restoring the saved
+  // terminal attributes is enough for the shell to be usable again.
+  if (g_haveOriginalTermios)
+    tcsetattr(STDIN_FILENO, TCSANOW, &g_originalTermios);
+  signal(sig, SIG_DFL);
+  raise(sig);
+}
+
+static void InstallConsoleRestore()
+{
+  static bool installed = false;
+  if (installed)
+    return;
+  installed = true;
+  atexit(RestoreConsoleTerminal);
+  signal(SIGINT, ConsoleSignal);
+  signal(SIGTERM, ConsoleSignal);
+  signal(SIGHUP, ConsoleSignal);
+}
+#endif
 
 bool Terminal::Open()
 {
@@ -138,10 +185,25 @@ ConsoleTerminal::ConsoleTerminal(const Options & options, int cols, int rows)
   m_useCurses = true;
 }
 
+ConsoleTerminal::~ConsoleTerminal()
+{
+#if __linux__ || __APPLE__
+  RestoreConsoleTerminal();
+#endif
+}
+
 bool ConsoleTerminal::Open()
 {
 #if __linux__ || __APPLE__
-  SCREEN * s = newterm(NULL, stdin, stdout);
+  if (!g_haveOriginalTermios && (tcgetattr(STDIN_FILENO, &g_originalTermios) == 0))
+    g_haveOriginalTermios = true;
+  InstallConsoleRestore();
+
+  SCREEN * s = newterm(NULL, stdout, stdin);
+  if (s == nullptr) {
+    m_useCurses = false;
+    return true;
+  }
   set_term(s);
 
   //initscr();
@@ -151,6 +213,10 @@ bool ConsoleTerminal::Open()
   keypad(stdscr, TRUE);
   noecho();
   nodelay(stdscr, TRUE);
+  // Finish curses startup while the screen is still blank. The first
+  // refresh clears the display, and text drawn before that is discarded.
+  refresh();
+  g_consoleActive = true;
 #endif
   return true;
 }
@@ -160,6 +226,42 @@ void ConsoleTerminal::Clear()
 
 void ConsoleTerminal::WriteChar(uint8_t ch)
 {
+#if __linux__ || __APPLE__
+  // Output has to go through curses. A direct write is wiped the next
+  // time the keyboard poll refreshes the screen.
+  if (m_useCurses && (stdscr != nullptr)) {
+    int y, x;
+    switch (ch) {
+      case 0x0d:
+        getyx(stdscr, y, x);
+        move(y, 0);
+        break;
+      case 0x0a:
+        // addch('\n') returns to column 0 and then erases to the end of
+        // the screen, which wipes the line just written.
+        getyx(stdscr, y, x);
+        if (y >= LINES - 1) {
+          scroll(stdscr);
+          move(LINES - 1, 0);
+        }
+        else
+          move(y + 1, 0);
+        break;
+      case 0x08:
+        getyx(stdscr, y, x);
+        if (x > 0)
+          move(y, x - 1);
+        break;
+      default:
+        if ((ch >= 0x20) && (ch < 0x7f))
+          addch(ch);
+        break;
+    }
+    refresh();
+    fflush(stdout);
+    return;
+  }
+#endif
   write(STDOUT_FILENO, &ch, 1);
 }
 

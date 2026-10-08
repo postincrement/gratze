@@ -82,6 +82,7 @@ static EmulatorInfo g_emulatorInfo =
   "sorcerer",                 // command line option
   "sorcerer",                 // short name
   "Exidy Sorcerer",           // long name
+  true,                       // SDL window
 
   INFO_INSERT(sorcerer)
 };

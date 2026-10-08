@@ -54,8 +54,8 @@ struct Options
   // set trace
   bool m_trace = false;
 
-  // scale video
-  unsigned m_videoScale = 1;
+  // scale video. 0 chooses a scale that fits the desktop.
+  unsigned m_videoScale = 0;
 
   // level of vebosity
   unsigned m_verbose = 0;

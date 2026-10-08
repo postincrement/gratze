@@ -7,6 +7,21 @@
 // macOS 14 and later ignore SDL_RaiseWindow for a process started from a
 // terminal. Mark this process as a foreground application and order its
 // window in front.
+extern "C" bool MacUsableDisplaySize(int * width, int * height)
+{
+  if ((width == nullptr) || (height == nullptr))
+    return false;
+
+  NSScreen * screen = [NSScreen mainScreen];
+  if (screen == nil)
+    return false;
+
+  NSRect visible = [screen visibleFrame];
+  *width = (int)visible.size.width;
+  *height = (int)visible.size.height;
+  return (*width > 0) && (*height > 0);
+}
+
 void RaiseMacWindow(SDL_Window * window)
 {
   NSApplication * app = [NSApplication sharedApplication];

@@ -263,6 +263,58 @@ void Emulator::SetKeyboard(VirtualKeyboard * kb)
 
 /////////////////////////////////////////////////////////////////////////////////////
 
+#ifdef __APPLE__
+extern "C" bool MacUsableDisplaySize(int * width, int * height);
+#endif
+
+static bool UsableDisplaySize(int & width, int & height)
+{
+#ifdef __APPLE__
+  if (MacUsableDisplaySize(&width, &height))
+    return true;
+#endif
+
+  SDL_Rect bounds;
+  if ((SDL_GetDisplayUsableBounds(0, &bounds) == 0) && (bounds.w > 0) && (bounds.h > 0)) {
+    width = bounds.w;
+    height = bounds.h;
+    return true;
+  }
+
+  SDL_DisplayMode mode;
+  if ((SDL_GetDesktopDisplayMode(0, &mode) == 0) && (mode.w > 0) && (mode.h > 0)) {
+    width = mode.w;
+    height = mode.h;
+    return true;
+  }
+
+  return false;
+}
+
+// Largest integer scale whose window still fits in about four fifths of the
+// usable desktop, leaving the menu bar, dock, and some space around it.
+static unsigned ScaleToFit(int contentW, int contentH, int desktopW, int desktopH)
+{
+  if (contentW < 1)
+    contentW = 1;
+  if (contentH < 1)
+    contentH = 1;
+
+  int availW = desktopW * 4 / 5 - 20;
+  int availH = desktopH * 4 / 5 - 20;
+  if (availW < contentW)
+    availW = contentW;
+  if (availH < contentH)
+    availH = contentH;
+
+  unsigned scaleW = (unsigned)(availW / contentW);
+  unsigned scaleH = (unsigned)(availH / contentH);
+  unsigned scale = std::min(scaleW, scaleH);
+  if (scale < 1)
+    scale = 1;
+  return scale;
+}
+
 void Emulator::CreateScreen(MainWindow & mainWindow)
 {
   if (m_info->m_title != nullptr)
@@ -303,6 +355,16 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
     if (m_options.m_verbose)
       cout << "info: virtual screen base pixel size is " << pixelCols << "x" << pixelRows << endl;
 
+    if (m_options.m_videoScale == 0) {
+      int deskW = 0;
+      int deskH = 0;
+      if (UsableDisplaySize(deskW, deskH))
+        m_options.m_videoScale = ScaleToFit(pixelCols, pixelRows, deskW, deskH);
+      else
+        m_options.m_videoScale = 2;
+      cout << "info: screen scale is " << m_options.m_videoScale << endl;
+    }
+
     width  = pixelCols * m_options.m_videoScale;
     height = pixelRows * m_options.m_videoScale;
 
@@ -314,13 +376,15 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
 
     m_memMapScreen.reset(MemoryMappedScreen::Create(mainWindow, m_options, *mmapScreenInfo));
     m_screen = m_memMapScreen;
+    m_screen->SetScale(m_options.m_videoScale, m_options.m_videoScale);
 
-    if (!m_options.m_font.empty()) {
-      m_memMapScreen->SetFont(new TTFFont(mmapScreenInfo->m_font, 128, m_options.m_font, m_options.m_fontSize));
-    }
-    else {
-      m_memMapScreen->SetFont(new PixelFont(mmapScreenInfo->m_font));
-    }
+    bool fontOpened;
+    if (!m_options.m_font.empty())
+      fontOpened = m_memMapScreen->SetFont(new TTFFont(mmapScreenInfo->m_font, 128, m_options.m_font, m_options.m_fontSize));
+    else
+      fontOpened = m_memMapScreen->SetFont(new PixelFont(mmapScreenInfo->m_font));
+    if (!fontOpened)
+      exit(-1);
   }
 
   // check for terminals
@@ -340,6 +404,17 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
     if (m_options.m_useSDL) {
       if (m_options.m_verbose)
         cout << "info: using SDL" << endl;
+      if (m_options.m_videoScale == 0) {
+        int deskW = 0;
+        int deskH = 0;
+        int nativeW = termInfo.m_cols * 8;
+        int nativeH = termInfo.m_rows * 16;
+        if (UsableDisplaySize(deskW, deskH))
+          m_options.m_videoScale = ScaleToFit(nativeW, nativeH, deskW, deskH);
+        else
+          m_options.m_videoScale = 1;
+        cout << "info: screen scale is " << m_options.m_videoScale << endl;
+      }
       mainWindow.Open(800 * m_options.m_videoScale, 600 * m_options.m_videoScale);
       m_terminal.reset(new SDLTerminal(mainWindow, m_options, termInfo.m_cols, termInfo.m_rows, m_options.m_videoScale, m_options.m_videoScale));
     }
@@ -357,21 +432,27 @@ void Emulator::CreateScreen(MainWindow & mainWindow)
       exit(-1);
     }
 
-    std::string fontName = m_options.m_font;
-    if (fontName.empty())
-      fontName = DEFAULT_TTF_FONT;
+    if (m_options.m_useSDL) {
+      std::string fontName = m_options.m_font;
+      if (fontName.empty())
+        fontName = DEFAULT_TTF_FONT;
 
-    int fontSize = m_options.m_fontSize;
-    if (fontSize <= 0)
-      fontSize = 15;
+      int fontSize = m_options.m_fontSize;
+      if (fontSize <= 0)
+        fontSize = 15;
 
-    m_screen->SetFont(new TTFFont(fontName, fontSize));
+      if (!m_screen->SetFont(new TTFFont(fontName, fontSize)))
+        exit(-1);
+    }
   }
 
   if (!m_screen) {
     cerr << "error: could not instantiate screen" << endl;
     return; // false;
   }
+
+  if (m_options.m_videoScale == 0)
+    m_options.m_videoScale = 1;
 
   if (m_options.m_verbose)  
     cout << "info: setting screen scale " << m_options.m_videoScale << endl;
@@ -982,6 +1063,10 @@ void Emulator::MemoryDump() const
 int Emulator::Run(const Options & options)
 {
   m_options = options;
+  // Memory-mapped machines have to use an SDL window. A terminal machine
+  // stays on the host console unless --sdl was given.
+  if (m_info->m_sdl)
+    m_options.m_useSDL = true;
 
   // set target CPU speed
   const Config::CPU * cpu = GetCPUInfo();
@@ -1020,7 +1105,7 @@ int Emulator::Run(const Options & options)
   CompileConfigBlocks();
 
   // initialize SDL
-  if (options.m_useSDL) {
+  if (m_options.m_useSDL) {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
       printf("error initializing SDL: %s\n", SDL_GetError());
       return -1;

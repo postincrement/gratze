@@ -88,6 +88,7 @@ static struct EmulatorInfo g_level1EmulatorInfo =
   "m1-1",                         // command line option
   "Model 1 L1",                   // short name
   "TRS-80 Model 1, Level 1",      // long name
+  true,                           // SDL window
   INFO_INSERT(model1Level1)
 };
 
@@ -128,6 +129,7 @@ static struct EmulatorInfo g_levelEmulatorInfo =
   "m1",                           // command line option
   "Model 1 L2",                   // short name
   "TRS-80 Model 1, Level 2",      // long name
+  true,                           // SDL window
   INFO_INSERT(model1Level2)
 };
 

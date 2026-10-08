@@ -30,6 +30,7 @@ static struct EmulatorInfo g_emulatorInfo
   "m3",                           // command line option
   "Model 3",                      // short name
   "TRS-80 Model 3",               // long name
+  true,                           // SDL window
 
   INFO_INSERT(model3)
 };

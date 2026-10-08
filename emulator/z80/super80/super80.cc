@@ -68,6 +68,7 @@ static EmulatorInfo g_emulatorInfo =
   "super80",                      // command line option
   "Super-80",                     // short name
   "Dick Smith Super80",           // long name
+  true,                           // SDL window
 
   INFO_INSERT(super80)
 };

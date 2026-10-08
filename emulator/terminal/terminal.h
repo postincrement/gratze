@@ -15,6 +15,7 @@ struct Terminal
 {
   public:
     Terminal(const Options & options, int cols, int rows);
+    virtual ~Terminal();
 
     virtual bool Open();
     virtual void SetKeyboardHandler(std::function<void (uint8_t)> handler);
@@ -76,6 +77,7 @@ struct ConsoleTerminal : public Terminal
 {
   public:
     ConsoleTerminal(const Options & options, int cols, int rows);
+    virtual ~ConsoleTerminal();
 
     virtual bool Open() override;
 

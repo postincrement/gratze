@@ -49,6 +49,7 @@ static EmulatorInfo g_emulatorInfo =
   "dg680",                        // command line option
   "DG-680",                       // short name
   "DG-680 with DGOS",             // long name
+  true,                           // SDL window
 
   INFO_INSERT(dg680)
 };

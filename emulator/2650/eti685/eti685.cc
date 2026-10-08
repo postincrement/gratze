@@ -44,6 +44,7 @@ static EmulatorInfo g_emulatorInfo =
   "eti685",                                // command line option
   "ETI-685 with BINBUG",                   // short name
   "ETI-685 2650 with DG-640 and BINBUG",   // long name
+  true,                                    // SDL window
 
   INFO_INSERT(eti685)
 };

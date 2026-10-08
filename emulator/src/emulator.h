@@ -331,6 +331,7 @@ struct EmulatorInfo
   const char * m_option;   // command line option
   const char * m_name;     // short name
   const char * m_title;    // long name
+  bool m_sdl;              // true: SDL window required. false: console, or SDL if requested
 
   const Config::Block * m_blocks;
   const size_t  m_blockCount;
