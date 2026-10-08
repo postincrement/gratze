@@ -86,3 +86,4 @@ common/autom4te.cache/traces.1
 common/autom4te.cache/traces.2
 libz80emu.a
 libnfd.a
+/build/

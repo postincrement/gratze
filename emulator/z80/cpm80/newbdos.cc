@@ -18,7 +18,7 @@ enum {
 
 #define ColdBootTitle "CP/M 2.2 NewBDOS\r\n$"
 
-extern unsigned char z80_cpm80_newbdos_bin[2390];
+extern unsigned char z80_cpm80_newbdos_bin[2394];
 
 static NewBDOS::Function NewBDOSCommands[] = {
   &NewBDOS::SystemReset,    //  0 - System reset

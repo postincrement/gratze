@@ -51,7 +51,7 @@ static void PrintCPMString(const char * str);
 
 struct CPM80_Emulator;
 
-extern unsigned char z80_cpm80_newbdos_bin[2390];
+extern unsigned char z80_cpm80_newbdos_bin[2394];
 
 INFO_START(cpm80)
 {

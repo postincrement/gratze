@@ -161,7 +161,6 @@ bool VirtualDriveTD0::OpenFile(int fd, off_t len, const uint8_t * header, size_t
         switch (extHdr.m_8) {
           case 0:
             cerr << ", type 0";
-            memcpy(&sect_data[sdatapos], &imagebuf[offset], size);
             offs += size;
             break;
 

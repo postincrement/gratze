@@ -2,36 +2,35 @@
 
 Compiling On Linux or OSX
 -------------------------
-Use the following commands:
-    aclocal
-    autoconf
-    ./configure
-    make
+From the repository root:
 
-Compiling on using MingW
-------------------------
-Select one of following target type:
+    cmake -S . -B build
+    cmake --build build
 
-    i686-mingw32          Using MingW32, compiling for Win32  
-    i686-w64-mingw32      Using MingW64, compiling for Win32  
-    x86_64-w64-mingw32    Using MingW64, compiling for Win64
+The `gratze` binary is `build/emulator/gratze`. CMake also builds `build/disk/grzdisk` and `build/grzbin/grzbin`.
 
-Use the following commands:
+Cereal, nativefiledialog, and SDL_FontCache are downloaded into the build tree. nativefiledialog is Michael Labbe's library. The postincrement fork named by the old configure script is no longer available, so `emulator/nfd_compat` supplies the dialog calls gratze uses. `z80asm` assembles `emulator/z80/cpm80/newbdos.asm` into the CP/M image while building.
 
-    aclocal
-    autoconf
-    ./configure --host=TARGET
-    make
+Compiling with MingW
+--------------------
+Configure with a MinGW toolchain file, then build:
+
+    cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=/path/to/mingw-toolchain.cmake
+    cmake --build build
 
 MingW
 -----
-  sudo apt-get install g++-mingw-w64-i686
+  sudo apt-get install g++-mingw-w64-i686 cmake
 
 Linux
 -----
-  sudo apt-get install libsdl2-dev
-  sudo apt-get install libsdl2-ttf-dev
-  sudo apt-get install libfreetype6-dev
+  sudo apt-get install cmake g++ pkg-config z80asm
+  sudo apt-get install libsdl2-dev libsdl2-ttf-dev libfreetype6-dev
+  sudo apt-get install libncurses-dev libgtk-3-dev
+
+macOS
+-----
+  brew install cmake sdl2 sdl2_ttf z80asm
  
 Various I/O Ports
 -----------------
@@ -98,7 +97,7 @@ LICENSES
 Done
 ----  
   - CPU speed setting
-  - autoconf
+  - cmake
   - linux support
   - 32/64 video mode
   - Refactor video support
