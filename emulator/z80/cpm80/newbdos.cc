@@ -19,9 +19,9 @@ enum {
   eFCB_R2   = 35
 };
 
-#define ColdBootTitle "CP/M 2.2 NewBDOS\r\n$"
+#define ColdBootTitle "\rCP/M 2.2 NewBDOS\r\n$"
 
-extern unsigned char z80_cpm80_newbdos_bin[2394];
+extern unsigned char z80_cpm80_newbdos_bin[2398];
 
 static NewBDOS::Function NewBDOSCommands[] = {
   &NewBDOS::SystemReset,    //  0 - System reset
@@ -377,12 +377,15 @@ NewBDOS::~NewBDOS()
   }
 }
 
-void NewBDOS::OnBDOSCommand()
+void NewBDOS::OnBDOSCommand(uint8_t code)
 {
-  int code = m_proc.m_cpu.BC.B.l;
   if (code == 0xff) {
     //m_debug << "BDOS " << code << "0xff" << endl;
     Boot();
+    return;
+  }
+  if (code == 0xfe) {
+    CcpCommand();
     return;
   }
   if (code >= sizeof(NewBDOSCommands)/sizeof(NewBDOSCommands[0])) {
@@ -402,21 +405,77 @@ void NewBDOS::OnBDOSCommand()
   }
 }
 
+static const struct {
+  const char * name;
+  NewBDOS::Function func;
+} CcpCommands[] = {
+  { "EXIT", &NewBDOS::CcpExit },
+};
+
+void NewBDOS::CcpExit()
+{
+  m_debug << "CCP exit" << endl;
+  exit(0);
+}
+
+void NewBDOS::CcpCommand()
+{
+  uint16_t fcb = m_proc.m_cpu.DE.W;
+  char name[8];
+  for (int i = 0; i < 8; ++i)
+    name[i] = m_memory[fcb + 1 + i] & 0x7f;
+
+  for (int i = 0; i < 3; ++i) {
+    if ((m_memory[fcb + 9 + i] & 0x7f) != ' ') {
+      m_proc.m_cpu.AF.B.h = 0;
+      return;
+    }
+  }
+
+  for (const auto & command : CcpCommands) {
+    int i = 0;
+    bool match = true;
+    for (; command.name[i] != 0 && i < 8; ++i) {
+      if (name[i] != command.name[i]) {
+        match = false;
+        break;
+      }
+    }
+    if (!match || command.name[i] != 0)
+      continue;
+    for (; i < 8; ++i) {
+      if (name[i] != ' ') {
+        match = false;
+        break;
+      }
+    }
+    if (!match)
+      continue;
+    m_proc.m_cpu.AF.B.h = 0xff;
+    (this->*command.func)();
+    return;
+  }
+
+  m_proc.m_cpu.AF.B.h = 0;
+  m_debug << "CCP command not handled" << endl;
+}
+
 void NewBDOS::SystemReset()
 {
   m_debug << "BDOS 0: system reset" << endl;
   if (m_proc.m_options.m_arg.empty()) {
+    PrintCPMString(ColdBootTitle);
     stringstream strm;
     strm << "CCP=" << hex << CCPB << ",BDOS=" << BDOS << ",BIOS=" << BIOS << "\r\n$";
     PrintCPMString(strm.str().c_str());
     PrintDriveMap();
-    PrintCPMString(ColdBootTitle);
   }
 
   ClearHostCaches();
 
-  // set current disk to A
+  // Cold boot logs in drive A. The BIOS leaves that drive in C.
   m_proc.WriteMemory(4, 0x00);
+  m_proc.m_cpu.BC.B.l = 0;
 
   Boot();
 }
@@ -425,9 +484,13 @@ void NewBDOS::Boot()
 {
   m_debug << "booting" << endl;
 
+  // BIOS warm boot captured the logged-in drive in C before this reload.
+  uint8_t logged = m_proc.m_cpu.BC.B.l;
+
   m_fileMap.clear();
 
   memset(m_memory, 0, 0x100);
+  m_memory[4] = logged;
 
   // set warm boot vector at 0x0000 to BIOS + 3
   m_memory[0x0000] = 0xc3;
@@ -439,9 +502,9 @@ void NewBDOS::Boot()
   m_memory[0x0006] = BDOS & 0xff;
   m_memory[0x0007] = (BDOS >> 8) & 0xff;
 
-  // start running CCP
+  // start running CCP, with the preserved drive in C
   m_dmaAddress        = 0x0080;
-  m_proc.m_cpu.BC.B.l = m_proc.ReadMemory(4);
+  m_proc.m_cpu.BC.B.l = logged;
   m_proc.m_cpu.SP.W   = 0x0100;
   m_proc.m_cpu.PC.W   = CCPB;
 
@@ -635,7 +698,7 @@ void NewBDOS::ReadLine()
           m_proc.ConsoleOut('C');
           m_proc.ConsoleOut(0x0d);
           m_proc.ConsoleOut(0x0a);
-          Boot();
+          m_proc.m_cpu.PC.W = 0;
           done = true;
         }
         break;
@@ -1080,7 +1143,7 @@ bool NewBDOS::OpenImageDrive(const CpmDriveRequest & request)
     }
   }
   else {
-    cerr << "info: drive " << (char)('A' + request.m_drive) << ": " << image->GetFormat() << " image" << endl;
+    m_debug << "info: drive " << (char)('A' + request.m_drive) << ": " << image->GetFormat() << " image" << endl;
   }
 
   DriveSlot & slot = m_drives[request.m_drive];

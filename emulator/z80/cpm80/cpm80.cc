@@ -52,7 +52,7 @@ static void PrintCPMString(const char * str);
 
 struct CPM80_Emulator;
 
-extern unsigned char z80_cpm80_newbdos_bin[2394];
+extern unsigned char z80_cpm80_newbdos_bin[2398];
 
 INFO_START(cpm80)
 {
@@ -343,7 +343,7 @@ void CPM80_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, register uin
 
     // new BDOS command
     case zed80_newBDOS:
-      m_newBDOS->OnBDOSCommand();
+      m_newBDOS->OnBDOSCommand(data);
       break;
 
     // console output

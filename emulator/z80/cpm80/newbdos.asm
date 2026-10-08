@@ -494,17 +494,17 @@ CONVERT:LD	HL,FCB
 	POP	HL
 	LD	A,(DE)		;get first character.
 	OR	A
-	JP	Z,CONVRT1
+	JR	Z,CONVRT1
 	SBC	A,'A'-1		;might be a drive name, convert to binary.
 	LD	B,A		;and save.
 	INC	DE		;check next character for a ':'.
 	LD	A,(DE)
 	CP	':'
-	JP	Z,CONVRT2
+	JR	Z,CONVRT2
 	DEC	DE		;nope, move pointer back to the start of the line.
 CONVRT1:LD	A,(CDRIVE)
 	LD	(HL),A
-	JP	CONVRT3
+	JR	CONVRT3
 CONVRT2:LD	A,B
 	LD	(CHGDRV),A	;set change in drives flag.
 	LD	(HL),B
@@ -514,55 +514,55 @@ CONVRT2:LD	A,B
 ;
 CONVRT3:LD	B,08H
 CONVRT4:CALL	CHECK
-	JP	Z,CONVRT8
+	JR	Z,CONVRT8
 	INC	HL
 	CP	'*'		;note that an '*' will fill the remaining
-	JP	NZ,CONVRT5	;field with '?'.
+	JR	NZ,CONVRT5	;field with '?'.
 	LD	(HL),'?'
-	JP	CONVRT6
+	JR	CONVRT6
 CONVRT5:LD	(HL),A
 	INC	DE
 CONVRT6:DEC	B
-	JP	NZ,CONVRT4
+	JR	NZ,CONVRT4
 CONVRT7:CALL	CHECK		;get next delimiter.
-	JP	Z,GETEXT
+	JR	Z,GETEXT
 	INC	DE
-	JP	CONVRT7
+	JR	CONVRT7
 CONVRT8:INC	HL		;blank fill the file name.
 	LD	(HL),' '
 	DEC	B
-	JP	NZ,CONVRT8
+	JR	NZ,CONVRT8
 ;
 ;   Get the extension and convert it.
 ;
 GETEXT:	LD	B,03H
 	CP	'.'
-	JP	NZ,GETEXT5
+	JR	NZ,GETEXT5
 	INC	DE
 GETEXT1:CALL	CHECK
-	JP	Z,GETEXT5
+	JR	Z,GETEXT5
 	INC	HL
 	CP	'*'
-	JP	NZ,GETEXT2
+	JR	NZ,GETEXT2
 	LD	(HL),'?'
-	JP	GETEXT3
+	JR	GETEXT3
 GETEXT2:LD	(HL),A
 	INC	DE
 GETEXT3:DEC	B
-	JP	NZ,GETEXT1
+	JR	NZ,GETEXT1
 GETEXT4:CALL	CHECK
-	JP	Z,GETEXT6
+	JR	Z,GETEXT6
 	INC	DE
-	JP	GETEXT4
+	JR	GETEXT4
 GETEXT5:INC	HL
 	LD	(HL),' '
 	DEC	B
-	JP	NZ,GETEXT5
+	JR	NZ,GETEXT5
 GETEXT6:LD	B,3
 GETEXT7:INC	HL
 	LD	(HL),0
 	DEC	B
-	JP	NZ,GETEXT7
+	JR	NZ,GETEXT7
 	EX	DE,HL
 	LD	(INPOINT),HL	;save input line pointer.
 	POP	HL
@@ -574,10 +574,10 @@ GETEXT7:INC	HL
 GETEXT8:INC	HL
 	LD	A,(HL)
 	CP	'?'		;any question marks?
-	JP	NZ,GETEXT9
+	JR	NZ,GETEXT9
 	INC	B		;count them.
 GETEXT9:DEC	C
-	JP	NZ,GETEXT8
+	JR	NZ,GETEXT8
 	LD	A,B
 	OR	A
 	RET	
@@ -612,21 +612,21 @@ SEARCH1:LD	A,C
 	LD	B,4		;max command length.
 SEARCH2:LD	A,(DE)
 	CP	(HL)
-	JP	NZ,SEARCH3	;not a match.
+	JR	NZ,SEARCH3	;not a match.
 	INC	DE
 	INC	HL
 	DEC	B
-	JP	NZ,SEARCH2
+	JR	NZ,SEARCH2
 	LD	A,(DE)		;allow a 3 character command to match.
 	CP	' '
-	JP	NZ,SEARCH4
+	JR	NZ,SEARCH4
 	LD	A,C		;set return register for this command.
 	RET	
 SEARCH3:INC	HL
 	DEC	B
-	JP	NZ,SEARCH3
+	JR	NZ,SEARCH3
 SEARCH4:INC	C
-	JP	SEARCH1
+	JR	SEARCH1
 ;
 ;   Set the input buffer to empty and then start the command
 ; processor (ccp).
@@ -669,6 +669,16 @@ CMMND1:	LD	SP,CCPSTACK	;set stack straight.
 	CALL	GETDSK		;get current drive.
 	ADD	A,'A'
 	CALL	PRINT		;print current drive.
+	CALL	GETUSR		;user number, 0 to 15.
+	CP	10
+	JR	C,CMMND1B
+	SUB	10
+	PUSH	AF
+	LD	A,'1'
+	CALL	PRINT
+	POP	AF
+CMMND1B:ADD	A,'0'
+	CALL	PRINT
 	LD	A,'>'
 	CALL	PRINT		;and add prompt.
 	CALL	GETINP		;get line from user.
@@ -1113,7 +1123,12 @@ USER:	CALL	DECODE		;get numeric value following command.
 ;*
 ;**************************************************************
 ;
-UNKNOWN:CALL	VERIFY		;check for valid system (why?).
+UNKNOWN:LD	C,0xFE		;ask the host about an extra command.
+	LD	DE,FCB
+	CALL	ENTRY
+	OR	A
+	JP	NZ,GETBACK	;host handled it.
+	CALL	VERIFY		;check for valid system (why?).
 	LD	A,(FCB+1)	;anything to execute?
 	CP	' '
 	JP	NZ,UNKWN1
@@ -1398,7 +1413,9 @@ BIOS_CBOOT:
 	OUT	(zed80_cmd),A
 
 BIOS_WBOOT:
-	LD	C,0xFF
+	LD	A,(TDRIVE)	;keep the logged-in drive and user.
+	LD	C,A
+	LD	A,0xFF
 	OUT	(zed80_cmd),A
 
 BIOS_CONST:

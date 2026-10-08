@@ -22,7 +22,9 @@ struct NewBDOS
 
   typedef void (NewBDOS::* Function)();
 
-  void OnBDOSCommand();
+  void OnBDOSCommand(uint8_t code);
+  void CcpCommand();
+  void CcpExit();
 
   void SystemReset();    //  0 - System reset
   void ConsoleInput();   //  1 - Console input
