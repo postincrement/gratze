@@ -74,6 +74,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { 'r', "rom",             's', "name of ROM"    },
   { ' ', "ram",             'u', "RAM size in k" },
   { ' ', "drive*",          's', "name of file for virtual disk drive" },
+  { ' ', "cpmdrive",        's', "CP/M drive, A=dir:path or A=image:file,dpb=name" },
   { 'b', "breakpoint",      'x', "breakpoint address"  },
   { ' ', "sdl",             ' ', "use an SDL window for a terminal emulation"},
   { 'f', "font",            's', "use TTF font"},
@@ -220,6 +221,10 @@ int main(int argc, char *argv[])
   std::string error;
   if (!options.m_args.GetValues("--drive*", options.m_driveFns, error)) {
     cerr << "error: could not parse drive filename list - " << error << endl;
+    return -1;
+  }
+  if (!options.m_args.GetValues("--cpmdrive", options.m_cpmDrives)) {
+    cerr << "error: could not parse --cpmdrive" << endl;
     return -1;
   }
   else if (options.m_driveFns.size() > 0) {

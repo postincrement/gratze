@@ -1,6 +1,9 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#include <algorithm>
+#include <cstring>
+
 #include "common/misc.h"
 
 #include "z80/cpm80/cpm80.h"
@@ -52,7 +55,7 @@ static NewBDOS::Function NewBDOSCommands[] = {
   NULL,                     // 28 - Write protect disk
   NULL,                     // 29 - Get read/only vector
   NULL,                     // 30 - Set file attributes
-  NULL,                     // 31 - Get disk parm addr
+  &NewBDOS::GetDiskParams,  // 31 - Get disk parm addr
   &NewBDOS::GetSetUser,     // 32 - Set/get user code
   &NewBDOS::ReadRandom,     // 33 - Read random
   NULL,                     // 34 - Write random
@@ -168,12 +171,20 @@ static std::string ShortenFilename(const std::string & in)
 }
 
 void NewBDOS::UpdateDriveInfo(int drive)
-{  
-  // create path for drive
-  // A    = ./
-  // else = ./drive
+{
+  DriveSlot & slot = m_drives[drive];
+  if (slot.m_kind == DriveSlot::Kind::eImage)
+    return;
 
+  // A configured host drive uses its own directory. Otherwise A is the
+  // current directory and every other letter is ./ plus that letter.
   std::string root = "./";
+  bool appendLetter = drive != 0;
+  if (slot.m_configured) {
+    root = slot.m_path;
+    appendLetter = false;
+  }
+
   char * canonicalPath;
 
 #if __linux__ || __APPLE__ 
@@ -196,13 +207,13 @@ void NewBDOS::UpdateDriveInfo(int drive)
   if ((len > 0) && (path[len-1] != DIR_SEPERATOR))
     path += DIR_SEPERATOR;
 
-  if (drive != 0) {
+  if (appendLetter) {
     path += (char)('a' + drive);
     path += "/";
   }
 
   // create a map for the new drive
-  DriveInfo & driveInfo = m_driveInfoMap[drive];
+  DriveInfo & driveInfo = slot.m_host;
   driveInfo.m_cpmToNative.clear();
   driveInfo.m_nativeToCPM.clear();
   driveInfo.m_dir = path;
@@ -299,8 +310,9 @@ bool NewBDOS::FCBToFilename(std::string & fn, const char * fcb)
   else
     --drive;
     
-  if (m_driveInfoMap.count(drive) == 0)
-    UpdateDriveInfo(drive);
+  if (m_drives[drive].m_kind != DriveSlot::Kind::eHost)
+    return false;
+  UpdateDriveInfo(drive);
 
   // construct possible name of file
   const char * s = fcb + 1;
@@ -313,7 +325,7 @@ bool NewBDOS::FCBToFilename(std::string & fn, const char * fcb)
   }
 
   // see if maps to a real file
-  DriveInfo & driveInfo = m_driveInfoMap[drive];
+  DriveInfo & driveInfo = m_drives[drive].m_host;
   if (driveInfo.m_cpmToNative.count(fn) == 0)
     return false;
 
@@ -345,14 +357,24 @@ NewBDOS::NewBDOS(CPM80_Emulator & proc)
   , m_dmaAddress(0x80)
 {
   m_memory = m_proc.GetMainMemoryPtr();
+  m_nextFileId = 0x40000000;
 
   m_debug.open("bdos_debug.txt", std::ofstream::out | std::ofstream::trunc);
+
+  if (!ConfigureDrives())
+    exit(1);
 }
 
 NewBDOS::~NewBDOS()
 {
   if (m_fileFind != NULL)
     closedir(m_fileFind);
+  for (auto & slot : m_drives) {
+    if (slot.m_fd >= 0) {
+      ::close(slot.m_fd);
+      slot.m_fd = -1;
+    }
+  }
 }
 
 void NewBDOS::OnBDOSCommand()
@@ -387,10 +409,11 @@ void NewBDOS::SystemReset()
     stringstream strm;
     strm << "CCP=" << hex << CCPB << ",BDOS=" << BDOS << ",BIOS=" << BIOS << "\r\n$";
     PrintCPMString(strm.str().c_str());
+    PrintDriveMap();
     PrintCPMString(ColdBootTitle);
   }
 
-  m_driveInfoMap.clear();
+  ClearHostCaches();
 
   // set current disk to A
   m_proc.WriteMemory(4, 0x00);
@@ -467,15 +490,14 @@ void NewBDOS::Boot()
     BINFile::AddFormat<CPMCOMFile>("com");
 
     std::string filename = fn.GetFilename();
-    if (m_driveInfoMap.count(0) == 0)
-      UpdateDriveInfo(0);
-    DriveInfo & driveA = m_driveInfoMap[0];
-    auto r = driveA.m_nativeToCPM.find(filename);
     std::string cpm;
-    if (r != driveA.m_nativeToCPM.end()) {
-      cpm = r->second;
+    if (m_drives[0].m_kind == DriveSlot::Kind::eHost) {
+      UpdateDriveInfo(0);
+      auto r = m_drives[0].m_host.m_nativeToCPM.find(filename);
+      if (r != m_drives[0].m_host.m_nativeToCPM.end())
+        cpm = r->second;
     }
-    else {
+    if (cpm.empty()) {
       cpm = ShortenFilename(filename);
       m_debug << "warning: filename '" << filename << "' does not map to native file - using '" << cpm << "'" << endl;
     }
@@ -606,8 +628,13 @@ void NewBDOS::ReadLine()
 
     switch (ch) {
       case 'C'-0x40:
+        // ^C on an empty command line is the CP/M warm boot.
         if (ptr == data) {
-          m_debug << "^C triggered cold boot" << endl;
+          m_debug << "^C triggered warm boot" << endl;
+          m_proc.ConsoleOut('^');
+          m_proc.ConsoleOut('C');
+          m_proc.ConsoleOut(0x0d);
+          m_proc.ConsoleOut(0x0a);
           Boot();
           done = true;
         }
@@ -620,6 +647,10 @@ void NewBDOS::ReadLine()
 
       case 0x08:
         if (ptr > data) {
+          --ptr;
+          m_proc.ConsoleOut(0x08);
+          m_proc.ConsoleOut(' ');
+          m_proc.ConsoleOut(0x08);
         }
         break;
       case 0x0a:
@@ -655,14 +686,23 @@ void NewBDOS::ResetDisk()
   m_debug << "BDOS 13: reset disk" << endl;
   m_dmaAddress = 0x0080;
   m_currDisk   = 0x00;
-  m_driveInfoMap.clear();
+  m_findIndex  = 0;
+  ClearHostCaches();
 }
 
 void NewBDOS::SelDisk()
 {
   m_currDisk = m_proc.m_cpu.DE.B.l & 0x0f;
   m_debug << "BDOS 14: sel disk " << (char)('A' + m_currDisk) << endl;
-  UpdateDriveInfo(m_currDisk);
+  m_proc.WriteMemory(4, m_currDisk);
+  if (m_drives[m_currDisk].m_kind == DriveSlot::Kind::eImage) {
+    PublishDPB(m_currDisk);
+  }
+  else {
+    UpdateDriveInfo(m_currDisk);
+    m_proc.m_cpu.HL.W = 0;
+    m_proc.m_cpu.AF.B.h = 0;
+  }
 }
 
 void NewBDOS::DeleteFile()
@@ -687,7 +727,17 @@ void NewBDOS::OpenFile()
 {
   m_proc.m_cpu.AF.B.h = 0xff;
 
-  char * fcb = (char *)m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcbBytes = m_memory + m_proc.m_cpu.DE.W;
+  int drive = DriveFromFCB(fcbBytes);
+  if (m_drives[drive].m_kind == DriveSlot::Kind::eImage) {
+    if (OpenImage(drive, fcbBytes))
+      m_proc.m_cpu.AF.B.h = 0;
+    else
+      m_debug << "BDOS 15: image file not found" << endl;
+    return;
+  }
+
+  char * fcb = (char *)fcbBytes;
   std::string fn;
   if (!FCBToFilename(fn, fcb)) {
     m_debug << "BDOS 15: open file '" << fn << "' not found" << endl;
@@ -780,70 +830,35 @@ void NewBDOS::CloseFile()
   }
 
   m_fileMap.erase(r);
+  m_proc.m_cpu.AF.B.h = 0;
 }
 
 void NewBDOS::SearchFirst()
 {
   m_findFCB = m_proc.m_cpu.DE.W;
-  char * fcb = (char *)m_memory + m_proc.m_cpu.DE.W;
-  std::string fn = FCBToRegex(fcb);
-
-  m_debug << "BDOS 17: search first '" << fn << "'" << endl;
+  uint8_t * fcb = m_memory + m_findFCB;
+  m_debug << "BDOS 17: search first '" << FCBToRegex((char *)fcb) << "'" << endl;
 
   m_findIndex = 0;
-  m_proc.m_cpu.AF.B.h = FindFile(fcb[0], fn);
+  m_proc.m_cpu.AF.B.h = FindFile(fcb);
 }
 
 void NewBDOS::SearchNext()
 {
-  char * fcb = (char *)m_memory + m_findFCB;
-  std::string fn = FCBToRegex(fcb);
-  m_debug << "BDOS 18: search next '" << fn << "'" << endl;
-  m_proc.m_cpu.AF.B.h = FindFile(fcb[0], fn);
+  uint8_t * fcb = m_memory + m_findFCB;
+  m_debug << "BDOS 18: search next '" << FCBToRegex((char *)fcb) << "'" << endl;
+  m_proc.m_cpu.AF.B.h = FindFile(fcb);
 }
 
-uint8_t NewBDOS::FindFile(int disk, const std::string & regex)
+uint8_t NewBDOS::FindFile(const uint8_t * fcb)
 {
-  if (m_driveInfoMap.count(disk) == 0)
-    UpdateDriveInfo(m_currDisk);
+  bool anyUser = fcb[0] == '?';
+  int drive = DriveFromFCB(fcb);
+  if (m_drives[drive].m_kind == DriveSlot::Kind::eImage)
+    return SearchImage(drive, fcb, anyUser);
 
-  DriveInfo & driveInfo = m_driveInfoMap[m_currDisk];
-
-  uint8_t * outputFCB = &m_memory[m_dmaAddress];
-
-  int i = 0;
-  StringMap::iterator r = driveInfo.m_cpmToNative.begin();  
-  while (r != driveInfo.m_cpmToNative.end()) {
-    if (i <= m_findIndex) {
-      ++i;
-      ++r;
-      continue;
-    }
-
-    m_findIndex++;
-
-    // compare the wildcard and destination FCB
-    int j = 0;
-    for (j = 0; j < 8+3; ++j) {
-      if ((regex[j] != '?') && (regex[j] != outputFCB[j+i]))
-        break;
-    }
-    if (j != 8+3) {
-      m_debug << r->first << " did not match '" << regex << "'" << endl;
-      ++r;
-      continue;
-    }
-
-    m_debug << r->first << " matches '" << regex << "'" << endl;
-    outputFCB[0] = 0;
-    memcpy(outputFCB+1, &r->first[0], 8+3);
-
-    return 0;
-  }
-
-  m_debug << "no more matches to '" << regex << "'" << endl;
-
-  return 0xff;
+  UpdateDriveInfo(drive);
+  return SearchHost(drive, fcb, anyUser);
 }
 
 void NewBDOS::GetCurrDisk()
@@ -898,6 +913,10 @@ void NewBDOS::ReadFile(uint8_t * fcb, int code, off_t offs)
   }  
 
   FileInfo & fileInfo = r->second;
+  if (fileInfo.m_isImage) {
+    ReadImageRecord(fileInfo, code, offs);
+    return;
+  }
 
   if (offs < 0)
     offs = fileInfo.m_pos;
@@ -935,4 +954,513 @@ void NewBDOS::ReadFile(uint8_t * fcb, int code, off_t offs)
   if (m_proc.m_cpu.AF.B.h == 0x00)
     m_debug << DumpMemory(m_memory + m_dmaAddress, 128);
 
+}
+
+static bool NameMatches(const std::string & name, const uint8_t * fcb)
+{
+  for (int i = 0; i < 11; ++i) {
+    if (fcb[i + 1] == '?')
+      continue;
+    uint8_t have = (i < (int)name.size()) ? (uint8_t)name[i] : ' ';
+    if ((have & 0x7f) != (fcb[i + 1] & 0x7f))
+      return false;
+  }
+  return true;
+}
+
+static bool EntryMatches(const uint8_t * entry, const uint8_t * fcb, bool anyUser, uint8_t user, int exm)
+{
+  if (entry[0] == 0xe5)
+    return false;
+  if (!anyUser && (entry[0] & 0x1f) != (user & 0x1f))
+    return false;
+  for (int i = 1; i <= 11; ++i) {
+    if (fcb[i] == '?')
+      continue;
+    if ((entry[i] & 0x7f) != (fcb[i] & 0x7f))
+      return false;
+  }
+  // EXM bits count logical extents packed into one directory entry, so
+  // extent 1 on a 2K-block disk is still the file's first entry.
+  if (fcb[12] != '?') {
+    int mask = (~exm) & 0x1f;
+    if ((entry[12] & mask) != (fcb[12] & mask))
+      return false;
+  }
+  if (fcb[14] != '?' && (entry[14] & 0x3f) != (fcb[14] & 0x3f))
+    return false;
+  return true;
+}
+
+static int Allocation(const uint8_t * entry, int index, bool words)
+{
+  if (words) {
+    if (index < 0 || index >= 8)
+      return 0;
+    return entry[16 + index * 2] | (entry[17 + index * 2] << 8);
+  }
+  if (index < 0 || index >= 16)
+    return 0;
+  return entry[16 + index];
+}
+
+void NewBDOS::PrintDriveMap()
+{
+  for (int drive = 0; drive < 16; ++drive) {
+    const DriveSlot & slot = m_drives[drive];
+    if (!slot.m_configured && drive != 0)
+      continue;
+
+    stringstream strm;
+    strm << (char)('A' + drive) << ": ";
+    if (slot.m_kind == DriveSlot::Kind::eImage) {
+      strm << "image " << slot.m_path;
+      if (!slot.m_detail.empty())
+        strm << " (" << slot.m_detail << ")";
+      int sectors = 0;
+      int tracks = 0;
+      int capacityKb = 0;
+      if (CpmDiskGeometry(slot.m_disk, sectors, tracks, capacityKb))
+        strm << ", " << sectors << " sectors/track, " << tracks << " tracks, " << capacityKb << "kb";
+    }
+    else if (slot.m_configured) {
+      strm << "directory " << slot.m_path;
+    }
+    else {
+      strm << "directory .";
+    }
+    strm << "\r\n$";
+    PrintCPMString(strm.str().c_str());
+    m_debug << "drive map " << strm.str() << endl;
+  }
+}
+
+bool NewBDOS::ConfigureDrives()
+{
+  for (const auto & spec : m_proc.m_options.m_cpmDrives) {
+    std::string error;
+    CpmDriveRequest request;
+    if (!ParseCpmDriveRequest(spec, request, error)) {
+      cerr << "error: " << error << endl;
+      return false;
+    }
+    DriveSlot & slot = m_drives[request.m_drive];
+    if (slot.m_configured) {
+      cerr << "error: drive " << (char)('A' + request.m_drive) << " is listed more than once" << endl;
+      return false;
+    }
+    if (!request.m_image) {
+      slot.m_kind = DriveSlot::Kind::eHost;
+      slot.m_configured = true;
+      slot.m_path = request.m_path;
+      continue;
+    }
+    if (!OpenImageDrive(request))
+      return false;
+  }
+  return true;
+}
+
+bool NewBDOS::OpenImageDrive(const CpmDriveRequest & request)
+{
+  std::string error;
+  std::shared_ptr<VirtualDrive> image;
+  bool raw = false;
+  if (!OpenCpmImage(request.m_path, request.m_disk, image, raw, error)) {
+    cerr << "error: " << error << endl;
+    return false;
+  }
+
+  int fd = -1;
+  if (raw) {
+    fd = ::open(request.m_path.c_str(), O_RDONLY | O_BINARY);
+    if (fd < 0) {
+      cerr << "error: cannot open CP/M image '" << request.m_path << "'" << endl;
+      return false;
+    }
+  }
+  else {
+    cerr << "info: drive " << (char)('A' + request.m_drive) << ": " << image->GetFormat() << " image" << endl;
+  }
+
+  DriveSlot & slot = m_drives[request.m_drive];
+  slot.m_kind = DriveSlot::Kind::eImage;
+  slot.m_configured = true;
+  slot.m_path = request.m_path;
+  slot.m_detail = request.m_disk.m_description.empty() ? request.m_disk.m_name : request.m_disk.m_description;
+  slot.m_disk = request.m_disk;
+  slot.m_fd = fd;
+  slot.m_image = image;
+  slot.m_blockValid = false;
+  slot.m_block.clear();
+
+  int records = ((slot.m_disk.m_drm + 1) * 32 + 127) / 128;
+  slot.m_directory.assign(records * 128, 0xe5);
+  for (int i = 0; i < records; ++i) {
+    uint32_t diskRec = (uint32_t)slot.m_disk.m_off * slot.m_disk.m_spt + i;
+    if (!ReadLogical(request.m_drive, diskRec, slot.m_directory.data() + i * 128)) {
+      cerr << "error: cannot read the directory of '" << request.m_path << "'" << endl;
+      if (fd >= 0)
+        ::close(fd);
+      slot.m_fd = -1;
+      slot.m_image.reset();
+      slot.m_configured = false;
+      slot.m_kind = DriveSlot::Kind::eHost;
+      return false;
+    }
+  }
+  return true;
+}
+
+void NewBDOS::ClearHostCaches()
+{
+  for (auto & slot : m_drives) {
+    if (slot.m_kind != DriveSlot::Kind::eHost)
+      continue;
+    slot.m_host.m_cpmToNative.clear();
+    slot.m_host.m_nativeToCPM.clear();
+  }
+}
+
+int NewBDOS::DriveFromFCB(const uint8_t * fcb) const
+{
+  if (fcb[0] == '?')
+    return m_currDisk;
+  int drive = fcb[0] & 0x1f;
+  if (drive == 0)
+    return m_currDisk;
+  --drive;
+  if (drive < 0 || drive > 15)
+    return m_currDisk;
+  return drive;
+}
+
+void NewBDOS::PublishDPB(int drive)
+{
+  const CpmDiskDef & disk = m_drives[drive].m_disk;
+  static const uint16_t kDpbAddress = 0xff80;
+  uint8_t * p = m_memory + kDpbAddress;
+  p[0] = disk.m_spt & 0xff;
+  p[1] = (disk.m_spt >> 8) & 0xff;
+  p[2] = disk.m_bsh;
+  p[3] = disk.m_blm;
+  p[4] = disk.m_exm;
+  p[5] = disk.m_dsm & 0xff;
+  p[6] = (disk.m_dsm >> 8) & 0xff;
+  p[7] = disk.m_drm & 0xff;
+  p[8] = (disk.m_drm >> 8) & 0xff;
+  p[9] = disk.m_al0;
+  p[10] = disk.m_al1;
+  p[11] = disk.m_cks & 0xff;
+  p[12] = (disk.m_cks >> 8) & 0xff;
+  p[13] = disk.m_off & 0xff;
+  p[14] = (disk.m_off >> 8) & 0xff;
+  p[15] = 0;
+  m_proc.m_cpu.HL.W = kDpbAddress;
+  m_proc.m_cpu.AF.B.h = 0;
+}
+
+void NewBDOS::GetDiskParams()
+{
+  m_debug << "BDOS 31: get disk parameters for " << (char)('A' + m_currDisk) << endl;
+  if (m_drives[m_currDisk].m_kind != DriveSlot::Kind::eImage) {
+    m_proc.m_cpu.HL.W = 0;
+    m_proc.m_cpu.AF.B.h = 0;
+    return;
+  }
+  PublishDPB(m_currDisk);
+}
+
+static void MapCylinder(const CpmDiskDef & disk, uint32_t logicalTrack, int & side, int & cylinder)
+{
+  side = 0;
+  cylinder = (int)logicalTrack;
+  if (disk.m_sides == CpmSides::eSingle)
+    return;
+
+  int sectors = 0;
+  int tracks = 0;
+  int capacityKb = 0;
+  if (!CpmDiskGeometry(disk, sectors, tracks, capacityKb) || tracks < 2)
+    return;
+
+  uint32_t cylinders = (uint32_t)tracks / 2;
+  if (disk.m_sides == CpmSides::eCylinder) {
+    side = (int)(logicalTrack & 1);
+    cylinder = (int)(logicalTrack >> 1);
+    return;
+  }
+  if (logicalTrack < cylinders) {
+    side = 0;
+    cylinder = (int)logicalTrack;
+  }
+  else {
+    side = 1;
+    cylinder = (int)((uint32_t)tracks - 1 - logicalTrack);
+  }
+}
+
+static bool ReadDriveRecord(NewBDOS::DriveSlot & slot, uint32_t diskRec, uint8_t * dest)
+{
+  const CpmDiskDef & disk = slot.m_disk;
+  VirtualDrive & image = *slot.m_image;
+  if (disk.m_spt <= 0)
+    return false;
+  uint32_t logicalTrack = diskRec / (uint32_t)disk.m_spt;
+  uint32_t logical = diskRec % (uint32_t)disk.m_spt;
+  if (logical >= disk.m_translate.size())
+    return false;
+
+  int side = 0;
+  int cylinder = 0;
+  MapCylinder(disk, logicalTrack, side, cylinder);
+
+  int sectorSize = image.GetSectorSize();
+  if (sectorSize < 128 || (sectorSize % 128) != 0)
+    return false;
+  int recordsPerSector = sectorSize / 128;
+  if ((disk.m_spt % recordsPerSector) != 0)
+    return false;
+
+  // A translate table names physical sectors. Several 128-byte records share
+  // one sector, so the table is applied after those records are grouped.
+  int sectorId = 0;
+  int offset = 0;
+  int physicalSectors = disk.m_spt / recordsPerSector;
+  int span = (int)disk.m_sectorIds.size();
+  if (span > 0 && (physicalSectors % span) == 0) {
+    int physical = (int)logical / recordsPerSector;
+    offset = ((int)logical % recordsPerSector) * 128;
+    int index = physical % span;
+    int base = (physical / span) * span;
+    sectorId = base + disk.m_sectorIds[index];
+  }
+  else {
+    uint32_t record = disk.m_translate[logical];
+    sectorId = (int)(record / recordsPerSector) + 1;
+    offset = (int)(record % recordsPerSector) * 128;
+  }
+
+  const VirtualDrive::TrackInfo * track = image.GetTrack(side, cylinder);
+  if (track == nullptr)
+    return false;
+  const VirtualDrive::SectorInfo * info = track->GetSector(sectorId);
+  if (info == nullptr && sectorId > 0)
+    info = track->GetSector(sectorId - 1);
+  if (info == nullptr && sectorId > 0 && sectorId - 1 < track->GetSectorCount())
+    info = &track->GetSectors()[sectorId - 1];
+  if (info == nullptr)
+    return false;
+
+  bool cached = slot.m_blockValid
+    && slot.m_blockSide == side
+    && slot.m_blockCylinder == cylinder
+    && slot.m_blockId == info->m_id
+    && (int)slot.m_block.size() >= offset + 128;
+  if (!cached) {
+    slot.m_blockValid = false;
+    slot.m_block.assign(sectorSize, 0);
+    VirtualDrive::SectorInfo got;
+    int n = image.ReadSector(side, cylinder, info->m_id, got, slot.m_block.data(), sectorSize);
+    if (n < offset + 128)
+      return false;
+    if (n < sectorSize)
+      slot.m_block.resize(n);
+    slot.m_blockSide = side;
+    slot.m_blockCylinder = cylinder;
+    slot.m_blockId = info->m_id;
+    slot.m_blockValid = true;
+  }
+  memcpy(dest, slot.m_block.data() + offset, 128);
+  return true;
+}
+
+bool NewBDOS::ReadLogical(int drive, uint32_t diskRec, uint8_t * dest)
+{
+  DriveSlot & slot = m_drives[drive];
+  const CpmDiskDef & disk = slot.m_disk;
+  if (slot.m_image)
+    return ReadDriveRecord(slot, diskRec, dest);
+  if (slot.m_fd < 0 || disk.m_spt <= 0)
+    return false;
+  uint32_t track = diskRec / (uint32_t)disk.m_spt;
+  uint32_t logical = diskRec % (uint32_t)disk.m_spt;
+  if (logical >= disk.m_translate.size())
+    return false;
+  uint32_t physical = (uint32_t)disk.m_translate[logical];
+  uint32_t imageTrack = CpmImageTrack(disk, track);
+  off_t byteOff = ((off_t)imageTrack * disk.m_spt + physical) * 128;
+  ssize_t n = ::pread(slot.m_fd, dest, 128, byteOff);
+  if (n < 0)
+    return false;
+  if (n < 128)
+    memset(dest + n, 0x1a, (size_t)(128 - n));
+  return n > 0;
+}
+
+bool NewBDOS::OpenImage(int drive, uint8_t * fcb)
+{
+  DriveSlot & slot = m_drives[drive];
+  int entries = slot.m_disk.m_drm + 1;
+  const uint8_t * match = nullptr;
+  bool anyUser = fcb[0] == '?';
+  for (int index = 0; index < entries; ++index) {
+    const uint8_t * entry = slot.m_directory.data() + index * 32;
+    if (!EntryMatches(entry, fcb, anyUser, m_userCode, slot.m_disk.m_exm))
+      continue;
+    match = entry;
+    break;
+  }
+  if (match == nullptr)
+    return false;
+
+  uint8_t driveByte = fcb[0];
+  memcpy(fcb, match, 32);
+  fcb[0] = driveByte;
+  fcb[32] = 0;
+
+  FileInfo info;
+  info.m_isImage = true;
+  info.m_drive = drive;
+  info.m_fd = -1;
+  BuildImageRecords(drive, match, info);
+
+  int id = m_nextFileId++;
+  memcpy(fcb + eFCB_User, &id, sizeof(id));
+  m_debug << "BDOS 15: opened image file as " << id << " (" << info.m_diskRecords.size() << " records)" << endl;
+  m_fileMap[id] = std::move(info);
+  return true;
+}
+
+void NewBDOS::BuildImageRecords(int drive, const uint8_t * wanted, FileInfo & info)
+{
+  const DriveSlot & slot = m_drives[drive];
+  const CpmDiskDef & disk = slot.m_disk;
+  bool words = disk.m_dsm >= 256;
+  int exm = disk.m_exm;
+  int recordsPerBlock = 1 << disk.m_bsh;
+  int entries = disk.m_drm + 1;
+  info.m_diskRecords.clear();
+
+  for (int index = 0; index < entries; ++index) {
+    const uint8_t * entry = slot.m_directory.data() + index * 32;
+    if (entry[0] == 0xe5)
+      continue;
+    if ((entry[0] & 0x1f) != (wanted[0] & 0x1f))
+      continue;
+    bool sameName = true;
+    for (int i = 1; i <= 11; ++i) {
+      if ((entry[i] & 0x7f) != (wanted[i] & 0x7f)) {
+        sameName = false;
+        break;
+      }
+    }
+    if (!sameName)
+      continue;
+
+    int extent = entry[12] & 0x1f;
+    int module = entry[14] & 0x3f;
+    int baseExtent = module * 32 + (extent & ~exm);
+    int rc = entry[15];
+    int recs = (rc >= 128) ? ((extent & exm) + 1) * 128 : (extent & exm) * 128 + rc;
+    size_t start = (size_t)baseExtent * 128;
+    if (info.m_diskRecords.size() < start + (size_t)recs)
+      info.m_diskRecords.resize(start + (size_t)recs, 0);
+    for (int rec = 0; rec < recs; ++rec) {
+      int block = Allocation(entry, rec >> disk.m_bsh, words);
+      uint32_t diskRec = 0;
+      if (block > 0 && block <= disk.m_dsm)
+        diskRec = (uint32_t)disk.m_off * disk.m_spt + (uint32_t)block * recordsPerBlock + (rec & disk.m_blm);
+      info.m_diskRecords[start + rec] = diskRec;
+    }
+  }
+  info.m_len = (off_t)info.m_diskRecords.size() * 128;
+}
+
+void NewBDOS::ReadImageRecord(FileInfo & info, int code, off_t offs)
+{
+  bool sequential = offs < 0;
+  size_t record = sequential ? (size_t)(info.m_pos / 128) : (size_t)(offs / 128);
+  if (record >= info.m_diskRecords.size()) {
+    m_proc.m_cpu.AF.B.h = 0x01;
+    m_debug << "BDOS " << code << ": image end of file at record " << record << endl;
+    return;
+  }
+  uint32_t diskRec = info.m_diskRecords[record];
+  if (diskRec == 0) {
+    m_proc.m_cpu.AF.B.h = 0xff;
+    m_debug << "BDOS " << code << ": image hole at record " << record << endl;
+    return;
+  }
+  if (!ReadLogical(info.m_drive, diskRec, m_memory + m_dmaAddress)) {
+    m_proc.m_cpu.AF.B.h = 0xff;
+    m_debug << "BDOS " << code << ": image read failed at record " << record << endl;
+    return;
+  }
+  if (sequential)
+    info.m_pos += 128;
+  m_proc.m_cpu.AF.B.h = 0x00;
+  m_debug << "BDOS " << code << ": image record " << record << " from disk record " << diskRec << endl;
+}
+
+uint8_t NewBDOS::SearchHost(int drive, const uint8_t * fcb, bool anyUser)
+{
+  if (!anyUser && m_userCode != 0)
+    return 0xff;
+  if (fcb[12] != '?' && (fcb[12] & 0x1f) != 0)
+    return 0xff;
+  if (fcb[14] != '?' && (fcb[14] & 0x3f) != 0)
+    return 0xff;
+
+  std::vector<std::string> names;
+  for (const auto & entry : m_drives[drive].m_host.m_cpmToNative)
+    names.push_back(entry.first);
+
+  int start = m_findIndex < 0 ? 0 : m_findIndex;
+  for (int index = start; index < (int)names.size(); ++index) {
+    if (!NameMatches(names[index], fcb))
+      continue;
+
+    int sector = index / 4;
+    int slot = index % 4;
+    uint8_t * dma = m_memory + m_dmaAddress;
+    memset(dma, 0xe5, 128);
+    for (int s = 0; s < 4; ++s) {
+      int entryIndex = sector * 4 + s;
+      if (entryIndex >= (int)names.size())
+        break;
+      uint8_t * dest = dma + s * 32;
+      memset(dest, 0, 32);
+      size_t length = std::min<size_t>(11, names[entryIndex].size());
+      memcpy(dest + 1, names[entryIndex].data(), length);
+    }
+    m_findIndex = index + 1;
+    m_debug << names[index] << " matches in slot " << slot << endl;
+    return (uint8_t)slot;
+  }
+
+  m_debug << "no more host matches" << endl;
+  return 0xff;
+}
+
+uint8_t NewBDOS::SearchImage(int drive, const uint8_t * fcb, bool anyUser)
+{
+  const DriveSlot & slot = m_drives[drive];
+  int entries = slot.m_disk.m_drm + 1;
+  int start = m_findIndex < 0 ? 0 : m_findIndex;
+  for (int index = start; index < entries; ++index) {
+    const uint8_t * entry = slot.m_directory.data() + index * 32;
+    if (!EntryMatches(entry, fcb, anyUser, m_userCode, slot.m_disk.m_exm))
+      continue;
+
+    int slotIndex = index % 4;
+    const uint8_t * sector = slot.m_directory.data() + (index / 4) * 128;
+    memcpy(m_memory + m_dmaAddress, sector, 128);
+    m_findIndex = index + 1;
+    m_debug << "image directory entry " << index << " in slot " << slotIndex << endl;
+    return (uint8_t)slotIndex;
+  }
+
+  m_debug << "no more image matches" << endl;
+  return 0xff;
 }

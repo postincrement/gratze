@@ -87,7 +87,7 @@ bool VirtualDriveTD0::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     compressed = false;
   }
   else {
-    cerr << "td0: unknown id '" << id << "'" << endl;
+    m_error << "td0: unknown id '" << id << "'";
     return false;
   }
 
@@ -117,7 +117,8 @@ bool VirtualDriveTD0::OpenFile(int fd, off_t len, const uint8_t * header, size_t
     imagebuf.resize(payloadLen);
   }
 
-  cerr << "td0: id = '" << id << "', version " << (int)td0.m_version << ", length " << imagebuf.size() << endl;
+  if (m_verbose)
+    cerr << "td0: id = '" << id << "', version " << (int)td0.m_version << ", length " << imagebuf.size() << endl;
 
   size_t offs = 0;
   if (td0.m_trackDensity & 0x80) {

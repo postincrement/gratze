@@ -7,6 +7,7 @@
 
 #include "z80/z80emulator.h"
 #include "z80/cpm80/cpm80.h"
+#include "z80/cpm80/diskdef.h"
 
 #include "common/misc.h"
 #include "common/binfile.h"
@@ -90,6 +91,12 @@ bool CPM80_Emulator::Open(const Options & options)
   if (!Z80Emulator::Open(options))
     return false;
 
+  std::string driveError;
+  if (!CheckCpmDrives(options.m_cpmDrives, driveError)) {
+    cerr << "error: " << driveError << endl;
+    return false;
+  }
+
   m_loadFileDone = false;
 
   return true;
@@ -124,19 +131,8 @@ void CPM80_Emulator::Reset(int addr)
 
 void CPM80_Emulator::OnKeyboard(uint8_t ch)
 {
-  //cerr << "OnKeyboard " << HEXFORMAT0x2(ch) << endl;
-  switch (ch) {
-    case 0x03:
-      exit(-1);
-    
-    case 0x0a:
-      ch = 0x0d;
-      break;
-
-    default:
-      break;
-  }
-
+  if (ch == 0x0a)
+    ch = 0x0d;
   m_kbQueue.push_back(ch);
 }
 

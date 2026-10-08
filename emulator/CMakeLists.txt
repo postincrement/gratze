@@ -93,6 +93,7 @@ add_executable(gratze
   z80/mfz80/Debug.c
   z80/mfz80/dasm.c
   z80/cpm80/newbdos.cc
+  z80/cpm80/diskdef.cc
   ${CMAKE_CURRENT_BINARY_DIR}/newbdos_rom.c
   2650/eti685/rom_binbug_6_1.c
   2650/78up5/rom_pipbug.c

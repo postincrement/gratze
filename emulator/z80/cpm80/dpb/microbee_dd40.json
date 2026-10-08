@@ -1,0 +1,16 @@
+{
+  "name": "mbee_dd40",
+  "description": "Microbee Double Density 40-track 8-inch disk",
+  "spt": 40,
+  "bsh": 4,
+  "blm": 15,
+  "exm": 1,
+  "dsm": 194,
+  "drm": 127,
+  "al0": 192,
+  "al1": 0,
+  "cks": 32,
+  "off": 2,
+  "sides": "cylinder",
+  "translate" : [ 2, 5, 8, 1, 4, 7, 10, 3, 6, 9 ]
+}

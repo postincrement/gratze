@@ -1,0 +1,16 @@
+{
+  "name": "ibm3740",
+  "description": "IBM 3740 8-inch single density",
+  "spt": 26,
+  "bsh": 3,
+  "blm": 7,
+  "exm": 0,
+  "dsm": 242,
+  "drm": 63,
+  "al0": 192,
+  "al1": 0,
+  "cks": 16,
+  "off": 2,
+  "sides": "single",
+  "skew": 6
+}

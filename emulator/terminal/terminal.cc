@@ -71,7 +71,8 @@ static void InstallConsoleRestore()
     return;
   installed = true;
   atexit(RestoreConsoleTerminal);
-  signal(SIGINT, ConsoleSignal);
+  // ^C is a console character (CP/M warm boot), not a host interrupt.
+  signal(SIGINT, SIG_IGN);
   signal(SIGTERM, ConsoleSignal);
   signal(SIGHUP, ConsoleSignal);
 }
@@ -297,7 +298,11 @@ void ConsoleTerminal::CheckConsoleKeyboard()
     int ch = getch();
     if (ch < 0)
       return;
-    keyCode = (char)ch;  
+    // The backspace key arrives as KEY_BACKSPACE or the terminal erase
+    // character. CP/M line input accepts BS (0x08).
+    if (ch == KEY_BACKSPACE || ch == (unsigned char)erasechar() || ch == 0x7f)
+      ch = 0x08;
+    keyCode = (char)ch;
   }
   else {
     int fd = STDIN_FILENO;
@@ -315,6 +320,8 @@ void ConsoleTerminal::CheckConsoleKeyboard()
 
       if (read(fd, &keyCode, 1) < 1)
         return ;
+      if ((unsigned char)keyCode == 0x7f)
+        keyCode = 0x08;
     //}
   }
 #endif
@@ -339,9 +346,6 @@ void ConsoleTerminal::CheckConsoleKeyboard()
 #endif
 
   switch (keyCode) {
-    case 0x03:
-      exit(-1);
-    
     case 0x0a:
       keyCode = 0x0d;
       break;

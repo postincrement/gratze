@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include "common/cmdargs.h"
 
@@ -27,6 +28,9 @@ struct Options
 
   // map of disk drive information
   std::map<unsigned, std::string> m_driveFns;
+
+  // CP/M drive map. Each entry is A=dir:path or A=image:file,dpb=name.
+  std::vector<std::string> m_cpmDrives;
 
   // override default RAM size
   unsigned m_ramSize_k = 0;
