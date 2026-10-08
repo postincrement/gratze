@@ -136,39 +136,31 @@ void Emulator::SendKeyText(const SDL_Event & event)
     return;
 
   SDL_Keycode keycode = event.key.keysym.sym;
-
-  char ascii;
   SDL_Keymod mod = SDL_GetModState();
-  bool shift = (mod & (KMOD_LSHIFT | KMOD_RSHIFT)) != 0;
-  bool ctrl  = (mod & (KMOD_LCTRL  | KMOD_RCTRL)) != 0;
+  bool ctrl = (mod & (KMOD_LCTRL | KMOD_RCTRL)) != 0;
 
-  // control codes
-  if (keycode < 0x20) {
-    if (keycode == SDLK_RETURN)
-      ascii = 0x0d;
-  }
+  int ascii = -1;
 
-  // above ASCII
-  else if (keycode >= 0x7f) {
+  // Printable glyphs arrive through SDL_TEXTINPUT so the host layout is kept.
+  // These keys do not, and a parallel keyboard such as the DG680 PIO needs them.
+  if ((keycode == SDLK_RETURN) || (keycode == SDLK_KP_ENTER))
+    ascii = 0x0d;
+  else if (keycode == SDLK_ESCAPE)
+    ascii = 0x1b;
+  else if (keycode == SDLK_BACKSPACE)
+    ascii = 0x08;
+  else if (keycode == SDLK_TAB)
+    ascii = 0x09;
+  else if (keycode == SDLK_DELETE)
+    ascii = 0x7f;
+  else if (ctrl && (keycode >= 'a') && (keycode <= 'z'))
+    ascii = keycode & 0x1f;
+
+  if (ascii < 0)
     return;
-  }
 
-  // alpha
-  else if ((keycode >= 'a') && (keycode <= 'z')){
-    if (ctrl)
-      ascii = keycode & 0x1f;
-    else if (shift)
-      ascii = keycode - 0x20;
-    else
-      ascii = keycode;
-  }
-
-  // else
-  else {
-    ascii = keycode;
-  }
-
-  m_keyboard->OnKeyText(std::string(&ascii, 1));
+  char ch = (char)ascii;
+  m_keyboard->OnKeyText(std::string(&ch, 1));
 }
 
 void Emulator::CheckSDLKeyboard()
@@ -184,10 +176,33 @@ void Emulator::CheckSDLKeyboard()
       break;
 
     case SDL_TEXTINPUT:
+      if (m_keyboard == nullptr)
+        break;
+      if (m_keyboard->IsScanned())
+        m_keyboard->OnKeyText(event.text.text);
+      else {
+        std::string ascii;
+        for (const char * p = event.text.text; *p != 0; ++p) {
+          unsigned char ch = (unsigned char)*p;
+          if ((ch >= 0x20) && (ch < 0x7f))
+            ascii.push_back((char)ch);
+        }
+        if (!ascii.empty())
+          m_keyboard->OnKeyText(ascii);
+      }
+      break;
+
+    case SDL_WINDOWEVENT:
+      if ((event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) && (m_keyboard != nullptr))
+        m_keyboard->Reset();
       break;
 
     case SDL_KEYDOWN:
-      SendKeyText(event);
+      if (OnHostKey(event.key.keysym))
+        break;
+
+      if ((m_keyboard == nullptr) || !m_keyboard->IsScanned())
+        SendKeyText(event);
 
       if (event.key.repeat == 0) {
         if (event.key.keysym.sym == TRACE_SYM)
@@ -250,6 +265,8 @@ void Emulator::SetKeyboard(VirtualKeyboard * kb)
 
 void Emulator::CreateScreen(MainWindow & mainWindow)
 {
+  if (m_info->m_title != nullptr)
+    mainWindow.SetTitle(m_info->m_title);
   int vdup = 1;                 // duplicate lines for fields
 
   int pixelCols;
@@ -395,6 +412,11 @@ void Emulator::ChangeVideoColour()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
+
+bool Emulator::OnHostKey(const SDL_Keysym &)
+{
+  return false;
+}
 
 void Emulator::OnKeyDown(const SDL_Keysym &keysym)
 {

@@ -168,6 +168,7 @@ bool Super80_Emulator::Open(const Options & options)
   m_options = 0xe;
   ScannedKeyboard * kb = new ScannedKeyboard();
   kb->SetGameMode(options.m_gameKb);
+  kb->SetDebug(options.m_keyboardDebug);
   SetKeyboard(kb);
   kb->Compile(g_super80Keys);
 

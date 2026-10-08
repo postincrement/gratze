@@ -18,6 +18,11 @@ class VirtualKeyboard : public VirtualDevice
 
     virtual void Reset() override;
 
+    // Matrix keyboards translate keys themselves. Character devices still
+    // receive the emulator's ASCII conversion of each key.
+    virtual bool IsScanned() const
+    { return false; }
+
     // called when SDL key pressed
     virtual void OnKeyDown(const SDL_Keysym & keysym);
 

@@ -34,6 +34,20 @@ using namespace std;
 static constexpr double kRtcInterval_s = 0.040;
 
 
+// Host key in the same physical position as each TRS-80 key.
+// The Model I number row is "1..0 : -"; a PC number row is "1..0 - =".
+// '@' is the key in the grave position.
+static const ScannedKeyboard::ScanCode gameKeys[8*8] = {
+  { "`" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
+  { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
+  { "P" },      { "Q" },      { "R" },      { "S" },    { "T"},     { "U" } ,   { "V" } ,     { "W" } ,
+  { "X" },      { "Y" },      { "Z" },      {  0 },     { 0 },      { 0 } ,     { 0 } ,       { 0 } ,
+  { "0" },      { "1" },      { "2" },      { "3" },    { "4"},     { "5" } ,   { "6" } ,     { "7" } ,
+  { "8" },      { "9" },      { "-" },      { ";" },    { ","},     { "=" } ,   { "." } ,     { "/" } ,
+  { "Return" }, { "Clear" },  { "Break" },  { "Up" },   { "Down"},  { "Left" }, { "Right" },  { " " } ,
+  { "Shift" },  { 0 },        { 0 },        { 0 },      { 0 },      { 0 },      { 0 },        { 0 }
+};
+
 static const ScannedKeyboard::ScanCode keys[8*8] = {
   { "@" },      { "A" },      { "B" },      { "C" },    { "D"},     { "E" } ,   { "F" } ,     { "G" } ,
   { "H" },      { "I" },      { "J" },      { "K" },    { "L"},     { "M" } ,   { "N" } ,     { "O" } ,
@@ -58,9 +72,9 @@ static const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
 
 static ScannedKeyboard::ScanLayout g_trs80Keys = {
   8, 8,
-  NULL,          // gamekeys
-  keys,          // text keys
-  shiftedkeys,   // shifted text keys
+  gameKeys,
+  keys,
+  shiftedkeys,
   {
     { "Backspace", "Left" },
   }
@@ -94,8 +108,8 @@ bool TRS80Emulator::Open(const Options & options)
 
   ScannedKeyboard * kb = new ScannedKeyboard();
   kb->SetGameMode(options.m_gameKb);
+  kb->SetDebug(options.m_keyboardDebug);
   SetKeyboard(kb);
-  cerr << "compiling keyboard" << endl;
   kb->Compile(g_trs80Keys);
 
   m_rtcPending = false;

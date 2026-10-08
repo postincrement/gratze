@@ -21,6 +21,9 @@ class DG680_Emulator : public Z80Emulator
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
     void OnPIOInterrupt(uint8_t vector);
+    void OnASCIIKey(uint8_t ch);
+
+    virtual bool OnHostKey(const SDL_Keysym & keysym) override;
 
   protected:  
     Z80PIO m_pio;

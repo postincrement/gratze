@@ -118,6 +118,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
   target_compile_options(gratze PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wno-register>)
 endif()
 
+if(APPLE)
+  target_sources(gratze PRIVATE src/mainwindow_mac.mm)
+endif()
+
 target_link_libraries(gratze PRIVATE
   grzdisk
   grzcommon

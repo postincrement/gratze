@@ -75,10 +75,7 @@ bool DG680_Emulator::Open(const Options & options)
 
   using namespace std::placeholders;
   m_pio.SetInterruptHandler(std::bind(&DG680_Emulator::OnPIOInterrupt, this, _1));
-
-  // when ASCII key available, call Z80PIO::SetData
-  using namespace std::placeholders;
-  kb->SetKeyCharCallback(std::bind(&Z80PIO::SetData, &m_pio, 0, _1));
+  kb->SetKeyCharCallback(std::bind(&DG680_Emulator::OnASCIIKey, this, _1));
 
   return true;
 }
@@ -87,6 +84,39 @@ void DG680_Emulator::Reset(int addr)
 {
   Z80Emulator::Reset(addr);
   m_pio.Reset();
+
+  // DGOS copies an IM 2 vector to D968 that points at the keyboard ISR.
+  // That ISR reads PIO port A. The monitor never programs the port, so the
+  // ASCII keyboard has to be presented as an interrupting input.
+  m_pio.Write(1, 0x4f); // port A: input
+  m_pio.Write(1, 0x68); // interrupt vector, indexes D968
+  m_pio.Write(1, 0x87); // interrupt enable
+}
+
+bool DG680_Emulator::OnHostKey(const SDL_Keysym & keysym)
+{
+  // DGOS cursor keys: left Ctrl-A, right Ctrl-S, up Ctrl-W, down Ctrl-Z.
+  int ascii = -1;
+  switch (keysym.sym) {
+    case SDLK_LEFT:  ascii = 0x01; break;
+    case SDLK_RIGHT: ascii = 0x13; break;
+    case SDLK_UP:    ascii = 0x17; break;
+    case SDLK_DOWN:  ascii = 0x1a; break;
+    default:         return false;
+  }
+
+  OnASCIIKey((uint8_t)ascii);
+  return true;
+}
+
+void DG680_Emulator::OnASCIIKey(uint8_t ch)
+{
+  if ((ch >= 'a') && (ch <= 'z'))
+    ch = (uint8_t)(ch - 'a' + 'A');
+  else if (ch == 0x08)
+    ch = 0x7f;
+
+  m_pio.SetData(0, ch);
 }
 
 void DG680_Emulator::OnPIOInterrupt(uint8_t vector)

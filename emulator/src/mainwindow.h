@@ -19,6 +19,8 @@ class MainWindow
 
     bool Open(int width, int height);
 
+    void SetTitle(const std::string & title);
+
     SDL_Renderer * GetRenderer();
 
     void Update();

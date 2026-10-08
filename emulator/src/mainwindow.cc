@@ -13,6 +13,22 @@
 
 using namespace std;
 
+#ifdef __APPLE__
+extern void RaiseMacWindow(SDL_Window * window);
+#endif
+
+static void BringToFront(SDL_Window * window)
+{
+  if (window == nullptr)
+    return;
+
+  SDL_ShowWindow(window);
+  SDL_RaiseWindow(window);
+#ifdef __APPLE__
+  RaiseMacWindow(window);
+#endif
+}
+
 MainWindow::MainWindow()
 {
   m_window = nullptr;
@@ -21,6 +37,13 @@ MainWindow::MainWindow()
 MainWindow::~MainWindow()
 {
   SDL_DestroyWindow(m_window);
+}
+
+void MainWindow::SetTitle(const std::string & title)
+{
+  m_title = title;
+  if (m_window != nullptr)
+    SDL_SetWindowTitle(m_window, m_title.c_str());
 }
 
 bool MainWindow::Open(int width, int height)
@@ -63,6 +86,7 @@ bool MainWindow::Open(int width, int height)
                               m_screenRect.h);
 
   Update();
+  BringToFront(m_window);
 
   return true;
 }

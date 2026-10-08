@@ -250,6 +250,9 @@ class Emulator
     virtual void WriteIOPortLog(uint16_t addr, uint8_t val) const;
 
     // keyboard functions
+    // Return true when this emulation consumes the key. Arrow and other
+    // non-glyph keys are handled here so each machine can use its own codes.
+    virtual bool OnHostKey(const SDL_Keysym & keysym);
     virtual void OnKeyDown(const SDL_Keysym & keysym);
     virtual void OnKeyUp(const SDL_Keysym & keysym);
     virtual void OnKeyText(const std::string & str);

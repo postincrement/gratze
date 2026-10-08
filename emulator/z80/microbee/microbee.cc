@@ -420,6 +420,7 @@ bool Microbee_Emulator::Open(const Options & options)
 
   ScannedKeyboard * kb = new ScannedKeyboard();
   kb->SetGameMode(options.m_gameKb);
+  kb->SetDebug(options.m_keyboardDebug);
   SetKeyboard(kb);
   kb->Compile(g_microbeeKeys);
 
