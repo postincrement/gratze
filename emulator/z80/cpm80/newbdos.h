@@ -44,9 +44,13 @@ struct NewBDOS
   void ReadSeq();        // 20 - Read Sequential
   void GetCurrDisk();    // 25 - Return current disk
   void SetDMAAddress();  // 26 - Set DMA address
+  void ReturnLoginVector();  // 24 - Return login vector
+  void GetAllocVector();      // 27 - Get allocation vector
+  void ReturnReadOnlyVector(); // 29 - Get read-only vector
   void GetDiskParams();  // 31 - Get disk parameter block
   void GetSetUser();     // 32 - Set/get user code
   void ReadRandom();     // 33 - Read random
+  void ComputeFileSize(); // 35 - Compute file size
 
   void ReadFile(uint8_t * fcb, int code, off_t offs);
   uint8_t FindFile(const uint8_t * fcb);
@@ -87,6 +91,8 @@ struct NewBDOS
     int m_fd = -1;
     std::shared_ptr<VirtualDrive> m_image;
     std::vector<uint8_t> m_directory;
+    // One bit per allocation block. Bit 7 of the first byte is block 0.
+    std::vector<uint8_t> m_alloc;
     // BIOS deblock buffer. One physical sector, reused by the 128-byte
     // records that share it.
     bool m_blockValid = false;
@@ -123,6 +129,8 @@ struct NewBDOS
   uint8_t * m_memory;
   int m_findIndex;
   int m_nextFileId = 0x40000000;
+  uint16_t m_login = 0;
+  uint16_t m_readOnly = 0;
   std::ofstream m_debug;
 
   std::array<DriveSlot, 16> m_drives;

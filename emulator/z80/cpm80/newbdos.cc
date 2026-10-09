@@ -48,18 +48,18 @@ static NewBDOS::Function NewBDOSCommands[] = {
   NULL,                     // 21 - Write sequential
   NULL,                     // 22 - Create file
   NULL,                     // 23 - Rename file
-  NULL,                     // 24 - Return login vector
+  &NewBDOS::ReturnLoginVector, // 24 - Return login vector
   &NewBDOS::GetCurrDisk,    // 25 - Return current disk
   &NewBDOS::SetDMAAddress,  // 26 - Set DMA address
-  NULL,                     // 27 - Get allocation vector
+  &NewBDOS::GetAllocVector, // 27 - Get allocation vector
   NULL,                     // 28 - Write protect disk
-  NULL,                     // 29 - Get read/only vector
+  &NewBDOS::ReturnReadOnlyVector, // 29 - Get read/only vector
   NULL,                     // 30 - Set file attributes
   &NewBDOS::GetDiskParams,  // 31 - Get disk parm addr
   &NewBDOS::GetSetUser,     // 32 - Set/get user code
   &NewBDOS::ReadRandom,     // 33 - Read random
   NULL,                     // 34 - Write random
-  NULL,                     // 35 - Computer file size
+  &NewBDOS::ComputeFileSize, // 35 - Compute file size
   NULL                      // 36 - Set random record
 };
 
@@ -170,6 +170,198 @@ static std::string ShortenFilename(const std::string & in)
   return str;
 }
 
+// A host directory is presented as one CP/M disk. The floor is a 16 MB
+// disk with 4 KB blocks. A larger directory uses the smallest block size
+// whose disk is at least twice the total file size: 8 KB up to 64 MB,
+// then 16 KB.
+struct HostListedFile {
+  std::string m_name;
+  long long m_size;
+};
+
+static int HostBlockSize(long long diskBytes)
+{
+  const long long mb = 1024ll * 1024ll;
+  if (diskBytes <= 16 * mb)
+    return 4096;
+  if (diskBytes <= 64 * mb)
+    return 8192;
+  return 16384;
+}
+
+static int HostExtentCount(long long size, int recordsPerEntry)
+{
+  long long records = (size + 127) / 128;
+  if (records > 65536)
+    records = 65536;
+  if (records <= 0)
+    return 1;
+  return (int)((records + recordsPerEntry - 1) / recordsPerEntry);
+}
+
+static void StoreBlock(uint8_t * entry, int index, int block, bool words)
+{
+  if (words) {
+    entry[16 + index * 2] = (uint8_t)(block & 0xff);
+    entry[17 + index * 2] = (uint8_t)((block >> 8) & 0xff);
+  }
+  else {
+    entry[16 + index] = (uint8_t)(block & 0xff);
+  }
+}
+
+static void BuildHostVolume(NewBDOS::DriveSlot & slot, const std::vector<HostListedFile> & files, long long totalBytes, std::ostream & debug)
+{
+  const long long mb = 1024ll * 1024ll;
+  long long need = totalBytes * 2;
+  if (need < 16 * mb)
+    need = 16 * mb;
+
+  int blockSize = 4096;
+  int blocks = 4096;
+  int exm = 1;
+  int dirEntries = 128;
+  for (int pass = 0; pass < 6; ++pass) {
+    blockSize = HostBlockSize(need);
+    long long maxDisk = 65536ll * blockSize;
+    long long diskBytes = need > maxDisk ? maxDisk : need;
+    blocks = (int)((diskBytes + blockSize - 1) / blockSize);
+    if (blockSize == 4096)
+      blocks = (blocks + 3) & ~3;
+    else if (blockSize == 8192)
+      blocks = (blocks + 1) & ~1;
+    if (blocks > 65536)
+      blocks = 65536;
+    if (blocks < 1)
+      blocks = 1;
+
+    exm = (blockSize / 1024) - 1;
+    if (blocks >= 256)
+      exm >>= 1;
+    int recordsPerEntry = (exm + 1) * 128;
+    int extents = 0;
+    for (const auto & file : files)
+      extents += HostExtentCount(file.m_size, recordsPerEntry);
+
+    dirEntries = extents < 128 ? 128 : extents;
+    dirEntries = (dirEntries + 3) & ~3;
+    int maxEntries = (16 * blockSize / 32) & ~3;
+    if (dirEntries > maxEntries)
+      dirEntries = maxEntries;
+
+    int dirBlocks = (dirEntries * 32 + blockSize - 1) / blockSize;
+    long long data = 0;
+    for (const auto & file : files) {
+      long long size = file.m_size;
+      if (size > 8 * mb)
+        size = 8 * mb;
+      if (size > 0)
+        data += (size + blockSize - 1) / blockSize * blockSize;
+    }
+    long long used = data + (long long)dirBlocks * blockSize;
+    long long have = (long long)blocks * blockSize;
+    if (have >= used && extents <= dirEntries)
+      break;
+
+    long long next = used;
+    if (extents > dirEntries && blockSize < 16384)
+      next = (blockSize == 4096) ? 16 * mb + 1 : 64 * mb + 1;
+    if (next <= need)
+      next = need + blockSize;
+    need = next;
+  }
+
+  int bsh = 0;
+  for (int size = blockSize; size > 128; size >>= 1)
+    ++bsh;
+
+  CpmDiskDef & disk = slot.m_disk;
+  disk = CpmDiskDef();
+  disk.m_name = "host";
+  disk.m_spt = 128;
+  disk.m_bsh = bsh;
+  disk.m_blm = (1 << bsh) - 1;
+  disk.m_exm = exm;
+  disk.m_dsm = blocks - 1;
+  disk.m_drm = dirEntries - 1;
+  disk.m_off = 0;
+  disk.m_cks = 0;
+  disk.m_sides = CpmSides::eSingle;
+  int dirBlocks = (dirEntries * 32 + blockSize - 1) / blockSize;
+  if (dirBlocks > 16)
+    dirBlocks = 16;
+  uint16_t mask = 0;
+  for (int i = 0; i < dirBlocks; ++i)
+    mask |= (uint16_t)(0x8000 >> i);
+  disk.m_al0 = (mask >> 8) & 0xff;
+  disk.m_al1 = mask & 0xff;
+  disk.m_translate.resize(disk.m_spt);
+  for (int i = 0; i < disk.m_spt; ++i)
+    disk.m_translate[i] = i;
+
+  slot.m_directory.assign((size_t)dirEntries * 32, 0xe5);
+  int recordsPerBlock = 1 << bsh;
+  int recordsPerEntry = (exm + 1) * 128;
+  bool words = disk.m_dsm >= 256;
+  int slots = words ? 8 : 16;
+  int nextBlock = dirBlocks;
+  int nextEntry = 0;
+
+  for (const auto & file : files) {
+    long long records = (file.m_size + 127) / 128;
+    if (records > 65536)
+      records = 65536;
+    int remaining = (int)records;
+    int base = 0;
+    bool once = true;
+    while ((remaining > 0 || once) && nextEntry < dirEntries) {
+      once = false;
+      int recs = remaining > recordsPerEntry ? recordsPerEntry : remaining;
+      uint8_t * entry = slot.m_directory.data() + nextEntry * 32;
+      memset(entry, 0, 32);
+      entry[0] = 0;
+      for (int i = 0; i < 11; ++i)
+        entry[1 + i] = (i < (int)file.m_name.size()) ? (uint8_t)file.m_name[i] : (uint8_t)' ';
+
+      int logicals = recs == 0 ? 0 : (recs + 127) / 128;
+      int last = base + (logicals == 0 ? 0 : logicals - 1);
+      if (recs == recordsPerEntry) {
+        last = base + exm;
+        entry[15] = 128;
+      }
+      else if (recs == 0) {
+        entry[15] = 0;
+      }
+      else {
+        int rc = recs % 128;
+        entry[15] = (uint8_t)(rc == 0 ? 128 : rc);
+      }
+      entry[12] = (uint8_t)(last & 0x1f);
+      entry[14] = (uint8_t)((last >> 5) & 0x3f);
+
+      int nblocks = recs == 0 ? 0 : (recs + recordsPerBlock - 1) / recordsPerBlock;
+      if (nblocks > slots)
+        nblocks = slots;
+      for (int b = 0; b < nblocks; ++b) {
+        if (nextBlock > disk.m_dsm)
+          break;
+        StoreBlock(entry, b, nextBlock, words);
+        ++nextBlock;
+      }
+
+      ++nextEntry;
+      remaining -= recs;
+      base += exm + 1;
+      if (recs == 0)
+        break;
+    }
+  }
+
+  debug << "host disk " << (blockSize / 1024) << "kb blocks, "
+        << ((long long)blocks * blockSize / 1024) << "kb, "
+        << files.size() << " files, " << totalBytes << " bytes" << endl;
+}
+
 void NewBDOS::UpdateDriveInfo(int drive)
 {
   DriveSlot & slot = m_drives[drive];
@@ -196,6 +388,8 @@ void NewBDOS::UpdateDriveInfo(int drive)
 
   if (canonicalPath == NULL) {
     m_debug << "cannot get real path for '" << root << "'" << endl;
+    slot.m_directory.clear();
+    slot.m_disk = CpmDiskDef();
     return;
   }
 
@@ -220,8 +414,14 @@ void NewBDOS::UpdateDriveInfo(int drive)
 
   // open a new file find handle
   DIR * dir = opendir(path.c_str());
-  if (dir == NULL)
-    return; 
+  if (dir == NULL) {
+    slot.m_directory.clear();
+    slot.m_disk = CpmDiskDef();
+    return;
+  }
+
+  std::vector<HostListedFile> listed;
+  long long totalBytes = 0;
 
   for (;;) {
 
@@ -281,10 +481,15 @@ void NewBDOS::UpdateDriveInfo(int drive)
 
     driveInfo.m_cpmToNative[cpmFilename]    = dirEnt->d_name;
     driveInfo.m_nativeToCPM[dirEnt->d_name] = cpmFilename;
+    long long bytes = attr.st_size > 0 ? (long long)attr.st_size : 0;
+    listed.push_back(HostListedFile{cpmFilename, bytes});
+    totalBytes += bytes;
 
     m_debug << "native '" << dirEnt->d_name << "' mapped to CP/M '" << cpmFilename << "'" << endl;
   }
 
+  closedir(dir);
+  BuildHostVolume(slot, listed, totalBytes, m_debug);
   m_debug << "finished mapping" << endl;
 }
 
@@ -750,6 +955,8 @@ void NewBDOS::ResetDisk()
   m_dmaAddress = 0x0080;
   m_currDisk   = 0x00;
   m_findIndex  = 0;
+  m_login = 0;
+  m_readOnly = 0;
   ClearHostCaches();
 }
 
@@ -758,13 +965,21 @@ void NewBDOS::SelDisk()
   m_currDisk = m_proc.m_cpu.DE.B.l & 0x0f;
   m_debug << "BDOS 14: sel disk " << (char)('A' + m_currDisk) << endl;
   m_proc.WriteMemory(4, m_currDisk);
+  uint16_t bit = (uint16_t)(1u << m_currDisk);
+  m_login |= bit;
   if (m_drives[m_currDisk].m_kind == DriveSlot::Kind::eImage) {
+    m_readOnly |= bit;
     PublishDPB(m_currDisk);
   }
   else {
+    m_readOnly &= (uint16_t)~bit;
     UpdateDriveInfo(m_currDisk);
-    m_proc.m_cpu.HL.W = 0;
-    m_proc.m_cpu.AF.B.h = 0;
+    if (m_drives[m_currDisk].m_disk.m_spt > 0)
+      PublishDPB(m_currDisk);
+    else {
+      m_proc.m_cpu.HL.W = 0;
+      m_proc.m_cpu.AF.B.h = 0;
+    }
   }
 }
 
@@ -921,6 +1136,8 @@ uint8_t NewBDOS::FindFile(const uint8_t * fcb)
     return SearchImage(drive, fcb, anyUser);
 
   UpdateDriveInfo(drive);
+  if (!m_drives[drive].m_directory.empty())
+    return SearchImage(drive, fcb, anyUser);
   return SearchHost(drive, fcb, anyUser);
 }
 
@@ -1067,12 +1284,144 @@ static int Allocation(const uint8_t * entry, int index, bool words)
   return entry[16 + index];
 }
 
+static void SetAllocBit(std::vector<uint8_t> & bits, int block)
+{
+  if (block < 0)
+    return;
+  size_t index = (size_t)block / 8;
+  if (index >= bits.size())
+    return;
+  bits[index] |= (uint8_t)(0x80 >> (block % 8));
+}
+
+static void BuildAllocation(NewBDOS::DriveSlot & slot)
+{
+  int blocks = slot.m_disk.m_dsm + 1;
+  if (blocks < 1 || slot.m_disk.m_spt <= 0) {
+    slot.m_alloc.clear();
+    return;
+  }
+  slot.m_alloc.assign((size_t)(blocks + 7) / 8, 0);
+  uint16_t al = (uint16_t)((slot.m_disk.m_al0 << 8) | (slot.m_disk.m_al1 & 0xff));
+  for (int i = 0; i < 16; ++i) {
+    if (al & (uint16_t)(0x8000 >> i))
+      SetAllocBit(slot.m_alloc, i);
+  }
+  bool words = slot.m_disk.m_dsm >= 256;
+  int slots = words ? 8 : 16;
+  int entries = slot.m_disk.m_drm + 1;
+  for (int index = 0; index < entries; ++index) {
+    size_t off = (size_t)index * 32;
+    if (off + 32 > slot.m_directory.size())
+      break;
+    const uint8_t * entry = slot.m_directory.data() + off;
+    if (entry[0] == 0xe5)
+      continue;
+    for (int s = 0; s < slots; ++s) {
+      int block = Allocation(entry, s, words);
+      if (block > 0 && block <= slot.m_disk.m_dsm)
+        SetAllocBit(slot.m_alloc, block);
+    }
+  }
+}
+
+static uint32_t ExtentEnd(const uint8_t * entry, int exm)
+{
+  int extent = entry[12] & 0x1f;
+  int module = entry[14] & 0x3f;
+  int baseExtent = module * 32 + (extent & ~exm);
+  int rc = entry[15];
+  int recs = (rc >= 128) ? ((extent & exm) + 1) * 128 : (extent & exm) * 128 + rc;
+  return (uint32_t)baseExtent * 128u + (uint32_t)recs;
+}
+
+void NewBDOS::ReturnLoginVector()
+{
+  m_debug << "BDOS 24: login vector " << hex << m_login << dec << endl;
+  m_proc.m_cpu.HL.W = m_login;
+  m_proc.m_cpu.AF.B.h = 0;
+}
+
+void NewBDOS::ReturnReadOnlyVector()
+{
+  m_debug << "BDOS 29: read-only vector " << hex << m_readOnly << dec << endl;
+  m_proc.m_cpu.HL.W = m_readOnly;
+  m_proc.m_cpu.AF.B.h = 0;
+}
+
+void NewBDOS::GetAllocVector()
+{
+  DriveSlot & slot = m_drives[m_currDisk];
+  if (slot.m_kind == DriveSlot::Kind::eHost)
+    UpdateDriveInfo(m_currDisk);
+  BuildAllocation(slot);
+  m_debug << "BDOS 27: allocation vector " << slot.m_alloc.size() << " bytes" << endl;
+  if (slot.m_alloc.empty()) {
+    m_proc.m_cpu.HL.W = 0;
+    m_proc.m_cpu.AF.B.h = 0;
+    return;
+  }
+  size_t n = slot.m_alloc.size();
+  if (n > (size_t)(CCPB - 0x100))
+    n = (size_t)(CCPB - 0x100);
+  uint16_t addr = (uint16_t)(CCPB - n);
+  memcpy(m_memory + addr, slot.m_alloc.data(), n);
+  m_proc.m_cpu.HL.W = addr;
+  m_proc.m_cpu.AF.B.h = 0;
+}
+
+void NewBDOS::ComputeFileSize()
+{
+  uint8_t * fcb = m_memory + m_proc.m_cpu.DE.W;
+  int drive = DriveFromFCB(fcb);
+  DriveSlot & slot = m_drives[drive];
+  if (slot.m_kind == DriveSlot::Kind::eHost)
+    UpdateDriveInfo(drive);
+
+  uint32_t records = 0;
+  bool found = false;
+  int entries = slot.m_disk.m_drm + 1;
+  bool anyUser = fcb[0] == '?';
+  for (int index = 0; index < entries; ++index) {
+    size_t off = (size_t)index * 32;
+    if (off + 32 > slot.m_directory.size())
+      break;
+    const uint8_t * entry = slot.m_directory.data() + off;
+    if (entry[0] == 0xe5)
+      continue;
+    if (!anyUser && (entry[0] & 0x1f) != (m_userCode & 0x1f))
+      continue;
+    bool same = true;
+    for (int i = 1; i <= 11; ++i) {
+      if ((entry[i] & 0x7f) != (fcb[i] & 0x7f)) {
+        same = false;
+        break;
+      }
+    }
+    if (!same)
+      continue;
+    found = true;
+    uint32_t end = ExtentEnd(entry, slot.m_disk.m_exm);
+    if (end > records)
+      records = end;
+  }
+
+  fcb[eFCB_R0] = (uint8_t)(records & 0xff);
+  fcb[eFCB_R1] = (uint8_t)((records >> 8) & 0xff);
+  fcb[eFCB_R2] = (uint8_t)((records >> 16) & 0xff);
+  m_proc.m_cpu.AF.B.h = found ? 0 : 0xff;
+  m_debug << "BDOS 35: file size " << records << " records" << endl;
+}
+
 void NewBDOS::PrintDriveMap()
 {
   for (int drive = 0; drive < 16; ++drive) {
     const DriveSlot & slot = m_drives[drive];
     if (!slot.m_configured && drive != 0)
       continue;
+
+    if (m_drives[drive].m_kind == DriveSlot::Kind::eHost)
+      UpdateDriveInfo(drive);
 
     stringstream strm;
     strm << (char)('A' + drive) << ": ";
@@ -1091,6 +1440,11 @@ void NewBDOS::PrintDriveMap()
     }
     else {
       strm << "directory .";
+    }
+    if (slot.m_kind == DriveSlot::Kind::eHost && slot.m_disk.m_spt > 0) {
+      int block = 128 << slot.m_disk.m_bsh;
+      int capacityKb = (slot.m_disk.m_dsm + 1) * block / 1024;
+      strm << ", " << (block / 1024) << "kb blocks, " << capacityKb << "kb";
     }
     strm << "\r\n$";
     PrintCPMString(strm.str().c_str());
@@ -1226,7 +1580,9 @@ void NewBDOS::PublishDPB(int drive)
 void NewBDOS::GetDiskParams()
 {
   m_debug << "BDOS 31: get disk parameters for " << (char)('A' + m_currDisk) << endl;
-  if (m_drives[m_currDisk].m_kind != DriveSlot::Kind::eImage) {
+  if (m_drives[m_currDisk].m_kind == DriveSlot::Kind::eHost)
+    UpdateDriveInfo(m_currDisk);
+  if (m_drives[m_currDisk].m_disk.m_spt <= 0) {
     m_proc.m_cpu.HL.W = 0;
     m_proc.m_cpu.AF.B.h = 0;
     return;
