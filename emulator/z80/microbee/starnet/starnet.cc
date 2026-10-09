@@ -1,6 +1,14 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <string>
+#include <vector>
+
+#include <unistd.h>
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 
 #ifndef __APPLE__
 #include <endian.h>
@@ -29,8 +37,60 @@ using namespace std;
 
 #include "starnet.h"
 
-#define BOOT_IMAGE    "./z80/microbee/starnet/64kbcpm.slv"
+#define BOOT_IMAGE    "z80/microbee/starnet/64kbcpm.slv"
 #define BOOT_ADDRESS  0xc000
+
+static std::string ExecutableDir()
+{
+  char buf[4096];
+#if defined(__APPLE__)
+  uint32_t size = sizeof(buf);
+  if (_NSGetExecutablePath(buf, &size) != 0)
+    return {};
+#elif defined(__linux__)
+  ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+  if (n <= 0)
+    return {};
+  buf[n] = '\0';
+#else
+  return {};
+#endif
+  char real[4096];
+  if (realpath(buf, real) == nullptr)
+    return {};
+  std::string path(real);
+  auto slash = path.find_last_of('/');
+  if (slash == std::string::npos)
+    return {};
+  path.resize(slash);
+  return path;
+}
+
+// The slave image lives next to this source. Accept either the emulator
+// directory or the repository root as the working directory, and also look
+// next to the executable when the program is started from somewhere else.
+static std::string FindBootImage()
+{
+  std::vector<std::string> candidates;
+  candidates.push_back(std::string("./") + BOOT_IMAGE);
+  candidates.push_back(std::string("./emulator/") + BOOT_IMAGE);
+
+  std::string dir = ExecutableDir();
+  for (int i = 0; i < 6 && !dir.empty(); ++i) {
+    candidates.push_back(dir + "/" + BOOT_IMAGE);
+    candidates.push_back(dir + "/emulator/" + BOOT_IMAGE);
+    auto slash = dir.find_last_of('/');
+    if (slash == std::string::npos)
+      break;
+    dir.resize(slash);
+  }
+
+  for (const auto & candidate : candidates) {
+    if (access(candidate.c_str(), R_OK) == 0)
+      return candidate;
+  }
+  return {};
+}
 
 static std::map<Starnet::RequestType, const char *> g_RequestNames = {
   { Starnet::RequestType::ColdBoot,                  "ColdBoot" },
@@ -202,17 +262,29 @@ void StarnetDecoder::OnColdBoot(uint16_t memsize)
 {
   cerr << "starnet: cold boot " << HEXFORMAT0x4(memsize) << endl; 
   if (m_coldBootImage.size() == 0) {
+    std::string path = FindBootImage();
     std::ifstream file;
-    file.open(BOOT_IMAGE, ios::binary);
-    file.seekg(0, std::ios::end);
-    size_t length = file.tellg();
-    file.seekg(0, std::ios::beg);
-    m_coldBootImage.resize(length);
-    if (!file.read(&m_coldBootImage[0], length)) {
-      cerr << "starnet: could not read '" << BOOT_IMAGE << "'" << endl;
-      SendResponse(ResponseType::RequestOutOfRange);
+    if (!path.empty())
+      file.open(path, ios::binary);
+    std::streamoff length = -1;
+    if (file) {
+      file.seekg(0, std::ios::end);
+      length = file.tellg();
+      file.seekg(0, std::ios::beg);
     }
-    m_coldBootCount = (length + 127) / 128;
+    if (!file || length < 0) {
+      cerr << "starnet: could not read '" << (path.empty() ? BOOT_IMAGE : path) << "'" << endl;
+      SendResponse(ResponseType::RequestOutOfRange);
+      return;
+    }
+    m_coldBootImage.resize((size_t)length);
+    if (!m_coldBootImage.empty() && !file.read(&m_coldBootImage[0], (std::streamsize)length)) {
+      cerr << "starnet: could not read '" << path << "'" << endl;
+      m_coldBootImage.clear();
+      SendResponse(ResponseType::RequestOutOfRange);
+      return;
+    }
+    m_coldBootCount = (int)((length + 127) / 128);
   }
   cerr << "starnet: cold boot needs " << m_coldBootCount << " packets" << endl;
   m_state = 100;

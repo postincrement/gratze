@@ -77,7 +77,7 @@ const ScannedKeyboard::ScanCode gameKeys[8*8] = {
   { "0" },      { "1" },          { "2" },    { "3" },    { "4"},       { "5" } ,       { "6" } ,     { "7" } ,
   { "8" },      { "9" },          { "-" },    { ";" },    { ","},       { "="   } ,     { "." } ,   { "/" } ,
   { "Escape" }, { "Backspace" },  { "Tab" },  { "\\"},    { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
-  { 0 },        { "Control" },    { 0 },      { 0   },    { 0 },        { 0 },          { 0 },        { "Shift" }
+  { "Up" },     { "Control" },    { "Down" }, { "Left" }, { 0 },        { 0 },          { "Right" },  { "Shift" }
 };
 
 const ScannedKeyboard::ScanCode keys[8*8] = {
@@ -88,7 +88,7 @@ const ScannedKeyboard::ScanCode keys[8*8] = {
   { "0" },      { "1" },          { "2" },    { "3" },    { "4"},       { "5" } ,       { "6" } ,     { "7" } ,
   { "8" },      { "9" },          { ":" },    { ";" },    { ","},       { "-" } ,       { "." } ,     { "/" } ,
   { "Escape" }, { "Backspace" },  { "Tab" },  { "LF" },   { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
-  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" }
+  { "Up" },     { "Control" },    { "Down" }, { "Left" }, { 0 },        { 0 },          { "Right" },  { "Shift" }
 };
 
 const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
@@ -99,7 +99,7 @@ const ScannedKeyboard::ScanCode shiftedkeys[8*8] = {
   { 0   },      { "!" },          { "\"" },   { "#" },    { "$"},       { "%" } ,       { "&" } ,     { "'" } ,
   { "(" },      { ")" },          { "*" },    { "+" },    { ","},       { "=" } ,       { "." } ,     { "?" } ,
   { "Escape" }, { "Backspace" },  { "Tab" },  { "LF" },   { "Return"},  { "CapsLock" }, { "Break" },  { " " } ,
-  { 0 },        { "Control" },    { 0 },      { 0 },      { 0 },        { 0 },          { 0 },        { "Shift" }
+  { "Up" },     { "Control" },    { "Down" }, { "Left" }, { 0 },        { 0 },          { "Right" },  { "Shift" }
 };
 
 
@@ -658,19 +658,13 @@ uint8_t MicrobeeDisk_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint
 {
   switch (info.m_id) {
     case PORT_FDC:
-      {
-        uint8_t v = 0; //m_fdc->Read(port & 0x3);
-        //if ((port & 0x03) == 0)
-        //  cerr << "mbee: fdc port 0x44 = " << HEXFORMAT0x2(v) << endl;
-        return v;
-      }
+      if (!m_fdc)
+        return 0;
+      return m_fdc->Read(port & 0x3);
     case PORT_DRVSEL:
-      {
-        uint8_t val = 0; //(m_fdc->GetDRQ() || m_fdc->GetInterrupt()) ? 0x80 : 0x00;
-        //m_fdcPending = false;
-        //cerr << "mbee: port 0x48 return " << HEXFORMAT0x2(val) << endl;
-        return val;
-      }
+      if (!m_fdc)
+        return 0;
+      return (m_fdc->GetDRQ() || m_fdc->GetInterrupt()) ? 0x80 : 0x00;
   }
   return Microbee_Emulator::ReadIOPort(info, port);
 }
@@ -679,19 +673,19 @@ void MicrobeeDisk_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint1
 {
   switch (info.m_id) {
     case PORT_FDC:
-      return; // m_fdc->Write(port & 0x3, data);
+      if (m_fdc)
+        m_fdc->Write(port & 0x3, data);
+      return;
 
     case PORT_DRVSEL:
-    /*
-    {
+      if (!m_fdc)
+        return;
       m_drive   = data & 0x03;
       m_fdc->SelectDrive(m_drive);
       m_side    = (data & 0x04) != 0;
       m_fdc->SelectSide(m_side);
       m_density = (data & 0x08) != 0;
-    }
-    */
-    return;
+      return;
   }
   return Microbee_Emulator::WriteIOPort(info, port, data);
 }

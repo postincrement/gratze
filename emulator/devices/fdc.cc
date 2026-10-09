@@ -697,10 +697,11 @@ int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
   if (!IsCurrentDriveAvailable()) {
     m_status = STATUS_SEEKERR;
     m_setInterrupt = true;
-    cerr << "FDC: read addr drive not available" << endl;
+    if (m_debug)
+      cerr << "FDC: read addr drive not available" << endl;
   }
   else {
-    //if (m_debug)
+    if (m_debug)
       cerr << "FDC: read addr, track=" << dec << (int)m_realTrack << endl;
     m_bufferPtr = 0;
     m_bufferLen = 4;

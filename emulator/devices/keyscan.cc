@@ -77,6 +77,14 @@ SDL_Scancode ScancodeForLegend(const char * name)
     return (SDL_Scancode)(SDL_SCANCODE_1 + (name[0] - '1'));
   if (name[0] == '0')
     return SDL_SCANCODE_0;
+  if (strcasecmp(name, "up") == 0)
+    return SDL_SCANCODE_UP;
+  if (strcasecmp(name, "down") == 0)
+    return SDL_SCANCODE_DOWN;
+  if (strcasecmp(name, "left") == 0)
+    return SDL_SCANCODE_LEFT;
+  if (strcasecmp(name, "right") == 0)
+    return SDL_SCANCODE_RIGHT;
 
   switch (name[0]) {
     case '-': return SDL_SCANCODE_MINUS;
