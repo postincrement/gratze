@@ -1,9 +1,13 @@
 #ifndef STARNET_H_
 #define STARNET_H_
 
-
-
+#include <stddef.h>
 #include <stdint.h>
+#include <vector>
+
+// Wire frame: one uint8_t code, three little-endian words, an optional
+// payload, and one checksum byte. The BN sender stores the two's complement
+// of the sum, and the receiver accepts a block whose bytes add to zero.
 
 class Starnet
 {
@@ -72,78 +76,37 @@ class Starnet
       ChecksumErrorOnReceivedBlock      = 0xff
     };
 
-    #pragma pack (1)
-    struct Header {
-      Starnet::RequestType  m_code;
-      uint16_t m_parm0;
-      uint16_t m_parm1;
-      uint16_t m_parm2;
-
-      uint8_t GetCRC() const
-      {
-        uint8_t crc = 0;
-        uint8_t * ptr = (uint8_t *)&m_code;
-        for (int i = 0; i < sizeof(Header); ++i)
-          crc += *ptr++;
-        return crc;  
-      }
-    };
-    #pragma pack()
-
-    uint8_t CalcCRC(void * ptr_, int len) const
-    {
-      uint8_t crc = 0;
-      uint8_t * ptr = (uint8_t *)ptr_;
-      for (int i = 0; i < len; ++i)
-        crc += *ptr++;
-      return crc;  
-    }
+    static const int kHeaderBytes = 7;
+    static const int kRecordBytes = 128;
 };
 
-class StarnetDecoder : public Starnet
+struct StarnetRequest {
+  uint8_t m_code = 0;
+  uint16_t m_parm0 = 0;
+  uint16_t m_parm1 = 0;
+  uint16_t m_parm2 = 0;
+  std::vector<uint8_t> m_payload;
+};
+
+struct StarnetFrame {
+  uint8_t m_code = 0;
+  uint16_t m_parm0 = 0;
+  uint16_t m_parm1 = 0;
+  uint16_t m_parm2 = 0;
+  std::vector<uint8_t> m_payload;
+};
+
+inline uint8_t StarnetSum(const uint8_t * data, size_t len)
 {
-  public:
-    StarnetDecoder();
-    void Reset();
-    void OnColdBoot(uint16_t memsize);
-    void OnReceive(uint8_t v, bool ie);
-    uint8_t OnSend();
+  uint8_t sum = 0;
+  for (size_t i = 0; i < len; ++i)
+    sum = (uint8_t)(sum + data[i]);
+  return sum;
+}
 
-    void SendRawResponse( Starnet::ResponseType code,
-                                    uint16_t parm0 = 0,
-                                    uint16_t parm1 = 0,
-                                    uint16_t parm2 = 0,
-                                    uint8_t  * data = nullptr,
-                                    uint16_t len = 0);
-
-    void SendResponse( Starnet::ResponseType code,
-                                    uint16_t parm0 = 0,
-                                    uint16_t parm1 = 0,
-                                    uint16_t parm2 = 0,
-                                    uint8_t  * data = nullptr,
-                                    uint16_t len = 0);
-
-    void SendNextBootPacket();
-
-  protected:
-    uint8_t GetCRC() const;
-
-    int m_state = 0;
-    size_t m_txLen = 0;
-    int m_coldBootCount;
-
-    int m_rxLen = 0;
-    uint8_t * m_rxPtr;
-    Header m_request;
-    uint8_t m_rxPayload[128];
-    uint8_t m_rxCRC;
-    uint16_t m_parm0;
-    uint16_t m_parm1;
-    uint16_t m_parm2;
-
-    std::vector<char> m_coldBootImage;
-    std::vector<uint8_t> m_txPayload;
-};
+inline uint8_t StarnetRxChecksum(const uint8_t * data, size_t len)
+{
+  return (uint8_t)(~StarnetSum(data, len) + 1);
+}
 
 #endif // STARNET_H_
-

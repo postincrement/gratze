@@ -8,6 +8,7 @@
 #include <SDL.h>
 
 #include "video/virtual_screen.h"
+#include "src/status_panel.h"
 
 #define LAZY_UPDATE_MSECS   20
 
@@ -27,6 +28,11 @@ class MainWindow
 
     void GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h, int hscale, int vscale);
 
+    void SetDrives(const std::vector<StatusDrive> & drives);
+    void SetCpuHz(double hz);
+    void SetMouse(int x, int y);
+    bool HitReset(int x, int y) const;
+
   protected:
     int m_screenHeight;
     int m_screenWidth;
@@ -41,6 +47,7 @@ class MainWindow
 
     // virtual video screen
     SDL_Rect  m_screenRect;
+    StatusPanel m_panel;
     std::unique_ptr<VirtualScreen> m_screen;
 };
 

@@ -55,8 +55,8 @@ bool MainWindow::Open(int width, int height)
   // calcuate screen rect
   m_screenRect = { m_leftBorder, m_topBorder, m_screenWidth, m_screenHeight };
 
-  // create window
-  int totalHeight = m_topBorder  + m_screenRect.h + m_topBorder;
+  // create window. The status panel sits under the emulated image.
+  int totalHeight = m_topBorder + m_screenRect.h + StatusPanel::kHeight;
   int totalWidth  = m_leftBorder + m_screenRect.w + m_leftBorder; 
 
   cout << "info: main window is "        << dec << totalWidth << "x" << totalHeight << endl;
@@ -78,6 +78,8 @@ bool MainWindow::Open(int width, int height)
     SDL_DestroyTexture(m_screenTexture);
   }
 
+  m_panel.Open(m_renderer);
+
   // create texture
   m_screenTexture = SDL_CreateTexture(m_renderer, 
                               SDL_PIXELFORMAT_RGBA32, 
@@ -96,6 +98,26 @@ void MainWindow::GetScreenCharRect(SDL_Rect & rect, int x, int y, int w, int h, 
   rect = { x, y, w, h };
 }
 
+void MainWindow::SetDrives(const std::vector<StatusDrive> & drives)
+{
+  m_panel.SetDrives(drives);
+}
+
+void MainWindow::SetCpuHz(double hz)
+{
+  m_panel.SetCpuHz(hz);
+}
+
+void MainWindow::SetMouse(int x, int y)
+{
+  m_panel.SetMouse(x, y);
+}
+
+bool MainWindow::HitReset(int x, int y) const
+{
+  return m_panel.HitReset(x, y);
+}
+
 SDL_Renderer * MainWindow::GetRenderer()
 {
   return m_renderer;
@@ -109,6 +131,14 @@ void MainWindow::Update()
 
   SDL_SetRenderTarget(m_renderer, NULL);
   SDL_RenderCopy(m_renderer, m_screenTexture, NULL, &m_screenRect);
+
+  SDL_Rect panel;
+  panel.x = 0;
+  panel.y = m_topBorder + m_screenRect.h;
+  panel.w = m_leftBorder + m_screenRect.w + m_leftBorder;
+  panel.h = StatusPanel::kHeight;
+  m_panel.Draw(m_renderer, panel);
+
   SDL_RenderPresent(m_renderer);
 
   SDL_SetRenderTarget(m_renderer, m_screenTexture);

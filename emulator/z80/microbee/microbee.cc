@@ -644,6 +644,11 @@ bool MicrobeeDisk_Emulator::MountDrive(int driveNum, std::shared_ptr<VirtualDriv
   return m_fdc->MountDrive(driveNum, drive, readOnly);
 }
 
+void MicrobeeDisk_Emulator::RefreshPanelDrives()
+{
+  CollectFdcDrives(m_fdc.get());
+}
+
 bool MicrobeeDisk_Emulator::Open(const Options & options)
 {
   if (!Microbee_Emulator::Open(options))
@@ -960,34 +965,15 @@ INFO_END(microbee128);
 
 ////////////////////////////////////////////////////////////////////////////
 
-#include "starnet/starnet.h"
-StarnetDecoder starnet;
-
-////////////////////////////////////////////////////////////////////////////
-
 Microbee128_BN_Emulator::Microbee128_BN_Emulator()
   : Microbee128_BaseEmulator(g_bn5443_ROM, &g_microbee128bnEmulatorInfo)
 {
-  using namespace std::placeholders;
-  m_pio.SetWriteHandler(0, std::bind(&Microbee128_BN_Emulator::OnPIOAWrite, this, _1, _2));
-  m_pio.SetReadHandler (0, std::bind(&Microbee128_BN_Emulator::OnPIOARead,  this));
 }
 
-void Microbee128_BN_Emulator::OnPIOAWrite(uint8_t data, bool ie)
+Microbee128_BN_Emulator::Microbee128_BN_Emulator(const EmulatorInfo * info)
+  : Microbee128_BaseEmulator(g_bn5443_ROM, info)
 {
-  //cerr << "starnet write: " << HEXFORMAT0x2(data) << endl;
-  starnet.OnReceive(data, ie);
-  m_pio.GetData(0); 
 }
-
-uint8_t Microbee128_BN_Emulator::OnPIOARead()
-{
-  cerr << "starnet read" << endl;
-  m_pio.SetData(0, starnet.OnSend());
-  return 0;
-
-}
-
 
 EmulatorInfo g_microbee128EmulatorInfo =
 {
@@ -1016,5 +1002,121 @@ EmulatorInfo g_microbee128bnEmulatorInfo =
   INFO_INSERT(microbee128bn)
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+extern EmulatorInfo g_microbee128starnetEmulatorInfo;
+
+Microbee128_StarnetClient_Emulator::Microbee128_StarnetClient_Emulator()
+: Microbee128_BN_Emulator(&g_microbee128starnetEmulatorInfo)
+, m_server("", "")
+, m_client(m_server)
+{
+  using namespace std::placeholders;
+  m_pio.SetWriteHandler(0, std::bind(&Microbee128_StarnetClient_Emulator::OnPIOAWrite, this, _1, _2));
+  m_pio.SetReadHandler (0, std::bind(&Microbee128_StarnetClient_Emulator::OnPIOARead,  this));
+  m_pio.SetWriteHandler(1, std::bind(&Microbee128_StarnetClient_Emulator::OnPIOBWrite, this, _1, _2));
+}
+
+bool Microbee128_StarnetClient_Emulator::Open(const Options & options)
+{
+  if (!Microbee128_BN_Emulator::Open(options))
+    return false;
+
+  m_fdc.reset();  
+
+  return true;
+}
+
+void Microbee128_StarnetClient_Emulator::Reset(int addr)
+{
+  Microbee128_BN_Emulator::Reset(addr);
+  m_transmit = false;
+  m_rxPhase = RxPhase::Sync;
+  m_bodyLeft = 0;
+  m_client.Reset();
+  m_server.Reset();
+}
+
+int Microbee128_StarnetClient_Emulator::Exec(int cycles)
+{
+  // A strobe raised during the IN that follows EI is taken as vector 0x4C,
+  // before the client has armed the vector it uses for the block read.
+  WakeReceive();
+  return Microbee128_BN_Emulator::Exec(cycles);
+}
+
+void Microbee128_StarnetClient_Emulator::WakeReceive()
+{
+  if (m_transmit || m_rxPhase != RxPhase::Sync)
+    return;
+  if ((m_cpu.IFF & (IFF_HALT | IFF_1)) != (IFF_HALT | IFF_1))
+    return;
+  if (!m_pio.GetIE(0) || !m_client.HasTx())
+    return;
+
+  // The halted client reads one byte, decrements it, and block-reads the rest.
+  m_bodyLeft = m_client.TakeFrameSize();
+  if (m_bodyLeft == 0)
+    return;
+  m_rxPhase = RxPhase::Length;
+  m_pio.SetData(0, (uint8_t)(m_bodyLeft + 1));
+  m_pio.Strobe(0);
+}
+
+void Microbee128_StarnetClient_Emulator::OnPIOBWrite(uint8_t data, bool)
+{
+  // Bit 7 turns the external buffer around. 1 is transmit, 0 is receive.
+  bool transmit = (data & 0x80) != 0;
+  if (m_transmit && !transmit) {
+    m_rxPhase = RxPhase::Sync;
+    m_bodyLeft = 0;
+  }
+  m_transmit = transmit;
+}
+
+void Microbee128_StarnetClient_Emulator::OnPIOAWrite(uint8_t data, bool)
+{
+  if (!m_transmit)
+    return;
+
+  m_client.OnReceive(data);
+  if (m_pio.GetMode(0) != Z80PIO::Mode::Control)
+    m_pio.Strobe(0);
+}
+
+uint8_t Microbee128_StarnetClient_Emulator::OnPIOARead()
+{
+  uint8_t byte = 0;
+  if (!m_transmit) {
+    if (m_rxPhase == RxPhase::Length) {
+      byte = (uint8_t)(m_bodyLeft + 1);
+      m_rxPhase = RxPhase::Body;
+    }
+    else if (m_rxPhase == RxPhase::Body && m_bodyLeft > 0) {
+      byte = m_client.OnSend();
+      if (--m_bodyLeft == 0)
+        m_rxPhase = RxPhase::Sync;
+    }
+  }
+  m_pio.SetData(0, byte);
+  return byte;
+}
+
+INFO_START(microbee128starnet)
+{
+  INFO_CPU(4, MICROBEE_128k_DISK_ROM_START_ADDR),
+  INFO_PARENT(microbee128bn)
+}
+INFO_END(microbee128starnet);
+
+EmulatorInfo g_microbee128starnetEmulatorInfo =
+{
+  "mbee128starnet",                  // command line option
+  "Microbee 128k Starnet Client",            // short name
+  "Microbee 128k Starnet Client",            // long name
+  true,                          // SDL window
+
+  INFO_INSERT(microbee128starnet)
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////////

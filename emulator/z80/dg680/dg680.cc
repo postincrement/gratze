@@ -117,7 +117,7 @@ void DG680_Emulator::OnASCIIKey(uint8_t ch)
   else if (ch == 0x08)
     ch = 0x7f;
 
-  m_pio.SetData(0, ch);
+  m_pio.Strobe(0, ch);
 }
 
 void DG680_Emulator::OnPIOInterrupt(uint8_t vector)

@@ -214,6 +214,14 @@ uint8_t TRS80Emulator::ReadPrinter(uint16_t addr) const
 
 /////////////////////////////////////////////////////////////
 
+void TRS80Emulator::RefreshPanelDrives()
+{
+  if (!m_fdc)
+    Emulator::RefreshPanelDrives();
+  else
+    CollectFdcDrives(m_fdc.get());
+}
+
 bool TRS80Emulator::MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly)
 {
   if (!m_fdcEnabled || !m_fdc) {

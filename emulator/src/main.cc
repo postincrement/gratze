@@ -53,6 +53,7 @@ void Init()
   AddEmulator<Microbee56_Emulator>();
   AddEmulator<Microbee128_Emulator>();
   AddEmulator<Microbee128_BN_Emulator>();
+  AddEmulator<Microbee128_StarnetClient_Emulator>();
   AddEmulator<Sorcerer_Emulator>();
   AddEmulator<EA78UP5_PIPBUG_110>();
   AddEmulator<EA78UP5_PIPBUG_300>();

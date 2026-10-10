@@ -24,15 +24,23 @@ class Z80PIO  : public VirtualDevice
     // used by CPU to write data to a PIO register
     virtual void Write(uint8_t reg, uint8_t data);
 
-    // called by external device to tell PIO port data has been written.
-    // Probably called in response to WriteHandler but could be 
-    // called asynchronously
+    // Latch a byte the CPU will read. Does not request an interrupt;
+    // Strobe() does that.
     virtual void SetData(int port, uint8_t data);
 
-    // called by external device to get PIO port data.
-    // Probably called in response to SetReadHandler, but could be 
-    // called asynchronously
+    // Output latch last written by the CPU. Safe to call from a write handler.
     virtual uint8_t GetData(int port) const;
+
+    Mode GetMode(int port) const;
+    bool GetIE(int port) const;
+    bool GetReady(int port) const;
+
+    // ASTB on an output port, or the input strobe once SetData has latched
+    // a byte. Mode 2 uses Strobe() for the output half and Strobe(port, data)
+    // for the input half. The interrupt is requested through the handler and
+    // is not taken inside the instruction that caused it.
+    void Strobe(int port);
+    void Strobe(int port, uint8_t data);
 
     void SetInterruptHandler(std::function<void (uint8_t)> handler);
 
@@ -58,8 +66,10 @@ class Z80PIO  : public VirtualDevice
 
       int m_port;
       int m_state;
+      uint8_t m_outputLatch = 0;
       uint8_t m_data = 0;
       bool m_ie = false;
+      bool m_ready = false;
       Mode m_mode;
       uint8_t m_inputMask = 0;   // 1 =input, 0 = output
       uint8_t m_vector = 0;
@@ -71,6 +81,8 @@ class Z80PIO  : public VirtualDevice
     };
 
   protected:
+    void RequestInterrupt(const Port & port);
+
     Port m_ports[2] = { 0, 1 };  
     std::function<void (uint8_t)> m_interruptHandler;
 };

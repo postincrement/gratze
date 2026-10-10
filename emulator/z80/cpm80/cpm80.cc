@@ -124,6 +124,32 @@ void CPM80_Emulator::Reset(int addr)
   memcpy(m_memory + CCPB, z80_cpm80_newbdos_bin, sizeof(z80_cpm80_newbdos_bin));
 }
 
+void CPM80_Emulator::RefreshPanelDrives()
+{
+  m_panelDrives.clear();
+  if (!m_newBDOS)
+    return;
+
+  for (int drive = 0; drive < 16; ++drive) {
+    const NewBDOS::DriveSlot & slot = m_newBDOS->m_drives[drive];
+    if (!slot.m_configured && (drive != 0))
+      continue;
+
+    StatusDrive status;
+    status.m_label.assign(1, (char)('A' + drive));
+    std::string path = slot.m_path;
+    if (path.empty())
+      path = ".";
+    auto slash = path.find_last_of("/\\");
+    status.m_name = (slash == std::string::npos) ? path : path.substr(slash + 1);
+    if (status.m_name.empty())
+      status.m_name = path;
+    status.m_mounted = true;
+    status.m_selected = (m_newBDOS->m_currDisk == drive);
+    m_panelDrives.push_back(status);
+  }
+}
+
 ///////////////////////////////////////////////////
 //
 //  New functions

@@ -46,6 +46,7 @@ add_custom_command(
 add_executable(gratze
   src/main.cc
   src/mainwindow.cc
+  src/status_panel.cc
   src/emulator.cc
   devices/fdc.cc
   devices/keyscan.cc
@@ -87,7 +88,8 @@ add_executable(gratze
   z80/microbee/rom_disk56.c
   z80/microbee/rom_disk128.c
   z80/microbee/rom_bn5443.c
-  z80/microbee/starnet/starnet.cc
+  z80/microbee/starnet/starnet_client.cc
+  z80/microbee/starnet/starnet_server.cc
   z80/sorcerer/rom_sorcerer.c
   z80/mfz80/Z80.c
   z80/mfz80/Debug.c

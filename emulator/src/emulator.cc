@@ -125,9 +125,15 @@ double Emulator::GetActualCPUSpeed_Hz() const
 
 void Emulator::UpdateScreen()
 {
-  if (m_screen) {
-    m_screen->Update(false);
+  if (m_mainWindow != nullptr) {
+    RefreshPanelDrives();
+    m_mainWindow->SetDrives(m_panelDrives);
+    m_mainWindow->SetCpuHz(m_actualCPUClock_Hz);
   }
+  if (m_screen)
+    m_screen->Update(false);
+  if (m_mainWindow != nullptr)
+    m_mainWindow->Update();
 }
 
 void Emulator::SendKeyText(const SDL_Event & event)
@@ -195,6 +201,16 @@ void Emulator::CheckSDLKeyboard()
     case SDL_WINDOWEVENT:
       if ((event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) && (m_keyboard != nullptr))
         m_keyboard->Reset();
+      break;
+
+    case SDL_MOUSEMOTION:
+      if (m_mainWindow != nullptr)
+        m_mainWindow->SetMouse(event.motion.x, event.motion.y);
+      break;
+
+    case SDL_MOUSEBUTTONDOWN:
+      if ((event.button.button == SDL_BUTTON_LEFT) && (m_mainWindow != nullptr) && m_mainWindow->HitReset(event.button.x, event.button.y))
+        RequestReset();
       break;
 
     case SDL_KEYDOWN:
@@ -301,7 +317,7 @@ static unsigned ScaleToFit(int contentW, int contentH, int desktopW, int desktop
     contentH = 1;
 
   int availW = desktopW * 4 / 5 - 20;
-  int availH = desktopH * 4 / 5 - 20;
+  int availH = desktopH * 4 / 5 - 20 - StatusPanel::kHeight;
   if (availW < contentW)
     availW = contentW;
   if (availH < contentH)
@@ -315,8 +331,61 @@ static unsigned ScaleToFit(int contentW, int contentH, int desktopW, int desktop
   return scale;
 }
 
+void Emulator::RequestReset()
+{
+  m_resetRequested = true;
+}
+
+void Emulator::RefreshPanelDrives()
+{
+  m_panelDrives.clear();
+  for (const auto & mounted : m_mountedDriveNames) {
+    StatusDrive drive;
+    drive.m_label = std::to_string(mounted.first);
+    drive.m_name = mounted.second;
+    drive.m_mounted = true;
+    m_panelDrives.push_back(drive);
+  }
+}
+
+void Emulator::CollectFdcDrives(const WD_FDC * fdc)
+{
+  m_panelDrives.clear();
+  int slots = 4;
+  if ((fdc != nullptr) && (fdc->DriveSlots() > slots))
+    slots = fdc->DriveSlots();
+
+  for (int i = 0; i < slots; ++i) {
+    StatusDrive drive;
+    drive.m_label = std::to_string(i);
+    auto mounted = m_mountedDriveNames.find(i);
+    if (mounted != m_mountedDriveNames.end())
+      drive.m_name = mounted->second;
+    drive.m_mounted = (fdc != nullptr) && fdc->DrivePresent(i);
+    drive.m_selected = (fdc != nullptr) && (fdc->SelectedDrive() == i);
+    drive.m_busy = drive.m_selected && fdc->HeadLoaded();
+    m_panelDrives.push_back(drive);
+  }
+}
+
+void Emulator::ArmPollers()
+{
+  double now = SteadyNowSeconds();
+  for (auto & r : m_pollers.m_list) {
+    PollDef & def = r.second;
+    def.m_lastTime  = now;
+    def.m_lastClock = m_cycleCounter;
+    if (def.m_pollIsTime)
+      def.m_nextTime = now + def.m_timeInterval;
+    else
+      def.m_nextClock = m_cycleCounter + def.m_clockInterval;
+  }
+}
+
 void Emulator::CreateScreen(MainWindow & mainWindow)
 {
+  if (m_options.m_useSDL)
+    m_mainWindow = &mainWindow;
   if (m_info->m_title != nullptr)
     mainWindow.SetTitle(m_info->m_title);
   int vdup = 1;                 // duplicate lines for fields
@@ -1100,6 +1169,8 @@ int Emulator::Run(const Options & options)
       return -1;
     }
     cerr << "info: mounted '" << fn << " as drive " << r.first << endl;
+    auto slash = fn.find_last_of("/\\");
+    m_mountedDriveNames[r.first] = (slash == std::string::npos) ? fn : fn.substr(slash + 1);
   }
 
   CompileConfigBlocks();
@@ -1170,20 +1241,7 @@ int Emulator::Run(const Options & options)
   }
 
   m_cycleCounter = 0;
-  double now = SteadyNowSeconds();
-
-  // initialise real time pollers
-  for (auto & r : m_pollers.m_list) {
-    PollDef & def = r.second;
-    def.m_lastTime  = now;
-    def.m_lastClock = m_cycleCounter;
-    if (def.m_pollIsTime) {
-      def.m_nextTime = now + def.m_timeInterval;
-    }
-    else {
-      def.m_nextClock = m_cycleCounter + def.m_clockInterval;
-    }
-  }
+  ArmPollers();
 
   if (m_options.m_verbose && options.m_turbo) {
     cerr << "turbo mode" << endl;
@@ -1201,6 +1259,7 @@ int Emulator::Run(const Options & options)
   using clock = std::chrono::steady_clock;
   auto origin = clock::now();
   const auto lagCap = std::chrono::milliseconds(50);
+  double now = 0;
 
   for (;;) {
     now = SteadyNowSeconds();
@@ -1283,6 +1342,12 @@ void Emulator::RunPollers(double & earliestNextRealTime_s,
       }
       earliestNextClockTime = std::min<uint64_t>(earliestNextClockTime, def.m_nextClock);
     }
+  }
+
+  if (m_resetRequested) {
+    m_resetRequested = false;
+    Reset();
+    ArmPollers();
   }
 }
 

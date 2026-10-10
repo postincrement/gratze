@@ -57,6 +57,14 @@ class WD_FDC
 
     bool IsCurrentDriveAvailable() const;
 
+    int DriveSlots() const { return (int)m_drives.size(); }
+    bool DrivePresent(int drive) const
+    {
+      return (drive >= 0) && (drive < (int)m_drives.size()) && (m_drives[drive] != nullptr);
+    }
+    int SelectedDrive() const { return m_drive; }
+    bool HeadLoaded() const { return m_headLoaded; }
+
     // type I commands
     int HomeCommand(uint8_t cmd);
     int SeekCommand_1771(uint8_t cmd);

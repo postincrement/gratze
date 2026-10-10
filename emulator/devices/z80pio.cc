@@ -57,35 +57,66 @@ void Z80PIO::Write(uint8_t reg, uint8_t data)
   }
 }
 
-// called by external application to get the data previously written by the CPU
-// probably in response to a write handler
-uint8_t Z80PIO::GetData(int portNum) const
+Z80PIO::Mode Z80PIO::GetMode(int port) const
 {
-  const Port & port = m_ports[portNum & 1];
-  uint8_t data = m_ports[portNum & 1].m_data;
-
-  // send interrupt if required
-  if ((port.m_mode == Mode::Output) && port.m_ie && m_interruptHandler)
-    m_interruptHandler(port.m_vector);
-
-  return data;  
+  return m_ports[port & 1].m_mode;
 }
 
-// called by external application to set input data to be read by the CPU
-// probably in response to a read handler
+bool Z80PIO::GetIE(int port) const
+{
+  return m_ports[port & 1].m_ie;
+}
+
+bool Z80PIO::GetReady(int port) const
+{
+  return m_ports[port & 1].m_ready;
+}
+
+uint8_t Z80PIO::GetData(int portNum) const
+{
+  return m_ports[portNum & 1].m_outputLatch;
+}
+
 void Z80PIO::SetData(int portNum, uint8_t data)
 {
   Port & port = m_ports[portNum & 1];
-  cerr << "z80pio: port " << ((portNum == 0) ? 'A' : 'B') << " received " << HEXFORMAT0x2(data) << endl;
 
-  // save data
-  port.m_data = (port.m_data & ~port.m_inputMask) | (data & port.m_inputMask);
+  // An output port has no input bits. The external buffer can still place a
+  // byte where a following IN will read it.
+  if (port.m_inputMask == 0)
+    port.m_data = data;
+  else
+    port.m_data = (port.m_data & ~port.m_inputMask) | (data & port.m_inputMask);
+}
 
-  // send interrupt if required
-  if ((port.m_mode == Mode::Input) && port.m_ie && m_interruptHandler) {
-    cerr << "z80pio: port " << ((portNum == 0) ? 'A' : 'B') << " interrupt" << endl;
+void Z80PIO::RequestInterrupt(const Port & port)
+{
+  if (port.m_ie && m_interruptHandler)
     m_interruptHandler(port.m_vector);
+}
+
+void Z80PIO::Strobe(int portNum)
+{
+  Port & port = m_ports[portNum & 1];
+  bool acknowledge = port.m_ready
+                  || port.m_mode == Mode::Input
+                  || port.m_mode == Mode::Bidir;
+  port.m_ready = false;
+  if (acknowledge)
+    RequestInterrupt(port);
+}
+
+void Z80PIO::Strobe(int portNum, uint8_t data)
+{
+  Port & port = m_ports[portNum & 1];
+  if (port.m_mode == Mode::Input || port.m_mode == Mode::Bidir || port.m_mode == Mode::Control) {
+    SetData(portNum, data);
+    port.m_ready = false;
+    RequestInterrupt(port);
+    return;
   }
+  SetData(portNum, data);
+  Strobe(portNum);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,12 +129,14 @@ Z80PIO::Port::Port(int port)
 
 void Z80PIO::Port::Reset()
 {
-  m_ie        = false;
-  m_data      = 0;
-  m_state     = 0;
-  m_mode      = Mode::Input;   // default mode
-  m_inputMask = 0xff;
-  m_intMask   = 0;
+  m_ie           = false;
+  m_ready        = false;
+  m_data         = 0;
+  m_outputLatch  = 0;
+  m_state        = 0;
+  m_mode         = Mode::Input;   // default mode
+  m_inputMask    = 0xff;
+  m_intMask      = 0;
 }
 
 // used by CPU to write to the PIO channel control register
@@ -118,20 +151,17 @@ void Z80PIO::Port::WriteControl(uint8_t data)
       if ((data & 0x0f) == 0x7) {
         // set interrupt status
         m_ie = (data & 0x80) != 0;
-        if (m_port == 0)
-          cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " IE is " << (m_ie ? "on" : "off") << endl;
         if (data & 0x10)
           m_state = 2;
       }
       else if ((data & 0x0f) == 0x3) {
         // set interrupt status
         m_ie = (data & 0x80) != 0;
-        if (m_port == 0)
-          cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " IE is " << (m_ie ? "on" : "off") << endl;
       }
       else if ((data & 0x0f) == 0xf) {
         // select mode
         m_mode = (Mode)((data >> 6) & 3);
+        m_ready = false;
         switch (m_mode) {
           case Mode::Control:
             m_state = 1;
@@ -150,17 +180,9 @@ void Z80PIO::Port::WriteControl(uint8_t data)
             m_inputMask = 0x00;
             break;
         }
-        //if (m_port == 0)
-        //  cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " in mode " << (int)m_mode << endl;
       }
       else if ((data & 0x01) == 0) {
         m_vector = data;
-        //if (m_port == 0)
-        //  cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " interrupt vector set to " << HEXFORMAT0x2(m_vector) << endl;
-      }
-      else {
-        //if (m_port == 0)
-        //  cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " received unknown command " << HEXFORMAT0x2(data) << endl;
       }
       break;
 
@@ -174,8 +196,6 @@ void Z80PIO::Port::WriteControl(uint8_t data)
     case 2:
       m_intMask = data;
       m_state   = 0;
-      if (m_port == 0)
-        cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " interrupt mask set to " << HEXFORMAT0x2(m_intMask) << endl;
       break;
   }
 }
@@ -186,35 +206,26 @@ uint8_t Z80PIO::Port::ReadControl()
   return m_control;
 }
 
-// used by CPU to write data to the PIO channel data register
+// A data write updates the output latch in every mode, including reset
+// input mode. Mode 0 and the output half of mode 2 raise ready. The
+// interrupt waits for Strobe().
 void Z80PIO::Port::WriteData(uint8_t data)
 {
-  if (m_mode == Mode::Bidir) {
-  }
-  else if (m_mode != Mode::Input) {
-    m_data = (m_data & m_inputMask) | (data & ~m_inputMask);
-    //cerr << "z80pio: port " << ((m_port == 0) ? 'A' : 'B') << " write data " << HEXFORMAT0x2(data) << "->" << HEXFORMAT0x2(m_data) << endl;
-    if (m_writeHandler)
-      m_writeHandler(m_data, m_ie);
-  }
+  m_outputLatch = data;
+  m_data = (uint8_t)((m_data & m_inputMask) | (data & (uint8_t)~m_inputMask));
+  if (m_mode == Mode::Output || m_mode == Mode::Bidir)
+    m_ready = true;
+  if (m_writeHandler)
+    m_writeHandler(m_outputLatch, m_ie);
 }
 
-// used by CPU to read data from the PIO channel data register
+// Mode 1 and the input half of mode 2 raise ready once the CPU has taken
+// the latched byte. Mode 3 reads whatever the handler presented.
 uint8_t Z80PIO::Port::ReadData()
 {
-  if (m_mode == Mode::Bidir) {
-  }
-  else if (m_mode != Mode::Output) {
-    if (m_readHandler) {
-      m_readHandler();
-      //uint8_t data = m_readHandler();
-      //m_data = (data & m_inputMask) | (m_data & ~m_inputMask);
-    }
-  }
-
+  if (m_readHandler)
+    m_readHandler();
+  if (m_mode == Mode::Input || m_mode == Mode::Bidir)
+    m_ready = true;
   return m_data;
 }
-
-
-
-

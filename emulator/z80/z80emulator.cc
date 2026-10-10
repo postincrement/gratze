@@ -75,6 +75,8 @@ void Z80Emulator::Reset(int addr)
   m_cpu.PC.W       = addr;
   m_cpu.TrapBadOps = 1;
   m_cpu.Trap       = 0xffff;
+  m_cpu.IAutoReset = 1;
+  m_cpu.IRequest   = INT_NONE;
 }
 
 void Z80Emulator::SetTrace(bool v)
@@ -85,8 +87,11 @@ void Z80Emulator::SetTrace(bool v)
 
 int Z80Emulator::Exec(int cycles)
 {
+  ServicePendingInterrupt();
+  m_inExec = true;
+  int left;
   if (!m_options.m_trace && !m_options.m_logPC && (m_options.m_traceLength == 0))
-    return ExecZ80(&m_cpu, cycles);
+    left = ExecZ80(&m_cpu, cycles);
   else {
     int toDo = cycles;
     while (toDo > 0) {
@@ -100,8 +105,11 @@ int Z80Emulator::Exec(int cycles)
       int cyclesDone = 1 - remaining;
       toDo -= cyclesDone;
     }
-    return toDo;
-  }  
+    left = toDo;
+  }
+  m_inExec = false;
+  ServicePendingInterrupt();
+  return left;
 }
 
 void Z80Emulator::NMI()
@@ -109,8 +117,31 @@ void Z80Emulator::NMI()
   IntZ80(&m_cpu, INT_NMI);
 }
 
+void Z80Emulator::ServicePendingInterrupt()
+{
+  if (m_cpu.IRequest == INT_NONE || m_cpu.IRequest == INT_QUIT)
+    return;
+  // The instruction after EI still has to finish. ExecZ80 takes IRequest
+  // when that instruction ends.
+  if (m_cpu.IFF & IFF_EI)
+    return;
+  if ((m_cpu.IFF & IFF_1) == 0)
+    return;
+
+  MFZ::word vector = m_cpu.IRequest;
+  m_cpu.IRequest = INT_NONE;
+  IntZ80(&m_cpu, vector);
+}
+
 void Z80Emulator::Interrupt(uint16_t vector)
 {
+  // A strobe from inside OUT or IN must be taken after that instruction.
+  // IntZ80 here would push the PC of the instruction still in progress.
+  if (m_inExec) {
+    m_cpu.IRequest = vector;
+    m_cpu.ICount = 0;
+    return;
+  }
   IntZ80(&m_cpu, vector);
 }
 

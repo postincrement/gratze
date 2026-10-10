@@ -12,6 +12,7 @@
 #include "src/options.h"
 #include "src/emuconfig.h"
 #include "video/virtual_screen.h"
+#include "src/status_panel.h"
 #include "devices/fdc.h"
 #include "devices/keyboard.h"
 #include "terminal/terminal.h"
@@ -266,8 +267,14 @@ class Emulator
     virtual uint8_t ReadFromVideo(const ReadMemoryBlockInfo & info, uint16_t addr) const;
     virtual void ChangeVideoColour();
 
+    virtual void RefreshPanelDrives();
+    void CollectFdcDrives(const WD_FDC * fdc);
+    void ArmPollers();
+
     // Floppy/hard drive functions
     virtual bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly);
+
+    void RequestReset();
 
     void SetKeyboard(VirtualKeyboard * keyboard);
 
@@ -296,6 +303,10 @@ class Emulator
     virtual void WriteIOMemoryInternal(const WriteMemoryBlockInfo & info, uint16_t addr, uint8_t data);
 
     const EmulatorInfo * m_info = nullptr;
+    MainWindow * m_mainWindow = nullptr;
+    std::vector<StatusDrive> m_panelDrives;
+    std::map<int, std::string> m_mountedDriveNames;
+    bool m_resetRequested = false;
 
     std::vector<ReadMemoryBlockInfo> m_readMemoryBlocks;
     std::vector<WriteMemoryBlockInfo> m_writeMemoryBlocks;

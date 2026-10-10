@@ -97,7 +97,8 @@ class TRS80Emulator : public Z80Emulator
     void WriteDrvSel(uint16_t, uint8_t val);
     uint8_t ReadDrvSel(uint16_t) const;
 
-    virtual bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly) override;;
+    virtual bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly) override;
+    void RefreshPanelDrives() override;
     void InitFDC();
     uint8_t ReadFDC(uint16_t addr) const;
     void WriteFDC(uint16_t addr, uint8_t val);

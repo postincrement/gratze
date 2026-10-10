@@ -36,6 +36,7 @@ class CPM80_Emulator : public Z80Emulator
     virtual bool Open(const Options & options) override;
 
     virtual void Reset(int addr = -1) override;
+    void RefreshPanelDrives() override;
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;

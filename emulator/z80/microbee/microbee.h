@@ -8,6 +8,9 @@
 #include "devices/keyscan.h"
 #include "devices/synertek6545.h"
 
+#include "starnet/starnet_client.h"
+#include "starnet/starnet_server.h"
+
 extern struct CharacterGeneratorROM g_charGen_mbee64x16;
 extern struct CharacterGeneratorROM g_charGen_mbee80x24;
 
@@ -59,6 +62,7 @@ class MicrobeeDisk_Emulator : public Microbee_Emulator
     bool Open(const Options & options) override;
 
     bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly) override;
+    void RefreshPanelDrives() override;
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
@@ -122,9 +126,32 @@ class Microbee128_BN_Emulator : public Microbee128_BaseEmulator
 {
   public:
     Microbee128_BN_Emulator();
+    Microbee128_BN_Emulator(const EmulatorInfo * info);
+};
+
+class Microbee128_StarnetClient_Emulator : public Microbee128_BN_Emulator
+{
+  public:
+    Microbee128_StarnetClient_Emulator();
+
+    bool Open(const Options & options) override;
+    void Reset(int addr = -1) override;
+    int Exec(int cycles) override;
 
     void OnPIOAWrite(uint8_t data, bool ie);
     uint8_t OnPIOARead();
+    void OnPIOBWrite(uint8_t data, bool ie);
+
+  protected:
+    void WakeReceive();
+
+    enum class RxPhase { Sync, Length, Body };
+
+    StarnetServer m_server;
+    StarnetClient m_client;
+    bool m_transmit = false;
+    RxPhase m_rxPhase = RxPhase::Sync;
+    uint16_t m_bodyLeft = 0;
 };
 
 #endif // DG680_H_

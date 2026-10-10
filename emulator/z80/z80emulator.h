@@ -48,7 +48,10 @@ class Z80Emulator : public Emulator
 
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;
+    void ServicePendingInterrupt();
+
     MFZ::Z80 m_cpu;
+    bool m_inExec = false;
     int m_cpuDelayRepeat;
     uint8_t m_delayBuffer[32];
 };
