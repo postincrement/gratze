@@ -21,6 +21,7 @@
 #include "z80/dg680/dg680.h"
 #include "z80/super80/super80.h"
 #include "z80/microbee/microbee.h"
+#include "z80/kaypro/kaypro.h"
 #include "z80/sorcerer/sorcerer.h"
 #include "z80/cpm80/cpm80.h"
 #include "2650/eti685/eti685.h"
@@ -56,6 +57,7 @@ void Init()
   AddEmulator<Microbee128_Emulator>();
   AddEmulator<Microbee128_BN_Emulator>();
   AddEmulator<Microbee128_StarnetClient_Emulator>();
+  AddEmulator<Kaypro2_Emulator>();
   AddEmulator<Sorcerer_Emulator>();
   AddEmulator<EA78UP5_PIPBUG_110>();
   AddEmulator<EA78UP5_PIPBUG_300>();
@@ -293,6 +295,9 @@ int main(int argc, char *argv[])
       cout << "info: " << options.m_driveFns.size() << " drives specified" << endl;
     options.m_withEI = true;
   }
+
+  if (options.m_shadowBdos)
+    cout << "info: shadowBdos=true (config '" << options.m_envConfigPath << "')" << endl;
 
   if (options.m_verbose) {
     cout << "info: backtrace queue is " << options.m_traceLength << endl;

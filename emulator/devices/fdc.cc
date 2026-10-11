@@ -76,8 +76,8 @@ static WD_FDC::CommandInfo g_commands[] = {
 
   { 0xf4, 0xff, 0,                  "writeTrack", 3, &WD_FDC::WriteTrackCommand },
 
-  { 0xc4, 0xf4, 0,                  "readAddr",   3, 0 },
-  { 0xc0, 0xf4, WD_FDC::eWD1793,    "readaddr",   3, &WD_FDC::ReadAddrCommand_1793 },
+  // WD1793 Read Address is 1100xxxx (e.g. Kaypro uses 0xC4).
+  { 0xc0, 0xf0, WD_FDC::eWD1793,    "readaddr",   3, &WD_FDC::ReadAddrCommand_1793 },
 
   { 0xe4, 0xfe, 0,                  "readTrack",  3, 0 },
 
@@ -704,20 +704,20 @@ int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
     if (m_debug)
       cerr << "FDC: read addr, track=" << dec << (int)m_realTrack << endl;
     m_bufferPtr = 0;
-    m_bufferLen = 4;
+    // ID field: track, side, sector, length, CRC lo, CRC hi.
+    m_bufferLen = 6;
     m_reading   = true;
-
-    Emulator::GetInstance()->DisplayTraceInfo();
 
     m_buffer[0] = m_realTrack;
-    m_buffer[1] = m_side;
+    m_buffer[1] = (uint8_t)(m_side ? 1 : 0);
     m_buffer[2] = 1;
-    m_buffer[3] = 2;
+    m_buffer[3] = 2; // 512-byte sectors
+    m_buffer[4] = 0;
+    m_buffer[5] = 0;
 
-    m_readWriteTimer = std::chrono::system_clock::now() 
+    m_readWriteTimer = std::chrono::system_clock::now()
                      + std::chrono::microseconds(MAX_DRQ_TIME_US);
-    m_lostData = 0;          
-    m_reading   = true;
+    m_lostData = 0;
     m_status |= STATUS_DRQ;
   }
   return 0;

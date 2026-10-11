@@ -293,6 +293,96 @@ void Z80Emulator::OnPatchZ80(MFZ::Z80 *R)
   (void)R;
 }
 
+bool Z80Emulator::InShadowWindow(uint16_t addr) const
+{
+  return m_shadowActive && addr >= m_shadowBase && addr < m_shadowEnd;
+}
+
+bool Z80Emulator::PcInShadow() const
+{
+  return InShadowWindow(m_cpu.PC.W);
+}
+
+void Z80Emulator::SetShadowBdos(uint16_t base, const std::vector<uint8_t> & image)
+{
+  m_shadowBase = base;
+  m_shadowEnd = (uint16_t)(base + image.size());
+  m_shadowRam = image;
+  m_shadowActive = !image.empty();
+}
+
+void Z80Emulator::ClearShadowBdos()
+{
+  m_shadowActive = false;
+  m_shadowBase = 0;
+  m_shadowEnd = 0;
+  m_shadowRam.clear();
+  ClearInterceptorOverlay();
+}
+
+void Z80Emulator::SetInterceptorOverlay(uint16_t start, uint16_t end)
+{
+  m_overlayStart = start;
+  m_overlayEnd = end;
+  m_overlayActive = end > start;
+}
+
+void Z80Emulator::ClearInterceptorOverlay()
+{
+  m_overlayActive = false;
+  m_overlayStart = 0;
+  m_overlayEnd = 0;
+}
+
+bool Z80Emulator::InInterceptorOverlay(uint16_t addr) const
+{
+  return m_overlayActive && addr >= m_overlayStart && addr < m_overlayEnd;
+}
+
+void Z80Emulator::WriteShadowByte(uint16_t addr, uint8_t data)
+{
+  if (!m_shadowActive || !InShadowWindow(addr))
+    return;
+  m_shadowRam[addr - m_shadowBase] = data;
+}
+
+uint8_t Z80Emulator::CpuFetchMemory(uint16_t addr) const
+{
+  if (InShadowWindow(addr))
+    return m_shadowRam[addr - m_shadowBase];
+  return ReadMemory(addr);
+}
+
+uint8_t Z80Emulator::CpuReadMemory(uint16_t addr) const
+{
+  // Shadow BDOS window:
+  //   TPA/CCP (PC < base)  → main (interceptor DPH/DPB/ALV)
+  //   Overlay range        → main (guest BDOS reading our DPH after SELDSK)
+  //   BDOS or BIOS         → shadow (guest BDOS working state)
+  // BIOS lives above the window but still reads/writes BDOS variables.
+  if (InShadowWindow(addr)) {
+    if (InInterceptorOverlay(addr) || m_cpu.PC.W < m_shadowBase)
+      return ReadMemory(addr);
+    return m_shadowRam[addr - m_shadowBase];
+  }
+  return ReadMemory(addr);
+}
+
+void Z80Emulator::CpuWriteMemory(uint16_t addr, uint8_t data)
+{
+  if (InShadowWindow(addr)) {
+    // Keep interceptor tables coherent in main when guest/BIOS writes the
+    // overlay (e.g. copying DIRBUF); otherwise guest BDOS state stays in shadow.
+    if (InInterceptorOverlay(addr) || m_cpu.PC.W < m_shadowBase) {
+      WriteMemory(addr, data);
+      return;
+    }
+    m_shadowRam[addr - m_shadowBase] = data;
+    return;
+  }
+  WriteMemory(addr, data);
+}
+
 extern "C"
 {
   void PatchZ80(register MFZ::Z80 *R)
@@ -309,12 +399,18 @@ extern "C"
 
   void WrZ80(register MFZ::word Addr, register MFZ::byte Value)
   {
-    Z80Emulator::g_z80Instance->WriteMemory(Addr, Value);
+    Z80Emulator::g_z80Instance->CpuWriteMemory(Addr, Value);
   }
 
   MFZ::byte RdZ80(register MFZ::word Addr)
   {
-    return Z80Emulator::g_z80Instance->ReadMemory(Addr);
+    return Z80Emulator::g_z80Instance->CpuReadMemory(Addr);
+  }
+
+  // FAST_RDOP: instruction fetch (and MFZ stack pops via OpZ80).
+  MFZ::byte OpZ80(register MFZ::word Addr)
+  {
+    return Z80Emulator::g_z80Instance->CpuFetchMemory(Addr);
   }
 
   void OutZ80(register MFZ::word Port, register MFZ::byte Value)

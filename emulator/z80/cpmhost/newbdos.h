@@ -13,6 +13,11 @@
 #include "cpm_drive.h"
 #include "z80/cpmhost/cpmhost.h"
 
+// Shared CP/M BDOS implementation used as:
+//   Emulated BDOS  — cpm80 (dir + image, full Boot/CCP path)
+//   Interceptor BDOS — shadowBdos mode (dir drives only; see SetInjected)
+//
+// Host-directory drive logic (CpmDrive eHost + file ops below) is common to both.
 struct NewBDOS
 {
   explicit NewBDOS(cpmhost::Host & host);
@@ -96,6 +101,24 @@ struct NewBDOS
   void BuildImageRecords(int drive, const uint8_t * entry, FileInfo & info);
   void ReadImageRecord(FileInfo & info, int code, off_t offs);
 
+  // Interceptor BDOS mode (shadowBdos): dir drives only; DPB/ALV in main;
+  // warm-boot / console pass through to guest via shadow BDOS / BIOS.
+  void SetInjected(bool v) { m_injected = v; }
+  void SetWorkspace(uint16_t dphAddr, uint16_t dpbAddr, uint16_t dirBufAddr,
+                    uint16_t alvAddr, uint16_t alvMax);
+  void SetGuestWarmBoot(uint16_t addr) { m_guestWarmBoot = addr; }
+  void SetBiosConsole(uint16_t biosConst, uint16_t biosConin, uint16_t biosConout);
+  bool IsDirectoryDrive(int drive) const;
+  void PublishDPH(int drive);
+  void LogStartup();
+
+  uint8_t MemRd(uint16_t addr) const;
+  void MemWr(uint16_t addr, uint8_t data);
+  void MemRdBlock(uint16_t addr, uint8_t * dest, size_t n) const;
+  void MemWrBlock(uint16_t addr, const uint8_t * src, size_t n);
+  void MirrorIn(uint16_t addr, size_t n);
+  void MirrorOut(uint16_t addr, size_t n);
+
   cpmhost::Host & m_host;
   MFZ::Z80 & m_cpu;
   uint16_t m_dmaAddress;
@@ -104,11 +127,23 @@ struct NewBDOS
   uint8_t m_userCode;
   uint8_t m_currDisk;
   uint8_t * m_memory;
+  std::vector<uint8_t> m_scratch;
+  bool m_useScratch = false;
   int m_findIndex;
   int m_nextFileId = 0x40000000;
   uint16_t m_login = 0;
   uint16_t m_readOnly = 0;
   bool m_loadFileDone = false;
+  bool m_injected = false;
+  uint16_t m_dphAddr = 0;
+  uint16_t m_dpbAddr = 0xff80;
+  uint16_t m_dirBufAddr = 0;
+  uint16_t m_alvAddr = 0;
+  uint16_t m_alvMax = 0;
+  uint16_t m_guestWarmBoot = 0;
+  uint16_t m_biosConst = 0;
+  uint16_t m_biosConin = 0;
+  uint16_t m_biosConout = 0;
   std::ofstream m_debug;
 
   CpmDriveSet m_drives;

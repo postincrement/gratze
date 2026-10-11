@@ -99,6 +99,9 @@ struct Options
 
   // Path of the environment config that was loaded, if any.
   std::string m_envConfigPath;
+
+  // Inject host NewBDOS via shadow BDOS bank (stock guest CCP/BIOS).
+  bool m_shadowBdos = false;
 };
 
 // Parse a drive suffix ("a"/"A" or "0") into 0–15. Returns false on error.

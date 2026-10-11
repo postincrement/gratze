@@ -10,6 +10,13 @@
 //
 // Shared CP/M host support for Z80 emulators.
 //
+// BDOS naming:
+//   Emulated BDOS   — cpm80: full NewBDOS in guest RAM (dir + image)
+//   Interceptor BDOS — shadowBdos mode, main memory: trap + DPB/ALV (dir only)
+//   Shadow BDOS     — shadowBdos mode, shadow RAM: guest BDOS copy (images/etc.)
+//
+// Emulated and interceptor BDOS share NewBDOS/CpmDrive for host-directory drives.
+//
 // Guest code traps into the host with the undocumented Z80 opcode ED FE
 // (handled by MFZ PatchZ80). The function code is in C; values use A:
 //
@@ -23,7 +30,7 @@
 // BIOS traps preserve BC (and CONOUT also preserves AF). BDOS traps follow
 // normal CP/M return conventions (A / HL / BA).
 //
-// Memory layout constants must match newbdos.asm.
+// Memory layout constants must match newbdos.asm (emulated BDOS image).
 //
 
 #define CPMHOST_MEM      64
@@ -56,7 +63,10 @@ class Host
     virtual ~Host() = default;
 
     virtual MFZ::Z80 & Cpu() = 0;
+    // Flat 64K pointer when available (cpm80). Null for banked machines —
+    // NewBDOS then uses ReadMem/WriteMem.
     virtual uint8_t * Memory() = 0;
+    virtual uint8_t ReadMem(uint16_t addr) = 0;
     virtual void ConsoleOut(char ch) = 0;
     virtual int ConsoleIn() = 0;          // next char, or -1 if none
     virtual bool ConsoleStatus() = 0;     // true if a char is waiting
@@ -64,6 +74,13 @@ class Host
     virtual void WriteMemory(uint16_t addr, uint8_t data) = 0;
     virtual bool LoadFile(const std::string & path) = 0;
     virtual const Options & GetOptions() const = 0;
+
+    // Nested Z80 call into guest code (e.g. BIOS CONOUT). Default: unsupported.
+    virtual bool CallGuest(uint16_t addr) { (void)addr; return false; }
+
+    // CP/M TDRIVE at 0004. Banked machines must update every alias of page 0.
+    virtual void SetTDrive(uint8_t value) { WriteMemory(4, value); }
+    virtual uint8_t GetTDrive() { return ReadMem(4); }
 };
 
 } // namespace cpmhost

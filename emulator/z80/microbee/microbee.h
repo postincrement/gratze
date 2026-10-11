@@ -1,8 +1,12 @@
 #ifndef MICROBEE_H_
 #define MICROBEE_H_
 
+#include <memory>
+
 #include "common/config.h"
 #include "z80/z80emulator.h"
+#include "z80/cpmhost/cpmhost.h"
+#include "z80/cpmhost/shadow_bdos.h"
 #include "src/options.h"
 #include "devices/z80pio.h"
 #include "devices/keyscan.h"
@@ -53,12 +57,14 @@ class Microbee_Emulator : public Z80Emulator
     MicrobeeVideo * m_video; 
 };
 
-class MicrobeeDisk_Emulator : public Microbee_Emulator
+class MicrobeeDisk_Emulator : public Microbee_Emulator, public cpmhost::Host
 {
   public:
     MicrobeeDisk_Emulator(const EmulatorInfo * info);
 
     bool Open(const Options & options) override;
+    int Exec(int cycles) override;
+    void OnPatchZ80(MFZ::Z80 *R) override;
 
     bool MountDrive(int driveNum, std::shared_ptr<VirtualDrive> drive, bool readOnly) override;
     void RefreshPanelDrives() override;
@@ -66,8 +72,24 @@ class MicrobeeDisk_Emulator : public Microbee_Emulator
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t) override;
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
+    // cpmhost::Host
+    MFZ::Z80 & Cpu() override;
+    uint8_t * Memory() override;
+    uint8_t ReadMem(uint16_t addr) override;
+    void ConsoleOut(char ch) override;
+    int ConsoleIn() override;
+    bool ConsoleStatus() override;
+    void RunPollers() override;
+    void WriteMemory(uint16_t addr, uint8_t data) override;
+    bool LoadFile(const std::string & path) override;
+    const Options & GetOptions() const override;
+    bool CallGuest(uint16_t addr) override;
+    void SetTDrive(uint8_t value) override;
+    uint8_t GetTDrive() override;
+
   protected:  
     mutable std::unique_ptr<WD_FDC> m_fdc;
+    std::unique_ptr<cpmhost::ShadowBdos> m_shadowBdos;
     int m_drive    = 0x00;
     bool m_side    = false;
     bool m_density = false;
@@ -104,6 +126,10 @@ class Microbee128_BaseEmulator : public MicrobeeDisk_Emulator
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data) override;
 
     virtual void SetBankSel(uint8_t data);
+
+    // Page 0 lives in whichever lower bank is mapped; keep TDRIVE coherent.
+    void SetTDrive(uint8_t value) override;
+    uint8_t GetTDrive() override;
 
   protected:
     uint8_t m_bankedMemory[4][0x8000];

@@ -72,12 +72,15 @@ add_executable(gratze
   z80/trs80/model4/model4.cc
   z80/microbee/microbee.cc
   z80/microbee/mbee_font.cc
+  z80/kaypro/kaypro.cc
+  z80/kaypro/kaypro_font.cc
   z80/sorcerer/sorcerer.cc
   z80/sorcerer/chargen_sorcerer.cc
   z80/dg680/dg680.cc
   z80/super80/super80.cc
   z80/cpm80/cpm80.cc
   z80/cpmhost/newbdos.cc
+  z80/cpmhost/shadow_bdos.cc
   2650/2650emulator.cc
   2650/cpu_2650.cc
   2650/eti685/eti685.cc
@@ -91,6 +94,7 @@ add_executable(gratze
   z80/microbee/rom_disk56.c
   z80/microbee/rom_disk128.c
   z80/microbee/rom_bn5443.c
+  z80/kaypro/rom_81_232.c
   z80/microbee/starnet/starnet_client.cc
   z80/sorcerer/rom_sorcerer.c
   z80/mfz80/Z80.c
@@ -109,7 +113,7 @@ target_include_directories(gratze PRIVATE
   ${GRATZE_GEN_INCLUDE}
 )
 
-target_compile_definitions(gratze PRIVATE EXECZ80)
+target_compile_definitions(gratze PRIVATE EXECZ80 FAST_RDOP)
 
 if(CMAKE_CXX_BYTE_ORDER STREQUAL "BIG_ENDIAN")
   target_compile_definitions(gratze PRIVATE MSB_FIRST)
@@ -125,6 +129,10 @@ endif()
 
 if(APPLE)
   target_sources(gratze PRIVATE src/mainwindow_mac.mm)
+  target_link_libraries(gratze PRIVATE
+    "-framework Cocoa"
+    "-framework AppKit"
+    "-framework ApplicationServices")
 endif()
 
 target_link_libraries(gratze PRIVATE

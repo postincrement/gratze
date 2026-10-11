@@ -5,7 +5,9 @@
 #include <functional>
 
 #include "common/misc.h"
+#include "diskdef.h"
 #include "z80/microbee/microbee.h"
+#include "z80/cpmhost/newbdos.h"
 #include "devices/z80pio.h"
 #include "devices/keyscan.h"
 #include "video/dg640.h"
@@ -649,6 +651,39 @@ bool MicrobeeDisk_Emulator::MountDrive(int driveNum, std::shared_ptr<VirtualDriv
 
 void MicrobeeDisk_Emulator::RefreshPanelDrives()
 {
+  if (m_shadowBdos && m_shadowBdos->Interceptor()) {
+    m_panelDrives.clear();
+    // Show interceptor (dir) mounts plus FDC image drives.
+    NewBDOS * interceptor = m_shadowBdos->Interceptor();
+    for (int drive = 0; drive < 16; ++drive) {
+      const CpmDrive & slot = interceptor->m_drives[drive];
+      auto mount = m_options.m_drives.find((unsigned)drive);
+      bool isDir = interceptor->IsDirectoryDrive(drive);
+      bool isImage = mount != m_options.m_drives.end()
+                  && mount->second.m_kind == DriveMount::Kind::eImage;
+      if (!isDir && !isImage)
+        continue;
+      StatusDrive status;
+      status.m_label.assign(1, (char)('A' + drive));
+      if (mount != m_options.m_drives.end() && !mount->second.m_label.empty())
+        status.m_name = mount->second.m_label;
+      else if (isDir) {
+        std::string path = slot.m_path.empty() ? "." : slot.m_path;
+        auto slash = path.find_last_of("/\\");
+        status.m_name = (slash == std::string::npos) ? path : path.substr(slash + 1);
+      }
+      else {
+        status.m_name = mount->second.m_path;
+        auto slash = status.m_name.find_last_of("/\\");
+        if (slash != std::string::npos)
+          status.m_name = status.m_name.substr(slash + 1);
+      }
+      status.m_mounted = true;
+      status.m_selected = (interceptor->m_currDisk == drive);
+      m_panelDrives.push_back(status);
+    }
+    return;
+  }
   CollectFdcDrives(m_fdc.get());
 }
 
@@ -659,6 +694,148 @@ bool MicrobeeDisk_Emulator::Open(const Options & options)
 
   m_fdc.reset(new WD_FD1793(options.m_fdcDebug));
 
+  if (options.m_shadowBdos) {
+    cerr << "info: enabling shadowBdos (interceptor + shadow BDOS)" << endl;
+    std::string driveError;
+    if (!CheckCpmDrives(options.m_cpmDrives, driveError)) {
+      cerr << "error: " << driveError << endl;
+      return false;
+    }
+    cerr << "info: cpm host drives:";
+    if (options.m_cpmDrives.empty())
+      cerr << " (none)";
+    for (const auto & spec : options.m_cpmDrives)
+      cerr << " [" << spec << "]";
+    cerr << endl;
+    m_shadowBdos.reset(new cpmhost::ShadowBdos(*this, *this));
+    if (!m_shadowBdos->Init())
+      return false;
+  }
+
+  return true;
+}
+
+int MicrobeeDisk_Emulator::Exec(int cycles)
+{
+  if (!m_shadowBdos)
+    return Microbee_Emulator::Exec(cycles);
+
+  if (!m_shadowBdos->Armed()) {
+    // Poll page-0 between short bursts until CP/M vectors appear.
+    int done = 0;
+    while (done < cycles && !m_shadowBdos->Armed()) {
+      m_shadowBdos->Poll();
+      if (m_shadowBdos->Armed())
+        break;
+      int chunk = cycles - done;
+      if (chunk > 32)
+        chunk = 32;
+      int left = Microbee_Emulator::Exec(chunk);
+      int ran = chunk - left;
+      if (ran < 1)
+        ran = 1;
+      done += ran;
+    }
+    if (m_shadowBdos->Armed() && done < cycles)
+      return Microbee_Emulator::Exec(cycles - done);
+    return cycles - done;
+  }
+
+  return Microbee_Emulator::Exec(cycles);
+}
+
+void MicrobeeDisk_Emulator::OnPatchZ80(MFZ::Z80 *R)
+{
+  if (m_shadowBdos)
+    m_shadowBdos->OnPatchZ80(R);
+  else
+    Z80Emulator::OnPatchZ80(R);
+}
+
+MFZ::Z80 & MicrobeeDisk_Emulator::Cpu()
+{
+  return m_cpu;
+}
+
+uint8_t * MicrobeeDisk_Emulator::Memory()
+{
+  // Banked RAM — NewBDOS uses ReadMem/WriteMemory + scratch mirror.
+  return nullptr;
+}
+
+uint8_t MicrobeeDisk_Emulator::ReadMem(uint16_t addr)
+{
+  return Emulator::ReadMemory(addr);
+}
+
+void MicrobeeDisk_Emulator::ConsoleOut(char ch)
+{
+  (void)ch;
+}
+
+int MicrobeeDisk_Emulator::ConsoleIn()
+{
+  return -1;
+}
+
+bool MicrobeeDisk_Emulator::ConsoleStatus()
+{
+  return false;
+}
+
+void MicrobeeDisk_Emulator::RunPollers()
+{
+  if (m_shadowBdos && !m_shadowBdos->Armed())
+    m_shadowBdos->Poll();
+  Emulator::RunPollers();
+}
+
+void MicrobeeDisk_Emulator::WriteMemory(uint16_t addr, uint8_t data)
+{
+  Emulator::WriteMemory(addr, data);
+}
+
+void MicrobeeDisk_Emulator::SetTDrive(uint8_t value)
+{
+  Emulator::WriteMemory(4, value);
+}
+
+uint8_t MicrobeeDisk_Emulator::GetTDrive()
+{
+  return Emulator::ReadMemory(4);
+}
+
+bool MicrobeeDisk_Emulator::LoadFile(const std::string & path)
+{
+  return Emulator::LoadFile(path);
+}
+
+const Options & MicrobeeDisk_Emulator::GetOptions() const
+{
+  return m_options;
+}
+
+bool MicrobeeDisk_Emulator::CallGuest(uint16_t addr)
+{
+  // Nested CALL: push a return marker by watching SP restore after RET.
+  uint16_t savedSP = m_cpu.SP.W;
+  uint16_t savedPC = m_cpu.PC.W;
+  uint16_t sp = (uint16_t)(savedSP - 2);
+  Emulator::WriteMemory(sp, (uint8_t)(savedPC & 0xff));
+  Emulator::WriteMemory((uint16_t)(sp + 1), (uint8_t)(savedPC >> 8));
+  m_cpu.SP.W = sp;
+  m_cpu.PC.W = addr;
+
+  int guard = 2000000;
+  while (m_cpu.SP.W != savedSP && --guard > 0)
+    ExecZ80(&m_cpu, 1);
+
+  if (guard <= 0) {
+    cerr << "error: shadowBdos CallGuest timed out at " << HEXFORMAT0x4(addr) << endl;
+    m_cpu.SP.W = savedSP;
+    m_cpu.PC.W = savedPC;
+    return false;
+  }
   return true;
 }
 
@@ -852,6 +1029,23 @@ static int g_bankMap[4] = {
   2,    // 10 -> bank 1, lower ??
   3,    // 11 -> bank 1, upper
 };
+
+void Microbee128_BaseEmulator::SetTDrive(uint8_t value)
+{
+  // CP/M page 0 must stay consistent across bank switches — guest BDOS reads
+  // TDRIVE after SELDSK/bank I/O, and a stale "B" here causes Bdos Err On B:.
+  for (int bank = 0; bank < 4; ++bank)
+    m_bankedMemory[bank][4] = value;
+  Emulator::WriteMemory(4, value);
+}
+
+uint8_t Microbee128_BaseEmulator::GetTDrive()
+{
+  // Prefer the currently mapped lower bank (what the CPU sees).
+  if (m_currentLowerBank)
+    return m_currentLowerBank[4];
+  return m_bankedMemory[0][4];
+}
 
 void Microbee128_BaseEmulator::SetBankSel(uint8_t data)
 {

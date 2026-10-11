@@ -4,9 +4,10 @@
 #include <SDL.h>
 #include <SDL_syswm.h>
 
-// macOS 14 and later ignore SDL_RaiseWindow for a process started from a
-// terminal. Mark this process as a foreground application and order its
-// window in front.
+// Fallback for when SDL's launch-time activation is skipped (e.g. window
+// created later). orderFrontRegardless can show the window above others even
+// if cooperative activation refuses to make us key.
+
 extern "C" bool MacUsableDisplaySize(int * width, int * height)
 {
   if ((width == nullptr) || (height == nullptr))
@@ -36,11 +37,19 @@ void RaiseMacWindow(SDL_Window * window)
 
   if (@available(macOS 14.0, *))
     [app activate];
-  else
+  else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [app activateIgnoringOtherApps:YES];
+#pragma clang diagnostic pop
+  }
 
   SDL_SysWMinfo info;
   SDL_VERSION(&info.version);
-  if (SDL_GetWindowWMInfo(window, &info) && (info.subsystem == SDL_SYSWM_COCOA))
-    [info.info.cocoa.window makeKeyAndOrderFront:nil];
+  if (SDL_GetWindowWMInfo(window, &info) && (info.subsystem == SDL_SYSWM_COCOA)) {
+    NSWindow * nsWindow = info.info.cocoa.window;
+    [nsWindow deminiaturize:nil];
+    [nsWindow makeKeyAndOrderFront:nil];
+    [nsWindow orderFrontRegardless];
+  }
 }

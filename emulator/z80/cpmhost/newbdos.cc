@@ -251,12 +251,120 @@ NewBDOS::NewBDOS(cpmhost::Host & host)
   , m_dmaAddress(0x80)
 {
   m_memory = m_host.Memory();
+  if (!m_memory) {
+    m_scratch.assign(0x10000, 0);
+    m_memory = m_scratch.data();
+    m_useScratch = true;
+  }
   m_nextFileId = 0x40000000;
-
-  m_debug.open("bdos_debug.txt", std::ofstream::out | std::ofstream::trunc);
 
   if (!ConfigureDrives())
     exit(1);
+}
+
+static std::string ParentDir(const std::string & path)
+{
+  auto pos = path.find_last_of("/\\");
+  if (pos == std::string::npos)
+    return ".";
+  if (pos == 0)
+    return "/";
+  return path.substr(0, pos);
+}
+
+void NewBDOS::LogStartup()
+{
+  std::string logPath = "bdos_debug.txt";
+  const std::string & cfg = m_host.GetOptions().m_envConfigPath;
+  if (!cfg.empty())
+    logPath = ParentDir(cfg) + "/bdos_debug.txt";
+
+  m_debug.open(logPath.c_str(), std::ofstream::out | std::ofstream::trunc);
+  if (!m_debug) {
+    cerr << "error: cannot open BDOS debug log '" << logPath << "'" << endl;
+    logPath = "/tmp/gratze_bdos_debug.txt";
+    m_debug.open(logPath.c_str(), std::ofstream::out | std::ofstream::trunc);
+  }
+  cerr << "info: BDOS debug log: " << logPath << endl;
+
+  m_debug << "NewBDOS start injected=" << (m_injected ? "true" : "false") << endl;
+  m_debug << "shadowBdos option=" << (m_host.GetOptions().m_shadowBdos ? "true" : "false") << endl;
+  m_debug << "type=" << m_host.GetOptions().m_typeName << endl;
+  for (int d = 0; d < 16; ++d) {
+    if (m_drives[d].m_configured)
+      m_debug << "drive " << (char)('A' + d) << " kind="
+              << (m_drives[d].m_kind == CpmDrive::Kind::eHost ? "dir" : "image")
+              << " path=" << m_drives[d].m_path << endl;
+  }
+  m_debug.flush();
+}
+
+
+void NewBDOS::SetWorkspace(uint16_t dphAddr, uint16_t dpbAddr, uint16_t dirBufAddr,
+                           uint16_t alvAddr, uint16_t alvMax)
+{
+  m_dphAddr = dphAddr;
+  m_dpbAddr = dpbAddr;
+  m_dirBufAddr = dirBufAddr;
+  m_alvAddr = alvAddr;
+  m_alvMax = alvMax;
+}
+
+bool NewBDOS::IsDirectoryDrive(int drive) const
+{
+  if (drive < 0 || drive > 15)
+    return false;
+  const CpmDrive & slot = m_drives[drive];
+  return slot.m_configured && slot.m_kind == CpmDrive::Kind::eHost;
+}
+
+void NewBDOS::SetBiosConsole(uint16_t biosConst, uint16_t biosConin, uint16_t biosConout)
+{
+  m_biosConst = biosConst;
+  m_biosConin = biosConin;
+  m_biosConout = biosConout;
+}
+
+uint8_t NewBDOS::MemRd(uint16_t addr) const
+{
+  if (m_useScratch)
+    return m_host.ReadMem(addr);
+  return m_memory[addr];
+}
+
+void NewBDOS::MemWr(uint16_t addr, uint8_t data)
+{
+  m_memory[addr] = data;
+  if (m_useScratch)
+    m_host.WriteMemory(addr, data);
+}
+
+void NewBDOS::MemRdBlock(uint16_t addr, uint8_t * dest, size_t n) const
+{
+  for (size_t i = 0; i < n; ++i)
+    dest[i] = MemRd((uint16_t)(addr + i));
+}
+
+void NewBDOS::MemWrBlock(uint16_t addr, const uint8_t * src, size_t n)
+{
+  for (size_t i = 0; i < n; ++i)
+    MemWr((uint16_t)(addr + i), src[i]);
+}
+
+void NewBDOS::MirrorIn(uint16_t addr, size_t n)
+{
+  if (!m_useScratch)
+    return;
+  for (size_t i = 0; i < n; ++i)
+    m_memory[(uint16_t)(addr + i)] = m_host.ReadMem((uint16_t)(addr + i));
+}
+
+void NewBDOS::MirrorOut(uint16_t addr, size_t n)
+{
+  if (!m_useScratch)
+    return;
+  for (size_t i = 0; i < n; ++i)
+    m_host.WriteMemory((uint16_t)(addr + i), m_memory[(uint16_t)(addr + i)]);
 }
 
 NewBDOS::~NewBDOS()
@@ -303,29 +411,56 @@ void NewBDOS::OnTrap(uint8_t code)
 
 void NewBDOS::OnBDOSCommand(uint8_t code)
 {
-  if (code == 0xff) {
-    //m_debug << "BDOS " << code << "0xff" << endl;
-    Boot();
-    return;
-  }
-  if (code == 0xfe) {
-    CcpCommand();
-    return;
-  }
-  if (code >= sizeof(NewBDOSCommands)/sizeof(NewBDOSCommands[0])) {
-    m_debug << "BDOS " << code << ": not handled" << endl;
-    m_cpu.AF.B.h = 0;
-    return;
+  if (m_useScratch) {
+    MirrorIn(0x0000, 0x100);
+    MirrorIn(m_cpu.DE.W, 36);
+    MirrorIn(m_dmaAddress, 128);
   }
 
-  Function func = NewBDOSCommands[code];
-  if (func == NULL) {
+  if (code == 0xff) {
+    Boot();
+  }
+  else if (code == 0xfe) {
+    if (m_injected) {
+      // Guest CCP owns command parsing; host CCP extensions are cpm80-only.
+      m_cpu.AF.B.h = 0;
+    }
+    else {
+      CcpCommand();
+    }
+  }
+  else if (code >= sizeof(NewBDOSCommands)/sizeof(NewBDOSCommands[0])) {
+    m_debug << "BDOS " << (int)code << ": not handled" << endl;
     m_cpu.AF.B.h = 0;
-    m_debug << "BDOS " << dec << code << ": NULL handler" << endl;
   }
   else {
-    m_debug << "BDOS " << dec << code << " called" << endl;
-    (this->*func)();
+    Function func = NewBDOSCommands[code];
+    if (func == NULL) {
+      m_cpu.AF.B.h = 0;
+      m_debug << "BDOS " << (int)code << ": NULL handler" << endl;
+    }
+    else {
+      m_debug << "BDOS " << (int)code << " called" << endl;
+      (this->*func)();
+    }
+  }
+
+  if (m_useScratch) {
+    MirrorOut(0x0000, 0x100);
+    MirrorOut(m_cpu.DE.W, 36);
+    MirrorOut(m_dmaAddress, 128);
+    // MirrorOut restores pre-call TDRIVE from scratch. Under shadowBdos the
+    // guest must not see a host-directory unit there (FDC select → Select err).
+    if (m_injected && IsDirectoryDrive(m_currDisk)) {
+      int image = 0;
+      for (int d = 0; d < 16; ++d) {
+        if (!IsDirectoryDrive(d)) {
+          image = d;
+          break;
+        }
+      }
+      m_host.SetTDrive((uint8_t)((m_host.GetTDrive() & 0xf0) | (image & 0x0f)));
+    }
   }
 }
 
@@ -1025,6 +1160,15 @@ void NewBDOS::CcpCommand()
 void NewBDOS::SystemReset()
 {
   m_debug << "BDOS 0: system reset" << endl;
+  if (m_injected) {
+    ClearHostCaches();
+    m_fileMap.clear();
+    m_dmaAddress = 0x0080;
+    // Jump to guest warm boot; skip stub RET by leaving PC here.
+    m_cpu.PC.W = m_guestWarmBoot ? m_guestWarmBoot : m_cpu.PC.W;
+    return;
+  }
+
   if (m_host.GetOptions().m_arg.empty()) {
     PrintCPMString(ColdBootTitle);
     stringstream strm;
@@ -1046,23 +1190,32 @@ void NewBDOS::Boot()
 {
   m_debug << "booting" << endl;
 
+  if (m_injected) {
+    // Warm-boot trap from guest BIOS path, or BDOS 0xff.
+    ClearHostCaches();
+    m_fileMap.clear();
+    m_dmaAddress = 0x0080;
+    m_cpu.PC.W = m_guestWarmBoot ? m_guestWarmBoot : m_cpu.PC.W;
+    return;
+  }
+
   // Warm boot passes logged drive/user in A; cold boot sets A = 0.
   uint8_t logged = m_cpu.AF.B.h;
 
   m_fileMap.clear();
 
-  memset(m_memory, 0, 0x100);
-  m_memory[4] = logged;
+  for (uint16_t i = 0; i < 0x100; ++i) MemWr(i, 0);
+  MemWr(4, logged);
 
   // set warm boot vector at 0x0000 to BIOS + 3
-  m_memory[0x0000] = 0xc3;
-  m_memory[0x0001] = (BIOS + 3) & 0xff;
-  m_memory[0x0002] = ((BIOS + 3) >> 8) & 0xff;
+  MemWr(0x0000, 0xc3);
+  MemWr(0x0001, (BIOS + 3) & 0xff);
+  MemWr(0x0002, ((BIOS + 3) >> 8) & 0xff);
 
   // set BDOS jump vector at 0x0005 to BDOS + 0
-  m_memory[0x0005] = 0xc3;
-  m_memory[0x0006] = BDOS & 0xff;
-  m_memory[0x0007] = (BDOS >> 8) & 0xff;
+  MemWr(0x0005, 0xc3);
+  MemWr(0x0006, BDOS & 0xff);
+  MemWr(0x0007, (BDOS >> 8) & 0xff);
 
   // start running CCP, with the preserved drive in C
   m_dmaAddress        = 0x0080;
@@ -1071,7 +1224,7 @@ void NewBDOS::Boot()
   m_cpu.PC.W   = CCPB;
 
   // copy the BIOS/BDOS etc
-  memcpy(m_memory + CCPB, z80_cpmhost_newbdos_bin, z80_cpmhost_newbdos_bin_len);
+  MemWrBlock(CCPB, z80_cpmhost_newbdos_bin, z80_cpmhost_newbdos_bin_len);
 
   // if no load file, nothing to do
   if (m_host.GetOptions().m_arg.empty()) {
@@ -1126,8 +1279,8 @@ void NewBDOS::Boot()
       cpm = ShortenFilename(filename);
       m_debug << "warning: filename '" << filename << "' does not map to native file - using '" << cpm << "'" << endl;
     }
-    m_memory[fcbOffs] = 1;
-    memcpy(m_memory+fcbOffs+1, cpm.c_str(), 8+3);
+    MemWr(fcbOffs, 1);
+    MemWrBlock(fcbOffs+1, reinterpret_cast<const uint8_t *>(cpm.c_str()), 8+3);
     fcbOffs += 16;
 
     std::string argName(cpm.substr(0, 8));
@@ -1154,8 +1307,8 @@ void NewBDOS::Boot()
   }
 
   if (cmdLine.length() > 0) {
-    m_memory[0x80] = cmdLine.length();
-    memcpy(m_memory+0x81, cmdLine.c_str(), cmdLine.length());
+    MemWr(0x80, cmdLine.length());
+    MemWrBlock(0x81, reinterpret_cast<const uint8_t *>(cmdLine.c_str()), cmdLine.length());
   }
 
   m_debug << "info: cmdline = " << cmdLine << endl;
@@ -1166,20 +1319,22 @@ void NewBDOS::Boot()
 void NewBDOS::ConsoleInput()
 {
   m_debug << "BDOS 1: console input" << endl;
+  if (m_injected && m_biosConin) {
+    // BIOS CONIN returns char in A; RET to CALL 5 caller.
+    m_cpu.PC.W = m_biosConin;
+    return;
+  }
   m_cpu.AF.B.h = m_host.ConsoleIn();
 }
 
 void NewBDOS::ConsoleOutput()
 {
   int ch = m_cpu.DE.B.l;
-/*
-  m_debug << "BDOS 2: console output '";
-  if (ch < 0x20)
-    m_debug << "^" << (char)(ch + 0x40);
-  else
-    m_debug << (char)ch;
-  m_debug << "'" << endl;
-*/  
+  if (m_injected && m_biosConout) {
+    m_cpu.BC.B.l = (uint8_t)ch;
+    m_cpu.PC.W = m_biosConout;
+    return;
+  }
   m_host.ConsoleOut(ch);
 }
 
@@ -1191,10 +1346,23 @@ void NewBDOS::ConsoleDirect()
     m_debug << "output ";
     DebugOutputChar(m_debug, ch);
     m_debug << endl;
+    if (m_injected && m_biosConout) {
+      m_cpu.BC.B.l = ch;
+      m_cpu.PC.W = m_biosConout;
+      return;
+    }
     m_host.ConsoleOut(ch);
   }
   else {
     m_debug << "input " << endl;
+    if (m_injected && m_biosConst && m_biosConin) {
+      if (!m_host.CallGuest(m_biosConst) || m_cpu.AF.B.h == 0) {
+        m_cpu.AF.B.h = 0x00;
+        return;
+      }
+      m_host.CallGuest(m_biosConin);
+      return;
+    }
     if (!m_host.ConsoleStatus()) {
       m_debug << " nothing" << endl;
       ch = 0x00;
@@ -1209,13 +1377,34 @@ void NewBDOS::ConsoleDirect()
 
 void NewBDOS::PrintCPMString(const char * str)
 {
-  while (*str != '$')
-    m_host.ConsoleOut(*str++);
+  while (*str != '$') {
+    char ch = *str++;
+    if (m_injected && m_biosConout) {
+      m_cpu.BC.B.l = (uint8_t)ch;
+      if (!m_host.CallGuest(m_biosConout))
+        m_host.ConsoleOut(ch);
+    }
+    else {
+      m_host.ConsoleOut(ch);
+    }
+  }
 }
 
 void NewBDOS::PrintString()
 {
   m_debug << "BDOS 9: print string" << endl;
+  if (m_injected && m_biosConout) {
+    uint16_t addr = m_cpu.DE.W;
+    for (;;) {
+      uint8_t ch = MemRd(addr++);
+      if (ch == '$')
+        break;
+      m_cpu.BC.B.l = ch;
+      if (!m_host.CallGuest(m_biosConout))
+        break;
+    }
+    return;
+  }
   char * ptr = (char *)m_memory + m_cpu.DE.W;
   m_debug << "output string: ";
   for (int i = 0; ptr[i] != '$'; ++i)
@@ -1227,6 +1416,10 @@ void NewBDOS::PrintString()
 
 void NewBDOS::ConsoleStatus()
 {
+  if (m_injected && m_biosConst) {
+    m_cpu.PC.W = m_biosConst;
+    return;
+  }
   m_cpu.AF.B.h = m_host.ConsoleStatus();
 }
 
@@ -1321,22 +1514,44 @@ void NewBDOS::SelDisk()
 {
   m_currDisk = m_cpu.DE.B.l & 0x0f;
   m_debug << "BDOS 14: sel disk " << (char)('A' + m_currDisk) << endl;
-  m_host.WriteMemory(4, m_currDisk);
   uint16_t bit = (uint16_t)(1u << m_currDisk);
   m_login |= bit;
   if (m_drives[m_currDisk].m_kind == CpmDrive::Kind::eImage) {
     m_readOnly |= bit;
+    m_host.SetTDrive((uint8_t)((m_host.GetTDrive() & 0xf0) | m_currDisk));
+    // Emulated BDOS: callers historically received the DPB address here.
     PublishDPB(m_currDisk);
   }
   else {
     m_readOnly &= (uint16_t)~bit;
     UpdateDriveInfo(m_currDisk);
-    if (m_drives[m_currDisk].m_disk.m_spt > 0)
-      PublishDPB(m_currDisk);
-    else {
+    if (m_drives[m_currDisk].m_disk.m_spt <= 0) {
+      m_debug << "BDOS 14: select failed for " << (char)('A' + m_currDisk)
+              << " (host path '" << m_drives[m_currDisk].m_path << "')" << endl;
       m_cpu.HL.W = 0;
       m_cpu.AF.B.h = 0;
+      return;
     }
+    // Keep TDRIVE on a non-host unit so guest BDOS never FDC-selects this
+    // drive. Current drive for CCP is still reported via BDOS 25.
+    if (m_injected) {
+      int image = 0;
+      for (int d = 0; d < 16; ++d) {
+        if (!IsDirectoryDrive(d)) {
+          image = d;
+          break;
+        }
+      }
+      m_host.SetTDrive((uint8_t)((m_host.GetTDrive() & 0xf0) | (image & 0x0f)));
+    }
+    else {
+      m_host.SetTDrive((uint8_t)((m_host.GetTDrive() & 0xf0) | m_currDisk));
+    }
+    // CP/M select must return a Disk Parameter Header address in HL.
+    if (m_injected && m_dphAddr != 0)
+      PublishDPH(m_currDisk);
+    else
+      PublishDPB(m_currDisk);
   }
 }
 
@@ -1527,6 +1742,7 @@ uint8_t NewBDOS::FindFile(const uint8_t * fcb)
 void NewBDOS::GetCurrDisk()
 {
   m_debug << "BDOS 25: get current disk " << (char)('A' + m_currDisk) << endl;
+  m_cpu.HL.W = m_currDisk;
   m_cpu.AF.B.h = m_currDisk;
 }
 
@@ -1888,16 +2104,23 @@ static uint32_t ExtentEnd(const uint8_t * entry, int exm)
 
 void NewBDOS::ReturnLoginVector()
 {
-  m_debug << "BDOS 24: login vector " << hex << m_login << dec << endl;
-  m_cpu.HL.W = m_login;
-  m_cpu.AF.B.h = 0;
+  // Guest still owns image-drive login state; always advertise A: logged in
+  // under shadowBdos so CCP does not try to re-select it through the FDC.
+  uint16_t login = m_login;
+  if (m_injected)
+    login |= 0x0001;
+  m_debug << "BDOS 24: login vector " << hex << login << dec << endl;
+  m_cpu.HL.W = login;
+  m_cpu.AF.B.h = (uint8_t)(login & 0xff);
+  m_cpu.BC.B.h = (uint8_t)(login >> 8);
 }
 
 void NewBDOS::ReturnReadOnlyVector()
 {
   m_debug << "BDOS 29: read-only vector " << hex << m_readOnly << dec << endl;
   m_cpu.HL.W = m_readOnly;
-  m_cpu.AF.B.h = 0;
+  m_cpu.AF.B.h = (uint8_t)(m_readOnly & 0xff);
+  m_cpu.BC.B.h = (uint8_t)(m_readOnly >> 8);
 }
 
 void NewBDOS::GetAllocVector()
@@ -1913,10 +2136,18 @@ void NewBDOS::GetAllocVector()
     return;
   }
   size_t n = slot.m_alloc.size();
-  if (n > (size_t)(CCPB - 0x100))
-    n = (size_t)(CCPB - 0x100);
-  uint16_t addr = (uint16_t)(CCPB - n);
-  memcpy(m_memory + addr, slot.m_alloc.data(), n);
+  uint16_t addr;
+  if (m_injected && m_alvMax > 0) {
+    if (n > m_alvMax)
+      n = m_alvMax;
+    addr = m_alvAddr;
+  }
+  else {
+    if (n > (size_t)(CCPB - 0x100))
+      n = (size_t)(CCPB - 0x100);
+    addr = (uint16_t)(CCPB - n);
+  }
+  MemWrBlock(addr, slot.m_alloc.data(), n);
   m_cpu.HL.W = addr;
   m_cpu.AF.B.h = 0;
 }
@@ -2038,12 +2269,43 @@ int NewBDOS::DriveFromFCB(const uint8_t * fcb) const
 
 void NewBDOS::PublishDPB(int drive)
 {
-  static const uint16_t kDpbAddress = 0xff80;
+  uint16_t addr = m_dpbAddr ? m_dpbAddr : 0xff80;
   uint8_t bytes[16] = {};
   m_drives[drive].Dpb(bytes);
-  memcpy(m_memory + kDpbAddress, bytes, 16);
-  m_cpu.HL.W = kDpbAddress;
+  MemWrBlock(addr, bytes, 16);
+  m_cpu.HL.W = addr;
   m_cpu.AF.B.h = 0;
+}
+
+void NewBDOS::PublishDPH(int drive)
+{
+  // Ensure DPB and a usable ALV exist, then build a DPH that points at them.
+  PublishDPB(drive);
+
+  CpmDrive & slot = m_drives[drive];
+  slot.RebuildAllocation();
+  size_t n = slot.m_alloc.size();
+  if (m_alvMax > 0 && n > m_alvMax)
+    n = m_alvMax;
+  if (n > 0 && m_alvAddr != 0)
+    MemWrBlock(m_alvAddr, slot.m_alloc.data(), n);
+
+  uint8_t dph[16] = {};
+  // XLT = 0 (no translation); spare words 0; DIRBUF; DPB; CSV=0; ALV
+  dph[8]  = (uint8_t)(m_dirBufAddr & 0xff);
+  dph[9]  = (uint8_t)(m_dirBufAddr >> 8);
+  dph[10] = (uint8_t)(m_dpbAddr & 0xff);
+  dph[11] = (uint8_t)(m_dpbAddr >> 8);
+  dph[14] = (uint8_t)(m_alvAddr & 0xff);
+  dph[15] = (uint8_t)(m_alvAddr >> 8);
+  MemWrBlock(m_dphAddr, dph, 16);
+
+  m_cpu.HL.W = m_dphAddr;
+  // Match CP/M BDOS exit (A=L, B=H); CCP/STAT test HL!=0 for select OK.
+  m_cpu.AF.B.h = m_cpu.HL.B.l;
+  m_cpu.BC.B.h = m_cpu.HL.B.h;
+  m_debug << "BDOS 14: DPH=" << hex << m_dphAddr << " DPB=" << m_dpbAddr
+          << " ALV=" << m_alvAddr << " HL=" << m_dphAddr << dec << endl;
 }
 
 void NewBDOS::GetDiskParams()
@@ -2221,7 +2483,7 @@ uint8_t NewBDOS::SearchImage(int drive, const uint8_t * fcb, bool anyUser)
 
     int slotIndex = index % 4;
     const uint8_t * sector = slot.m_directory.data() + (index / 4) * 128;
-    memcpy(m_memory + m_dmaAddress, sector, 128);
+    MemWrBlock(m_dmaAddress, sector, 128);
     m_findIndex = index + 1;
     m_debug << "image directory entry " << index << " in slot " << slotIndex << endl;
     return (uint8_t)slotIndex;
