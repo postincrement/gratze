@@ -6,7 +6,6 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #if defined(__APPLE__)
@@ -51,6 +50,15 @@ static string Dirname(const string & path)
   if (slash == 0)
     return "/";
   return path.substr(0, slash);
+}
+
+static string BasenameNoExt(const string & path)
+{
+  auto slash = path.find_last_of("/\\");
+  string base = (slash == string::npos) ? path : path.substr(slash + 1);
+  if (base.size() > 5 && base.substr(base.size() - 5) == ".json")
+    base.resize(base.size() - 5);
+  return base;
 }
 
 static string JoinPath(const string & dir, const string & file)
@@ -103,19 +111,14 @@ static bool ReadFileText(const string & path, string & text, string & error)
   return true;
 }
 
+// Relative paths are always resolved against the config file's directory.
 static string ResolvePath(const string & configDir, const string & path)
 {
   if (path.empty())
     return path;
   if (path[0] == '/' || (path.size() > 1 && path[1] == ':'))
     return path;
-
-  string besideConfig = JoinPath(configDir, path);
-  if (FileReadable(besideConfig))
-    return besideConfig;
-  if (FileReadable(path))
-    return path;
-  return besideConfig;
+  return JoinPath(configDir, path);
 }
 
 static bool ParseDriveObject(JsonParser & parser, DriveMount & mount, string & error)
@@ -129,6 +132,7 @@ static bool ParseDriveObject(JsonParser & parser, DriveMount & mount, string & e
   string file;
   string path;
   string dpb;
+  string label;
 
   if (!parser.Eat('}')) {
     for (;;) {
@@ -142,7 +146,7 @@ static bool ParseDriveObject(JsonParser & parser, DriveMount & mount, string & e
         return false;
       }
 
-      if (key == "type" || key == "file" || key == "path" || key == "dpb") {
+      if (key == "type" || key == "file" || key == "path" || key == "dpb" || key == "label") {
         string value;
         if (!parser.String(value)) {
           error = parser.m_error;
@@ -154,8 +158,10 @@ static bool ParseDriveObject(JsonParser & parser, DriveMount & mount, string & e
           file = value;
         else if (key == "path")
           path = value;
-        else
+        else if (key == "dpb")
           dpb = value;
+        else
+          label = value;
       }
       else {
         cerr << "warning: ignoring unknown drive field '" << key << "'" << endl;
@@ -181,6 +187,8 @@ static bool ParseDriveObject(JsonParser & parser, DriveMount & mount, string & e
 
   for (auto & ch : type)
     ch = (char)tolower((unsigned char)ch);
+
+  mount.m_label = label;
 
   if (type == "image") {
     if (file.empty()) {
@@ -236,7 +244,6 @@ static bool ApplyEnvObject(JsonParser & parser, const string & configPath, Optio
         error = parser.m_error;
         return false;
       }
-      // informational; lookup already used the name
       (void)name;
     }
     else if (key == "type") {
@@ -312,7 +319,6 @@ static bool ApplyEnvObject(JsonParser & parser, const string & configPath, Optio
             return false;
           }
 
-          // Reject numeric drive keys in configs.
           bool numeric = !driveKey.empty()
                       && std::all_of(driveKey.begin(), driveKey.end(),
                                      [](char ch) { return isdigit((unsigned char)ch); });
@@ -364,20 +370,15 @@ static bool ApplyEnvObject(JsonParser & parser, const string & configPath, Optio
   return true;
 }
 
-static bool PeekConfigName(const string & path, string & name, string & type)
+// Consume one config object and return its name/type fields.
+static bool ScanEnvObject(JsonParser & parser, string & name, string & type)
 {
-  string text;
-  string error;
-  if (!ReadFileText(path, text, error))
-    return false;
-  JsonParser parser(text);
-  if (!parser.Eat('{'))
-    return false;
-
   name.clear();
   type.clear();
-  if (parser.Eat('}'))
+  if (!parser.Eat('{'))
     return false;
+  if (parser.Eat('}'))
+    return true;
 
   for (;;) {
     string key;
@@ -402,7 +403,76 @@ static bool PeekConfigName(const string & path, string & name, string & type)
     if (!parser.Eat(','))
       return false;
   }
-  return !name.empty() || !type.empty();
+  return true;
+}
+
+static bool CollectConfigsFromText(const string & text, const string & path,
+                                   vector<EnvConfigInfo> & out)
+{
+  JsonParser parser(text);
+  char ch = parser.PeekChar();
+  if (ch == '[') {
+    if (!parser.Eat('['))
+      return false;
+    if (parser.Eat(']'))
+      return true;
+    for (;;) {
+      string name;
+      string type;
+      if (!ScanEnvObject(parser, name, type))
+        return false;
+      EnvConfigInfo info;
+      info.m_name = name;
+      info.m_type = type;
+      info.m_path = path;
+      out.push_back(info);
+      if (parser.Eat(']'))
+        break;
+      if (!parser.Eat(','))
+        return false;
+    }
+    return true;
+  }
+
+  if (ch == '{') {
+    string name;
+    string type;
+    if (!ScanEnvObject(parser, name, type))
+      return false;
+    EnvConfigInfo info;
+    info.m_name = name.empty() ? BasenameNoExt(path) : name;
+    info.m_type = type;
+    info.m_path = path;
+    out.push_back(info);
+    return true;
+  }
+
+  return false;
+}
+
+static bool CollectConfigsFromFile(const string & path, vector<EnvConfigInfo> & out)
+{
+  string text;
+  string error;
+  if (!ReadFileText(path, text, error))
+    return false;
+  return CollectConfigsFromText(text, path, out);
+}
+
+static bool FileContainsName(const string & path, const string & name, bool stemMatch)
+{
+  vector<EnvConfigInfo> list;
+  if (!CollectConfigsFromFile(path, list))
+    return false;
+  for (const auto & info : list) {
+    if (info.m_name == name)
+      return true;
+  }
+  // Single-object file named <name>.json with no/empty name field.
+  if (stemMatch && list.size() == 1
+      && (list[0].m_name.empty() || list[0].m_name == BasenameNoExt(path)))
+    return true;
+  return false;
 }
 
 string FindEnvConfigPath(const string & name, string & error)
@@ -412,22 +482,24 @@ string FindEnvConfigPath(const string & name, string & error)
     return {};
   }
 
-  // Direct path if the user passed something that looks like a file.
   if (name.find('/') != string::npos || name.find('\\') != string::npos
       || (name.size() > 5 && name.substr(name.size() - 5) == ".json")) {
-    if (FileReadable(name))
+    if (FileReadable(name) && FileContainsName(name, name, true))
       return name;
+    if (FileReadable(name)) {
+      // Direct file path: allow loading even when looking up by path.
+      return name;
+    }
     error = "environment file '" + name + "' not found";
     return {};
   }
 
   for (const auto & dir : ConfigSearchDirs()) {
     string candidate = JoinPath(dir, name + ".json");
-    if (FileReadable(candidate))
+    if (FileReadable(candidate) && FileContainsName(candidate, name, true))
       return candidate;
   }
 
-  // Scan for matching "name" field.
   for (const auto & dir : ConfigSearchDirs()) {
     DIR * dp = opendir(dir.c_str());
     if (dp == nullptr)
@@ -437,11 +509,7 @@ string FindEnvConfigPath(const string & name, string & error)
       if (fn.size() < 6 || fn.substr(fn.size() - 5) != ".json")
         continue;
       string path = JoinPath(dir, fn);
-      string cfgName;
-      string cfgType;
-      if (!PeekConfigName(path, cfgName, cfgType))
-        continue;
-      if (cfgName == name) {
+      if (FileContainsName(path, name, false)) {
         closedir(dp);
         return path;
       }
@@ -451,6 +519,61 @@ string FindEnvConfigPath(const string & name, string & error)
 
   error = "environment '" + name + "' not found (looked in emulator/configs/)";
   return {};
+}
+
+static bool LoadEnvFromParser(JsonParser & parser, const string & name,
+                              const string & path, Options & options, string & error)
+{
+  char ch = parser.PeekChar();
+  if (ch == '[') {
+    if (!parser.Eat('[')) {
+      error = "expected an array of environments";
+      return false;
+    }
+    if (parser.Eat(']')) {
+      error = "environment array is empty";
+      return false;
+    }
+    for (;;) {
+      size_t start = parser.m_index;
+      string objName;
+      string objType;
+      if (!ScanEnvObject(parser, objName, objType)) {
+        error = parser.m_error.empty() ? "invalid environment object in array" : parser.m_error;
+        return false;
+      }
+      bool match = (objName == name);
+      if (!match && objName.empty() && BasenameNoExt(path) == name)
+        match = true;
+      if (match) {
+        parser.m_index = start;
+        if (!ApplyEnvObject(parser, path, options, error))
+          return false;
+        // Consume the rest of the array.
+        while (!parser.Eat(']')) {
+          if (!parser.Eat(',')) {
+            error = "expected a comma in environment array";
+            return false;
+          }
+          if (!parser.SkipValue()) {
+            error = parser.m_error;
+            return false;
+          }
+        }
+        return true;
+      }
+      if (parser.Eat(']'))
+        break;
+      if (!parser.Eat(',')) {
+        error = "expected a comma in environment array";
+        return false;
+      }
+    }
+    error = "environment '" + name + "' not found in " + path;
+    return false;
+  }
+
+  return ApplyEnvObject(parser, path, options, error);
 }
 
 bool LoadEnvConfig(const string & name, Options & options, string & error)
@@ -464,7 +587,7 @@ bool LoadEnvConfig(const string & name, Options & options, string & error)
     return false;
 
   JsonParser parser(text);
-  if (!ApplyEnvObject(parser, path, options, error))
+  if (!LoadEnvFromParser(parser, name, path, options, error))
     return false;
 
   if (options.m_typeName.empty()) {
@@ -490,20 +613,17 @@ void ListEnvConfigs(vector<EnvConfigInfo> & out)
       if (fn.size() < 6 || fn.substr(fn.size() - 5) != ".json")
         continue;
       string path = JoinPath(dir, fn);
-      string cfgName;
-      string cfgType;
-      if (!PeekConfigName(path, cfgName, cfgType))
+      vector<EnvConfigInfo> list;
+      if (!CollectConfigsFromFile(path, list))
         continue;
-      if (cfgName.empty())
-        cfgName = fn.substr(0, fn.size() - 5);
-      if (find(seen.begin(), seen.end(), cfgName) != seen.end())
-        continue;
-      seen.push_back(cfgName);
-      EnvConfigInfo info;
-      info.m_name = cfgName;
-      info.m_type = cfgType;
-      info.m_path = path;
-      out.push_back(info);
+      for (auto info : list) {
+        if (info.m_name.empty())
+          info.m_name = BasenameNoExt(path);
+        if (find(seen.begin(), seen.end(), info.m_name) != seen.end())
+          continue;
+        seen.push_back(info.m_name);
+        out.push_back(info);
+      }
     }
     closedir(dp);
   }

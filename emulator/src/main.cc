@@ -289,7 +289,8 @@ int main(int argc, char *argv[])
     options.m_cpmDrives = cliCpmDrives;
 
   if (options.m_driveFns.size() > 0) {
-    cout << options.m_driveFns.size() << " drives specified" << endl;
+    if (options.m_verbose)
+      cout << "info: " << options.m_driveFns.size() << " drives specified" << endl;
     options.m_withEI = true;
   }
 
@@ -309,21 +310,21 @@ int main(int argc, char *argv[])
     cout << "info: running " << emulator->GetInfo().m_name << endl;
   }
 
+  // Some machines (e.g. Microbee 128k) use banked/custom memory and have no
+  // INFO_MAIN_RAM block — that is expected, not an error.
   const Config::RAM * ram = emulator->GetMainRAMInfo();
-  if (ram == nullptr) {
-    cerr << "warning: emulator has no RAM defined" << endl;
-  }
-  else {
+  if (ram != nullptr) {
     int ramSize_k = ((ram->m_endAddr - ram->m_startAddr) + 1) / 1024;
-    if (options.m_ramSize_k >= 0) {
+    if (options.m_ramSize_k > 0)
       emulator->SetRAMSize_k(options.m_ramSize_k);
-    }
-    else {
+    else
       emulator->SetRAMSize_k(ramSize_k);
-    }
 
     if (options.m_verbose)
       cout << "info: RAM size set to " << dec << ramSize_k << "k" << endl;
+  }
+  else if (options.m_verbose) {
+    cout << "info: emulator uses a custom memory map" << endl;
   }
 
   return emulator->Run(options);

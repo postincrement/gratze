@@ -17,7 +17,8 @@ struct DriveMount
 
   Kind m_kind = Kind::eImage;
   std::string m_path;
-  std::string m_dpb;   // optional CP/M DPB name for image mounts
+  std::string m_dpb;    // optional CP/M DPB name for image mounts
+  std::string m_label;  // optional status-bar text (defaults to file/dir basename)
 };
 
 struct Options

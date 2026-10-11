@@ -119,13 +119,19 @@ void CPM80_Emulator::RefreshPanelDrives()
 
     StatusDrive status;
     status.m_label.assign(1, (char)('A' + drive));
-    std::string path = slot.m_path;
-    if (path.empty())
-      path = ".";
-    auto slash = path.find_last_of("/\\");
-    status.m_name = (slash == std::string::npos) ? path : path.substr(slash + 1);
-    if (status.m_name.empty())
-      status.m_name = path;
+    auto mount = m_options.m_drives.find((unsigned)drive);
+    if (mount != m_options.m_drives.end() && !mount->second.m_label.empty()) {
+      status.m_name = mount->second.m_label;
+    }
+    else {
+      std::string path = slot.m_path;
+      if (path.empty())
+        path = ".";
+      auto slash = path.find_last_of("/\\");
+      status.m_name = (slash == std::string::npos) ? path : path.substr(slash + 1);
+      if (status.m_name.empty())
+        status.m_name = path;
+    }
     status.m_mounted = true;
     status.m_selected = (m_newBDOS->m_currDisk == drive);
     m_panelDrives.push_back(status);

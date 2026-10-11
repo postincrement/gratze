@@ -1,0 +1,35 @@
+[
+  {
+    "name": "microbee128",
+    "type": "mbee128bn",
+    "drives": {
+      "a": {
+        "type": "image",
+        "file": "mbee/128k_standard_master_ds40.dsk",
+        "label": "Master"
+      }
+    }
+  },
+  {
+    "name": "microbee56",
+    "type": "mbee56",
+    "drives": {
+      "a": {
+        "type": "image",
+        "file": "mbee/56k_system_master_84_01_ds40.dsk",
+        "label": "Sys56"
+      }
+    }
+  },
+  {
+    "name": "mbee_arcade_1",
+    "type": "mbee128bn",
+    "drives": {
+      "a": {
+        "type": "image",
+        "file": "mbee/arcade_1_ds80.dsk",
+        "label": "Arcade 1"
+      }
+    }
+  }
+]

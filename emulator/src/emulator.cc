@@ -1163,16 +1163,26 @@ int Emulator::Run(const Options & options)
     std::string fn(r.second);
     VirtualFileIdentifier fileId;
     std::shared_ptr<VirtualDrive> drive = fileId.Open(fn, true);
-    if (drive == nullptr)
-      return false;
+    if (drive == nullptr) {
+      cerr << "error: cannot open disk image '" << fn << "'" << endl;
+      return -1;
+    }
     char letter = (char)('A' + (r.first % 26));
     if (!MountDrive((int)r.first, drive, true)) {
       cerr << "error: cannot mount drive " << letter << " with " << r.second << endl;
       return -1;
     }
     cerr << "info: mounted '" << fn << "' as drive " << letter << endl;
-    auto slash = fn.find_last_of("/\\");
-    m_mountedDriveNames[r.first] = (slash == std::string::npos) ? fn : fn.substr(slash + 1);
+
+    std::string display;
+    auto mount = options.m_drives.find(r.first);
+    if (mount != options.m_drives.end() && !mount->second.m_label.empty())
+      display = mount->second.m_label;
+    else {
+      auto slash = fn.find_last_of("/\\");
+      display = (slash == std::string::npos) ? fn : fn.substr(slash + 1);
+    }
+    m_mountedDriveNames[r.first] = display;
   }
 
   CompileConfigBlocks();
