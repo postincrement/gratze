@@ -12,6 +12,13 @@ add_library(grzdisk STATIC
 target_include_directories(grzdisk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(grzdisk PUBLIC grzcommon)
 
+add_library(cpmdrive STATIC
+  cpmdrive/diskdef.cc
+  cpmdrive/cpm_drive.cc
+)
+target_include_directories(cpmdrive PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cpmdrive)
+target_link_libraries(cpmdrive PUBLIC grzdisk)
+
 # The tool target cannot share the library's target name. The binary is still
 # called grzdisk, matching the automake package.
 add_executable(grzdisk_tool

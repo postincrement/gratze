@@ -88,3 +88,6 @@ libz80emu.a
 libnfd.a
 /build/
 bdos_debug.txt
+emulator/disks
+CMakeCache.txt
+starnet/build

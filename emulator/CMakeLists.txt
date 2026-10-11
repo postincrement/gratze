@@ -89,13 +89,11 @@ add_executable(gratze
   z80/microbee/rom_disk128.c
   z80/microbee/rom_bn5443.c
   z80/microbee/starnet/starnet_client.cc
-  z80/microbee/starnet/starnet_server.cc
   z80/sorcerer/rom_sorcerer.c
   z80/mfz80/Z80.c
   z80/mfz80/Debug.c
   z80/mfz80/dasm.c
   z80/cpm80/newbdos.cc
-  z80/cpm80/diskdef.cc
   ${CMAKE_CURRENT_BINARY_DIR}/newbdos_rom.c
   2650/eti685/rom_binbug_6_1.c
   2650/78up5/rom_pipbug.c
@@ -105,6 +103,7 @@ add_executable(gratze
 target_include_directories(gratze PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/nfd_compat
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/starnet
   ${GRATZE_GEN_INCLUDE}
 )
 
@@ -128,7 +127,9 @@ endif()
 
 target_link_libraries(gratze PRIVATE
   grzdisk
+  cpmdrive
   grzcommon
+  starnet_udp
   nfd
   sdl_fontcache
   ${GRATZE_SDL2}

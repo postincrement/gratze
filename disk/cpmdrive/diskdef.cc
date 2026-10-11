@@ -14,7 +14,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-#include "z80/cpm80/diskdef.h"
+#include "diskdef.h"
 
 using namespace std;
 
@@ -62,9 +62,11 @@ static std::string ResolveDiskDefPath(const std::string & spec, std::string & er
     candidates.push_back(spec);
   }
   else {
+    candidates.push_back("disk/cpmdrive/dpb/" + spec + ".json");
     candidates.push_back("emulator/z80/cpm80/dpb/" + spec + ".json");
     std::string dir = ExecutableDir();
     for (int i = 0; i < 6 && !dir.empty(); ++i) {
+      candidates.push_back(dir + "/disk/cpmdrive/dpb/" + spec + ".json");
       candidates.push_back(dir + "/emulator/z80/cpm80/dpb/" + spec + ".json");
       auto slash = dir.find_last_of('/');
       if (slash == std::string::npos)
@@ -559,6 +561,14 @@ bool OpenCpmImage(const std::string & path, const CpmDiskDef & disk, std::shared
 {
   drive.reset();
   raw = false;
+
+  // Disk formats register themselves here. gratze also calls this from main;
+  // a second call replaces the same keys.
+  static bool formatsReady = false;
+  if (!formatsReady) {
+    VirtualDrive::Init();
+    formatsReady = true;
+  }
 
   struct stat st;
   if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {

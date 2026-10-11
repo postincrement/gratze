@@ -100,6 +100,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "keyboardDebug",   ' ', "display keyboard debug on console" },
   { ' ', "fdcDebug",        ' ', "display FDC debug on console" },
   { ' ', "turbo",           ' ', "do not throttle CPU speed"},
+  { ' ', "station",         'u', "Starnet workstation number 0-15"},
   { ' ', "list",            ' ', "list all emulations"},
   { ' ', "gamekb",          ' ', "set keyboard game mode" },
 
@@ -185,6 +186,11 @@ int main(int argc, char *argv[])
   options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
   options.m_args.GetValue("--fdcDebug",      options.m_fdcDebug);
   options.m_args.GetValue("--turbo",         options.m_turbo);
+  {
+    unsigned station = 0;
+    if (options.m_args.GetValue("--station", station))
+      options.m_starnetStation = (int)station;
+  }
   options.m_args.GetValue("--displaySpeed",  options.m_displayCPUSpeed);
 
   options.m_args.GetValue("-f",         options.m_font);

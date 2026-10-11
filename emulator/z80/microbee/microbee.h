@@ -9,7 +9,6 @@
 #include "devices/synertek6545.h"
 
 #include "starnet/starnet_client.h"
-#include "starnet/starnet_server.h"
 
 extern struct CharacterGeneratorROM g_charGen_mbee64x16;
 extern struct CharacterGeneratorROM g_charGen_mbee80x24;
@@ -137,6 +136,8 @@ class Microbee128_StarnetClient_Emulator : public Microbee128_BN_Emulator
     bool Open(const Options & options) override;
     void Reset(int addr = -1) override;
     int Exec(int cycles) override;
+    void Interrupt(uint16_t vector = 0) override;
+    void WriteIOMemory(int id, uint16_t addr, uint8_t val) override;
 
     void OnPIOAWrite(uint8_t data, bool ie);
     uint8_t OnPIOARead();
@@ -144,14 +145,26 @@ class Microbee128_StarnetClient_Emulator : public Microbee128_BN_Emulator
 
   protected:
     void WakeReceive();
+    void ProbeBoot();
+    void DumpDpb();
 
     enum class RxPhase { Sync, Length, Body };
 
-    StarnetServer m_server;
     StarnetClient m_client;
     bool m_transmit = false;
     RxPhase m_rxPhase = RxPhase::Sync;
     uint16_t m_bodyLeft = 0;
+    // Set when the LDIR at EDB0 stores 0xDF45. The next interrupt taken
+    // logs the vector word the CPU fetches.
+    bool m_logNextInterrupt = false;
+
+    // One-shot cold-boot probes. Cleared on Reset.
+    bool m_seenBoot = false;
+    bool m_seenSetup = false;
+    bool m_seenCcp = false;
+    bool m_seenBiosRead = false;
+    bool m_seenHalt = false;
+    bool m_bootProbeDone = false;
 };
 
 #endif // DG680_H_

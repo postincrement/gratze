@@ -10,8 +10,7 @@
 #include <unistd.h>
 #include <vector>
 
-#include "disk/virtual_drive.h"
-#include "z80/cpm80/diskdef.h"
+#include "cpm_drive.h"
 
 class CPM80_Emulator;
 
@@ -25,6 +24,10 @@ struct NewBDOS
   void OnBDOSCommand(uint8_t code);
   void CcpCommand();
   void CcpExit();
+  void CcpLcd();
+  void CcpLcp();
+  void CcpLpwd();
+  void CcpLls();
 
   void SystemReset();    //  0 - System reset
   void ConsoleInput();   //  1 - Console input
@@ -42,6 +45,8 @@ struct NewBDOS
   void SearchNext();     // 18 - Search for next
   void DeleteFile();     // 19 - Delete file
   void ReadSeq();        // 20 - Read Sequential
+  void WriteSeq();       // 21 - Write sequential
+  void MakeFile();       // 22 - Create file
   void GetCurrDisk();    // 25 - Return current disk
   void SetDMAAddress();  // 26 - Set DMA address
   void ReturnLoginVector();  // 24 - Return login vector
@@ -50,9 +55,12 @@ struct NewBDOS
   void GetDiskParams();  // 31 - Get disk parameter block
   void GetSetUser();     // 32 - Set/get user code
   void ReadRandom();     // 33 - Read random
+  void WriteRandom();    // 34 - Write random
   void ComputeFileSize(); // 35 - Compute file size
+  void SetRandomRecord(); // 36 - Set random record
 
   void ReadFile(uint8_t * fcb, int code, off_t offs);
+  void WriteFile(uint8_t * fcb, int code, off_t offs);
   uint8_t FindFile(const uint8_t * fcb);
   void Boot();
   void PrintCPMString(const char * str);
@@ -61,7 +69,6 @@ struct NewBDOS
   std::string FCBToRegex(const char * fcb);
   void UpdateDriveInfo(int drive);
   bool ConfigureDrives();
-  bool OpenImageDrive(const CpmDriveRequest & request);
   void ClearHostCaches();
   int DriveFromFCB(const uint8_t * fcb) const;
   void PublishDPB(int drive);
@@ -69,38 +76,6 @@ struct NewBDOS
   bool OpenImage(int drive, uint8_t * fcb);
   uint8_t SearchHost(int drive, const uint8_t * fcb, bool anyUser);
   uint8_t SearchImage(int drive, const uint8_t * fcb, bool anyUser);
-
-  using StringMap = std::map<std::string, std::string>;
-
-  struct DriveInfo {
-    std::string m_dir;
-    StringMap m_cpmToNative;
-    StringMap m_nativeToCPM;
-  };
-
-  // One drive letter. An unconfigured letter stays a host directory:
-  // A is ".", every other letter is "./" plus that letter.
-  struct DriveSlot {
-    enum class Kind { eHost, eImage };
-    Kind m_kind = Kind::eHost;
-    bool m_configured = false;
-    std::string m_path;
-    std::string m_detail;
-    DriveInfo m_host;
-    CpmDiskDef m_disk;
-    int m_fd = -1;
-    std::shared_ptr<VirtualDrive> m_image;
-    std::vector<uint8_t> m_directory;
-    // One bit per allocation block. Bit 7 of the first byte is block 0.
-    std::vector<uint8_t> m_alloc;
-    // BIOS deblock buffer. One physical sector, reused by the 128-byte
-    // records that share it.
-    bool m_blockValid = false;
-    int m_blockSide = -1;
-    int m_blockCylinder = -1;
-    int m_blockId = -1;
-    std::vector<uint8_t> m_block;
-  };
 
   struct FileInfo {
     FileInfo();
@@ -133,7 +108,7 @@ struct NewBDOS
   uint16_t m_readOnly = 0;
   std::ofstream m_debug;
 
-  std::array<DriveSlot, 16> m_drives;
+  CpmDriveSet m_drives;
   std::map<int, FileInfo> m_fileMap;
 };
 

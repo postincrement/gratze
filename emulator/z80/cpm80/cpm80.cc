@@ -7,7 +7,7 @@
 
 #include "z80/z80emulator.h"
 #include "z80/cpm80/cpm80.h"
-#include "z80/cpm80/diskdef.h"
+#include "diskdef.h"
 
 #include "common/misc.h"
 #include "common/binfile.h"
@@ -131,7 +131,7 @@ void CPM80_Emulator::RefreshPanelDrives()
     return;
 
   for (int drive = 0; drive < 16; ++drive) {
-    const NewBDOS::DriveSlot & slot = m_newBDOS->m_drives[drive];
+    const CpmDrive & slot = m_newBDOS->m_drives[drive];
     if (!slot.m_configured && (drive != 0))
       continue;
 

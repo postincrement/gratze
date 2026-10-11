@@ -343,11 +343,8 @@ GETINP3:INC	HL
 	LD	A,B		;end of the line?
 	OR	A
 	JP	Z,GETINP4
-	LD	A,(HL)		;convert to upper case.
-	CALL	UPPER
-	LD	(HL),A
-	DEC	B		;adjust character count.
-	JP	GETINP3
+	DEC	B		;leave the line as typed. Names are
+	JP	GETINP3		;uppercased when they are put in an FCB.
 GETINP4:LD	(HL),A		;add trailing null.
 	LD	HL,INBUFF+2
 	LD	(INPOINT),HL	;reset input line pointer.
@@ -495,7 +492,8 @@ CONVERT:LD	HL,FCB
 	LD	A,(DE)		;get first character.
 	OR	A
 	JR	Z,CONVRT1
-	SBC	A,'A'-1		;might be a drive name, convert to binary.
+	CALL	UPPER
+	SUB	A,'A'-1		;might be a drive name, convert to binary.
 	LD	B,A		;and save.
 	INC	DE		;check next character for a ':'.
 	LD	A,(DE)
@@ -515,6 +513,7 @@ CONVRT2:LD	A,B
 CONVRT3:LD	B,08H
 CONVRT4:CALL	CHECK
 	JR	Z,CONVRT8
+	CALL	UPPER
 	INC	HL
 	CP	'*'		;note that an '*' will fill the remaining
 	JR	NZ,CONVRT5	;field with '?'.
@@ -541,6 +540,7 @@ GETEXT:	LD	B,03H
 	INC	DE
 GETEXT1:CALL	CHECK
 	JR	Z,GETEXT5
+	CALL	UPPER
 	INC	HL
 	CP	'*'
 	JR	NZ,GETEXT2

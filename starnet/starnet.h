@@ -78,6 +78,14 @@ class Starnet
 
     static const int kHeaderBytes = 7;
     static const int kRecordBytes = 128;
+
+    // Workstation slots on one server. 0xFF asks the UDP shim to assign one.
+    // The session and the PIO wire never carry this.
+    static const int kStationCount = 16;
+    static const uint8_t kAssignStation = 0xff;
+
+    // UDP only. The session never reads it.
+    static const uint16_t kPort = 0xbee;
 };
 
 struct StarnetRequest {

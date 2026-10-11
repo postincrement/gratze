@@ -75,6 +75,9 @@ struct Options
 
   // log program counter
   bool m_logPC = false;
+
+  // Starnet workstation slot. Negative asks the server to assign one.
+  int m_starnetStation = -1;
 };
 
 #endif // OPTIONS_H_

@@ -4,25 +4,33 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <deque>
+#include <memory>
 #include <vector>
 
 #include "starnet.h"
-#include "starnet_server.h"
 
-// The slave's peer on the wire. Bytes in, bytes out, and the server it
-// calls when a frame is complete. It does not open images or track login.
+class UdpPort;
+
+// Bytes between the Microbee PIO and the UDP shim. It keeps the ROM length
+// byte and does not call the station. A reset clears this framer only.
 class StarnetClient
 {
   public:
-    explicit StarnetClient(StarnetServer & server);
+    StarnetClient();
+    ~StarnetClient();
+
+    StarnetClient(const StarnetClient &) = delete;
+    StarnetClient & operator=(const StarnetClient &) = delete;
+
+    // Fixed workstation id, 0 through 15. The default asks to be assigned.
+    void SetStation(uint8_t station);
 
     void Reset();
 
-    // One byte the slave transmitted. A leading 0x00 and the length byte
-    // that the BN block sender clocks out before the frame are skipped.
+    // One byte the slave transmitted. EDDC clocks 0x00, then the length,
+    // then the frame. The length is how many frame bytes follow.
     void OnReceive(uint8_t byte);
 
-    // Push a whole frame, or several, the way an external device would.
     void Push(const uint8_t * bytes, size_t len);
 
     bool HasTx() const;
@@ -31,26 +39,21 @@ class StarnetClient
     uint16_t TakeFrameSize();
     uint8_t OnSend();
 
-  protected:
-    void AcceptHeaderByte(uint8_t byte);
-    void FinishFrame(uint8_t checksum);
-    void Queue(const StarnetFrame & frame);
-    void Queue(const std::vector<StarnetFrame> & frames);
+  private:
+    void Deliver();
+    void QueueBytes(const uint8_t * bytes, uint16_t size);
 
     enum class RxState {
       Idle,
-      SkipLength,
-      Header,
-      Payload,
-      Checksum
+      Length,
+      Body
     };
 
-    StarnetServer & m_server;
+    std::unique_ptr<UdpPort> m_port;
+    uint8_t m_station = Starnet::kAssignStation;
     RxState m_state = RxState::Idle;
-    uint8_t m_header[Starnet::kHeaderBytes];
-    int m_got = 0;
-    std::vector<uint8_t> m_payload;
-    uint16_t m_payloadNeed = 0;
+    int m_bodyLeft = 0;
+    std::vector<uint8_t> m_wire;
     std::vector<uint8_t> m_tx;
     size_t m_txPos = 0;
     std::deque<uint16_t> m_frameSizes;

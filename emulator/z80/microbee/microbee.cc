@@ -1008,8 +1008,6 @@ extern EmulatorInfo g_microbee128starnetEmulatorInfo;
 
 Microbee128_StarnetClient_Emulator::Microbee128_StarnetClient_Emulator()
 : Microbee128_BN_Emulator(&g_microbee128starnetEmulatorInfo)
-, m_server("", "")
-, m_client(m_server)
 {
   using namespace std::placeholders;
   m_pio.SetWriteHandler(0, std::bind(&Microbee128_StarnetClient_Emulator::OnPIOAWrite, this, _1, _2));
@@ -1022,7 +1020,10 @@ bool Microbee128_StarnetClient_Emulator::Open(const Options & options)
   if (!Microbee128_BN_Emulator::Open(options))
     return false;
 
-  m_fdc.reset();  
+  m_fdc.reset();
+
+  if (options.m_starnetStation >= 0 && options.m_starnetStation < Starnet::kStationCount)
+    m_client.SetStation((uint8_t)options.m_starnetStation);
 
   return true;
 }
@@ -1033,15 +1034,131 @@ void Microbee128_StarnetClient_Emulator::Reset(int addr)
   m_transmit = false;
   m_rxPhase = RxPhase::Sync;
   m_bodyLeft = 0;
+  m_logNextInterrupt = false;
+  m_seenBoot = false;
+  m_seenSetup = false;
+  m_seenCcp = false;
+  m_seenBiosRead = false;
+  m_seenHalt = false;
+  m_bootProbeDone = false;
   m_client.Reset();
-  m_server.Reset();
+}
+
+void Microbee128_StarnetClient_Emulator::DumpDpb()
+{
+  cerr << "starnet: dpb at d706";
+  for (int i = 0; i < 15; ++i)
+    cerr << ' ' << HEXFORMAT0x2(ReadMemory((uint16_t)(0xd706 + i)));
+  cerr << endl;
+  // Drive A DPH is at D790; the DPB word sits at D798.
+  cerr << "starnet: dph a";
+  for (int i = 0; i < 16; ++i)
+    cerr << ' ' << HEXFORMAT0x2(ReadMemory((uint16_t)(0xd790 + i)));
+  cerr << " dpb " << HEXFORMAT0x4(ReadMemoryWord(0xd798)) << endl;
+}
+
+void Microbee128_StarnetClient_Emulator::ProbeBoot()
+{
+  if (m_bootProbeDone)
+    return;
+
+  uint16_t pc = (uint16_t)GetPC();
+  if (!m_seenBoot && pc == 0xd600) {
+    m_seenBoot = true;
+    cerr << "starnet: probe boot entry d600" << endl;
+    DumpDpb();
+  }
+  if (!m_seenSetup && pc == 0xd887) {
+    m_seenSetup = true;
+    cerr << "starnet: probe post-banner setup d887" << endl;
+    DumpDpb();
+  }
+  if (!m_seenCcp && pc == 0xc000) {
+    m_seenCcp = true;
+    cerr << "starnet: probe ccp c000"
+         << " drive " << HEXFORMAT0x2(ReadMemory(0x0004))
+         << endl;
+  }
+  if (!m_seenBiosRead && pc == 0xd9ff) {
+    m_seenBiosRead = true;
+    cerr << "starnet: probe bios read d9ff"
+         << " track " << HEXFORMAT0x4(ReadMemoryWord(0xdcd6))
+         << " sector " << HEXFORMAT0x2(ReadMemory(0xdcd8))
+         << " dma " << HEXFORMAT0x4(ReadMemoryWord(0xdcda))
+         << endl;
+  }
+  if (!m_seenHalt && m_seenSetup
+      && (m_cpu.IFF & (IFF_HALT | IFF_1)) == (IFF_HALT | IFF_1)) {
+    m_seenHalt = true;
+    cerr << "starnet: probe halt"
+         << " pc " << HEXFORMAT0x4(pc)
+         << " sp " << HEXFORMAT0x4(m_cpu.SP.W)
+         << " hl " << HEXFORMAT0x4(m_cpu.HL.W)
+         << endl;
+  }
+
+  // Keep stepping until we reach disk I/O, or we stop in HALT after the
+  // banners (with or without entering the CCP).
+  if (m_seenBiosRead || (m_seenHalt && (m_seenSetup || m_seenCcp)))
+    m_bootProbeDone = true;
+}
+
+void Microbee128_StarnetClient_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
+{
+  // EDB0 is ED B0. While that LDIR is in progress the PC is EDB2.
+  if (addr == 0xdf45 && (GetPC() == 0xedb0 || GetPC() == 0xedb2)) {
+    m_logNextInterrupt = true;
+    cerr << "starnet: ldir 0xdf45"
+         << " pc " << HEXFORMAT0x4(GetPC())
+         << " hl " << HEXFORMAT0x4(m_cpu.HL.W)
+         << " de " << HEXFORMAT0x4(m_cpu.DE.W)
+         << " bc " << HEXFORMAT0x4(m_cpu.BC.W)
+         << " byte " << HEXFORMAT0x2(val) << endl;
+  }
+  Microbee128_BN_Emulator::WriteIOMemory(id, addr, val);
+}
+
+void Microbee128_StarnetClient_Emulator::Interrupt(uint16_t vector)
+{
+  if (m_logNextInterrupt && !m_inExec) {
+    m_logNextInterrupt = false;
+    uint16_t at = (uint16_t)((m_cpu.I << 8) | (vector & 0xff));
+    cerr << "starnet: irq"
+         << " I " << HEXFORMAT0x2(m_cpu.I)
+         << " vector " << HEXFORMAT0x2((uint8_t)vector)
+         << " at " << HEXFORMAT0x4(at)
+         << " word " << HEXFORMAT0x4(ReadMemoryWord(at))
+         << " df4e " << HEXFORMAT0x4(ReadMemoryWord(0xdf4e))
+         << " 5f4e " << HEXFORMAT0x4(ReadMemoryWord(0x5f4e))
+         << endl;
+  }
+  Microbee128_BN_Emulator::Interrupt(vector);
 }
 
 int Microbee128_StarnetClient_Emulator::Exec(int cycles)
 {
-  // A strobe raised during the IN that follows EI is taken as vector 0x4C,
-  // before the client has armed the vector it uses for the block read.
+  // EE35 arms vector 0x4E and then executes EI; HALT. A strobe raised on
+  // the IN after the earlier EI is taken as vector 0x4C instead.
   WakeReceive();
+
+  // Step one instruction at a time until the cold-boot probes have fired
+  // so we cannot skip D887 / C000 / D9FF inside a multi-cycle ExecZ80.
+  if (!m_bootProbeDone) {
+    int toDo = cycles;
+    while (toDo > 0 && !m_bootProbeDone) {
+      ProbeBoot();
+      int remaining = Microbee128_BN_Emulator::Exec(1);
+      int done = 1 - remaining;
+      if (done <= 0)
+        done = 1;
+      toDo -= done;
+      ProbeBoot();
+    }
+    if (toDo > 0)
+      return Microbee128_BN_Emulator::Exec(toDo);
+    return toDo;
+  }
+
   return Microbee128_BN_Emulator::Exec(cycles);
 }
 
@@ -1054,7 +1171,7 @@ void Microbee128_StarnetClient_Emulator::WakeReceive()
   if (!m_pio.GetIE(0) || !m_client.HasTx())
     return;
 
-  // The halted client reads one byte, decrements it, and block-reads the rest.
+  // EE50 reads this byte into B, decrements it, and INIRs the frame.
   m_bodyLeft = m_client.TakeFrameSize();
   if (m_bodyLeft == 0)
     return;

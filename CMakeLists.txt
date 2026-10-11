@@ -91,6 +91,7 @@ endif()
 
 add_subdirectory(common)
 add_subdirectory(disk)
+add_subdirectory(starnet)
 add_subdirectory(emulator)
 
 add_executable(grzbin grzbin/grzbin.cc)
