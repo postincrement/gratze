@@ -309,18 +309,11 @@ void WD_FDC::WriteCmdReg(int8_t command)
 
 uint8_t WD_FDC::ReadStatusReg()
 {
-  if (m_reading) {
-    auto now = std::chrono::system_clock::now();
-    if (now > m_readWriteTimer) {
-      ReadNextByte();
-      if (m_lostData == 0) {
-        if (m_debug)
-          cerr << "FDC: setting lost data" << endl;
-        m_lostData = STATUS_LOST_DATA;
-      }
-    }
+  // Data is already buffered; do not enforce a wall-clock DRQ deadline.
+  // Host scheduling and CPU throttling routinely exceed a real drive's
+  // inter-byte window and would spuriously set LOST_DATA.
+  if (m_reading)
     m_status |= m_lostData;
-  }
   
   UpdateInterrupt(false);
   if (m_headLoaded && m_pulseIndex)
@@ -523,6 +516,10 @@ int WD_FDC::ReadCommand(uint8_t cmd)
   else {
     VirtualDrive::SectorInfo info;
     m_bufferPtr = 0;
+    if (m_debug)
+      cerr << "FDC: reading side=" << dec << (int)m_side
+           << ",track=" << (int)m_realTrack
+           << ",sector=" << (int)m_sector << endl;
     int bufferLen = m_drives[m_drive]->ReadSector(m_side, m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
       if (m_debug)

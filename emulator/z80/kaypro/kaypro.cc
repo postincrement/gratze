@@ -18,13 +18,12 @@ using namespace std;
 #define KAYPRO_VRAM_START       0x3000
 #define KAYPRO_VRAM_END         0x3fff
 #define KAYPRO_COLS             80
-#define KAYPRO_ROWS             25
+#define KAYPRO_ROWS             24
 #define KAYPRO_LINE_STRIDE      128
 #define KAYPRO_FONT_W           8
 #define KAYPRO_FONT_H           8
-// Display cell height: 8x8 chargen is vertically stretched to fill this
-// many scanlines (2× → 16) so glyphs look correctly proportioned.
-#define KAYPRO_SCANLINES        16
+// Hardware cell is 10 scanlines (8 glyph + 2 blank), matching the II CRTC.
+#define KAYPRO_SCANLINES        10
 
 static constexpr uint8_t kSystemBankMask   = 0x80;
 static constexpr uint8_t kSystemDriveAMask = 0x01;
@@ -42,11 +41,9 @@ class KayproVideo : public MonoMemoryMappedScreen
     FontChar GetCharAtPos(int x, int y) override;
     void WriteMemoryAtAddress(int addr, uint8_t ch) override;
 
-    void SetScroll(uint8_t value);
     void SetScreenSize(int cols, int rows, int lines);
 
   private:
-    uint8_t m_scroll = 0;
     int m_lines = KAYPRO_SCANLINES;
 };
 
@@ -62,26 +59,32 @@ bool KayproVideo::CreatePixelFont(const Config::Font & fontInfo, std::vector<uin
 
   const int srcH = fontInfo.m_charGen->m_height;
   const int dstH = fontInfo.m_height;
-  if ((srcH <= 0) || (dstH <= 0) || (dstH < srcH))
+  if ((srcH <= 0) || (dstH <= 0) || (fontInfo.m_count < 256))
     return true;
 
-  // Unpack left the 8 glyph rows at the top and blank-padded the rest.
-  // Stretch those glyph rows across the full cell height so each source
-  // scanline becomes multiple destination pixels.
+  // 81-146(A) stores glyphs only in 0x80-0xFF (A10 of the 2716 tied such that
+  // ASCII uses the upper half). Hardware effectively XORs VRAM with 0x80 for
+  // the chargen address; we copy glyphs into 0x00-0x7F instead. Bit 7 in VRAM
+  // is blink (blank half during the off phase) — keep 0x80-0xFF empty.
+  for (int ch = 0; ch < 128; ++ch) {
+    uint8_t * normal = &fontData[ch * dstH];
+    uint8_t * from   = &fontData[(ch + 128) * dstH];
+    memcpy(normal, from, dstH);
+    memset(from, 0, dstH);
+  }
+
+  if (dstH <= srcH)
+    return true;
+
+  // Pad the 8 glyph rows with blank scanlines (II: 10-line cell).
   std::vector<uint8_t> glyph(srcH);
   for (int ch = 0; ch < fontInfo.m_count; ++ch) {
     uint8_t * cell = &fontData[ch * dstH];
     memcpy(glyph.data(), cell, srcH);
     for (int y = 0; y < dstH; ++y)
-      cell[y] = glyph[(y * srcH) / dstH];
+      cell[y] = (y < srcH) ? glyph[y] : 0;
   }
   return true;
-}
-
-void KayproVideo::SetScroll(uint8_t value)
-{
-  m_scroll = value;
-  RefreshScreen();
 }
 
 void KayproVideo::SetScreenSize(int cols, int rows, int lines)
@@ -104,8 +107,11 @@ FontChar KayproVideo::GetCharAtPos(int x, int y)
 {
   if ((x < 0) || (x >= KAYPRO_COLS) || (y < 0) || (y >= KAYPRO_ROWS))
     return 0x20;
-  int addr = (y * KAYPRO_LINE_STRIDE + x + (m_scroll * KAYPRO_LINE_STRIDE)) & m_memoryMask;
-  return m_memory[addr];
+  // Direct VRAM map: 80 visible cols, 128-byte line stride. Port 14 is not a
+  // scroll register on the II (ROM OUT 14h,17h is a no-op on hardware).
+  int addr = (y * KAYPRO_LINE_STRIDE + x) & m_memoryMask;
+  // Bit 7 = blink attribute; show the base glyph (blink-off uses blank half).
+  return (FontChar)(m_memory[addr] & 0x7f);
 }
 
 void KayproVideo::WriteMemoryAtAddress(int addr, uint8_t data)
@@ -115,9 +121,8 @@ void KayproVideo::WriteMemoryAtAddress(int addr, uint8_t data)
 
   m_memory[addr] = data;
 
-  int vis = (addr - (m_scroll * KAYPRO_LINE_STRIDE)) & m_memoryMask;
-  int y = vis / KAYPRO_LINE_STRIDE;
-  int x = vis % KAYPRO_LINE_STRIDE;
+  int y = addr / KAYPRO_LINE_STRIDE;
+  int x = addr % KAYPRO_LINE_STRIDE;
   if ((x < KAYPRO_COLS) && (y < KAYPRO_ROWS))
     RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY), true);
 }
@@ -159,8 +164,19 @@ int Kaypro_Emulator::Exec(int cycles)
         (m_fdc->GetDRQ() || m_fdc->GetInterrupt())) {
       NMI();
     }
-    int rem = Z80Emulator::Exec(1);
-    int ran = 1 - rem;
+
+    // Still halted with no FDC attention: consume the timeslice as wait.
+    if ((m_cpu.IFF & IFF_HALT) != 0)
+      return 0;
+
+    // During an FDC transfer HALT ends the Z80 burst (ICount=0). Use short
+    // bursts so we can NMI and fetch many data bytes inside one timeslice.
+    int chunk = left;
+    if (m_fdc && (m_fdc->GetDRQ() || m_fdc->GetInterrupt()))
+      chunk = std::min(left, 32);
+
+    int rem = Z80Emulator::Exec(chunk);
+    int ran = chunk - rem;
     if (ran < 1)
       ran = 1;
     left -= ran;
@@ -174,11 +190,8 @@ void Kaypro_Emulator::Reset(int addr)
   m_kbQueue.clear();
   m_sioControl = 0;
   m_sioControlWrites = 0;
-  m_scroll = 0;
-  if (m_video) {
-    m_video->SetScroll(0);
+  if (m_video)
     m_video->SetScreenSize(KAYPRO_COLS, KAYPRO_ROWS, KAYPRO_SCANLINES);
-  }
 
   // Power-on: ROM + VRAM mapped (system bit 7 = 1).
   ApplySystemBits(0x80);
@@ -225,7 +238,7 @@ void Kaypro_Emulator::ApplySystemBits(uint8_t data)
   if (drive >= 0)
     m_fdc->SelectDrive(drive);
 
-  // Side select (bit 2).
+  // Side select (bit 2). II drives are single-sided; keep logical side 0/1.
   m_fdc->SelectSide((data & 0x04) ? 1 : 0);
 }
 
@@ -234,18 +247,23 @@ uint8_t Kaypro_Emulator::ReadIOMemory(int id, uint16_t addr) const
   if (id != KAYPRO_MEMORY_BANKED)
     return Z80Emulator::ReadIOMemory(id, addr);
 
-  if (!m_romMapped)
-    return m_lowRam[addr & 0x3fff];
+  addr &= 0x3fff;
 
-  // Alternate map: ROM 0000-2FFF, VRAM 3000-3FFF.
-  if (addr < KAYPRO_VRAM_START) {
-    // 4K ROM mirrored through the 0000-2FFF window.
-    return g_kaypro_81_232_ROM[addr & KAYPRO_ROM_END];
+  // Bit7 set: ROM at 0000-2FFF, VRAM at 3000-3FFF.
+  // Bit7 clear: system RAM throughout 0000-3FFF (CP/M TPA includes 3000).
+  if (addr >= KAYPRO_VRAM_START) {
+    if (m_romMapped) {
+      if (m_video)
+        return m_video->ReadMemoryAtAddress(addr - KAYPRO_VRAM_START);
+      return 0x00;
+    }
+    return m_lowRam[addr];
   }
 
-  if (m_video)
-    return m_video->ReadMemoryAtAddress(addr - KAYPRO_VRAM_START);
-  return 0x00;
+  if (m_romMapped)
+    return g_kaypro_81_232_ROM[addr & KAYPRO_ROM_END];
+
+  return m_lowRam[addr];
 }
 
 void Kaypro_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
@@ -255,20 +273,21 @@ void Kaypro_Emulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
     return;
   }
 
-  if (!m_romMapped) {
-    m_lowRam[addr & 0x3fff] = val;
+  addr &= 0x3fff;
+
+  if (addr >= KAYPRO_VRAM_START) {
+    if (m_romMapped) {
+      if (m_video)
+        m_video->WriteMemoryAtAddress(addr - KAYPRO_VRAM_START, val);
+      return;
+    }
+    m_lowRam[addr] = val;
     return;
   }
 
-  // ROM window is read-only; writes fall through to underlying RAM so they
-  // remain after the bank switches back to normal.
-  if (addr < KAYPRO_VRAM_START) {
-    m_lowRam[addr & 0x3fff] = val;
-    return;
-  }
-
-  if (m_video)
-    m_video->WriteMemoryAtAddress(addr - KAYPRO_VRAM_START, val);
+  // ROM window is read-only; writes go to the underlying DRAM so they remain
+  // after the bank switches back to RAM.
+  m_lowRam[addr] = val;
 }
 
 uint8_t Kaypro_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port)
@@ -296,12 +315,14 @@ uint8_t Kaypro_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t p
         return 0xff;
       return m_fdc->Read(port & 0x3);
 
-    case KAYPRO_PORT_SCROLL:
-      return m_scroll;
+    case KAYPRO_PORT_UNUSED:
+      // Port 14 is unmapped on Kaypro II (present on */84 as system port).
+      return 0xff;
 
     case KAYPRO_PORT_SYSTEM:
-      // Centronics ready (bit 3) idle-high; return latched bits otherwise.
-      return (uint8_t)(m_systemBits | 0x08);
+      // Centronics busy (bit 3) idle-low → ready. PA7 is pulled high on read
+      // (MAME); the bank latch is write-only for bit 7.
+      return (uint8_t)((m_systemBits & ~0x80) | 0x80);
 
     case KAYPRO_PORT_PARALLEL:
       return 0xff;
@@ -330,10 +351,8 @@ void Kaypro_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t po
         m_fdc->Write(port & 0x3, data);
       return;
 
-    case KAYPRO_PORT_SCROLL:
-      m_scroll = data;
-      if (m_video)
-        m_video->SetScroll(data);
+    case KAYPRO_PORT_UNUSED:
+      // ROM INITVID does OUT (14),17h; on the II that write goes nowhere.
       return;
 
     case KAYPRO_PORT_SYSTEM:
@@ -361,7 +380,7 @@ INFO_START(kaypro)
   INFO_IO_PORT_RW(0x08, 0x0b, KAYPRO_PORT_PARALLEL),
   INFO_IO_PORT_RW(0x0c, 0x0f, KAYPRO_PORT_BAUD),
   INFO_IO_PORT_RW(0x10, 0x13, KAYPRO_PORT_FDC),
-  INFO_IO_PORT_RW(0x14, 0x14, KAYPRO_PORT_SCROLL),
+  INFO_IO_PORT_RW(0x14, 0x14, KAYPRO_PORT_UNUSED),
   INFO_IO_PORT_RW(0x1c, 0x1f, KAYPRO_PORT_SYSTEM),
 }
 INFO_END(kaypro);

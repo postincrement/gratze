@@ -17,7 +17,7 @@ extern unsigned char g_kaypro_81_232_ROM[4096];
 #define KAYPRO_MEMORY_BANKED  1
 #define KAYPRO_PORT_SIO       1
 #define KAYPRO_PORT_FDC       2
-#define KAYPRO_PORT_SCROLL    3
+#define KAYPRO_PORT_UNUSED    3  // Port 14: unmapped on II; */84 system port
 #define KAYPRO_PORT_SYSTEM    4
 #define KAYPRO_PORT_PARALLEL  5
 #define KAYPRO_PORT_BAUD      6
@@ -51,14 +51,14 @@ class Kaypro_Emulator : public Z80Emulator
     std::unique_ptr<WD_FDC> m_fdc;
     KayproVideo * m_video = nullptr;
 
-    // Underlying RAM for 0000-3FFF (visible when bank bit 7 is clear).
+    // System DRAM for 0000-3FFF. Visible at 0000-2FFF when bank bit 7 is
+    // clear; 3000-3FFF is RAM when bit 7 is clear, VRAM when bit 7 is set.
     uint8_t m_lowRam[0x4000] = {};
 
-    // Port 1C image. Bit 7 set => ROM + VRAM mapped in lower 16K.
+    // Port 1C image. Bit 7 set => ROM+VRAM; clear => all RAM at 0000-3FFF.
     uint8_t m_systemBits = 0x80;
     bool m_romMapped = true;
 
-    uint8_t m_scroll = 0;
     uint8_t m_sioControl = 0;
     int m_sioControlWrites = 0;
 
