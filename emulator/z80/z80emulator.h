@@ -46,6 +46,9 @@ class Z80Emulator : public Emulator
     virtual unsigned GetOpcode(unsigned addr, std::vector<uint8_t> & opcodes) const override;
     virtual std::string DecodeOpcode(const std::vector<uint8_t> & code) const override;
 
+    // Called when the CPU executes ED FE (MFZ PatchZ80). Default is a no-op.
+    virtual void OnPatchZ80(MFZ::Z80 *R);
+
   protected:
     virtual void DumpStackInternal(const std::vector<uint16_t> & stack) override;
     void ServicePendingInterrupt();

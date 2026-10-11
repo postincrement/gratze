@@ -288,9 +288,18 @@ std::string Z80Emulator::DecodeOpcode(const std::vector<uint8_t> & code) const
 
 Z80Emulator * Z80Emulator::g_z80Instance = NULL;
 
+void Z80Emulator::OnPatchZ80(MFZ::Z80 *R)
+{
+  (void)R;
+}
+
 extern "C"
 {
-  void PatchZ80(register MFZ::Z80 *R) {}
+  void PatchZ80(register MFZ::Z80 *R)
+  {
+    if (Z80Emulator::g_z80Instance != NULL)
+      Z80Emulator::g_z80Instance->OnPatchZ80(R);
+  }
 
   MFZ::word LoopZ80(register MFZ::Z80 *R)
   {

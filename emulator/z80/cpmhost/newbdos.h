@@ -1,5 +1,5 @@
-#ifndef CPM80_NEWBDOS_H_
-#define CPM80_NEWBDOS_H_
+#ifndef CPMHOST_NEWBDOS_H_
+#define CPMHOST_NEWBDOS_H_
 
 #include <array>
 #include <dirent.h>
@@ -11,16 +11,17 @@
 #include <vector>
 
 #include "cpm_drive.h"
-
-class CPM80_Emulator;
+#include "z80/cpmhost/cpmhost.h"
 
 struct NewBDOS
 {
-  NewBDOS(CPM80_Emulator & proc);
+  explicit NewBDOS(cpmhost::Host & host);
   ~NewBDOS();
 
   typedef void (NewBDOS::* Function)();
 
+  // Entry from ED FE / PatchZ80. `code` is the value in C; values use A.
+  void OnTrap(uint8_t code);
   void OnBDOSCommand(uint8_t code);
   void CcpCommand();
   void CcpExit();
@@ -95,7 +96,8 @@ struct NewBDOS
   void BuildImageRecords(int drive, const uint8_t * entry, FileInfo & info);
   void ReadImageRecord(FileInfo & info, int code, off_t offs);
 
-  CPM80_Emulator & m_proc;
+  cpmhost::Host & m_host;
+  MFZ::Z80 & m_cpu;
   uint16_t m_dmaAddress;
   DIR * m_fileFind;
   uint16_t m_findFCB;
@@ -106,10 +108,11 @@ struct NewBDOS
   int m_nextFileId = 0x40000000;
   uint16_t m_login = 0;
   uint16_t m_readOnly = 0;
+  bool m_loadFileDone = false;
   std::ofstream m_debug;
 
   CpmDriveSet m_drives;
   std::map<int, FileInfo> m_fileMap;
 };
 
-#endif // CPM80_NEWBDOS_H_
+#endif // CPMHOST_NEWBDOS_H_

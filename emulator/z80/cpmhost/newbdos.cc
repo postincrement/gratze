@@ -9,9 +9,10 @@
 #include <cstring>
 
 #include "common/misc.h"
+#include "common/binfile.h"
 
-#include "z80/cpm80/cpm80.h"
-#include "z80/cpm80/newbdos.h"
+#include "z80/cpmhost/cpmhost.h"
+#include "z80/cpmhost/newbdos.h"
 
 using namespace std;
 
@@ -25,7 +26,8 @@ enum {
 
 #define ColdBootTitle "\rCP/M 2.2 NewBDOS\r\n$"
 
-extern unsigned char z80_cpm80_newbdos_bin[2398];
+extern unsigned char z80_cpmhost_newbdos_bin[];
+extern unsigned z80_cpmhost_newbdos_bin_len;
 
 static NewBDOS::Function NewBDOSCommands[] = {
   &NewBDOS::SystemReset,    //  0 - System reset
@@ -240,14 +242,15 @@ NewBDOS::FileInfo::~FileInfo()
 
 //////////////////////////////////////////////////////////////
 
-NewBDOS::NewBDOS(CPM80_Emulator & proc)
-  : m_proc(proc)
+NewBDOS::NewBDOS(cpmhost::Host & host)
+  : m_host(host)
+  , m_cpu(host.Cpu())
   , m_fileFind(NULL)
   , m_userCode(0x00)
   , m_currDisk(0x00)
   , m_dmaAddress(0x80)
 {
-  m_memory = m_proc.GetMainMemoryPtr();
+  m_memory = m_host.Memory();
   m_nextFileId = 0x40000000;
 
   m_debug.open("bdos_debug.txt", std::ofstream::out | std::ofstream::trunc);
@@ -260,6 +263,42 @@ NewBDOS::~NewBDOS()
 {
   if (m_fileFind != NULL)
     closedir(m_fileFind);
+}
+
+void NewBDOS::OnTrap(uint8_t code)
+{
+  using namespace cpmhost;
+
+  // BIOS console traps must not disturb BC. CONOUT also keeps AF intact
+  // (character stays in A). BDOS traps use normal CP/M return regs.
+  const uint16_t savedAF = m_cpu.AF.W;
+  const uint16_t savedBC = m_cpu.BC.W;
+
+  switch (code) {
+    case kTrapConst:
+      m_cpu.AF.B.h = m_host.ConsoleStatus() ? 0xff : 0x00;
+      m_cpu.AF.B.l = (uint8_t)(savedAF & 0xff);
+      m_cpu.BC.W = savedBC;
+      return;
+
+    case kTrapConin: {
+      int ch = m_host.ConsoleIn();
+      m_cpu.AF.B.h = (ch >= 0) ? (uint8_t)ch : 0xff;
+      m_cpu.AF.B.l = (uint8_t)(savedAF & 0xff);
+      m_cpu.BC.W = savedBC;
+      return;
+    }
+
+    case kTrapConout:
+      m_host.ConsoleOut((char)(savedAF >> 8));
+      m_cpu.AF.W = savedAF;
+      m_cpu.BC.W = savedBC;
+      return;
+
+    default:
+      OnBDOSCommand(code);
+      return;
+  }
 }
 
 void NewBDOS::OnBDOSCommand(uint8_t code)
@@ -275,13 +314,13 @@ void NewBDOS::OnBDOSCommand(uint8_t code)
   }
   if (code >= sizeof(NewBDOSCommands)/sizeof(NewBDOSCommands[0])) {
     m_debug << "BDOS " << code << ": not handled" << endl;
-    m_proc.m_cpu.AF.B.h = 0;
+    m_cpu.AF.B.h = 0;
     return;
   }
 
   Function func = NewBDOSCommands[code];
   if (func == NULL) {
-    m_proc.m_cpu.AF.B.h = 0;
+    m_cpu.AF.B.h = 0;
     m_debug << "BDOS " << dec << code << ": NULL handler" << endl;
   }
   else {
@@ -525,10 +564,10 @@ void NewBDOS::CcpLls()
         break;
     }
     std::string line = row.mode + " " + size + " " + row.date + " " + row.cpm + " " + row.host;
-    m_proc.ConsoleOut('\r');
-    m_proc.ConsoleOut('\n');
+    m_host.ConsoleOut('\r');
+    m_host.ConsoleOut('\n');
     for (char ch : line)
-      m_proc.ConsoleOut(ch);
+      m_host.ConsoleOut(ch);
   }
 }
 
@@ -860,10 +899,10 @@ void NewBDOS::CcpLcp()
 
     copied = true;
     std::string line = show(source.drive, file.cpm) + " -> " + show(dest.drive, destCpm);
-    m_proc.ConsoleOut('\r');
-    m_proc.ConsoleOut('\n');
+    m_host.ConsoleOut('\r');
+    m_host.ConsoleOut('\n');
     for (char ch : line)
-      m_proc.ConsoleOut(ch);
+      m_host.ConsoleOut(ch);
   }
 
   if (copied) {
@@ -943,14 +982,14 @@ void NewBDOS::CcpLcd()
 
 void NewBDOS::CcpCommand()
 {
-  uint16_t fcb = m_proc.m_cpu.DE.W;
+  uint16_t fcb = m_cpu.DE.W;
   char name[8];
   for (int i = 0; i < 8; ++i)
     name[i] = m_memory[fcb + 1 + i] & 0x7f;
 
   for (int i = 0; i < 3; ++i) {
     if ((m_memory[fcb + 9 + i] & 0x7f) != ' ') {
-      m_proc.m_cpu.AF.B.h = 0;
+      m_cpu.AF.B.h = 0;
       return;
     }
   }
@@ -974,19 +1013,19 @@ void NewBDOS::CcpCommand()
     }
     if (!match)
       continue;
-    m_proc.m_cpu.AF.B.h = 0xff;
+    m_cpu.AF.B.h = 0xff;
     (this->*command.func)();
     return;
   }
 
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.AF.B.h = 0;
   m_debug << "CCP command not handled" << endl;
 }
 
 void NewBDOS::SystemReset()
 {
   m_debug << "BDOS 0: system reset" << endl;
-  if (m_proc.m_options.m_arg.empty()) {
+  if (m_host.GetOptions().m_arg.empty()) {
     PrintCPMString(ColdBootTitle);
     stringstream strm;
     strm << "CCP=" << hex << CCPB << ",BDOS=" << BDOS << ",BIOS=" << BIOS << "\r\n$";
@@ -996,9 +1035,9 @@ void NewBDOS::SystemReset()
 
   ClearHostCaches();
 
-  // Cold boot logs in drive A. The BIOS leaves that drive in C.
-  m_proc.WriteMemory(4, 0x00);
-  m_proc.m_cpu.BC.B.l = 0;
+  // Cold boot logs in drive A (value for Boot is in A).
+  m_host.WriteMemory(4, 0x00);
+  m_cpu.AF.B.h = 0;
 
   Boot();
 }
@@ -1007,8 +1046,8 @@ void NewBDOS::Boot()
 {
   m_debug << "booting" << endl;
 
-  // BIOS warm boot captured the logged-in drive in C before this reload.
-  uint8_t logged = m_proc.m_cpu.BC.B.l;
+  // Warm boot passes logged drive/user in A; cold boot sets A = 0.
+  uint8_t logged = m_cpu.AF.B.h;
 
   m_fileMap.clear();
 
@@ -1027,26 +1066,26 @@ void NewBDOS::Boot()
 
   // start running CCP, with the preserved drive in C
   m_dmaAddress        = 0x0080;
-  m_proc.m_cpu.BC.B.l = logged;
-  m_proc.m_cpu.SP.W   = 0x0100;
-  m_proc.m_cpu.PC.W   = CCPB;
+  m_cpu.BC.B.l = logged;
+  m_cpu.SP.W   = 0x0100;
+  m_cpu.PC.W   = CCPB;
 
   // copy the BIOS/BDOS etc
-  memcpy(m_memory + CCPB, z80_cpm80_newbdos_bin, sizeof(z80_cpm80_newbdos_bin));
+  memcpy(m_memory + CCPB, z80_cpmhost_newbdos_bin, z80_cpmhost_newbdos_bin_len);
 
   // if no load file, nothing to do
-  if (m_proc.m_options.m_arg.empty()) {
+  if (m_host.GetOptions().m_arg.empty()) {
     m_debug << "no file to load" << endl;
     return;
   }
 
   // if we already loaded the file, exit
-  if (m_proc.m_loadFileDone) {
+  if (m_loadFileDone) {
     m_debug << "exiting" << endl;
     exit(0);
   }
 
-  std::string loadFile = m_proc.m_options.m_arg[0];
+  std::string loadFile = m_host.GetOptions().m_arg[0];
 
   m_debug << "load file = " << loadFile << endl;
 
@@ -1054,7 +1093,7 @@ void NewBDOS::Boot()
   BINFile::AddFormat<CPMCOMFile>("com");
 
   // note this sets the PC if it loads
-  if (!m_proc.LoadFile(loadFile)) {
+  if (!m_host.LoadFile(loadFile)) {
     m_debug << "error: load of '" << loadFile << "' failed" << endl;
     return;
   }
@@ -1065,12 +1104,12 @@ void NewBDOS::Boot()
 
   int fcbOffs = 0x5c;
   for (int pass = 1; pass < 3; ++pass) {
-    if (pass >= m_proc.m_options.m_arg.size())
+    if (pass >= m_host.GetOptions().m_arg.size())
       break;
 
-    m_debug << "info: arg " << pass << " " << m_proc.m_options.m_arg[pass] << endl;
+    m_debug << "info: arg " << pass << " " << m_host.GetOptions().m_arg[pass] << endl;
 
-    Filename fn(m_proc.m_options.m_arg[pass]);
+    Filename fn(m_host.GetOptions().m_arg[pass]);
 
     BINFileIdentifier binFile;
     BINFile::AddFormat<CPMCOMFile>("com");
@@ -1102,12 +1141,12 @@ void NewBDOS::Boot()
 
   std::string cmdLine;
   std::string prefix;
-  for (int i = 1; i < m_proc.m_options.m_arg.size(); ++i) {
+  for (int i = 1; i < m_host.GetOptions().m_arg.size(); ++i) {
     std::string str = cmdLine + prefix;
     if ((i-1) < args.size())
       str += args[i-1];
     else  
-      str += m_proc.m_options.m_arg[i];
+      str += m_host.GetOptions().m_arg[i];
     if (str.length() > 64)
       break;
     cmdLine = str;  
@@ -1121,18 +1160,18 @@ void NewBDOS::Boot()
 
   m_debug << "info: cmdline = " << cmdLine << endl;
 
-  m_proc.m_loadFileDone = true;
+  m_loadFileDone = true;
 }
 
 void NewBDOS::ConsoleInput()
 {
   m_debug << "BDOS 1: console input" << endl;
-  m_proc.m_cpu.AF.B.h = m_proc.ConsoleIn();
+  m_cpu.AF.B.h = m_host.ConsoleIn();
 }
 
 void NewBDOS::ConsoleOutput()
 {
-  int ch = m_proc.m_cpu.DE.B.l;
+  int ch = m_cpu.DE.B.l;
 /*
   m_debug << "BDOS 2: console output '";
   if (ch < 0x20)
@@ -1141,43 +1180,43 @@ void NewBDOS::ConsoleOutput()
     m_debug << (char)ch;
   m_debug << "'" << endl;
 */  
-  m_proc.ConsoleOut(ch);
+  m_host.ConsoleOut(ch);
 }
 
 void NewBDOS::ConsoleDirect()
 {
   m_debug << "BDOS 6: direct console ";
-  uint8_t ch = m_proc.m_cpu.DE.B.l;
+  uint8_t ch = m_cpu.DE.B.l;
   if (ch != 0xff) {
     m_debug << "output ";
     DebugOutputChar(m_debug, ch);
     m_debug << endl;
-    m_proc.ConsoleOut(ch);
+    m_host.ConsoleOut(ch);
   }
   else {
     m_debug << "input " << endl;
-    if (!m_proc.ConsoleStatus()) {
+    if (!m_host.ConsoleStatus()) {
       m_debug << " nothing" << endl;
       ch = 0x00;
     }
     else {
-       ch = m_proc.ConsoleIn();
+       ch = m_host.ConsoleIn();
        DebugOutputChar(m_debug, ch);
     }
-    m_proc.m_cpu.AF.B.h = ch;
+    m_cpu.AF.B.h = ch;
   }
 }
 
 void NewBDOS::PrintCPMString(const char * str)
 {
   while (*str != '$')
-    m_proc.ConsoleOut(*str++);
+    m_host.ConsoleOut(*str++);
 }
 
 void NewBDOS::PrintString()
 {
   m_debug << "BDOS 9: print string" << endl;
-  char * ptr = (char *)m_memory + m_proc.m_cpu.DE.W;
+  char * ptr = (char *)m_memory + m_cpu.DE.W;
   m_debug << "output string: ";
   for (int i = 0; ptr[i] != '$'; ++i)
     DebugOutputChar(m_debug, ptr[i]);
@@ -1188,7 +1227,7 @@ void NewBDOS::PrintString()
 
 void NewBDOS::ConsoleStatus()
 {
-  m_proc.m_cpu.AF.B.h = m_proc.ConsoleStatus();
+  m_cpu.AF.B.h = m_host.ConsoleStatus();
 }
 
 void NewBDOS::ReadLine()
@@ -1196,7 +1235,7 @@ void NewBDOS::ReadLine()
   m_debug << "BDOS 10: read line" << endl;
 
   // get pointer to input buffer
-  uint8_t * buffer = m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * buffer = m_memory + m_cpu.DE.W;
   int mx = buffer[0];
   uint8_t * nc   = buffer + 1;
   uint8_t * data = buffer + 2;
@@ -1206,9 +1245,9 @@ void NewBDOS::ReadLine()
   bool done = false;
   while (!done) {
 
-    int ch = m_proc.ConsoleIn();
+    int ch = m_host.ConsoleIn();
     if (ch < 0) {
-      m_proc.RunPollers();
+      m_host.RunPollers();
       continue;
     }
 
@@ -1217,11 +1256,11 @@ void NewBDOS::ReadLine()
         // ^C on an empty command line is the CP/M warm boot.
         if (ptr == data) {
           m_debug << "^C triggered warm boot" << endl;
-          m_proc.ConsoleOut('^');
-          m_proc.ConsoleOut('C');
-          m_proc.ConsoleOut(0x0d);
-          m_proc.ConsoleOut(0x0a);
-          m_proc.m_cpu.PC.W = 0;
+          m_host.ConsoleOut('^');
+          m_host.ConsoleOut('C');
+          m_host.ConsoleOut(0x0d);
+          m_host.ConsoleOut(0x0a);
+          m_cpu.PC.W = 0;
           done = true;
         }
         break;
@@ -1234,9 +1273,9 @@ void NewBDOS::ReadLine()
       case 0x08:
         if (ptr > data) {
           --ptr;
-          m_proc.ConsoleOut(0x08);
-          m_proc.ConsoleOut(' ');
-          m_proc.ConsoleOut(0x08);
+          m_host.ConsoleOut(0x08);
+          m_host.ConsoleOut(' ');
+          m_host.ConsoleOut(0x08);
         }
         break;
       case 0x0a:
@@ -1248,7 +1287,7 @@ void NewBDOS::ReadLine()
           *ptr = ch;
           if ((ptr - data) < mx)
             ++ptr;
-          m_proc.ConsoleOut(ch);
+          m_host.ConsoleOut(ch);
         }
         break;
     }
@@ -1260,11 +1299,11 @@ void NewBDOS::ReadLine()
 void NewBDOS::ReturnVersion()
 {
   m_debug << "BDOS 12: get version" << endl;
-  m_proc.m_cpu.HL.B.h = 0;
-  m_proc.m_cpu.HL.B.l = 0x22;
+  m_cpu.HL.B.h = 0;
+  m_cpu.HL.B.l = 0x22;
 
-  m_proc.m_cpu.AF.B.h = m_proc.m_cpu.HL.B.l;
-  m_proc.m_cpu.BC.B.l = m_proc.m_cpu.HL.B.h;
+  m_cpu.AF.B.h = m_cpu.HL.B.l;
+  m_cpu.BC.B.l = m_cpu.HL.B.h;
 }
 
 void NewBDOS::ResetDisk()
@@ -1280,9 +1319,9 @@ void NewBDOS::ResetDisk()
 
 void NewBDOS::SelDisk()
 {
-  m_currDisk = m_proc.m_cpu.DE.B.l & 0x0f;
+  m_currDisk = m_cpu.DE.B.l & 0x0f;
   m_debug << "BDOS 14: sel disk " << (char)('A' + m_currDisk) << endl;
-  m_proc.WriteMemory(4, m_currDisk);
+  m_host.WriteMemory(4, m_currDisk);
   uint16_t bit = (uint16_t)(1u << m_currDisk);
   m_login |= bit;
   if (m_drives[m_currDisk].m_kind == CpmDrive::Kind::eImage) {
@@ -1295,8 +1334,8 @@ void NewBDOS::SelDisk()
     if (m_drives[m_currDisk].m_disk.m_spt > 0)
       PublishDPB(m_currDisk);
     else {
-      m_proc.m_cpu.HL.W = 0;
-      m_proc.m_cpu.AF.B.h = 0;
+      m_cpu.HL.W = 0;
+      m_cpu.AF.B.h = 0;
     }
   }
 }
@@ -1305,8 +1344,8 @@ static bool NameMatches(const std::string & name, const uint8_t * fcb);
 
 void NewBDOS::DeleteFile()
 {
-  m_proc.m_cpu.AF.B.h = 0xff;
-  uint8_t * fcb = m_memory + m_proc.m_cpu.DE.W;
+  m_cpu.AF.B.h = 0xff;
+  uint8_t * fcb = m_memory + m_cpu.DE.W;
   int drive = DriveFromFCB(fcb);
   CpmDrive & slot = m_drives[drive];
   if (slot.m_kind != CpmDrive::Kind::eHost) {
@@ -1332,7 +1371,7 @@ void NewBDOS::DeleteFile()
     }
   }
   if (deleted)
-    m_proc.m_cpu.AF.B.h = 0;
+    m_cpu.AF.B.h = 0;
 }
 
 bool IsATextFile(const Filename & fn)
@@ -1342,13 +1381,13 @@ bool IsATextFile(const Filename & fn)
 
 void NewBDOS::OpenFile()
 {
-  m_proc.m_cpu.AF.B.h = 0xff;
+  m_cpu.AF.B.h = 0xff;
 
-  uint8_t * fcbBytes = m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcbBytes = m_memory + m_cpu.DE.W;
   int drive = DriveFromFCB(fcbBytes);
   if (m_drives[drive].m_kind == CpmDrive::Kind::eImage) {
     if (OpenImage(drive, fcbBytes))
-      m_proc.m_cpu.AF.B.h = 0;
+      m_cpu.AF.B.h = 0;
     else
       m_debug << "BDOS 15: image file not found" << endl;
     return;
@@ -1433,14 +1472,14 @@ void NewBDOS::OpenFile()
   m_fileMap[fileInfo.m_fd] = std::move(fileInfo);
   fileInfo.m_fd = -1;
 
-  m_proc.m_cpu.AF.B.h = 0x0;
+  m_cpu.AF.B.h = 0x0;
   return;
 }
 
 void NewBDOS::CloseFile()
 {
-  m_proc.m_cpu.AF.B.h = 0xff;
-  char * fcb = (char *)m_memory + m_proc.m_cpu.DE.W;
+  m_cpu.AF.B.h = 0xff;
+  char * fcb = (char *)m_memory + m_cpu.DE.W;
   int fd = *(int *)(fcb + eFCB_User);
   m_debug << "BDOS 16: close file  " << fd << endl;
   auto r = m_fileMap.find(fd);
@@ -1452,24 +1491,24 @@ void NewBDOS::CloseFile()
   if (!r->second.m_isImage && r->second.m_fd >= 0)
     fsync(r->second.m_fd);
   m_fileMap.erase(r);
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.AF.B.h = 0;
 }
 
 void NewBDOS::SearchFirst()
 {
-  m_findFCB = m_proc.m_cpu.DE.W;
+  m_findFCB = m_cpu.DE.W;
   uint8_t * fcb = m_memory + m_findFCB;
   m_debug << "BDOS 17: search first '" << FCBToRegex((char *)fcb) << "'" << endl;
 
   m_findIndex = 0;
-  m_proc.m_cpu.AF.B.h = FindFile(fcb);
+  m_cpu.AF.B.h = FindFile(fcb);
 }
 
 void NewBDOS::SearchNext()
 {
   uint8_t * fcb = m_memory + m_findFCB;
   m_debug << "BDOS 18: search next '" << FCBToRegex((char *)fcb) << "'" << endl;
-  m_proc.m_cpu.AF.B.h = FindFile(fcb);
+  m_cpu.AF.B.h = FindFile(fcb);
 }
 
 uint8_t NewBDOS::FindFile(const uint8_t * fcb)
@@ -1488,45 +1527,45 @@ uint8_t NewBDOS::FindFile(const uint8_t * fcb)
 void NewBDOS::GetCurrDisk()
 {
   m_debug << "BDOS 25: get current disk " << (char)('A' + m_currDisk) << endl;
-  m_proc.m_cpu.AF.B.h = m_currDisk;
+  m_cpu.AF.B.h = m_currDisk;
 }
 
 void NewBDOS::SetDMAAddress()
 {
-  m_dmaAddress = m_proc.m_cpu.DE.W;
+  m_dmaAddress = m_cpu.DE.W;
   m_debug << "BDOS 26: set DMA address " << hex << m_dmaAddress << dec << endl;
 }
 
 void NewBDOS::GetSetUser()
 {
-  int code = m_proc.m_cpu.DE.B.l;
+  int code = m_cpu.DE.B.l;
   if (code == 0xff) {
-    m_proc.m_cpu.AF.B.h = m_userCode;
+    m_cpu.AF.B.h = m_userCode;
     m_debug << "BDOS 32: set user code to " << dec << (int)m_userCode << endl;
   }
   else {
     m_userCode = code & 0x1f;
-    m_proc.m_cpu.AF.B.h = code;
+    m_cpu.AF.B.h = code;
     m_debug << "BDOS 32: get user code " << dec << (int)m_userCode << endl;
   }
 }
 
 void NewBDOS::ReadSeq()
 {
-  uint8_t * fcb = (uint8_t *)m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcb = (uint8_t *)m_memory + m_cpu.DE.W;
   ReadFile(fcb, 20, -1);
 }
 
 void NewBDOS::ReadRandom()
 {
-  uint8_t * fcb = (uint8_t *)m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcb = (uint8_t *)m_memory + m_cpu.DE.W;
   unsigned int offs = (fcb[eFCB_R0] + (fcb[eFCB_R1] << 8) + (fcb[eFCB_R2] << 16)) << 7;
   ReadFile(fcb, 33, offs);
 }
 
 void NewBDOS::ReadFile(uint8_t * fcb, int code, off_t offs)
 {
-  m_proc.m_cpu.AF.B.h = 0xff;
+  m_cpu.AF.B.h = 0xff;
 
   int fd = *(int *)(fcb + eFCB_User);
 
@@ -1547,7 +1586,7 @@ void NewBDOS::ReadFile(uint8_t * fcb, int code, off_t offs)
 
   int c = -1;
   if (offs > fileInfo.m_len) {
-    m_proc.m_cpu.AF.B.h = 0x01;
+    m_cpu.AF.B.h = 0x01;
   }
   else {
     uint8_t * p = m_memory + m_dmaAddress;
@@ -1570,12 +1609,12 @@ void NewBDOS::ReadFile(uint8_t * fcb, int code, off_t offs)
     } 
     memset(p+len, 0x1a, 128-len);
     fileInfo.m_pos = offs + 128;
-    m_proc.m_cpu.AF.B.h = 0x00;
+    m_cpu.AF.B.h = 0x00;
   }
 
-  m_debug << "BDOS " << code << ": read from fd " << fd << " at " << (int)offs << " returned " << c << ", s = " << (int)m_proc.m_cpu.AF.B.h << endl;
+  m_debug << "BDOS " << code << ": read from fd " << fd << " at " << (int)offs << " returned " << c << ", s = " << (int)m_cpu.AF.B.h << endl;
 
-  if (m_proc.m_cpu.AF.B.h == 0x00)
+  if (m_cpu.AF.B.h == 0x00)
     m_debug << DumpMemory(m_memory + m_dmaAddress, 128);
 
 }
@@ -1671,8 +1710,8 @@ static bool WriteAt(int fd, off_t offs, const uint8_t * data, size_t len)
 
 void NewBDOS::MakeFile()
 {
-  m_proc.m_cpu.AF.B.h = 0xff;
-  uint8_t * fcb = m_memory + m_proc.m_cpu.DE.W;
+  m_cpu.AF.B.h = 0xff;
+  uint8_t * fcb = m_memory + m_cpu.DE.W;
   int drive = DriveFromFCB(fcb);
   CpmDrive & slot = m_drives[drive];
   if (slot.m_kind != CpmDrive::Kind::eHost) {
@@ -1720,22 +1759,22 @@ void NewBDOS::MakeFile()
 
   slot.m_host.m_cpmToNative[cpm] = native;
   slot.m_host.m_nativeToCPM[native] = cpm;
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.AF.B.h = 0;
   m_debug << "BDOS 22: created '" << path << "' fd " << fd << endl;
 }
 
 void NewBDOS::WriteSeq()
 {
-  uint8_t * fcb = m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcb = m_memory + m_cpu.DE.W;
   WriteFile(fcb, 21, -1);
 }
 
 void NewBDOS::WriteRandom()
 {
-  uint8_t * fcb = m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcb = m_memory + m_cpu.DE.W;
   unsigned rec = fcb[eFCB_R0] | (fcb[eFCB_R1] << 8) | ((unsigned)fcb[eFCB_R2] << 16);
   if (rec >= 65536u) {
-    m_proc.m_cpu.AF.B.h = 6;
+    m_cpu.AF.B.h = 6;
     return;
   }
   WriteFile(fcb, 34, (off_t)rec * 128);
@@ -1743,7 +1782,7 @@ void NewBDOS::WriteRandom()
 
 void NewBDOS::WriteFile(uint8_t * fcb, int code, off_t offs)
 {
-  m_proc.m_cpu.AF.B.h = 1;
+  m_cpu.AF.B.h = 1;
   int fd = *(int *)(fcb + eFCB_User);
   auto r = m_fileMap.find(fd);
   if (r == m_fileMap.end()) {
@@ -1771,13 +1810,13 @@ void NewBDOS::WriteFile(uint8_t * fcb, int code, off_t offs)
     info.m_pos = offs + 128;
     AdvanceSequential(fcb);
   }
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.AF.B.h = 0;
   m_debug << "BDOS " << code << ": wrote fd " << info.m_fd << " at " << (int)offs << endl;
 }
 
 void NewBDOS::SetRandomRecord()
 {
-  uint8_t * fcb = m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcb = m_memory + m_cpu.DE.W;
   unsigned cr = fcb[32] & 0x7f;
   unsigned ex = fcb[12] & 0x1f;
   unsigned s2 = fcb[14] & 0x3f;
@@ -1785,7 +1824,7 @@ void NewBDOS::SetRandomRecord()
   fcb[eFCB_R0] = (uint8_t)(rec & 0xff);
   fcb[eFCB_R1] = (uint8_t)((rec >> 8) & 0xff);
   fcb[eFCB_R2] = (uint8_t)((rec >> 16) & 0xff);
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.AF.B.h = 0;
 }
 
 static bool NameMatches(const std::string & name, const uint8_t * fcb)
@@ -1850,15 +1889,15 @@ static uint32_t ExtentEnd(const uint8_t * entry, int exm)
 void NewBDOS::ReturnLoginVector()
 {
   m_debug << "BDOS 24: login vector " << hex << m_login << dec << endl;
-  m_proc.m_cpu.HL.W = m_login;
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.HL.W = m_login;
+  m_cpu.AF.B.h = 0;
 }
 
 void NewBDOS::ReturnReadOnlyVector()
 {
   m_debug << "BDOS 29: read-only vector " << hex << m_readOnly << dec << endl;
-  m_proc.m_cpu.HL.W = m_readOnly;
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.HL.W = m_readOnly;
+  m_cpu.AF.B.h = 0;
 }
 
 void NewBDOS::GetAllocVector()
@@ -1869,8 +1908,8 @@ void NewBDOS::GetAllocVector()
   slot.RebuildAllocation();
   m_debug << "BDOS 27: allocation vector " << slot.m_alloc.size() << " bytes" << endl;
   if (slot.m_alloc.empty()) {
-    m_proc.m_cpu.HL.W = 0;
-    m_proc.m_cpu.AF.B.h = 0;
+    m_cpu.HL.W = 0;
+    m_cpu.AF.B.h = 0;
     return;
   }
   size_t n = slot.m_alloc.size();
@@ -1878,13 +1917,13 @@ void NewBDOS::GetAllocVector()
     n = (size_t)(CCPB - 0x100);
   uint16_t addr = (uint16_t)(CCPB - n);
   memcpy(m_memory + addr, slot.m_alloc.data(), n);
-  m_proc.m_cpu.HL.W = addr;
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.HL.W = addr;
+  m_cpu.AF.B.h = 0;
 }
 
 void NewBDOS::ComputeFileSize()
 {
-  uint8_t * fcb = m_memory + m_proc.m_cpu.DE.W;
+  uint8_t * fcb = m_memory + m_cpu.DE.W;
   int drive = DriveFromFCB(fcb);
   CpmDrive & slot = m_drives[drive];
   if (slot.m_kind == CpmDrive::Kind::eHost)
@@ -1921,7 +1960,7 @@ void NewBDOS::ComputeFileSize()
   fcb[eFCB_R0] = (uint8_t)(records & 0xff);
   fcb[eFCB_R1] = (uint8_t)((records >> 8) & 0xff);
   fcb[eFCB_R2] = (uint8_t)((records >> 16) & 0xff);
-  m_proc.m_cpu.AF.B.h = found ? 0 : 0xff;
+  m_cpu.AF.B.h = found ? 0 : 0xff;
   m_debug << "BDOS 35: file size " << records << " records" << endl;
 }
 
@@ -1967,7 +2006,7 @@ void NewBDOS::PrintDriveMap()
 bool NewBDOS::ConfigureDrives()
 {
   std::string error;
-  if (!m_drives.Mount(m_proc.m_options.m_cpmDrives, error, &m_debug)) {
+  if (!m_drives.Mount(m_host.GetOptions().m_cpmDrives, error, &m_debug)) {
     cerr << "error: " << error << endl;
     return false;
   }
@@ -2003,8 +2042,8 @@ void NewBDOS::PublishDPB(int drive)
   uint8_t bytes[16] = {};
   m_drives[drive].Dpb(bytes);
   memcpy(m_memory + kDpbAddress, bytes, 16);
-  m_proc.m_cpu.HL.W = kDpbAddress;
-  m_proc.m_cpu.AF.B.h = 0;
+  m_cpu.HL.W = kDpbAddress;
+  m_cpu.AF.B.h = 0;
 }
 
 void NewBDOS::GetDiskParams()
@@ -2013,8 +2052,8 @@ void NewBDOS::GetDiskParams()
   if (m_drives[m_currDisk].m_kind == CpmDrive::Kind::eHost)
     UpdateDriveInfo(m_currDisk);
   if (m_drives[m_currDisk].m_disk.m_spt <= 0) {
-    m_proc.m_cpu.HL.W = 0;
-    m_proc.m_cpu.AF.B.h = 0;
+    m_cpu.HL.W = 0;
+    m_cpu.AF.B.h = 0;
     return;
   }
   PublishDPB(m_currDisk);
@@ -2109,24 +2148,24 @@ void NewBDOS::ReadImageRecord(FileInfo & info, int code, off_t offs)
   bool sequential = offs < 0;
   size_t record = sequential ? (size_t)(info.m_pos / 128) : (size_t)(offs / 128);
   if (record >= info.m_diskRecords.size()) {
-    m_proc.m_cpu.AF.B.h = 0x01;
+    m_cpu.AF.B.h = 0x01;
     m_debug << "BDOS " << code << ": image end of file at record " << record << endl;
     return;
   }
   uint32_t diskRec = info.m_diskRecords[record];
   if (diskRec == 0) {
-    m_proc.m_cpu.AF.B.h = 0xff;
+    m_cpu.AF.B.h = 0xff;
     m_debug << "BDOS " << code << ": image hole at record " << record << endl;
     return;
   }
   if (!ReadLogical(info.m_drive, diskRec, m_memory + m_dmaAddress)) {
-    m_proc.m_cpu.AF.B.h = 0xff;
+    m_cpu.AF.B.h = 0xff;
     m_debug << "BDOS " << code << ": image read failed at record " << record << endl;
     return;
   }
   if (sequential)
     info.m_pos += 128;
-  m_proc.m_cpu.AF.B.h = 0x00;
+  m_cpu.AF.B.h = 0x00;
   m_debug << "BDOS " << code << ": image record " << record << " from disk record " << diskRec << endl;
 }
 

@@ -34,11 +34,11 @@ add_custom_command(
   OUTPUT ${NEWBDOS_ROM}
   COMMAND ${CMAKE_COMMAND}
           -DZ80ASM=${Z80ASM}
-          -DASM=${CMAKE_CURRENT_SOURCE_DIR}/z80/cpm80/newbdos.asm
+          -DASM=${CMAKE_CURRENT_SOURCE_DIR}/z80/cpmhost/newbdos.asm
           -DOUT=${NEWBDOS_ROM}
           -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_newbdos_rom.cmake
   DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/z80/cpm80/newbdos.asm
+    ${CMAKE_CURRENT_SOURCE_DIR}/z80/cpmhost/newbdos.asm
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/gen_newbdos_rom.cmake
   VERBATIM
 )
@@ -75,6 +75,7 @@ add_executable(gratze
   z80/dg680/dg680.cc
   z80/super80/super80.cc
   z80/cpm80/cpm80.cc
+  z80/cpmhost/newbdos.cc
   2650/2650emulator.cc
   2650/cpu_2650.cc
   2650/eti685/eti685.cc
@@ -93,7 +94,6 @@ add_executable(gratze
   z80/mfz80/Z80.c
   z80/mfz80/Debug.c
   z80/mfz80/dasm.c
-  z80/cpm80/newbdos.cc
   ${CMAKE_CURRENT_BINARY_DIR}/newbdos_rom.c
   2650/eti685/rom_binbug_6_1.c
   2650/78up5/rom_pipbug.c

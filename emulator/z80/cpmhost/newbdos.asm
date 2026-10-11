@@ -13,9 +13,13 @@
 ;
 
 ;***************************
-; 
-;  must match defines in cpm80.cpp, newbdos.asm, and newbios.asm
-; 
+;
+;  must match defines in cpmhost.h
+;
+;  Host trap: undocumented ED FE (PatchZ80). Function code in C; values in A:
+;    0x00-0x24, 0xFE, 0xFF  → NewBDOS / CCP extensions / warm boot (A = drive for FF)
+;    0xF0 CONST, 0xF1 CONIN, 0xF2 CONOUT (char in A)
+;
 
 MEM:		EQU	64
 CCPLEN:		EQU	0x800
@@ -27,6 +31,10 @@ MEM_TOP:	EQU	MEM * 1024
 CCPB:		EQU	MEM_TOP - BIOSLEN - BDOSLEN - CCPLEN
 BDOS:		EQU	MEM_TOP - BIOSLEN - BDOSLEN
 BIOS:		EQU	MEM_TOP - BIOSLEN
+
+HOST_CONST:	EQU	0xF0
+HOST_CONIN:	EQU	0xF1
+HOST_CONOUT:	EQU	0xF2
 
 ;
 ;
@@ -1289,12 +1297,6 @@ PATTRN2:DEFB	0,22,0,0,0,0	;(* serial number bytes *).
 ;*
 ;**************************************************************
 ;
-zed80_conout:	equ	0x20
-zed80_const:	equ	0x20
-zed80_conin:	equ	0x21
-zed80_cmd:	equ	0x22
-zed80_drive:    equ     0x30
-
 	JP	BDOS_ENTRY	; standard BDOS entry
 
 BADSCTR:DEFW	ERROR1		;bad sector on read or write.
@@ -1334,7 +1336,8 @@ DISKRO:	DEFB	'R/O$'
 ;
 PRTERR:	PUSH	HL		;save second message pointer.
 	CALL	OUTCRLF		;send (cr)(lf).
-	IN	A,(zed80_drive)
+	LD	A,(TDRIVE)	;current drive from CP/M low memory.
+	AND	0x0F
 	ADD	A,'A'		;make ascii.
 	LD	(BDOSDRV),A	;and put in message.
 	LD	BC,BDOSERR	;and print it.
@@ -1355,10 +1358,12 @@ GETCHAR:
 ;
 
 PRTMESG:
-	PUSH	BC
-	LD	A,9
+	PUSH	BC		; preserve caller's BC (message ptr)
+	PUSH	AF
+	LD	C,9		; BDOS print-string
 	EX	DE,HL
-	OUT	(zed80_cmd),A
+	DEFB	0xED,0xFE	; host BDOS trap
+	POP	AF
 	POP	BC
 	RET
 
@@ -1368,8 +1373,7 @@ OUTCRLF:LD	C,CR
 	JP	BIOS_CONOUT
 
 BDOS_ENTRY:
-	LD	A,C
-	OUT	(zed80_cmd),A
+	DEFB	0xED,0xFE	; host BDOS trap (code already in C)
 	RET
 
 ; ensure BIOS starts at the correct address
@@ -1408,30 +1412,40 @@ BDOS_ENTRY:
 ;
 BIOS_CBOOT:
 	XOR	A
-	LD	(TDRIVE),a
-	LD	C,A
-	OUT	(zed80_cmd),A
+	LD	(TDRIVE),A
+	LD	C,A		; BDOS 0; A = drive 0
+	DEFB	0xED,0xFE	; host cold boot
 
 BIOS_WBOOT:
-	LD	A,(TDRIVE)	;keep the logged-in drive and user.
-	LD	C,A
-	LD	A,0xFF
-	OUT	(zed80_cmd),A
+	LD	A,(TDRIVE)	; A = logged drive/user
+	LD	C,0xFF		; warm-boot trap code
+	DEFB	0xED,0xFE
 
 BIOS_CONST:
-	IN	A,(zed80_const)
+	PUSH	BC		; preserve BC across trap
+	LD	C,HOST_CONST
+	DEFB	0xED,0xFE	; returns status in A
+	POP	BC
 	RET
 
 BIOS_CONIN:
-	IN	A,(zed80_conin)
+	PUSH	BC		; preserve BC across trap
+	LD	C,HOST_CONIN
+	DEFB	0xED,0xFE	; returns char in A (or 0xff)
+	POP	BC
 	CP	0xff
-	JR  Z,BIOS_CONIN
+	JR	Z,BIOS_CONIN
 	AND	0x7f
 	RET
 
 BIOS_CONOUT:
-	LD	A,C
-	OUT	(zed80_conout),A
+	LD	A,C		; character value in A
+	PUSH	BC		; preserve original BC
+	PUSH	AF		; preserve character in A
+	LD	C,HOST_CONOUT
+	DEFB	0xED,0xFE
+	POP	AF
+	POP	BC
 	RET
 
 BIOS_LIST:

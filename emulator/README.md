@@ -9,7 +9,7 @@ From the repository root:
 
 The `gratze` binary is `build/emulator/gratze`. CMake also builds `build/disk/grzdisk` and `build/grzbin/grzbin`.
 
-Cereal, nativefiledialog, and SDL_FontCache are downloaded into the build tree. nativefiledialog is Michael Labbe's library. The postincrement fork named by the old configure script is no longer available, so `emulator/nfd_compat` supplies the dialog calls gratze uses. `z80asm` assembles `emulator/z80/cpm80/newbdos.asm` into the CP/M image while building.
+Cereal, nativefiledialog, and SDL_FontCache are downloaded into the build tree. nativefiledialog is Michael Labbe's library. The postincrement fork named by the old configure script is no longer available, so `emulator/nfd_compat` supplies the dialog calls gratze uses. `z80asm` assembles `emulator/z80/cpmhost/newbdos.asm` into the CP/M image while building.
 
 Compiling with MingW
 --------------------
