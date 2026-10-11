@@ -1,0 +1,10 @@
+{
+  "name": "cpm80-local",
+  "type": "cpm80",
+  "drives": {
+    "a": {
+      "type": "dir",
+      "path": "."
+    }
+  }
+}

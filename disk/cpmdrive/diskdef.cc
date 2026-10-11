@@ -15,6 +15,7 @@
 #endif
 
 #include "diskdef.h"
+#include "common/json_parser.h"
 
 using namespace std;
 
@@ -98,103 +99,6 @@ static std::vector<int> BuildSkew(int spt, int skew)
   }
   return table;
 }
-
-namespace {
-
-struct JsonParser
-{
-  const std::string & m_text;
-  size_t m_index = 0;
-  std::string m_error;
-
-  explicit JsonParser(const std::string & text)
-    : m_text(text)
-  { }
-
-  bool Fail(const std::string & message)
-  {
-    m_error = message;
-    return false;
-  }
-
-  void Skip()
-  {
-    while (m_index < m_text.size() && isspace((unsigned char)m_text[m_index]))
-      ++m_index;
-  }
-
-  bool Eat(char ch)
-  {
-    Skip();
-    if (m_index < m_text.size() && m_text[m_index] == ch) {
-      ++m_index;
-      return true;
-    }
-    return false;
-  }
-
-  bool Peek(char ch)
-  {
-    Skip();
-    return m_index < m_text.size() && m_text[m_index] == ch;
-  }
-
-  bool String(std::string & out)
-  {
-    if (!Eat('"'))
-      return Fail("expected a string");
-    out.clear();
-    while (m_index < m_text.size() && m_text[m_index] != '"') {
-      if (m_text[m_index] == '\\')
-        return Fail("string escapes are not supported in a disk definition");
-      out.push_back(m_text[m_index++]);
-    }
-    if (m_index >= m_text.size())
-      return Fail("unterminated string");
-    ++m_index;
-    return true;
-  }
-
-  bool Number(int & out)
-  {
-    Skip();
-    size_t start = m_index;
-    if (m_index < m_text.size() && m_text[m_index] == '-')
-      ++m_index;
-    if (m_index >= m_text.size() || !isdigit((unsigned char)m_text[m_index]))
-      return Fail("expected a number");
-    while (m_index < m_text.size() && isdigit((unsigned char)m_text[m_index]))
-      ++m_index;
-    try {
-      out = stoi(m_text.substr(start, m_index - start));
-    }
-    catch (...) {
-      return Fail("number is out of range");
-    }
-    return true;
-  }
-
-  bool Array(std::vector<int> & out)
-  {
-    if (!Eat('['))
-      return Fail("expected an array");
-    out.clear();
-    if (Eat(']'))
-      return true;
-    for (;;) {
-      int value = 0;
-      if (!Number(value))
-        return false;
-      out.push_back(value);
-      if (Eat(']'))
-        return true;
-      if (!Eat(','))
-        return Fail("expected a comma in translate");
-    }
-  }
-};
-
-} // namespace
 
 static bool CpmDiskTracks(const CpmDiskDef & disk, int & tracks);
 

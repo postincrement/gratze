@@ -47,6 +47,8 @@ add_executable(gratze
   src/main.cc
   src/mainwindow.cc
   src/status_panel.cc
+  src/options.cc
+  src/env_config.cc
   src/emulator.cc
   devices/fdc.cc
   devices/keyscan.cc

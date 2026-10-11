@@ -341,7 +341,8 @@ void Emulator::RefreshPanelDrives()
   m_panelDrives.clear();
   for (const auto & mounted : m_mountedDriveNames) {
     StatusDrive drive;
-    drive.m_label = std::to_string(mounted.first);
+    // Drive indices are A=0 … P=15 for CP/M and FDC mounts.
+    drive.m_label.assign(1, (char)('A' + (mounted.first % 26)));
     drive.m_name = mounted.second;
     drive.m_mounted = true;
     m_panelDrives.push_back(drive);
@@ -357,7 +358,7 @@ void Emulator::CollectFdcDrives(const WD_FDC * fdc)
 
   for (int i = 0; i < slots; ++i) {
     StatusDrive drive;
-    drive.m_label = std::to_string(i);
+    drive.m_label.assign(1, (char)('A' + i));
     auto mounted = m_mountedDriveNames.find(i);
     if (mounted != m_mountedDriveNames.end())
       drive.m_name = mounted->second;
@@ -1157,18 +1158,19 @@ int Emulator::Run(const Options & options)
     return -1;
   }
 
-  // get the drives
+  // get the drives (keys 0–15 = A–P)
   for (auto & r : options.m_driveFns) {
     std::string fn(r.second);
     VirtualFileIdentifier fileId;
     std::shared_ptr<VirtualDrive> drive = fileId.Open(fn, true);
     if (drive == nullptr)
       return false;
-    if (!MountDrive(r.first, drive, true)) {
-      cerr << "error: cannot mount drive " << r.first << " with " << r.second << endl;
+    char letter = (char)('A' + (r.first % 26));
+    if (!MountDrive((int)r.first, drive, true)) {
+      cerr << "error: cannot mount drive " << letter << " with " << r.second << endl;
       return -1;
     }
-    cerr << "info: mounted '" << fn << " as drive " << r.first << endl;
+    cerr << "info: mounted '" << fn << "' as drive " << letter << endl;
     auto slash = fn.find_last_of("/\\");
     m_mountedDriveNames[r.first] = (slash == std::string::npos) ? fn : fn.substr(slash + 1);
   }

@@ -1,0 +1,10 @@
+{
+  "name": "microbee128",
+  "type": "mbee128bn",
+  "drives": {
+    "a": {
+      "type": "image",
+      "file": "../disks/mbee/128k_standard_master_ds40.dsk"
+    }
+  }
+}

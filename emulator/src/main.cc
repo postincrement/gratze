@@ -12,6 +12,8 @@
 #include "common/cereal.h"
 
 #include "src/mainwindow.h"
+#include "src/env_config.h"
+#include "src/options.h"
 
 #include "z80/trs80/model1/model1.h"
 #include "z80/trs80/model3/model3.h"
@@ -74,7 +76,7 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { 'h', "help",            ' ', "display this help message" },
   { 'r', "rom",             's', "name of ROM"    },
   { ' ', "ram",             'u', "RAM size in k" },
-  { ' ', "drive*",          's', "name of file for virtual disk drive" },
+  { ' ', "drive*",          's', "disk image for drive a-p (e.g. --drivea file.dsk; legacy --drive0 = A)" },
   { ' ', "cpmdrive",        's', "CP/M drive, A=dir:path or A=image:file,dpb=name" },
   { 'b', "breakpoint",      'x', "breakpoint address"  },
   { ' ', "sdl",             ' ', "use an SDL window for a terminal emulation"},
@@ -101,11 +103,47 @@ static CommandLineArgs::Option g_commandLineOptions[] = {
   { ' ', "fdcDebug",        ' ', "display FDC debug on console" },
   { ' ', "turbo",           ' ', "do not throttle CPU speed"},
   { ' ', "station",         'u', "Starnet workstation number 0-15"},
-  { ' ', "list",            ' ', "list all emulations"},
+  { ' ', "list",            ' ', "list all emulations and environments"},
   { ' ', "gamekb",          ' ', "set keyboard game mode" },
 
   { 0, 0, 0, 0}
 };
+
+static void ApplyCliOverrides(Options & options)
+{
+  // Only overwrite fields that were explicitly present on the command line.
+  options.m_args.GetValue("-t",              options.m_typeName);
+  options.m_args.GetValue("-r",              options.m_romFn);
+  options.m_args.GetValue("--ram",           options.m_ramSize_k);
+  options.m_args.GetValue("-s",              options.m_videoScale);
+  options.m_args.GetValue("-v",              options.m_verbose);
+  options.m_args.GetValue("--readiodebug",   options.m_readIO);
+  options.m_args.GetValue("--writeiodebug",  options.m_writeIO);
+  options.m_args.GetValue("--readmemdebug",  options.m_readMemory);
+  options.m_args.GetValue("--writememdebug", options.m_writeMemory);
+  options.m_args.GetValue("--readvideodebug",     options.m_readVideo);
+  options.m_args.GetValue("--writevideodebug",    options.m_writeVideo);
+  options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
+  options.m_args.GetValue("--fdcDebug",      options.m_fdcDebug);
+  options.m_args.GetValue("--turbo",         options.m_turbo);
+  {
+    unsigned station = 0;
+    if (options.m_args.GetValue("--station", station))
+      options.m_starnetStation = (int)station;
+  }
+  options.m_args.GetValue("--displaySpeed",  options.m_displayCPUSpeed);
+  options.m_args.GetValue("-f",         options.m_font);
+  options.m_args.GetValue("-F",         options.m_fontSize);
+  options.m_args.GetValue("--traceLen", options.m_traceLength);
+  options.m_args.GetValue("--logpc",    options.m_logPC);
+  options.m_args.GetValue("--trace",    options.m_trace);
+  options.m_args.GetValue("--sdl",    options.m_useSDL);
+  options.m_args.GetValue("--gamekb", options.m_gameKb);
+
+  bool ei = false;
+  if (options.m_args.GetValue("--ei", ei))
+    options.m_withEI = ei;
+}
 
 extern "C"
 int main(int argc, char *argv[])
@@ -119,6 +157,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
+  // Verbose may come from CLI before config load.
+  options.m_args.GetValue("-v", options.m_verbose);
   if (options.m_verbose)
     cout << options.m_args.DumpValues();
 
@@ -137,13 +177,27 @@ int main(int argc, char *argv[])
     }
 
     cout << ColumnFormatter::Print(columns, { "   ", "   ", "   " });
+
+    std::vector<EnvConfigInfo> envs;
+    ListEnvConfigs(envs);
+    if (!envs.empty()) {
+      cout << "\nAvailable environments\n";
+      ColumnFormatter::Columns envCols(3);
+      for (const auto & env : envs) {
+        envCols[0].push_back(env.m_name);
+        envCols[1].push_back(env.m_type);
+        envCols[2].push_back(env.m_path);
+      }
+      cout << ColumnFormatter::Print(envCols, { "   ", "   ", "   " });
+    }
     exit(0);
   }
 
   if (options.m_args.HasArg("-h")) {
-    cout << "usage: gratze [options] args...\n"
+    cout << "usage: gratze [options] [environment] [args...]\n"
+         << "  environment  name of a JSON config in emulator/configs/\n"
          << "where options are:\n"
-        << options.m_args.Usage();
+         << options.m_args.Usage();
     return 0;
   }
 
@@ -169,39 +223,6 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  // set default type
-  if (!options.m_args.GetValue("-t", options.m_typeName))
-    options.m_typeName = "m1";
-
-  options.m_args.GetValue("-r",              options.m_romFn);
-  options.m_args.GetValue("--ram",           options.m_ramSize_k);
-  options.m_args.GetValue("-s",              options.m_videoScale);
-  options.m_args.GetValue("-v",              options.m_verbose);
-  options.m_args.GetValue("--readiodebug",   options.m_readIO);
-  options.m_args.GetValue("--writeiodebug",  options.m_writeIO);
-  options.m_args.GetValue("--readmemdebug",  options.m_readMemory);
-  options.m_args.GetValue("--writememdebug", options.m_writeMemory);
-  options.m_args.GetValue("--readvideodebug",     options.m_readVideo);
-  options.m_args.GetValue("--writevideodebug",    options.m_writeVideo);
-  options.m_args.GetValue("--keyboardDebug", options.m_keyboardDebug);
-  options.m_args.GetValue("--fdcDebug",      options.m_fdcDebug);
-  options.m_args.GetValue("--turbo",         options.m_turbo);
-  {
-    unsigned station = 0;
-    if (options.m_args.GetValue("--station", station))
-      options.m_starnetStation = (int)station;
-  }
-  options.m_args.GetValue("--displaySpeed",  options.m_displayCPUSpeed);
-
-  options.m_args.GetValue("-f",         options.m_font);
-  options.m_args.GetValue("-F",         options.m_fontSize);
-  options.m_args.GetValue("--traceLen", options.m_traceLength);
-  options.m_args.GetValue("--logpc",    options.m_logPC);
-  options.m_args.GetValue("--trace",    options.m_trace);
-
-  options.m_args.GetValue("--sdl",    options.m_useSDL);
-  options.m_args.GetValue("--gamekb", options.m_gameKb);
-
   {
     int opt = optIndex;
     while (opt < argc) {
@@ -209,12 +230,75 @@ int main(int argc, char *argv[])
     }
   }
 
+  // Named environment: first positional arg, unless -t was given and the
+  // name does not resolve (then keep it as a program argument).
+  bool loadedEnv = false;
+  if (!options.m_arg.empty()) {
+    std::string envName = options.m_arg.front();
+    std::string envError;
+    std::string envPath = FindEnvConfigPath(envName, envError);
+    if (!envPath.empty()) {
+      if (!LoadEnvConfig(envName, options, envError)) {
+        cerr << "error: " << envError << endl;
+        return -1;
+      }
+      options.m_arg.erase(options.m_arg.begin());
+      loadedEnv = true;
+      if (options.m_verbose)
+        cout << "info: loaded environment '" << envName << "' from " << options.m_envConfigPath << endl;
+    }
+    else if (!options.m_args.HasArg("-t") && !options.m_args.HasArg("--type")) {
+      // Bare name that is not a config and no -t: report the lookup error
+      // only when it looks like an environment name (no path/extension).
+      bool looksLikeFile = envName.find('/') != std::string::npos
+                        || envName.find('\\') != std::string::npos
+                        || envName.find('.') != std::string::npos;
+      if (!looksLikeFile) {
+        cerr << "error: " << envError << endl;
+        return -1;
+      }
+    }
+  }
+
+  // CLI flags override the environment (and supply defaults when none loaded).
+  if (!loadedEnv && !options.m_args.HasArg("-t") && !options.m_args.HasArg("--type"))
+    options.m_typeName = "m1";
+  ApplyCliOverrides(options);
+
+  std::string error;
+  std::map<unsigned, std::string> cliDriveFns;
+  if (!options.m_args.GetValues("--drive*", cliDriveFns, error)) {
+    cerr << "error: could not parse drive list - " << error << endl;
+    return -1;
+  }
+  std::vector<std::string> cliCpmDrives;
+  if (!options.m_args.GetValues("--cpmdrive", cliCpmDrives)) {
+    cerr << "error: could not parse --cpmdrive" << endl;
+    return -1;
+  }
+
+  if (!MaterializeDrives(options, error)) {
+    cerr << "error: " << error << endl;
+    return -1;
+  }
+
+  // Explicit CLI drives override / extend materialized config drives.
+  for (const auto & r : cliDriveFns)
+    options.m_driveFns[r.first] = r.second;
+  if (!cliCpmDrives.empty())
+    options.m_cpmDrives = cliCpmDrives;
+
+  if (options.m_driveFns.size() > 0) {
+    cout << options.m_driveFns.size() << " drives specified" << endl;
+    options.m_withEI = true;
+  }
+
   if (options.m_verbose) {
     cout << "info: backtrace queue is " << options.m_traceLength << endl;
     cout << "info: using type '" << options.m_typeName << "'" << endl;
     cout << "info: video scale is " << options.m_videoScale << endl;
   }
-  // attempt to instantiate emulator
+
   std::unique_ptr<Emulator> emulator(g_emulatorFactory.CreateInstance(options.m_typeName));
   if (!emulator) {
     cerr << "error: system type '" << options.m_typeName << "' not found" << endl;
@@ -223,20 +307,6 @@ int main(int argc, char *argv[])
 
   if (options.m_verbose) {
     cout << "info: running " << emulator->GetInfo().m_name << endl;
-  }
-
-  std::string error;
-  if (!options.m_args.GetValues("--drive*", options.m_driveFns, error)) {
-    cerr << "error: could not parse drive filename list - " << error << endl;
-    return -1;
-  }
-  if (!options.m_args.GetValues("--cpmdrive", options.m_cpmDrives)) {
-    cerr << "error: could not parse --cpmdrive" << endl;
-    return -1;
-  }
-  else if (options.m_driveFns.size() > 0) {
-    cout << options.m_driveFns.size() << " drives specified" << endl;
-    options.m_withEI = true;
   }
 
   const Config::RAM * ram = emulator->GetMainRAMInfo();
@@ -250,7 +320,7 @@ int main(int argc, char *argv[])
     }
     else {
       emulator->SetRAMSize_k(ramSize_k);
-   }
+    }
 
     if (options.m_verbose)
       cout << "info: RAM size set to " << dec << ramSize_k << "k" << endl;
@@ -258,4 +328,3 @@ int main(int argc, char *argv[])
 
   return emulator->Run(options);
 }
-

@@ -94,18 +94,12 @@ class CommandLineArgs
         return false;
 
       for (auto & r : entries) {
-        char * ptr;
-        const char * str = r.first.c_str();
-        unsigned val = strtoul(str, &ptr, 10);
-        if (ptr == str) {
-          std::stringstream strm;
-          strm << "cannot convert suffix '" << str << "' to unsigned";
-          error = strm.str();
+        unsigned val = 0;
+        if (!ParseDriveSuffix(r.first, val, error))
           return false;
-        }
         if (values.find(val) != values.end()) {
           std::stringstream strm;
-          strm << "duplicate suffix '" << val << "'";
+          strm << "duplicate drive '" << r.first << "'";
           error = strm.str();
           return false;
         }
@@ -113,6 +107,9 @@ class CommandLineArgs
       }
       return true;
     }
+
+    // Drive wildcard suffixes: "a"-"p" (preferred) or legacy "0"-"15".
+    static bool ParseDriveSuffix(const std::string & suffix, unsigned & index, std::string & error);
 
     template<class Type>
     bool GetValues(const std::string & opt, std::multimap<std::string, Type> & values) const

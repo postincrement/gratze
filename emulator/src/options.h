@@ -7,11 +7,24 @@
 
 #include "common/cmdargs.h"
 
+// One mounted drive slot. Index 0 = A … 15 = P.
+struct DriveMount
+{
+  enum class Kind {
+    eImage,  // floppy/CPM disk image file
+    eDir     // host directory (cpm80)
+  };
+
+  Kind m_kind = Kind::eImage;
+  std::string m_path;
+  std::string m_dpb;   // optional CP/M DPB name for image mounts
+};
+
 struct Options
 {
   CommandLineArgs m_args;
 
-  // arguments after options
+  // arguments after options (and after a leading config name, if any)
   std::vector<std::string> m_arg;
 
   // override default type
@@ -26,7 +39,11 @@ struct Options
   // override default ROM path
   std::string m_romFn;
 
-  // map of disk drive information
+  // Lettered drives A–P (keys 0–15). Used by FDC emulators and filled from
+  // env configs / --drivea. Image paths go here for Microbee/TRS-80.
+  std::map<unsigned, DriveMount> m_drives;
+
+  // Legacy FDC path map (A=0). Filled from m_drives images and --drive*.
   std::map<unsigned, std::string> m_driveFns;
 
   // CP/M drive map. Each entry is A=dir:path or A=image:file,dpb=name.
@@ -78,6 +95,15 @@ struct Options
 
   // Starnet workstation slot. Negative asks the server to assign one.
   int m_starnetStation = -1;
+
+  // Path of the environment config that was loaded, if any.
+  std::string m_envConfigPath;
 };
+
+// Parse a drive suffix ("a"/"A" or "0") into 0–15. Returns false on error.
+bool ParseDriveLetter(const std::string & suffix, unsigned & index, std::string & error);
+
+// Convert m_drives into m_driveFns / m_cpmDrives for the selected emulator type.
+bool MaterializeDrives(Options & options, std::string & error);
 
 #endif // OPTIONS_H_

@@ -5,10 +5,39 @@
 #include "misc.h"
 #include "cmdargs.h"
 
+#include <cctype>
+#include <cstdlib>
+
 using namespace std;
 
 CommandLineArgs::CommandLineArgs()
 {
+}
+
+bool CommandLineArgs::ParseDriveSuffix(const std::string & suffix, unsigned & index, std::string & error)
+{
+  if (suffix.empty()) {
+    error = "empty drive suffix";
+    return false;
+  }
+
+  if (suffix.size() == 1) {
+    char ch = (char)tolower((unsigned char)suffix[0]);
+    if (ch >= 'a' && ch <= 'p') {
+      index = (unsigned)(ch - 'a');
+      return true;
+    }
+  }
+
+  char * ptr = nullptr;
+  unsigned long val = strtoul(suffix.c_str(), &ptr, 10);
+  if (ptr != suffix.c_str() && ptr != nullptr && *ptr == '\0' && val <= 15) {
+    index = (unsigned)val;
+    return true;
+  }
+
+  error = "drive suffix '" + suffix + "' must be a letter a-p (or legacy 0-15)";
+  return false;
 }
 
 bool CommandLineArgs::ProcessArg(bool isLong, const Option & optDef, const std::string & arg_, const std::string & wildcard)
