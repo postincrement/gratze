@@ -25,9 +25,10 @@ VirtualScreen::VirtualScreen(const Options & options, int cols, int rows)
   m_fg = { 0, 255, 0, 255 };  // green
   m_bg = { 0, 0, 0, 0 };      // black
 
-  m_hscale   = 1;
-  m_vscale   = 1;
-  m_colScale = 1;
+  m_hscale    = 1;
+  m_vscale    = 1;
+  m_colScale  = 1;
+  m_colStride = 1;
 
   m_chars.resize(cols * rows);
 }
@@ -56,9 +57,10 @@ void VirtualScreen::SetScale(int hscale, int vscale)
   m_vscale = vscale;
 }
 
-void VirtualScreen::SetColScale(int scale)
+void VirtualScreen::SetColScale(int colScale, int memStride)
 {
-  m_colScale = scale;
+  m_colScale  = colScale;
+  m_colStride = memStride;
 }
 
 void VirtualScreen::SetCharAtLoc(int loc, FontChar ch)
@@ -86,7 +88,7 @@ void VirtualScreen::GetColourAtLoc(int loc, SDL_Colour & fg, SDL_Colour & bg)
 
 int VirtualScreen::MapPosToLoc(int x, int y)
 {
-  return y * m_cols + (x * m_colScale);
+  return y * m_cols + (x * m_colStride);
 }
 
 bool VirtualScreen::MapLocToPos(int & x, int & y, int loc)
@@ -95,10 +97,10 @@ bool VirtualScreen::MapLocToPos(int & x, int & y, int loc)
     return false;
 
   x = loc % m_cols;
-  if (m_colScale != 1) {
-    if ((x % m_colScale) != 0)
+  if (m_colStride != 1) {
+    if ((x % m_colStride) != 0)
       return false;
-    x /= m_colScale;
+    x /= m_colStride;
   }
 
   y = loc / m_cols;
@@ -149,7 +151,7 @@ void VirtualScreen::SetCursorPos(int x, int y)
 void VirtualScreen::RefreshScreen()
 {
   for (int y = 0; y < m_rows; ++y)
-    for (int x = 0; x < m_cols / m_colScale; x++)
+    for (int x = 0; x < m_cols / m_colStride; x++)
       RenderCharAtPos(x, y, m_cursorEnabled && (x == m_cursorX) && (y == m_cursorY));
 }
 
@@ -178,22 +180,29 @@ SDLVirtualScreen::SDLVirtualScreen(MainWindow & mainWindow, const Options & opti
 void SDLVirtualScreen::RenderCharAtPos(int x, int y, bool withCursor, bool update)
 {
   if (m_font) {
+    // The screen texture is already sized with hscale/vscale/colScale baked in.
+    // Draw in texture pixel coordinates at scale 1 so SDL_RenderSetScale cannot
+    // clip or double-scale against that target.
+    int cellW = m_font->GetWidth()  * m_colScale * m_hscale;
+    int cellH = m_font->GetHeight() * m_vscale;
+
     SDL_Rect dstRect;
     m_mainWindow.GetScreenCharRect(dstRect,
-                                   (x * m_font->GetWidth()),
-                                    y * m_font->GetHeight(),
-                                    m_font->GetWidth(),
-                                    m_font->GetHeight(),
-                                    m_hscale * m_colScale,
-                                    m_vscale);
+                                   x * cellW,
+                                   y * cellH,
+                                   cellW,
+                                   cellH,
+                                   1,
+                                   1);
 
     SDL_Colour fg, bg;
     GetColourAtPos(x, y, fg, bg);
 
-    SDL_RenderSetScale(m_mainWindow.GetRenderer(), m_hscale * m_colScale, m_vscale);
+    SDL_Renderer * renderer = m_mainWindow.GetRenderer();
+    SDL_RenderSetScale(renderer, 1.0f, 1.0f);
 
-    FontChar ch = GetCharAtPos(x, y);    
-    RenderChar(ch, withCursor, m_mainWindow.GetRenderer(), dstRect, fg, bg);
+    FontChar ch = GetCharAtPos(x, y);
+    RenderChar(ch, withCursor, renderer, dstRect, fg, bg);
 
     if (update)
       Update(true);
@@ -237,22 +246,26 @@ void SDLVirtualScreen::OnUpdate()
 
 bool SDLVirtualScreen::SetFont(Font * font, int cols, int rows)
 {
-  m_font.reset(font);
-
-  if (!m_font) {
+  if (!font) {
     cerr << "error: font could not be opened" << endl;
     return false;
   }
 
   if (m_mainWindow.GetRenderer() == nullptr) {
     cerr << "error: renderer not available" << endl;
+    delete font;
     return false;
   }
 
-  if (!m_font->Open(m_mainWindow.GetRenderer())) {
+  // Open the new font before replacing the old one so a failed open
+  // cannot leave the screen without a usable glyph texture.
+  if (!font->Open(m_mainWindow.GetRenderer())) {
     cerr << "error: font could not be opened" << endl;
+    delete font;
     return false;
   }
+
+  m_font.reset(font);
 
   cout << "info: font size is " << m_font->GetWidth() << "x" << m_font->GetHeight() << endl;
 
@@ -269,7 +282,9 @@ bool SDLVirtualScreen::SetFont(Font * font, int cols, int rows)
 
 bool SDLVirtualScreen::ResizeScreen()
 {
-  int newWidth  = m_cols * m_font->GetWidth() * m_hscale;
+  // Display columns are memory columns / stride; each is drawn at colScale width.
+  int displayCols = m_cols / m_colStride;
+  int newWidth  = displayCols * m_font->GetWidth() * m_hscale * m_colScale;
   int newHeight = m_rows * m_font->GetHeight() * m_vscale;
 
   if ((m_width == 0) || (m_height == 0)) {

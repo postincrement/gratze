@@ -141,6 +141,11 @@ void PixelFont::SetHeight(int hgt)
 
 bool PixelFont::Open(SDL_Renderer * renderer)
 {
+  if (m_config.m_width <= 0 || m_config.m_height <= 0) {
+    cerr << "error: invalid font size " << m_config.m_width << "x" << m_config.m_height << endl;
+    return false;
+  }
+
   // get pixel data
   std::vector<uint8_t> fontData;
   fontData.resize(m_config.m_count * m_config.m_height);

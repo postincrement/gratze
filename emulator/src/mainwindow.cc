@@ -87,6 +87,12 @@ bool MainWindow::Open(int width, int height)
                               m_screenRect.w, 
                               m_screenRect.h);
 
+  // Clear the new target texture; Update() only clears the window.
+  SDL_SetRenderTarget(m_renderer, m_screenTexture);
+  SDL_RenderSetScale(m_renderer, 1.0f, 1.0f);
+  SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
+  SDL_RenderClear(m_renderer);
+
   Update();
   BringToFront(m_window);
 
@@ -126,6 +132,9 @@ SDL_Renderer * MainWindow::GetRenderer()
 void MainWindow::Update()
 {
   SDL_SetRenderTarget(m_renderer, NULL);
+  // Char rendering may leave a non-1 scale (e.g. Viatel colScale); reset
+  // before compositing the screen texture into the window.
+  SDL_RenderSetScale(m_renderer, 1.0f, 1.0f);
   SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
   SDL_RenderClear(m_renderer);
 

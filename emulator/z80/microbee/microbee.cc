@@ -34,7 +34,8 @@ using namespace std;
 #define PORT_6545       2      // 6545
 #define PORT_FONT       3      // enable font ROM
 #define PORT_COLOUR     4      // colour control port
-#define PORT_VIATEL     5      // wait off/Viatel
+#define PORT_WAITOFF    5      // wait off (write to 0x09)
+#define PORT_VIATEL     6      // Viatel clock select (read of 0x09, A8)
 
 #define PORT_FDC      0x10   // floppy controller
 #define PORT_DRVSEL   0x11   // drive select
@@ -164,12 +165,14 @@ class MicrobeeVideo : public ColourMemoryMappedScreen
     void SetAttributeEnable(bool v);
     void SetColourEnable(bool v);
     void SetPCGBank(int v);
+    void SetViatel(bool enable);
 
   protected:
     int m_mode = eOriginal;
     bool m_colourRAMEnabled = false;
     bool m_attributeRAMEnabled = false;
     int m_bankSel = 0;
+    bool m_viatel = false;
 
     int m_rows = 0;
     int m_cols = 0;
@@ -236,6 +239,21 @@ void MicrobeeVideo::SetColourEnable(bool v)
     m_mode = eColour;
   }
   m_colourRAMEnabled = v;
+}
+
+void MicrobeeVideo::SetViatel(bool enable)
+{
+  if (enable == m_viatel)
+    return;
+
+  m_viatel = enable;
+  // Half CRTC character clock → double-wide pixels; memory layout unchanged.
+  SetColScale(m_viatel ? 2 : 1, 1);
+  ResizeScreen();
+  RefreshScreen();
+  OnUpdate();
+  if (m_options.m_verbose)
+    cout << "mbee: viatel mode " << (m_viatel ? "on" : "off") << endl;
 }
 
 void MicrobeeVideo::SetPCGBank(int v)
@@ -381,6 +399,9 @@ void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
   m_rows  = rows;
   m_lines = lines;
 
+  if (lines <= 0)
+    lines = m_lines = 16;
+
   if (m_options.m_verbose)  
     cout << "mbee: setting screen to " << m_cols << "x" << m_rows << "x" << lines << endl;
     
@@ -391,6 +412,7 @@ void MicrobeeVideo::SetScreenSize(int cols, int rows, int lines)
   font->SetHeight(lines);
   SetFont(font, m_cols, m_rows);
   RefreshScreen();
+  OnUpdate();
 }
 
 void MicrobeeVideo::RewritePCG() 
@@ -570,6 +592,11 @@ uint8_t Microbee_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t
       return m_pio.Read(port & 0x3);
     case PORT_6545:
       return m_crtc.Read(port & 1);
+    case PORT_VIATEL:
+      // Older Viatel board: half CRTC clock is selected by A8 on a read of
+      // port 0x09 (IN A,(09h) with A holding the select bit).
+      m_video->SetViatel((port & 0x100) != 0);
+      return (port >> 8) & 1;
     //case PORT_FONT:
     //  return 0x00;
     //case PORT_COLOUR:
@@ -606,10 +633,10 @@ void Microbee_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t 
     case PORT_COLOUR:
       m_video->SetColourEnable((data & 0x40) != 0);
       return;
-    case PORT_VIATEL:
+    case PORT_WAITOFF:
+      // Any write clears CPU wait; data is ignored.
       return;
     case PORT_LVDAT:
-      cerr << "mbee: LVDAT " << HEXFORMAT0x2(data) << endl;
       m_video->SetPCGBank        (data & 0x0f);
       m_video->SetAttributeEnable(data & 0x10);
       m_video->SetAlphaEnable    (data & 0x80);
@@ -728,7 +755,8 @@ INFO_START(microbee)
 {
   INFO_IO_PORT_RW(0x00, 0x03, PORT_PIO),      // PIO
   INFO_IO_PORT_RW(0x08, 0x08, PORT_COLOUR),   // colour control port
-  INFO_IO_PORT_RW(0x09, 0x09, PORT_VIATEL),   // wait off/Viatel
+  INFO_IO_PORT_WRITE(0x09, 0x09, PORT_WAITOFF), // wait off
+  INFO_IO_PORT_READ(0x09, 0x09, PORT_VIATEL),  // Viatel clock select (A8)
   INFO_IO_PORT_RW(0x0b, 0x0b, PORT_FONT),     // enable font ROM
   INFO_IO_PORT_RW(0x0c, 0x0d, PORT_6545),     // 6545
   INFO_IO_PORT_RW(0x1c, 0x1c, PORT_LVDAT),    // LVDAT

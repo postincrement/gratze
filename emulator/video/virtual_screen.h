@@ -48,7 +48,9 @@ class VirtualScreen
     virtual void RefreshScreen();
 
     virtual void SetScale(int hscale, int vscale);
-    virtual void SetColScale(int scale);
+    // colScale: horizontal pixel scale per character cell
+    // memStride: memory locations between adjacent display columns
+    virtual void SetColScale(int colScale, int memStride);
 
     virtual void EnableCursor(bool enable = true);
     virtual void SetCursorPos(int x, int y);
@@ -87,6 +89,7 @@ class VirtualScreen
     int m_hscale = 1;
     int m_vscale = 1;
     int m_colScale = 1;
+    int m_colStride = 1;
 
     bool m_softCursor = false;
     int m_cursorX = 0;
@@ -107,10 +110,9 @@ class SDLVirtualScreen : public VirtualScreen
     virtual bool SetFont(Font * font, int cols = -1, int rows = -1) override;
     virtual bool ResizeScreen() override;
 
-  private:  
+  protected:
     virtual void RenderChar(FontChar ch, bool withCursor, SDL_Renderer * renderer, const SDL_Rect & dstRect, const SDL_Colour & fg, const SDL_Colour & bg);
 
-  protected:
     MainWindow & m_mainWindow;
 
     int m_width;

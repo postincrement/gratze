@@ -521,7 +521,9 @@ void TRS80Video::Set32Col(bool val)
 {
   if (val != m_32Col) {
     m_32Col = val;
-    SetColScale(m_32Col ? 2 : 1);
+    // 32-col mode doubles pixel width and skips every other memory cell.
+    int scale = m_32Col ? 2 : 1;
+    SetColScale(scale, scale);
     RefreshScreen();
   }
 }

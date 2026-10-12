@@ -985,13 +985,15 @@ void Emulator::WritePort(register uint16_t port, register uint8_t data)
 
 uint8_t Emulator::ReadPort(register uint16_t port)
 {
+  // Match on the low 8 bits (I/O port number), but pass the full 16-bit
+  // address through so handlers can see A8–A15 from IN A,(n) / IN r,(C).
   uint8_t shortPort = port & 0xff;
   for (auto & r : m_readIOPortBlocks) {
     if (shortPort < r.m_startPort)
       continue;
     if (shortPort <= r.m_endPort) {
       if (r.m_function != nullptr) { 
-        uint8_t val = std::invoke(r.m_function, *this, r, shortPort);
+        uint8_t val = std::invoke(r.m_function, *this, r, port);
         if (m_options.m_readIO) {
           ReadIOPortLog(port, val);
         }
