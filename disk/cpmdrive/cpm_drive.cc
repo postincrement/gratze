@@ -209,6 +209,9 @@ void CpmDrive::MountHost(const std::string & path)
   m_path = path;
   m_detail.clear();
   ClearHostCache();
+  // Ensure the host directory exists so BDOS Select does not fail on first use.
+  if (!path.empty())
+    ::mkdir(path.c_str(), 0755);
 }
 
 void CpmDrive::SetHostRoot(const std::string & path)

@@ -31,5 +31,9 @@
         "label": "Arcade 1"
       }
     }
+  },
+  {
+    "name": "starnet",
+    "type": "mbee128starnet"
   }
 ]

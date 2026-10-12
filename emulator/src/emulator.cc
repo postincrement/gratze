@@ -172,9 +172,8 @@ void Emulator::SendKeyText(const SDL_Event & event)
 void Emulator::CheckSDLKeyboard()
 {
   SDL_Event event;
-  if (!SDL_PollEvent(&event))
-    return;
-
+  // Drain the queue each tick so nested waits cannot leave keydowns stranded.
+  while (SDL_PollEvent(&event)) {
   switch (event.type) {
 
     case SDL_QUIT:
@@ -267,6 +266,7 @@ void Emulator::CheckSDLKeyboard()
       default:
         break;
     }
+  }
   }
 }
 
@@ -1189,6 +1189,11 @@ int Emulator::Run(const Options & options)
 
   // initialize SDL
   if (m_options.m_useSDL) {
+#ifdef __APPLE__
+    // macOS 14+ SDL defaults to background for non-.app launches; force
+    // foreground so the emulator window opens in front of the terminal.
+    SDL_SetHint(SDL_HINT_MAC_BACKGROUND_APP, "0");
+#endif
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
       printf("error initializing SDL: %s\n", SDL_GetError());
       return -1;

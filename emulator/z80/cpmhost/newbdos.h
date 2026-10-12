@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "cpm_drive.h"
+#include "common/byte_stream.h"
 #include "z80/cpmhost/cpmhost.h"
 
 struct NewBDOS
@@ -22,6 +23,7 @@ struct NewBDOS
 
   // Entry from ED FE / PatchZ80. `code` is the value in C; values use A.
   void OnTrap(uint8_t code);
+  void OnByteTrap(uint8_t code);
   void OnBDOSCommand(uint8_t code);
   void CcpCommand();
   void CcpExit();
@@ -113,6 +115,7 @@ struct NewBDOS
 
   CpmDriveSet m_drives;
   std::map<int, FileInfo> m_fileMap;
+  ByteStream m_byteStream;
 };
 
 #endif // CPMHOST_NEWBDOS_H_

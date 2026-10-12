@@ -142,6 +142,16 @@ StarnetServer::StarnetServer(string bootImagePath, CpmDriveSet * drives)
   Register((uint8_t)Req::SendUserCommand, fixed(0), later);
   Register((uint8_t)Req::GetUserCommand, fixed(0), later);
   Register((uint8_t)Req::ClearPrintBuffer, fixed(0), later);
+
+  // Open carries the URL in the payload. parm2 is that length so a framer
+  // can size the body; the handler uses the bytes that actually arrived.
+  auto byteStream = [this](const StarnetRequest & request) { return OnByteStream(request); };
+  auto byteLen = [](uint16_t fn, uint16_t, uint16_t parm2) -> uint16_t {
+    if (fn == (uint16_t)ByteStream::Fn::Open)
+      return parm2;
+    return 0;
+  };
+  Register((uint8_t)Req::ByteStream, byteLen, byteStream);
 }
 
 void StarnetServer::Reset()
@@ -237,6 +247,7 @@ const char * StarnetServer::CommandName(uint8_t code)
     case Starnet::RequestType::SendUserCommand: return "SendUserCommand";
     case Starnet::RequestType::GetUserCommand: return "GetUserCommand";
     case Starnet::RequestType::ClearPrintBuffer: return "ClearPrintBuffer";
+    case Starnet::RequestType::ByteStream: return "ByteStream";
   }
   return "unknown";
 }
@@ -545,6 +556,72 @@ std::vector<StarnetFrame> StarnetServer::OnWrite(const StarnetRequest & request)
   if (!drive->WriteRecord(record, request.m_payload.data()))
     return { Reply(Starnet::ResponseType::PhysicalReadWriteError) };
   return { Reply(Starnet::ResponseType::Acknowledge) };
+}
+
+std::vector<StarnetFrame> StarnetServer::OnByteStream(const StarnetRequest & request)
+{
+  uint8_t fn = (uint8_t)(request.m_parm0 & 0xff);
+  if (fn < (uint8_t)ByteStream::Fn::Open || fn > (uint8_t)ByteStream::Fn::Conout)
+    return { Reply(Starnet::ResponseType::RequestOutOfRange) };
+
+  int id = (int)request.m_parm1;
+  ByteStream::Error err = ByteStream::Error::None;
+  uint16_t parm0 = 0;
+  uint16_t parm1 = 0;
+  uint16_t parm2 = 0;
+  vector<uint8_t> payload;
+
+  switch ((ByteStream::Fn)fn) {
+    case ByteStream::Fn::Open: {
+      string url(request.m_payload.begin(), request.m_payload.end());
+      while (!url.empty() && url.back() == '\0')
+        url.pop_back();
+      int conn = m_byteStream.Open(url, &err);
+      parm0 = (uint16_t)conn;
+      parm1 = (uint16_t)err;
+      cerr << "starnet: byte open \"" << url << "\" -> " << conn
+           << " error " << (int)err << endl;
+      break;
+    }
+    case ByteStream::Fn::Close:
+      err = m_byteStream.Close(id);
+      parm1 = (uint16_t)err;
+      cerr << "starnet: byte close " << id << " error " << (int)err << endl;
+      break;
+    case ByteStream::Fn::Status: {
+      ByteStream::State status;
+      m_byteStream.Status(id, status);
+      parm0 = status.open ? 0x00ff : 0;
+      parm1 = (uint16_t)status.error;
+      if (status.name.size() > 120)
+        status.name.resize(120);
+      parm2 = (uint16_t)status.name.size();
+      payload.assign(status.name.begin(), status.name.end());
+      break;
+    }
+    case ByteStream::Fn::Const: {
+      bool ready = m_byteStream.Const(id, &err);
+      parm0 = ready ? 0x00ff : 0;
+      parm1 = (uint16_t)err;
+      break;
+    }
+    case ByteStream::Fn::Conin: {
+      int ch = m_byteStream.Conin(id, &err);
+      parm1 = (uint16_t)err;
+      if (ch >= 0) {
+        parm0 = (uint16_t)ch;
+        parm2 = 1;
+      }
+      break;
+    }
+    case ByteStream::Fn::Conout:
+      err = m_byteStream.Conout(id, (uint8_t)(request.m_parm2 & 0xff));
+      parm1 = (uint16_t)err;
+      break;
+  }
+
+  const uint8_t * data = payload.empty() ? nullptr : payload.data();
+  return { Reply(Starnet::ResponseType::Acknowledge, parm0, parm1, parm2, data, (uint16_t)payload.size()) };
 }
 
 std::vector<StarnetFrame> StarnetServer::OnUnimplemented(const StarnetRequest & request)

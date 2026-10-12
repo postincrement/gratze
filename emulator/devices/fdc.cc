@@ -76,8 +76,8 @@ static WD_FDC::CommandInfo g_commands[] = {
 
   { 0xf4, 0xff, 0,                  "writeTrack", 3, &WD_FDC::WriteTrackCommand },
 
-  { 0xc4, 0xf4, 0,                  "readAddr",   3, 0 },
-  { 0xc0, 0xf4, WD_FDC::eWD1793,    "readaddr",   3, &WD_FDC::ReadAddrCommand_1793 },
+  // WD1793 Read Address is 1100xxxx (e.g. Kaypro uses 0xC4).
+  { 0xc0, 0xf0, WD_FDC::eWD1793,    "readaddr",   3, &WD_FDC::ReadAddrCommand_1793 },
 
   { 0xe4, 0xfe, 0,                  "readTrack",  3, 0 },
 
@@ -309,18 +309,11 @@ void WD_FDC::WriteCmdReg(int8_t command)
 
 uint8_t WD_FDC::ReadStatusReg()
 {
-  if (m_reading) {
-    auto now = std::chrono::system_clock::now();
-    if (now > m_readWriteTimer) {
-      ReadNextByte();
-      if (m_lostData == 0) {
-        if (m_debug)
-          cerr << "FDC: setting lost data" << endl;
-        m_lostData = STATUS_LOST_DATA;
-      }
-    }
+  // Data is already buffered; do not enforce a wall-clock DRQ deadline.
+  // Host scheduling and CPU throttling routinely exceed a real drive's
+  // inter-byte window and would spuriously set LOST_DATA.
+  if (m_reading)
     m_status |= m_lostData;
-  }
   
   UpdateInterrupt(false);
   if (m_headLoaded && m_pulseIndex)
@@ -523,6 +516,10 @@ int WD_FDC::ReadCommand(uint8_t cmd)
   else {
     VirtualDrive::SectorInfo info;
     m_bufferPtr = 0;
+    if (m_debug)
+      cerr << "FDC: reading side=" << dec << (int)m_side
+           << ",track=" << (int)m_realTrack
+           << ",sector=" << (int)m_sector << endl;
     int bufferLen = m_drives[m_drive]->ReadSector(m_side, m_realTrack, m_sector, info, m_buffer, MAX_SECTOR_SIZE);
     if ((bufferLen <= 0)) { // || (info.m_density != m_density)) {
       if (m_debug)
@@ -704,20 +701,23 @@ int WD_FDC::ReadAddrCommand_1793(uint8_t cmd)
     if (m_debug)
       cerr << "FDC: read addr, track=" << dec << (int)m_realTrack << endl;
     m_bufferPtr = 0;
+    // ID field only (track, side, sector, length). Real WD1793 also clocks
+    // out 2 CRC bytes, but Microbee BIOS reads the 4 ID bytes then polls
+    // status for !BUSY and never consumes the CRC — previously a wall-clock
+    // LOST_DATA path drained those bytes. Expose just the ID so BUSY clears
+    // after the host finishes the useful payload.
     m_bufferLen = 4;
     m_reading   = true;
 
-    Emulator::GetInstance()->DisplayTraceInfo();
-
     m_buffer[0] = m_realTrack;
-    m_buffer[1] = m_side;
+    m_buffer[1] = (uint8_t)(m_side ? 1 : 0);
     m_buffer[2] = 1;
-    m_buffer[3] = 2;
+    m_buffer[3] = 2; // 512-byte sectors
 
-    m_readWriteTimer = std::chrono::system_clock::now() 
+    m_readWriteTimer = std::chrono::system_clock::now()
                      + std::chrono::microseconds(MAX_DRQ_TIME_US);
-    m_lostData = 0;          
-    m_reading   = true;
+    m_lostData = 0;
+    m_readDAM  = 0;
     m_status |= STATUS_DRQ;
   }
   return 0;

@@ -219,9 +219,19 @@ int CommandLineArgs::Parse(const Option * options, int argc, char *argv[])
         break;
       }
 
-      // look for matching long option
+      // look for matching long option (--name or --name=value)
       std::string wildCard;
       option = arg.substr(2);
+      std::string inlineValue;
+      bool hasInlineValue = false;
+      {
+        size_t eq = option.find('=');
+        if (eq != std::string::npos) {
+          inlineValue = option.substr(eq + 1);
+          option = option.substr(0, eq);
+          hasInlineValue = true;
+        }
+      }
       const Option * optDef = m_options;
       while (optDef->m_type != 0) {
         if (optDef->m_longName != nullptr) {
@@ -251,16 +261,25 @@ int CommandLineArgs::Parse(const Option * options, int argc, char *argv[])
 
       // get argument, if any
       std::string value;
+      const std::string optName = std::string("--") + option;
       if ((optDef->m_type == ' ') || (optDef->m_type == '+')) {
+        if (hasInlineValue) {
+          cerr << "error: option '" << optName << "' does not take an argument" << endl;
+          return -1;
+        }
+        ++optIndex;
+      }
+      else if (hasInlineValue) {
+        value = inlineValue;
         ++optIndex;
       }
       else {
         if (++optIndex >= argc) {
-          cerr << "error: command line ends without argument for '" << argv[optIndex] << "'" << endl;
+          cerr << "error: command line ends without argument for '" << optName << "'" << endl;
           return -1;
         }
         if (argv[optIndex][0] == '-') {
-          cerr << "error: argument for '" << argv[optIndex] << "' looks like another option" << endl;
+          cerr << "error: argument for '" << optName << "' looks like another option" << endl;
           return -1;
         }
         value = argv[optIndex++];

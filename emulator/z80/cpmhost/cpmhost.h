@@ -20,6 +20,20 @@
 //   0xF1       BIOS CONIN  → A = character, or 0xff if none
 //   0xF2       BIOS CONOUT → character in A
 //
+// Byte streams (ByteStream in common/byte_stream.h). The connection id
+// is in B except for open, which reads a NUL-terminated URL at DE.
+// Callers test A (and B for open). The flags are left unchanged.
+//
+//   0xE0 open    A = connection 1..16, or 0; B = error (0 on success)
+//   0xE1 close   A = error (0 on success); BC preserved
+//   0xE2 status  DE = 128-byte status block; A = 0, or NoConnection;
+//                BC preserved. Block: +0 open (0/0xff), +1 error,
+//                +2 name length, +3 name then a NUL
+//   0xE3 const   A = 0xff if a byte is waiting, else 0; BC preserved
+//   0xE4 conin   A = byte, or 0xff if none. A waiting 0xff is data
+//                when const just returned 0xff. BC preserved
+//   0xE5 conout  character in A; BC and AF preserved
+//
 // BIOS traps preserve BC (and CONOUT also preserves AF). BDOS traps follow
 // normal CP/M return conventions (A / HL / BA).
 //

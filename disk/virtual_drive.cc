@@ -381,6 +381,8 @@ const VirtualDrive::SectorInfo * VirtualDriveFile::GetInfo(int sideNum, int trac
 int VirtualDriveFile::ReadSector(int side, int track, int sector, SectorInfo & info, uint8_t * data, int len)
 {
   auto const sectorInfo = GetInfo(side, track, sector);
+  if (sectorInfo == nullptr)
+    return -1;
   info = *sectorInfo;
 
   if (m_verbose)

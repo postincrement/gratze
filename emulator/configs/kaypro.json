@@ -1,0 +1,15 @@
+[
+  {
+    "name": "kaypro2",
+    "type": "kaypro2",
+    "scale": 2,
+    "turbo": false,
+    "drives": {
+      "a": {
+        "type": "image",
+        "file": "kaypro/kpro-ii.td0",
+        "label": "CP/M"
+      }
+    }
+  }
+]

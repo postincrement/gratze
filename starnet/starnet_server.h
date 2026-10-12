@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "common/byte_stream.h"
 #include "starnet.h"
 
 class CpmDrive;
@@ -68,6 +69,7 @@ class StarnetServer
     std::vector<StarnetFrame> OnRead(const StarnetRequest & request);
     std::vector<StarnetFrame> OnWrite(const StarnetRequest & request);
     std::vector<StarnetFrame> OnUnimplemented(const StarnetRequest & request);
+    std::vector<StarnetFrame> OnByteStream(const StarnetRequest & request);
 
     bool LoadBootImage();
     static const BootImage * BootImageFor(const std::string & path);
@@ -107,6 +109,7 @@ class StarnetServer
     bool m_driveLoggedIn[kLoginDrives] = {};
     bool m_driveReadOnly[kLoginDrives] = {};
     std::map<uint8_t, Command> m_commands;
+    ByteStream m_byteStream;
 };
 
 #endif // STARNET_SERVER_H_

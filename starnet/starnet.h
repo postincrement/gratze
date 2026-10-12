@@ -31,7 +31,23 @@ class Starnet
       PrintSpoolBuffer            = 16,
       SendUserCommand             = 17,
       GetUserCommand              = 18,
-      ClearPrintBuffer            = 19
+      ClearPrintBuffer            = 19,
+
+      // parm0 = ByteStream::Fn (0xE0..0xE5)
+      // parm1 = connection id (not used by Open)
+      // parm2 = URL length (Open) or output byte (Conout)
+      // payload = URL bytes (Open)
+      //
+      // The reply is Acknowledge. parm1 is ByteStream::Error.
+      // Open:    parm0 = connection id, or 0
+      // Close:   parm0 = 0
+      // Status:  parm0 = 0x00FF if open, else 0; parm2 = name length;
+      //          payload = name
+      // Const:   parm0 = 0x00FF if a byte is waiting, else 0
+      // Conin:   parm2 = 1 and parm0 = the byte, or parm2 = 0 if none
+      // Conout:  parm0 = 0
+      // An unknown secondary code is RequestOutOfRange.
+      ByteStream                  = 20
     };
 
     enum class ResponseType : uint8_t {

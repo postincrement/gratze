@@ -21,6 +21,7 @@
 #include "z80/dg680/dg680.h"
 #include "z80/super80/super80.h"
 #include "z80/microbee/microbee.h"
+#include "z80/kaypro/kaypro.h"
 #include "z80/sorcerer/sorcerer.h"
 #include "z80/cpm80/cpm80.h"
 #include "2650/eti685/eti685.h"
@@ -56,6 +57,7 @@ void Init()
   AddEmulator<Microbee128_Emulator>();
   AddEmulator<Microbee128_BN_Emulator>();
   AddEmulator<Microbee128_StarnetClient_Emulator>();
+  AddEmulator<Kaypro2_Emulator>();
   AddEmulator<Sorcerer_Emulator>();
   AddEmulator<EA78UP5_PIPBUG_110>();
   AddEmulator<EA78UP5_PIPBUG_300>();

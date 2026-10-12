@@ -275,6 +275,15 @@ void NewBDOS::OnTrap(uint8_t code)
   const uint16_t savedBC = m_cpu.BC.W;
 
   switch (code) {
+    case (uint8_t)ByteStream::Fn::Open:
+    case (uint8_t)ByteStream::Fn::Close:
+    case (uint8_t)ByteStream::Fn::Status:
+    case (uint8_t)ByteStream::Fn::Const:
+    case (uint8_t)ByteStream::Fn::Conin:
+    case (uint8_t)ByteStream::Fn::Conout:
+      OnByteTrap(code);
+      return;
+
     case kTrapConst:
       m_cpu.AF.B.h = m_host.ConsoleStatus() ? 0xff : 0x00;
       m_cpu.AF.B.l = (uint8_t)(savedAF & 0xff);
@@ -297,6 +306,105 @@ void NewBDOS::OnTrap(uint8_t code)
 
     default:
       OnBDOSCommand(code);
+      return;
+  }
+}
+
+namespace {
+
+bool ReadUrl(const uint8_t * memory, uint16_t addr, std::string & url)
+{
+  url.clear();
+  for (int i = 0; i < 256; ++i) {
+    uint8_t c = memory[(uint16_t)(addr + i)];
+    if (c == 0)
+      return true;
+    url.push_back((char)c);
+  }
+  return false;
+}
+
+void WriteStatusBlock(uint8_t * memory, uint16_t addr, const ByteStream::State & status)
+{
+  uint8_t block[ByteStream::kStatusBytes];
+  memset(block, 0, sizeof(block));
+  block[0] = status.open ? 0xff : 0x00;
+  block[1] = (uint8_t)status.error;
+  std::string name = status.name;
+  if ((int)name.size() > ByteStream::kStatusNameMax)
+    name.resize(ByteStream::kStatusNameMax);
+  block[2] = (uint8_t)name.size();
+  memcpy(block + 3, name.data(), name.size());
+  memcpy(memory + addr, block, sizeof(block));
+}
+
+} // namespace
+
+void NewBDOS::OnByteTrap(uint8_t code)
+{
+  const uint16_t savedAF = m_cpu.AF.W;
+  const uint16_t savedBC = m_cpu.BC.W;
+  const int id = (int)(savedBC >> 8);
+  const uint8_t flags = (uint8_t)(savedAF & 0xff);
+
+  auto resultA = [&](uint8_t a) {
+    m_cpu.AF.B.h = a;
+    m_cpu.AF.B.l = flags;
+    m_cpu.BC.W = savedBC;
+  };
+
+  switch (code) {
+    case (uint8_t)ByteStream::Fn::Open: {
+      std::string url;
+      ByteStream::Error err = ByteStream::Error::None;
+      int conn = 0;
+      if (!ReadUrl(m_memory, m_cpu.DE.W, url))
+        err = ByteStream::Error::BadUrl;
+      else
+        conn = m_byteStream.Open(url, &err);
+      m_cpu.AF.B.h = conn > 0 ? (uint8_t)conn : 0;
+      m_cpu.AF.B.l = flags;
+      m_cpu.BC.B.h = (uint8_t)err;
+      m_cpu.BC.B.l = (uint8_t)savedBC;
+      return;
+    }
+
+    case (uint8_t)ByteStream::Fn::Close:
+      resultA((uint8_t)m_byteStream.Close(id));
+      return;
+
+    case (uint8_t)ByteStream::Fn::Status: {
+      ByteStream::State status;
+      ByteStream::Error err = m_byteStream.Status(id, status);
+      if (err != ByteStream::Error::None)
+        status.error = err;
+      WriteStatusBlock(m_memory, m_cpu.DE.W, status);
+      resultA((uint8_t)err);
+      return;
+    }
+
+    case (uint8_t)ByteStream::Fn::Const: {
+      ByteStream::Error err = ByteStream::Error::None;
+      bool ready = m_byteStream.Const(id, &err);
+      resultA(ready ? 0xff : 0x00);
+      return;
+    }
+
+    case (uint8_t)ByteStream::Fn::Conin: {
+      ByteStream::Error err = ByteStream::Error::None;
+      int ch = m_byteStream.Conin(id, &err);
+      resultA(ch >= 0 ? (uint8_t)ch : 0xff);
+      return;
+    }
+
+    case (uint8_t)ByteStream::Fn::Conout:
+      m_byteStream.Conout(id, (uint8_t)(savedAF >> 8));
+      m_cpu.AF.W = savedAF;
+      m_cpu.BC.W = savedBC;
+      return;
+
+    default:
+      resultA(0);
       return;
   }
 }

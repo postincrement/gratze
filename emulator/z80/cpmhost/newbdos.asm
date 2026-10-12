@@ -19,6 +19,12 @@
 ;  Host trap: undocumented ED FE (PatchZ80). Function code in C; values in A:
 ;    0x00-0x24, 0xFE, 0xFF  → NewBDOS / CCP extensions / warm boot (A = drive for FF)
 ;    0xF0 CONST, 0xF1 CONIN, 0xF2 CONOUT (char in A)
+;    0xE0 open URL at DE (NUL-terminated); A = connection or 0, B = error
+;    0xE1 close connection in B; A = error
+;    0xE2 status of connection in B; DE = 128-byte block; A = error
+;    0xE3 const for connection in B; A = 0xff if a byte is waiting
+;    0xE4 conin for connection in B; A = byte, or 0xff if none
+;    0xE5 conout for connection in B; character in A
 ;
 
 MEM:		EQU	64

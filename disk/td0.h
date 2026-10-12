@@ -13,9 +13,10 @@ class VirtualDriveTD0 : public VirtualDriveFile
   public:
     VirtualDriveTD0();
     virtual bool OpenFile(int fd, off_t len, const uint8_t * header, size_t headerSize) override;
-    
+    virtual int ReadSector(int side, int track, int sector, SectorInfo & info, uint8_t * data, int len) override;
+
   protected:
-    bool m_compressed;  
+    std::vector<uint8_t> m_imageData;
 };
 
 #endif // VIRTUAL_DRIVE_TDO_H_
