@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <functional>
+#include <cstdint>
 
 #include "devices/device.h"
 
@@ -36,16 +37,32 @@ class Synertek6545 : public VirtualDevice
     void SetCursorShapeHandler(std::function<void (uint8_t start, uint8_t end, int blinkRate)> handler);
     void SetUpdateHandler(std::function<bool (bool, uint16_t & addr)> handler);
 
+    // CPU cycles per CRTC character clock (Microbee: 2 at full dot clock, 4 in Viatel).
+    void SetCPUCyclesPerChar(int cycles);
+    // Advance CRTC timing by emulated CPU cycles; updates vblank at frame rate.
+    void Tick(int cpuCycles);
+
     void UpdateStatus();
 
     void Reg31();
 
   protected:
+    void RecalcFrameTiming();
+    void RefreshVBlank();
+    void RunKeyboardUpdate();
+
     int m_state = 0;
     uint8_t m_status = 0;
     uint8_t m_regSel = 0;
     bool m_writePending;
     std::vector<uint8_t> m_regs;
+
+    int m_cpuCyclesPerChar = 2;
+    uint64_t m_cycleCounter = 0;
+    uint64_t m_frameCpuCycles = 0;
+    uint64_t m_activeCpuCycles = 0;
+    bool m_timingDirty = true;
+
     std::function<void (int, int, int)> m_screenShapeHandler = nullptr;
     std::function<void (uint16_t)> m_startAddressHandler = nullptr;
     std::function<void (uint16_t)> m_cursorAddressHandler = nullptr;

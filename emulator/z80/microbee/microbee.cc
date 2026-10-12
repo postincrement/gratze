@@ -362,8 +362,11 @@ void MicrobeeVideo::WriteMemoryAtAddress(int addr, uint8_t val)
     return;
   }
 
-  if (!m_fontROMEnabled)
+  if (!m_fontROMEnabled) {
+    if (m_viatel)
+      cerr << "mbee: char RAM " << HEXFORMAT0x4(voffs) << " = " << HEXFORMAT0x2(val) << endl;
     ColourMemoryMappedScreen::WriteMemoryAtAddress(voffs, val);
+  }
 }
 
 uint8_t MicrobeeVideo::ReadMemoryAtAddress(int addr) const
@@ -457,6 +460,8 @@ bool Microbee_Emulator::Open(const Options & options)
   m_crtc.SetCursorAddressHandler(std::bind(&Microbee_Emulator::OnSetCursorAddress, this, _1));
   m_crtc.SetCursorShapeHandler(std::bind(&Microbee_Emulator::OnSetCursorShape, this, _1, _2, _3));
   m_crtc.SetUpdateHandler(std::bind(&Microbee_Emulator::OnKeyboardScan, this, _1, _2));
+  // 13.5 MHz / 4 CPU, 13.5 MHz / 8 character clock → 2 CPU cycles per char.
+  m_crtc.SetCPUCyclesPerChar(2);
 
   return true;
 }
@@ -468,7 +473,27 @@ void Microbee_Emulator::Reset(int addr)
   Z80Emulator::Reset(addr);
   m_pio.Reset();
   m_crtc.Reset();
-  //m_crtc.SetStatus(Synertek6545::eVBlanking); // always say we are in blanking
+  m_crtc.SetCPUCyclesPerChar(2);
+  // Viatel half-clock is sticky until software reselects it via IN 09h.
+  if (m_video)
+    m_video->SetViatel(false);
+}
+
+int Microbee_Emulator::Exec(int cycles)
+{
+  // Tick the CRTC in short bursts so status bit 5 tracks the real frame
+  // blanking interval even when software is spinning on IN A,(0Ch).
+  int left = cycles;
+  while (left > 0) {
+    int chunk = std::min(left, 64);
+    int rem = Z80Emulator::Exec(chunk);
+    int done = chunk - rem;
+    if (done < 1)
+      done = 1;
+    m_crtc.Tick(done);
+    left -= done;
+  }
+  return left;
 }
 
 static int FindBitSet(uint8_t val)
@@ -595,7 +620,12 @@ uint8_t Microbee_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t
     case PORT_VIATEL:
       // Older Viatel board: half CRTC clock is selected by A8 on a read of
       // port 0x09 (IN A,(09h) with A holding the select bit).
-      m_video->SetViatel((port & 0x100) != 0);
+      {
+        bool enable = (port & 0x100) != 0;
+        m_video->SetViatel(enable);
+        // Half character clock → twice as many CPU cycles per CRTC tick.
+        m_crtc.SetCPUCyclesPerChar(enable ? 4 : 2);
+      }
       return (port >> 8) & 1;
     //case PORT_FONT:
     //  return 0x00;
