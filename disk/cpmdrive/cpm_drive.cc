@@ -413,8 +413,19 @@ void CpmDrive::BuildHostVolume(const std::vector<ListedFile> & files, long long 
 {
   const long long mb = 1024ll * 1024ll;
   long long need = totalBytes * 2;
-  if (need < 16 * mb)
-    need = 16 * mb;
+  // Default host volume is 16MB, but Starnet slaves only reserve a small
+  // ALV (e.g. 153 bytes → 1224 blocks on 56kbcpm). Keep the planned size
+  // inside that bit map so DSM cannot overrun the client's alloc vector.
+  long long floorBytes = 16 * mb;
+  if (m_maxBlocks > 0) {
+    long long alvCap = (long long)m_maxBlocks * 4096ll;
+    if (floorBytes > alvCap)
+      floorBytes = alvCap;
+    if (need > alvCap)
+      need = alvCap;
+  }
+  if (need < floorBytes)
+    need = floorBytes;
 
   int blockSize = 4096;
   int blocks = 4096;
@@ -423,6 +434,11 @@ void CpmDrive::BuildHostVolume(const std::vector<ListedFile> & files, long long 
   for (int pass = 0; pass < 6; ++pass) {
     blockSize = HostBlockSize(need);
     long long maxDisk = 65536ll * blockSize;
+    if (m_maxBlocks > 0) {
+      long long alvDisk = (long long)m_maxBlocks * blockSize;
+      if (maxDisk > alvDisk)
+        maxDisk = alvDisk;
+    }
     long long diskBytes = need > maxDisk ? maxDisk : need;
     blocks = (int)((diskBytes + blockSize - 1) / blockSize);
     if (blockSize == 4096)
@@ -469,6 +485,11 @@ void CpmDrive::BuildHostVolume(const std::vector<ListedFile> & files, long long 
       next = (blockSize == 4096) ? 16 * mb + 1 : 64 * mb + 1;
     if (next <= need)
       next = need + blockSize;
+    if (m_maxBlocks > 0) {
+      long long alvDisk = (long long)m_maxBlocks * (blockSize < 16384 ? blockSize * 2 : blockSize);
+      if (next > alvDisk)
+        next = alvDisk;
+    }
     need = next;
   }
 

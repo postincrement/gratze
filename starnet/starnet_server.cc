@@ -262,6 +262,13 @@ bool StarnetServer::LoadBootImage()
   }
   else {
     selected = BootImageFor(path);
+    // --56k / --64k (and bare --image names) resolve through the usual
+    // tree search; an explicit readable path is left alone.
+    if (selected != nullptr && access(path.c_str(), R_OK) != 0) {
+      string found = FindBootImage(selected->m_filename);
+      if (!found.empty())
+        path = std::move(found);
+    }
   }
 
   if (!m_bootImage.empty() && path == m_bootImagePath)
@@ -309,6 +316,33 @@ bool StarnetServer::LoadBootImage()
   return true;
 }
 
+bool StarnetServer::Is56kBootImage() const
+{
+  const BootImage * image = BootImageFor(m_bootImagePath);
+  return image != nullptr && strcmp(image->m_filename, "56kbcpm.slv") == 0;
+}
+
+int StarnetServer::DpbSlotCount() const
+{
+  // 56k: DPB table is D648-D692 (5×15). DPH begins at D693 — a sixth
+  // slot would wipe drive A's DPH and the client never reaches CCP.
+  return Is56kBootImage() ? 5 : kDpbSlots;
+}
+
+int StarnetServer::DpbSlotForDrive(int drive) const
+{
+  if (drive < 0)
+    return -1;
+  if (!Is56kBootImage())
+    return drive < kDpbSlots ? drive : -1;
+  // 56k DPH DPB pointers are not sequential with drive letter:
+  //   A→D648 (0), B→D684 (4), C→D657 (1), D→D666 (2), E→D675 (3).
+  static const int kMap[] = { 0, 4, 1, 2, 3 };
+  if (drive >= (int)(sizeof(kMap) / sizeof(kMap[0])))
+    return -1;
+  return kMap[drive];
+}
+
 int StarnetServer::AlvBytes(int drive) const
 {
   if (drive < 0 || drive >= kDpbSlots)
@@ -316,11 +350,11 @@ int StarnetServer::AlvBytes(int drive) const
 
   // 56kbcpm.slv: per-drive ALV (next ALV / DIRBUF minus this ALV).
   static const int kAlv56[] = {
-    0xdb68 - 0xdacf, // A: 153 bytes -> 1224 blocks
+    0xdb68 - 0xdacf, // A: 153 bytes -> 1224 blocks (~4.8MB @ 4K)
     0xdc01 - 0xdb68, // B: 153
     0xdc9a - 0xdc01, // C: 153
-    0xdcb3 - 0xdc9a, // D: 25
-    0xdce5 - 0xdcb3, // E: 50
+    0xdcb3 - 0xdc9a, // D: 25 -> 200 blocks
+    0xdce5 - 0xdcb3, // E: 50 -> 400 blocks
     0,
   };
   // 64kbcpm.slv: A-D share ALV at DD6E (zero-filled through the BN
@@ -334,8 +368,7 @@ int StarnetServer::AlvBytes(int drive) const
     0xdc7b - 0xdc62, // F: 25
   };
 
-  const BootImage * image = BootImageFor(m_bootImagePath);
-  if (image != nullptr && strcmp(image->m_filename, "56kbcpm.slv") == 0)
+  if (Is56kBootImage())
     return kAlv56[drive];
   return kAlv64[drive];
 }
@@ -358,13 +391,16 @@ bool StarnetServer::PrepareDrive(int drive)
   return d.Disk().m_spt > 0;
 }
 
-void StarnetServer::FillDpbs(uint8_t * dest)
+void StarnetServer::FillDpbs(uint8_t * dest, int slots)
 {
-  memset(dest, 0, (size_t)kDpbSlots * 15);
+  memset(dest, 0, (size_t)slots * 15);
   if (m_drives == nullptr)
     return;
 
   for (int i = 0; i < kDpbSlots; ++i) {
+    int slot = DpbSlotForDrive(i);
+    if (slot < 0 || slot >= slots)
+      continue;
     if (!PrepareDrive(i))
       continue;
 
@@ -374,13 +410,15 @@ void StarnetServer::FillDpbs(uint8_t * dest)
     // This client has no directory checksum vector. FS.COM stored zero here.
     dpb[11] = 0;
     dpb[12] = 0;
-    memcpy(dest + (size_t)i * 15, dpb, 15);
+    memcpy(dest + (size_t)slot * 15, dpb, 15);
     cerr << "starnet: DPB " << (char)('A' + i)
+         << " slot " << slot
          << " SPT=" << drive.Disk().m_spt
          << " DSM=" << drive.Disk().m_dsm
          << " DRM=" << drive.Disk().m_drm
          << " OFF=" << drive.Disk().m_off
-         << " ALVmax=" << AlvBytes(i) << endl;
+         << " ALVmax=" << AlvBytes(i)
+         << " blocks<=" << (AlvBytes(i) * 8) << endl;
   }
 }
 
@@ -471,16 +509,18 @@ std::vector<StarnetFrame> StarnetServer::OnBoot(const StarnetRequest & request)
     offset += len;
   }
   if (const BootImage * image = BootImageFor(m_bootImagePath)) {
-    uint8_t dpb[kDpbSlots * 15];
-    FillDpbs(dpb);
+    const int slots = DpbSlotCount();
+    vector<uint8_t> dpb((size_t)slots * 15);
+    FillDpbs(dpb.data(), slots);
     uint16_t addr = (uint16_t)(kBootAddress + image->m_dpbOffset);
     frames.push_back(Reply(Starnet::ResponseType::Acknowledge,
                            addr,
                            1,
                            0,
-                           dpb,
-                           (uint16_t)sizeof(dpb)));
-    cerr << "starnet: dpb packet at " << hex << addr << dec << endl;
+                           dpb.data(),
+                           (uint16_t)dpb.size()));
+    cerr << "starnet: dpb packet at " << hex << addr << dec
+         << " slots " << slots << endl;
   }
   // After FillDpbs so host volumes have a real SPT before login.
   LoginProvidedDrives();

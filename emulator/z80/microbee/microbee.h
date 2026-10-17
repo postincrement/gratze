@@ -139,15 +139,17 @@ class Microbee128_StarnetClient_Emulator : public Microbee128_BN_Emulator
     int Exec(int cycles) override;
     void Interrupt(uint16_t vector = 0) override;
     void WriteIOMemory(int id, uint16_t addr, uint8_t val) override;
+    void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data) override;
+    uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t port) override;
 
     void OnPIOAWrite(uint8_t data, bool ie);
     uint8_t OnPIOARead();
     void OnPIOBWrite(uint8_t data, bool ie);
+    uint8_t OnPIOBRead();
 
   protected:
     void WakeReceive();
     void ProbeBoot();
-    void DumpDpb();
 
     enum class RxPhase { Sync, Length, Body };
 
@@ -166,6 +168,42 @@ class Microbee128_StarnetClient_Emulator : public Microbee128_BN_Emulator
     bool m_seenBiosRead = false;
     bool m_seenHalt = false;
     bool m_bootProbeDone = false;
+
+    // Post-boot activity traces (rate-limited).
+    uint16_t m_logLastPc = 0;
+    int m_logSamePcCycles = 0;
+    int m_logHeartbeatCycles = 0;
+    int m_logPioBReads = 0;
+    int m_logPioBWrites = 0;
+    int m_logCrtcStatus = 0;
+
+    // Keyboard / cold-start tracing against vtex_153.asm.
+    bool m_bdos6Pending = false;
+    uint16_t m_bdos6Return = 0;
+    int m_bdos6Steps = 0;
+    int m_logBdos6 = 0;
+    int m_logKeyWait = 0;
+    bool m_keyWaitPending = false;
+    bool m_seenKeyWait = false;
+    bool m_seenProbeMemory = false;
+    bool m_seenLoadCustomer = false;
+    bool m_seenMainLoop = false;
+    bool m_seenMenu = false;
+    bool m_seenDrawHelp = false;
+    bool m_seenReadCmdline = false;
+    bool m_seenBackToCcp = false;
+    bool m_loggedBdos6Poll = false;
+    int m_starnetDirFlips = 0;
+    int m_blockedDf4a = 0;
+    int m_blockedPioCtrl = 0;
+    uint16_t m_prevPc = 0;
+    uint16_t m_loadCustomerRet = 0;
+    bool m_watchingLoadCustomer = false;
+
+    // Generic BDOS call trace during vtex init (open/read/etc).
+    bool m_bdosPending = false;
+    uint8_t m_bdosFn = 0;
+    uint16_t m_bdosReturn = 0;
 };
 
 #endif // DG680_H_

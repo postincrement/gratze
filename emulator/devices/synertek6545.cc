@@ -84,7 +84,15 @@ void Synertek6545::RecalcFrameTiming()
   m_frameCpuCycles  = (uint64_t)charsPerLine * (uint64_t)totalScanlines * (uint64_t)m_cpuCyclesPerChar;
   m_activeCpuCycles = (uint64_t)charsPerLine * (uint64_t)activeScanlines * (uint64_t)m_cpuCyclesPerChar;
 
-  if (m_activeCpuCycles >= m_frameCpuCycles && m_frameCpuCycles > 0)
+  // Software polls bit 5 in a multi-instruction loop (~30 cycles). A
+  // one-cycle blanking window is invisible and hangs those waits.
+  const uint64_t minBlank =
+      std::max<uint64_t>((uint64_t)charsPerLine * (uint64_t)scanlinesPerRow * (uint64_t)m_cpuCyclesPerChar,
+                         m_frameCpuCycles / 20); // >= 5% of frame
+  if (m_frameCpuCycles > minBlank &&
+      m_activeCpuCycles > m_frameCpuCycles - minBlank)
+    m_activeCpuCycles = m_frameCpuCycles - minBlank;
+  else if (m_activeCpuCycles >= m_frameCpuCycles && m_frameCpuCycles > 0)
     m_activeCpuCycles = m_frameCpuCycles - 1;
 }
 
@@ -139,6 +147,9 @@ void Synertek6545::Reg31()
 
 void Synertek6545::UpdateStatus()
 {
+  // Tight IN A,(0Ch) poll loops never leave Exec() between reads, so Tick
+  // alone cannot advance blanking. Charge ~one IN's worth of cycles here.
+  m_cycleCounter += 16;
   RefreshVBlank();
 
   // Complete keyboard LPEN / R31 updates on a short status-poll delay.

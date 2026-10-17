@@ -75,22 +75,10 @@ void StarnetClient::Deliver()
 {
   // m_wire is 0x00, length, then the request frame.
   uint8_t requestCode = 0;
-  uint16_t parm0 = 0, parm1 = 0, parm2 = 0;
   if (m_wire.size() >= 3)
     requestCode = m_wire[2];
-  if (m_wire.size() >= 9) {
-    parm0 = (uint16_t)(m_wire[3] | (m_wire[4] << 8));
-    parm1 = (uint16_t)(m_wire[5] | (m_wire[6] << 8));
-    parm2 = (uint16_t)(m_wire[7] | (m_wire[8] << 8));
-  }
   const bool boot = requestCode == (uint8_t)Starnet::RequestType::ColdBoot
                  || requestCode == (uint8_t)Starnet::RequestType::WarmBoot;
-  if (!boot) {
-    cerr << "starnet: client request " << (unsigned)requestCode
-         << " parm " << hex << setw(4) << setfill('0') << parm0
-         << ' ' << setw(4) << parm1
-         << ' ' << setw(4) << parm2 << dec << endl;
-  }
 
   std::vector<std::vector<uint8_t>> replies;
   uint8_t station = m_station;
@@ -117,45 +105,21 @@ void StarnetClient::Deliver()
       continue;
     QueueBytes(&wire[1], (uint16_t)frameLen);
 
-    if (!boot) {
-      if (frameLen >= 1)
-        cerr << "starnet: client reply " << (unsigned)wire[1]
-             << " len " << frameLen << endl;
+    if (!boot)
       continue;
-    }
     if (frameLen < Starnet::kHeaderBytes)
+      continue;
+
+    // One line on the final cold/warm boot packet only.
+    if (i + 1 != replies.size())
       continue;
 
     const uint8_t * frame = &wire[1];
     uint16_t addr = (uint16_t)(frame[1] | (frame[2] << 8));
-    uint16_t more = (uint16_t)(frame[3] | (frame[4] << 8));
-    int payload = frameLen - Starnet::kHeaderBytes - 1;
-    const bool last = (i + 1 == replies.size());
-    const bool dpb = addr == 0xd706 || addr == 0xd648;
-
-    if (!last && !dpb)
-      continue;
-
-    cerr << "starnet: client "
+    cerr << "starnet: "
          << (requestCode == (uint8_t)Starnet::RequestType::ColdBoot ? "cold" : "warm")
-         << " boot packet " << (i + 1) << "/" << replies.size()
-         << " addr " << hex << setw(4) << setfill('0') << addr
-         << " more " << more
-         << " payload " << dec << payload;
-    if (dpb) {
-      cerr << " dpb";
-      int show = payload < 16 ? payload : 16;
-      cerr << " [";
-      for (int b = 0; b < show; ++b) {
-        if (b)
-          cerr << ' ';
-        cerr << hex << setw(2) << setfill('0') << (unsigned)frame[Starnet::kHeaderBytes + b];
-      }
-      cerr << dec << "]";
-    }
-    if (last)
-      cerr << " (last)";
-    cerr << endl;
+         << " boot done addr " << hex << setw(4) << setfill('0') << addr
+         << dec << " packets " << replies.size() << endl;
   }
 }
 

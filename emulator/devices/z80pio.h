@@ -25,8 +25,21 @@ class Z80PIO  : public VirtualDevice
     virtual void Write(uint8_t reg, uint8_t data);
 
     // Latch a byte the CPU will read. Does not request an interrupt;
-    // Strobe() does that.
+    // Strobe() does that. Only bits set in the mode-3 input mask are updated
+    // (or the whole byte when the mask is 0).
     virtual void SetData(int port, uint8_t data);
+
+    // OR bits into the readable data register regardless of direction mask.
+    // Used when external lines must read high even if the CPU configured them
+    // as outputs and wrote zeros.
+    virtual uint8_t OrDataBits(int port, uint8_t bits);
+
+    // Update the CPU-facing output latch without invoking the write handler.
+    // Used to preserve bits owned by the emulator (e.g. Starnet direction).
+    virtual void SetOutputLatch(int port, uint8_t data);
+
+    // Clear bits from the mode-3 input mask so they stay outputs.
+    virtual void ForceOutputBits(int port, uint8_t outputBits);
 
     // Output latch last written by the CPU. Safe to call from a write handler.
     virtual uint8_t GetData(int port) const;

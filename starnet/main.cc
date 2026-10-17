@@ -73,15 +73,36 @@ int Claim(vector<Slot> & slots, int requested)
 int main(int argc, char ** argv)
 {
   string image;
+  bool imageFromFlag = false;
   vector<string> driveSpecs;
   for (int i = 1; i < argc; ++i) {
     string arg = argv[i];
-    if (arg == "--image" && i + 1 < argc)
-      image = argv[++i];
+    auto setImage = [&](const string & path, const char * flag) -> bool {
+      if (imageFromFlag) {
+        cerr << "starnet: " << flag << " conflicts with an earlier image choice\n";
+        return false;
+      }
+      image = path;
+      imageFromFlag = true;
+      return true;
+    };
+    if (arg == "--56k") {
+      if (!setImage("56kbcpm.slv", "--56k"))
+        return 1;
+    }
+    else if (arg == "--64k") {
+      if (!setImage("64kbcpm.slv", "--64k"))
+        return 1;
+    }
+    else if (arg == "--image" && i + 1 < argc) {
+      if (!setImage(argv[++i], "--image"))
+        return 1;
+    }
     else if (arg == "--drive" && i + 1 < argc)
       driveSpecs.push_back(argv[++i]);
     else {
-      cerr << "usage: starnet-server [--image FILE] [--drive SPEC]...\n"
+      cerr << "usage: starnet-server [--56k|--64k|--image FILE] [--drive SPEC]...\n"
+           << "  --56k / --64k select 56kbcpm.slv or 64kbcpm.slv (default 64k)\n"
            << "  SPEC is A=dir:PATH or A=image:FILE,dpb=NAME\n";
       return 1;
     }

@@ -51,9 +51,10 @@ class CpmDrive
     // does nothing and returns true.
     bool Refresh(std::ostream * debug);
 
-    // Cap the host allocation vector. Starnet slaves only reserve a few
-    // hundred bytes of ALV; the default 16MB host volume overflows that
-    // and the client's BDOS trashes its BIOS. Zero means no cap.
+    // Cap host DSM (+ planning floor) so the volume fits a small client
+    // ALV. Starnet 56k slaves only reserve ~153 bytes (1224 blocks); the
+    // default 16MB host volume overflows that and trashes the BIOS.
+    // Zero means no cap.
     void SetMaxBlocks(int maxBlocks) { m_maxBlocks = maxBlocks; }
     int MaxBlocks() const { return m_maxBlocks; }
 

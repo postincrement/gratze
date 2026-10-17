@@ -51,7 +51,7 @@ class StarnetServer
     // 128K banked (port 50), DPB at D706, large ALV at DD6E. Length must
     // stop at DF00 — the file is zero-padded through DFFF, and loading
     // that tail wipes the BN ROM IM2 page (I=DF, vector at DF4E).
-    // 56kbcpm.slv remains available via --image for the older map.
+    // 56kbcpm.slv is the older unbanked map (--56k / --image).
     struct BootImage {
       const char * m_filename;
       uint16_t m_dpbOffset;
@@ -74,7 +74,12 @@ class StarnetServer
     bool LoadBootImage();
     static const BootImage * BootImageFor(const std::string & path);
     static const BootImage * DefaultBootImage();
-    void FillDpbs(uint8_t * dest);
+    bool Is56kBootImage() const;
+    // DPB table slots in the cold-boot packet (5 for 56k, 6 for 64k).
+    int DpbSlotCount() const;
+    // Where drive letter A+N lands in that table. 56k DPH is not linear.
+    int DpbSlotForDrive(int drive) const;
+    void FillDpbs(uint8_t * dest, int slots);
     void LoginProvidedDrives();
     // Bytes of ALV the loaded slave reserves for this DPH slot.
     int AlvBytes(int drive) const;
@@ -94,7 +99,8 @@ class StarnetServer
                               uint16_t len = 0);
     static const char * CommandName(uint8_t code);
 
-    // The slave images name six drives in the DPH, fifteen bytes apart.
+    // Max DPB table slots across slaves. 64k uses all six; 56k only five
+    // (the sixth would overwrite the DPH at D693).
     static const int kDpbSlots = 6;
     // Matches CpmDriveSet::kDrives without pulling that header in here.
     static const int kLoginDrives = 16;

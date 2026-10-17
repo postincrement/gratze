@@ -89,6 +89,26 @@ void Z80PIO::SetData(int portNum, uint8_t data)
     port.m_data = (port.m_data & ~port.m_inputMask) | (data & port.m_inputMask);
 }
 
+uint8_t Z80PIO::OrDataBits(int portNum, uint8_t bits)
+{
+  Port & port = m_ports[portNum & 1];
+  port.m_data = (uint8_t)(port.m_data | bits);
+  return port.m_data;
+}
+
+void Z80PIO::SetOutputLatch(int portNum, uint8_t data)
+{
+  Port & port = m_ports[portNum & 1];
+  port.m_outputLatch = data;
+  port.m_data = (uint8_t)((port.m_data & port.m_inputMask) | (data & (uint8_t)~port.m_inputMask));
+}
+
+void Z80PIO::ForceOutputBits(int portNum, uint8_t outputBits)
+{
+  Port & port = m_ports[portNum & 1];
+  port.m_inputMask = (uint8_t)(port.m_inputMask & ~outputBits);
+}
+
 void Z80PIO::RequestInterrupt(const Port & port)
 {
   if (port.m_ie && m_interruptHandler)
@@ -220,12 +240,14 @@ void Z80PIO::Port::WriteData(uint8_t data)
 }
 
 // Mode 1 and the input half of mode 2 raise ready once the CPU has taken
-// the latched byte. Mode 3 reads whatever the handler presented.
+// the latched byte. When a read handler is installed it supplies the byte
+// returned to the CPU (and should update m_data if other code peeks it).
 uint8_t Z80PIO::Port::ReadData()
 {
+  uint8_t val = m_data;
   if (m_readHandler)
-    m_readHandler();
+    val = m_readHandler();
   if (m_mode == Mode::Input || m_mode == Mode::Bidir)
     m_ready = true;
-  return m_data;
+  return val;
 }
