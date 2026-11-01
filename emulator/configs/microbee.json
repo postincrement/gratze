@@ -11,6 +11,23 @@
     }
   },
   {
+    "name": "microbee128-host",
+    "type": "mbee128bn",
+    "shadowBdos": true,
+    "drives": {
+      "a": {
+        "type": "image",
+        "file": "mbee/128k_standard_master_ds40.dsk",
+        "label": "Master"
+      },
+      "b": {
+        "type": "dir",
+        "path": "./files",
+        "label": "Host"
+      }
+    }
+  },
+  {
     "name": "microbee56",
     "type": "mbee56",
     "drives": {

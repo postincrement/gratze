@@ -295,6 +295,9 @@ int main(int argc, char *argv[])
     options.m_withEI = true;
   }
 
+  if (options.m_shadowBdos)
+    cout << "info: shadowBdos=true (config '" << options.m_envConfigPath << "')" << endl;
+
   if (options.m_verbose) {
     cout << "info: backtrace queue is " << options.m_traceLength << endl;
     cout << "info: using type '" << options.m_typeName << "'" << endl;

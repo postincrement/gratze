@@ -153,6 +153,11 @@ uint8_t * CPM80_Emulator::Memory()
   return GetMainMemoryPtr();
 }
 
+uint8_t CPM80_Emulator::ReadMem(uint16_t addr)
+{
+  return m_memory[addr];
+}
+
 void CPM80_Emulator::RunPollers()
 {
   Emulator::RunPollers();

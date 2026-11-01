@@ -30,6 +30,7 @@ class CPM80_Emulator : public Z80Emulator, public cpmhost::Host
     // cpmhost::Host
     MFZ::Z80 & Cpu() override;
     uint8_t * Memory() override;
+    uint8_t ReadMem(uint16_t addr) override;
     void ConsoleOut(char data) override;
     int ConsoleIn() override;
     bool ConsoleStatus() override;

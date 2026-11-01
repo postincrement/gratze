@@ -287,7 +287,8 @@ static bool ApplyEnvObject(JsonParser & parser, const string & configPath, Optio
       else
         options.m_starnetStation = value;
     }
-    else if (key == "sdl" || key == "turbo" || key == "ei" || key == "gamekb") {
+    else if (key == "sdl" || key == "turbo" || key == "ei" || key == "gamekb"
+             || key == "shadowBdos") {
       bool value = false;
       if (!parser.Bool(value)) {
         error = parser.m_error;
@@ -299,6 +300,8 @@ static bool ApplyEnvObject(JsonParser & parser, const string & configPath, Optio
         options.m_turbo = value;
       else if (key == "ei")
         options.m_withEI = value;
+      else if (key == "shadowBdos")
+        options.m_shadowBdos = value;
       else
         options.m_gameKb = value;
     }
