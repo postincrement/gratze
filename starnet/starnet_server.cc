@@ -19,8 +19,8 @@ using namespace std;
 
 namespace {
 
-// Relative path under the emulator tree for a named slave image.
-const char * kBootImageDir = "z80/microbee/starnet/";
+// Slave images live in the top-level starnet/ directory (next to this server).
+const char * kBootImageDir = "starnet/";
 // Both slaves are CP/M systems: CCP at C000, BDOS at C800, BIOS at D600.
 const uint16_t kBootAddress = 0xc000;
 const uint16_t kBiosAddress = 0xd600;
@@ -51,20 +51,19 @@ string ExecutableDir()
   return path;
 }
 
-// The slave image lives next to this source. Accept either the emulator
-// directory or the repository root as the working directory, and also look
-// next to the executable when the program is started from somewhere else.
+// Slave images live in starnet/ next to this source. Accept the repo root
+// or starnet/ as cwd, and also walk up from the executable.
 string FindBootImage(const char * filename)
 {
   string relative = string(kBootImageDir) + filename;
   vector<string> candidates;
-  candidates.push_back(string("./") + relative);
-  candidates.push_back(string("./emulator/") + relative);
+  candidates.push_back(string("./") + filename);       // cwd = starnet/
+  candidates.push_back(string("./") + relative);       // cwd = repo root
 
   string dir = ExecutableDir();
   for (int i = 0; i < 6 && !dir.empty(); ++i) {
+    candidates.push_back(dir + "/" + filename);
     candidates.push_back(dir + "/" + relative);
-    candidates.push_back(dir + "/emulator/" + relative);
     auto slash = dir.find_last_of('/');
     if (slash == string::npos)
       break;
@@ -322,6 +321,12 @@ bool StarnetServer::Is56kBootImage() const
   return image != nullptr && strcmp(image->m_filename, "56kbcpm.slv") == 0;
 }
 
+bool StarnetServer::IsN64kBootImage() const
+{
+  const BootImage * image = BootImageFor(m_bootImagePath);
+  return image != nullptr && strcmp(image->m_filename, "n64kbcpm.slv") == 0;
+}
+
 int StarnetServer::DpbSlotCount() const
 {
   // 56k: DPB table is D648-D692 (5×15). DPH begins at D693 — a sixth
@@ -357,8 +362,8 @@ int StarnetServer::AlvBytes(int drive) const
     0xdce5 - 0xdcb3, // E: 50 -> 400 blocks
     0,
   };
-  // 64kbcpm.slv: A-D share ALV at DD6E (zero-filled through the BN
-  // workspace at DF00). E-F reuse 25-byte stubs in the cold-boot area.
+  // 64kbcpm.slv: A-D share ALV at DD6E through the BN workspace at DF00.
+  // E-F reuse 25-byte stubs in the cold-boot area.
   static const int kAlv64[] = {
     0xdf00 - 0xdd6e, // A-D shared: 402 bytes -> 3216 blocks (~12.5MB @ 4K)
     0xdf00 - 0xdd6e,
@@ -367,9 +372,20 @@ int StarnetServer::AlvBytes(int drive) const
     0xdc62 - 0xdc49, // E: 25 -> 200 blocks
     0xdc7b - 0xdc62, // F: 25
   };
+  // n64kbcpm.slv: DPB at DE00, so shared ALV stops there.
+  static const int kAlvN64[] = {
+    0xde00 - 0xdd6e, // A-D shared: 146 bytes -> 1168 blocks (~4.5MB @ 4K)
+    0xde00 - 0xdd6e,
+    0xde00 - 0xdd6e,
+    0xde00 - 0xdd6e,
+    0xdc62 - 0xdc49,
+    0xdc7b - 0xdc62,
+  };
 
   if (Is56kBootImage())
     return kAlv56[drive];
+  if (IsN64kBootImage())
+    return kAlvN64[drive];
   return kAlv64[drive];
 }
 

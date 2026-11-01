@@ -47,11 +47,12 @@ class StarnetServer
     // is 15 bytes later. The server's last frame is the entry jump and
     // is not stored.
     //
-    // Default slave is 64kbcpm.slv: network BIOS (READ/WRITE via E042),
-    // 128K banked (port 50), DPB at D706, large ALV at DD6E. Length must
+    // Default slave is starnet/64kbcpm.slv: network BIOS (READ/WRITE via
+    // E042), 128K banked (port 50), DPB at D706, ALV at DD6E. Length must
     // stop at DF00 — the file is zero-padded through DFFF, and loading
     // that tail wipes the BN ROM IM2 page (I=DF, vector at DF4E).
-    // 56kbcpm.slv is the older unbanked map (--56k / --image).
+    // n64kbcpm.slv is the same map with a private BIOS stack for bank $14
+    // and DPB moved to DE00. 56kbcpm.slv is the older unbanked map.
     struct BootImage {
       const char * m_filename;
       uint16_t m_dpbOffset;
@@ -60,6 +61,7 @@ class StarnetServer
 
     static constexpr BootImage kBootImages[] = {
       { "64kbcpm.slv", 0x1706, 0xdf00 - 0xc000 },
+      { "n64kbcpm.slv", 0x1e00, 0xdf00 - 0xc000 },
       { "56kbcpm.slv", 0x1648, 60 * 128 },
     };
 
@@ -75,7 +77,8 @@ class StarnetServer
     static const BootImage * BootImageFor(const std::string & path);
     static const BootImage * DefaultBootImage();
     bool Is56kBootImage() const;
-    // DPB table slots in the cold-boot packet (5 for 56k, 6 for 64k).
+    bool IsN64kBootImage() const;
+    // DPB table slots in the cold-boot packet (5 for 56k, 6 for 64k/n64k).
     int DpbSlotCount() const;
     // Where drive letter A+N lands in that table. 56k DPH is not linear.
     int DpbSlotForDrive(int drive) const;

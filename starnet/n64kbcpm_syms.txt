@@ -1,0 +1,14 @@
+; n64kbcpm.slv — symbols for z80dasm (-S / -c)
+rom_conout:         equ 0xe00c
+rom_net_io:         equ 0xe042
+ccp:                equ 0xc000
+bdos:               equ 0xc800
+bios_jt:            equ 0xd600
+bios_cold:          equ 0xdc49
+dpb_table:          equ 0xde00
+dph_table:          equ 0xd78d
+dirbuf:             equ 0xdcdc
+alv:                equ 0xdd6e
+stack_enter:        equ 0xd72d
+stack_top:          equ 0xdcd4
+stack_flag:         equ 0xdcac

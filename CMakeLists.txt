@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(gratze VERSION 0.1 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -89,10 +89,13 @@ else()
   set(GRATZE_SDL2_TTF PkgConfig::SDL2_ttf)
 endif()
 
+enable_testing()
+
 add_subdirectory(common)
 add_subdirectory(disk)
 add_subdirectory(starnet)
 add_subdirectory(emulator)
+add_subdirectory(emumatic)
 
 add_executable(grzbin grzbin/grzbin.cc)
 set_target_properties(grzbin PROPERTIES

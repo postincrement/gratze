@@ -295,34 +295,34 @@ void Z80Emulator::OnPatchZ80(MFZ::Z80 *R)
 
 extern "C"
 {
-  void PatchZ80(register MFZ::Z80 *R)
+  void PatchZ80(MFZ::Z80 *R)
   {
     if (Z80Emulator::g_z80Instance != NULL)
       Z80Emulator::g_z80Instance->OnPatchZ80(R);
   }
 
-  MFZ::word LoopZ80(register MFZ::Z80 *R)
+  MFZ::word LoopZ80(MFZ::Z80 *R)
   {
     cerr << "loop called" << endl;
     return INT_NONE;
   }
 
-  void WrZ80(register MFZ::word Addr, register MFZ::byte Value)
+  void WrZ80(MFZ::word Addr, MFZ::byte Value)
   {
     Z80Emulator::g_z80Instance->WriteMemory(Addr, Value);
   }
 
-  MFZ::byte RdZ80(register MFZ::word Addr)
+  MFZ::byte RdZ80(MFZ::word Addr)
   {
     return Z80Emulator::g_z80Instance->ReadMemory(Addr);
   }
 
-  void OutZ80(register MFZ::word Port, register MFZ::byte Value)
+  void OutZ80(MFZ::word Port, MFZ::byte Value)
   {
     Z80Emulator::g_z80Instance->WritePort(Port, Value);
   }
 
-  MFZ::byte InZ80(register MFZ::word Port)
+  MFZ::byte InZ80(MFZ::word Port)
   {
     return Z80Emulator::g_z80Instance->ReadPort(Port);
   }

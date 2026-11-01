@@ -281,7 +281,7 @@ uint8_t CPM80_Emulator::ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t ad
   return 0;
 }
 
-void CPM80_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, register uint16_t address, register uint8_t data)
+void CPM80_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t address, uint8_t data)
 {
   switch (address & 0xff) {
 

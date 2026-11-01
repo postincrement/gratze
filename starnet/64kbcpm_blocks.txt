@@ -1,0 +1,12 @@
+; 64kbcpm.slv — original layout (DPB at $D706)
+ccp:         start 0xc000 unlabeled end 0xc800 type code
+bdos:        start 0xc800 unlabeled end 0xd600 type code
+bios_jt:     start 0xd600 unlabeled end 0xd640 type code
+bios_dpb0:   start 0xd640 unlabeled end 0xd682 type bytedata
+ccp_cmdbuf:  start 0xd682 unlabeled end 0xd706 type bytedata
+bios_dpb:    start 0xd706 unlabeled end 0xd760 type bytedata
+bios_spare0: start 0xd760 unlabeled end 0xd78d type bytedata
+bios_dph:    start 0xd78d unlabeled end 0xd7ed type bytedata
+bios_spare1: start 0xd7ed unlabeled end 0xd852 type bytedata
+bios_code:   start 0xd852 unlabeled end 0xdcac type code
+bios_bss:    start 0xdcac unlabeled last 0xdfff type bytedata

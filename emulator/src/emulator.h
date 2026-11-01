@@ -241,8 +241,8 @@ class Emulator
     virtual uint16_t ReadMemoryWord(uint16_t addr) = 0;
 
     // IO port functions
-    virtual void WritePort(register uint16_t port, register uint8_t value);
-    virtual uint8_t ReadPort(register uint16_t port);
+    virtual void WritePort(uint16_t port, uint8_t value);
+    virtual uint8_t ReadPort(uint16_t port);
 
     virtual uint8_t ReadIOPort(const ReadIOPortBlockInfo & info, uint16_t);
     virtual void WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t, uint8_t data);

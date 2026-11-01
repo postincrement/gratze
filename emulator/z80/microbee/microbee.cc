@@ -904,24 +904,23 @@ void Microbee128_BaseEmulator::Reset(int addr)
 
 #define UPPER_BANK   0
 
-// 0x00 = 0 0000   => RESET MAP  DRAM bank 0, VDU from F000 
+// 0x00 = 0 0000   => RESET MAP  DRAM bank 0, VDU from F000
 // 0x0C = 0 1100   => BIOS MAP   DRAM bank 0, no VDU
 // 0x14 = 1 0100   => VDR MAP    DRAM bank 0, VDU from 8000
 // 0x0D = 0 1101   => BANK A     0-7fff = DRAM bank 1 lower, 8000-ffff DRAM bank 0 upper
 // 0x0F = 0 1111   => BANK B     0-7fff = DRAM bank 1 upper, 8000-ffff DRAM bank 0 upper
+//
+// m_bankedMemory[i] is 32K. Low and (legacy) upper both using bank 0 means
+// addr $8000+x aliases $0000+x. vtex screen_buf_init fills a shadow at
+// $8000 which must NOT wipe the TPA — those DRAM writes go to SHADOW_BANK.
 
-static int g_bankMap[4] = {
-  0,    // 00 -> bank 0, lower
-  2,    // 01 -> bank 1, lower
-  2,    // 10 -> bank 1, lower ??
-  3,    // 11 -> bank 1, upper
-};
+#define SHADOW_BANK  1
 
 void Microbee128_BaseEmulator::SetBankSel(uint8_t data)
 {
   const bool prevVideoDisable = m_videoDisable;
   m_bankSel          = data;
-  m_currentLowerBank = m_bankedMemory[data & 3]; //g_bankMap[data & 3]];
+  m_currentLowerBank = m_bankedMemory[data & 3];
   m_romDisable       = data & 0x04;
   m_videoDisable     = data & 0x08;
   m_videoLower       = data & 0x10;
@@ -966,14 +965,11 @@ void Microbee128_BaseEmulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
 
     case MEMORY_UPPER_BANK:
       if (!m_videoDisable) {
-        // videoLower (bank 0x14) puts the VDU at 8000. Hardware decodes a
-        // 4K window, but vtex keeps SP at 9000h — pushes land at 8FFx.
-        // Starnet's sub_db56h also EI while bank 14 is active, so an IRQ
-        // would write its frame into VDU and lose the DRAM return address.
-        // Map only the 2K screen (80x24) at 8000-87FF; keep 8800-8FFF as
-        // DRAM for the TPA stack.
-        if (m_videoLower && addr >= 0x8000 && addr < 0x8800) {
-          m_video->WriteMemoryAtAddress(addr & 0x7ff, val);
+        // videoLower (bank 0x14) puts the VDU at 8000-8FFF (4K). n64kbcpm
+        // switches to a private BIOS stack for that window, so the TPA
+        // stack at 8FFx is not used while the VDU is mapped.
+        if (m_videoLower && addr >= 0x8000 && addr < 0x9000) {
+          m_video->WriteMemoryAtAddress(addr & 0x0fff, val);
           return;
         }
         if (!m_videoLower && (addr >= 0xf000)) {
@@ -982,6 +978,12 @@ void Microbee128_BaseEmulator::WriteIOMemory(int id, uint16_t addr, uint8_t val)
         }
       }
       if (!m_romDisable && (addr < 0xa000)) {
+        return;
+      }
+      // $8000-$8FFF DRAM (not VDU): keep out of bank 0 so it does not
+      // alias over the TPA at $0000-$0FFF (vtex shadow buffer).
+      if (m_romDisable && !m_videoLower && addr >= 0x8000 && addr < 0x9000) {
+        m_bankedMemory[SHADOW_BANK][addr & 0x7fff] = val;
         return;
       }
       m_bankedMemory[UPPER_BANK][addr & 0x7fff] = val;
@@ -999,8 +1001,8 @@ uint8_t Microbee128_BaseEmulator::ReadIOMemory(int id, uint16_t addr) const
 
     case MEMORY_UPPER_BANK:          // 0x8000 to 0xffff
       if (!m_videoDisable) {
-        if (m_videoLower && addr >= 0x8000 && addr < 0x8800) {
-          return m_video->ReadMemoryAtAddress(addr & 0x7ff);
+        if (m_videoLower && addr >= 0x8000 && addr < 0x9000) {
+          return m_video->ReadMemoryAtAddress(addr & 0x0fff);
         }
         if (!m_videoLower && (addr >= 0xf000)) {
           return m_video->ReadMemoryAtAddress(addr & 0x0fff);
@@ -1009,6 +1011,8 @@ uint8_t Microbee128_BaseEmulator::ReadIOMemory(int id, uint16_t addr) const
       if (!m_romDisable && (addr < 0xa000)) {
         return m_0x8000_ROM[addr & 0x1fff];
       }
+      if (m_romDisable && !m_videoLower && addr >= 0x8000 && addr < 0x9000)
+        return m_bankedMemory[SHADOW_BANK][addr & 0x7fff];
       return m_bankedMemory[UPPER_BANK][addr & 0x7fff];
   }
   
@@ -1131,6 +1135,8 @@ void Microbee128_StarnetClient_Emulator::Reset(int addr)
   m_logKeyWait = 0;
   m_keyWaitPending = false;
   m_seenKeyWait = false;
+  m_seenColdStart = false;
+  m_seenVideoInit = false;
   m_seenProbeMemory = false;
   m_seenLoadCustomer = false;
   m_seenMainLoop = false;
@@ -1143,8 +1149,6 @@ void Microbee128_StarnetClient_Emulator::Reset(int addr)
   m_blockedDf4a = 0;
   m_blockedPioCtrl = 0;
   m_prevPc = 0;
-  m_loadCustomerRet = 0;
-  m_watchingLoadCustomer = false;
   m_bdosPending = false;
   m_bdosFn = 0;
   m_bdosReturn = 0;
@@ -1191,15 +1195,13 @@ void Microbee128_StarnetClient_Emulator::WriteIOMemory(int id, uint16_t addr, ui
     return;
   }
 
-  // vtex SP sits at 9000h (upper half). Log anyone stomping the cold_start
-  // return slot while load_customer_id is on the stack.
-  if (m_watchingLoadCustomer && m_loadCustomerRet != 0
-      && (addr == 0x8ffe || addr == 0x8fff)
-      && (uint16_t)GetPC() >= 0x8000) {
+  // vtex SP sits at 9000h. Log VDU-window writes into the TPA stack slot.
+  if ((addr == 0x8ffe || addr == 0x8fff) && (uint16_t)GetPC() >= 0x8000) {
     cerr << "vtex: stack stomp @" << HEXFORMAT0x4(addr)
          << " =" << HEXFORMAT0x2(val)
          << " pc " << HEXFORMAT0x4(GetPC())
-         << " sp " << HEXFORMAT0x4(m_cpu.SP.W) << endl;
+         << " sp " << HEXFORMAT0x4(m_cpu.SP.W)
+         << " bank " << HEXFORMAT0x2(m_bankSel) << endl;
   }
 
   Microbee128_BN_Emulator::WriteIOMemory(id, addr, val);
@@ -1236,107 +1238,39 @@ int Microbee128_StarnetClient_Emulator::Exec(int cycles)
     return toDo;
   }
 
-  // vtex_153.asm cold_start: probe_memory → load_customer_id (BDOS
-  // open/read VTLCUSTOMER) → screen_buf_init → cells_clear → main_loop
-  // → menu_command → key_wait. Until key_wait, single-step TPA so BDOS
-  // entries at 0005 are not skipped inside a 256-cycle slice.
+  // vtex_153.asm cold_start → … → key_wait. Until key_wait, single-step
+  // TPA so BDOS entries at 0005 are not skipped inside a 256-cycle slice.
   int rem = cycles;
   while (rem > 0) {
     const uint16_t pc = (uint16_t)GetPC();
     const bool preKeyWait = m_seenProbeMemory && !m_seenKeyWait;
 
-    if (!m_seenProbeMemory && (pc == 0x1ca8 || pc == 0x1ce1)) {
+    if (!m_seenColdStart && pc == 0x0182) {
+      m_seenColdStart = true;
+      cerr << "vtex: cold_start bank " << HEXFORMAT0x2(m_bankSel) << endl;
+    }
+    if (!m_seenVideoInit && pc >= 0x1415 && pc <= 0x141f) {
+      m_seenVideoInit = true;
+      cerr << "vtex: video_init bank " << HEXFORMAT0x2(m_bankSel)
+           << " lower " << (m_videoLower ? 1 : 0) << endl;
+    }
+    if (!m_seenProbeMemory && (pc == 0x1ca8 || pc == 0x1ce1 || pc == 0x01de)) {
       m_seenProbeMemory = true;
       cerr << "vtex: probe_memory l1c41="
            << HEXFORMAT0x2(ReadMemory(0x1c41)) << endl;
     }
     if (!m_seenLoadCustomer && pc == 0x01de) {
       m_seenLoadCustomer = true;
-      if (!m_seenProbeMemory) {
-        m_seenProbeMemory = true;
-        cerr << "vtex: probe_memory (implied) l1c41="
-             << HEXFORMAT0x2(ReadMemory(0x1c41)) << endl;
-      }
-      m_loadCustomerRet = ReadMemoryWord(m_cpu.SP.W);
-      m_watchingLoadCustomer = true;
-      cerr << "vtex: load_customer_id ret=" << HEXFORMAT0x4(m_loadCustomerRet)
-           << " sp " << HEXFORMAT0x4(m_cpu.SP.W) << endl;
+      cerr << "vtex: load_customer_id" << endl;
     }
-
-    // Force a clean return from load_customer_id — don't trust the stack
-    // slot after Starnet BDOS (corruption lands at 025e → menu → CCP).
-    if (m_watchingLoadCustomer && (pc == 0x0212 || pc == 0x01eb)) {
-      const uint16_t got = ReadMemoryWord(m_cpu.SP.W);
-      const uint16_t want = m_loadCustomerRet ? m_loadCustomerRet : 0x0191;
-      if (got != want)
-        cerr << "vtex: load_customer ret was " << HEXFORMAT0x4(got)
-             << " (want " << HEXFORMAT0x4(want) << ")" << endl;
-      m_watchingLoadCustomer = false;
-      m_cpu.SP.W = 0x9000;
-      SetPC(want);
-      continue;
-    }
-
-    // Fallen into menu via 025e (data as code).
-    if (pc == 0x025e && m_cpu.SP.W == 0x9000) {
-      cerr << "vtex: abort fall-through at 025e -> 0191"
-           << " bank " << HEXFORMAT0x2(m_bankSel) << endl;
-      SetPC(0x0191);
-      continue;
-    }
-
-    // Empty-stack RET at the vtex SP base pops leftover (9000) — observed
-    // as 3e71 — then falls through NOPs into 4000h which holds JP C082
-    // (CCP). Block that RET and resume the cmdline loop.
-    if (m_seenDrawHelp && !m_seenBackToCcp && m_cpu.SP.W == 0x9000) {
-      const uint8_t op = ReadMemory(pc);
-      const bool isRet = (op == 0xc9) || (op == 0xc8) || (op == 0xc0)
-                      || (op == 0xd8) || (op == 0xd0) || (op == 0xe8)
-                      || (op == 0xe0) || (op == 0xf8) || (op == 0xf0);
-      const bool isReti = (op == 0xed && ReadMemory(pc + 1) == 0x4d);
-      if (isRet || isReti) {
-        cerr << "vtex: block empty-stack RET at " << HEXFORMAT0x4(pc)
-             << " (9000)=" << HEXFORMAT0x4(ReadMemoryWord(0x9000)) << endl;
-        m_cpu.SP.W = 0x8ffe;
-        WriteMemory(0x8ffe, 0x9d); // return to main_loop after menu_command
-        WriteMemory(0x8fff, 0x01);
-        SetPC(0x0282); // clear_cmdline / read_cmdline
-        continue;
-      }
-    }
-
-    // Trampoline left in RAM: C3 82 C0 = JP CCP.
-    if (!m_seenBackToCcp && pc == 0x4000
-        && ReadMemory(0x4000) == 0xc3
-        && ReadMemoryWord(0x4001) == 0xc082) {
-      cerr << "vtex: block JP CCP trampoline at 4000"
-           << " prev " << HEXFORMAT0x4(m_prevPc) << endl;
-      m_cpu.SP.W = 0x8ffe;
-      WriteMemory(0x8ffe, 0x9d);
-      WriteMemory(0x8fff, 0x01);
-      SetPC(0x0282);
-      continue;
-    }
-
     if (!m_seenMainLoop && pc == 0x0197) {
       m_seenMainLoop = true;
       cerr << "vtex: main_loop" << endl;
     }
     if (!m_seenMenu && pc == 0x0260) {
       m_seenMenu = true;
-      cerr << "vtex: menu_command"
-           << " sp " << HEXFORMAT0x4(m_cpu.SP.W)
-           << " [sp] " << HEXFORMAT0x4(ReadMemoryWord(m_cpu.SP.W))
-           << " a8 " << HEXFORMAT0x2(ReadMemory(0x1a8))
-           << " prev " << HEXFORMAT0x4(m_prevPc)
-           << endl;
-      // Not a real CALL from main_loop (that would have SP=8FFE, [sp]=019d).
-      if (m_cpu.SP.W == 0x9000) {
-        cerr << "vtex: menu entered without CALL — forcing main_loop" << endl;
-        SetPC(0x0197);
-        m_seenMenu = false;
-        continue;
-      }
+      cerr << "vtex: menu_command sp " << HEXFORMAT0x4(m_cpu.SP.W)
+           << " [sp] " << HEXFORMAT0x4(ReadMemoryWord(m_cpu.SP.W)) << endl;
     }
     if (!m_seenDrawHelp && pc == 0x0309) {
       m_seenDrawHelp = true;
@@ -1346,26 +1280,18 @@ int Microbee128_StarnetClient_Emulator::Exec(int cycles)
       m_seenReadCmdline = true;
       cerr << "vtex: read_cmdline" << endl;
     }
-
-    // CCP entry is C000→C082. SP=9002 means RET with SP=9000 to C000
-    // (BIOS warm boot would have set SP to D682 first).
     if (m_seenProbeMemory && !m_seenKeyWait && !m_seenBackToCcp
         && pc >= 0xc000 && pc < 0xc800) {
       m_seenBackToCcp = true;
       cerr << "vtex: returned to CCP pc " << HEXFORMAT0x4(pc)
-           << " sp " << HEXFORMAT0x4(m_cpu.SP.W)
-           << " [sp] " << HEXFORMAT0x4(ReadMemoryWord(m_cpu.SP.W))
-           << " prev " << HEXFORMAT0x4(m_prevPc)
-           << " (9000)=" << HEXFORMAT0x4(ReadMemoryWord(0x9000))
-           << endl;
+           << " prev " << HEXFORMAT0x4(m_prevPc) << endl;
     }
 
     if (pc == 0x1ce9) {
       m_keyWaitPending = true;
       if (!m_seenKeyWait) {
         m_seenKeyWait = true;
-        cerr << "vtex: key_wait enter l1c41="
-             << HEXFORMAT0x2(ReadMemory(0x1c41)) << endl;
+        cerr << "vtex: key_wait" << endl;
       }
     }
 
@@ -1379,7 +1305,6 @@ int Microbee128_StarnetClient_Emulator::Exec(int cycles)
       }
       else if (preKeyWait && !m_seenBackToCcp
                && fn >= 0x0f && fn <= 0x16) {
-        // File BDOS only during init (open/close/read/write/make…).
         m_bdosPending = true;
         m_bdosFn = fn;
         m_bdosReturn = ReadMemoryWord(m_cpu.SP.W);
@@ -1476,14 +1401,16 @@ void Microbee128_StarnetClient_Emulator::WakeReceive()
 
 void Microbee128_StarnetClient_Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uint8_t data)
 {
-  // vtex hw_init reprograms PIO control for a modem bit-bang ISR. That
-  // breaks Starnet's PIO A/B setup and the next interrupt can RET into
-  // CCP with the TPA stack still at 9000h.
-  if (info.m_id == PORT_PIO && ((port & 1) == 1) && (uint16_t)GetPC() < 0x8000) {
+  // vtex hw_init (2147-219B) must program the PIO. Later TPA code
+  // reprograms it for a modem bit-bang ISR that breaks Starnet — block
+  // those control writes only after hw_init has returned.
+  const uint16_t pc = (uint16_t)GetPC();
+  const bool inHwInit = (pc >= 0x2147 && pc <= 0x219b);
+  if (info.m_id == PORT_PIO && ((port & 1) == 1) && pc < 0x8000 && !inHwInit) {
     if (m_blockedPioCtrl++ == 0)
       cerr << "vtex: blocked PIO ctrl " << HEXFORMAT0x2(port & 3)
            << " data " << HEXFORMAT0x2(data)
-           << " pc " << HEXFORMAT0x4(GetPC()) << endl;
+           << " pc " << HEXFORMAT0x4(pc) << endl;
     return;
   }
 
@@ -1491,7 +1418,7 @@ void Microbee128_StarnetClient_Emulator::WriteIOPort(const WriteIOPortBlockInfo 
 
   // Viatel reprograms PIO B as mode-3 with DDR 1Fh (bits 0-4 in). Keep
   // bit 7 an output so the Starnet direction line cannot float.
-  if (info.m_id == PORT_PIO && (port & 3) == 3 && (uint16_t)GetPC() < 0x8000)
+  if (info.m_id == PORT_PIO && (port & 3) == 3 && pc < 0x8000 && !inHwInit)
     m_pio.ForceOutputBits(1, 0x80);
 }
 

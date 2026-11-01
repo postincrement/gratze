@@ -965,7 +965,7 @@ void Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port, uin
 {
 }
 
-void Emulator::WritePort(register uint16_t port, register uint8_t data)
+void Emulator::WritePort(uint16_t port, uint8_t data)
 {
   if (m_options.m_writeIO) 
     WriteIOPortLog(port, data);
@@ -983,7 +983,7 @@ void Emulator::WritePort(register uint16_t port, register uint8_t data)
   WriteIOPortLog(port, data);
 }
 
-uint8_t Emulator::ReadPort(register uint16_t port)
+uint8_t Emulator::ReadPort(uint16_t port)
 {
   // Match on the low 8 bits (I/O port number), but pass the full 16-bit
   // address through so handlers can see A8–A15 from IN A,(n) / IN r,(C).

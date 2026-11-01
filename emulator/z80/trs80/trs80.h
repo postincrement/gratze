@@ -107,11 +107,11 @@ class TRS80Emulator : public Z80Emulator
 
     uint8_t ReadInterrupt(uint16_t) const;
 
-    void WriteFF(register uint16_t, register uint8_t val);
-    uint8_t ReadFF(register uint16_t);
+    void WriteFF(uint16_t, uint8_t val);
+    uint8_t ReadFF(uint16_t);
 
-    void WriteFx(register uint16_t, register uint8_t val);
-    uint8_t ReadFx(register uint16_t);
+    void WriteFx(uint16_t, uint8_t val);
+    uint8_t ReadFx(uint16_t);
 
     static bool CreatePixelFont(const Config::Font & fontInfo, std::vector<uint8_t> & fontData);
 

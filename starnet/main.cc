@@ -94,6 +94,10 @@ int main(int argc, char ** argv)
       if (!setImage("64kbcpm.slv", "--64k"))
         return 1;
     }
+    else if (arg == "--n64k") {
+      if (!setImage("n64kbcpm.slv", "--n64k"))
+        return 1;
+    }
     else if (arg == "--image" && i + 1 < argc) {
       if (!setImage(argv[++i], "--image"))
         return 1;
@@ -101,8 +105,9 @@ int main(int argc, char ** argv)
     else if (arg == "--drive" && i + 1 < argc)
       driveSpecs.push_back(argv[++i]);
     else {
-      cerr << "usage: starnet-server [--56k|--64k|--image FILE] [--drive SPEC]...\n"
-           << "  --56k / --64k select 56kbcpm.slv or 64kbcpm.slv (default 64k)\n"
+      cerr << "usage: starnet-server [--56k|--64k|--n64k|--image FILE] [--drive SPEC]...\n"
+           << "  --56k / --64k / --n64k select a slave image (default 64kbcpm.slv)\n"
+           << "  --n64k is 64k with private stack for video bank $14\n"
            << "  SPEC is A=dir:PATH or A=image:FILE,dpb=NAME\n";
       return 1;
     }

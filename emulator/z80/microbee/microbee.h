@@ -185,6 +185,8 @@ class Microbee128_StarnetClient_Emulator : public Microbee128_BN_Emulator
     int m_logKeyWait = 0;
     bool m_keyWaitPending = false;
     bool m_seenKeyWait = false;
+    bool m_seenColdStart = false;
+    bool m_seenVideoInit = false;
     bool m_seenProbeMemory = false;
     bool m_seenLoadCustomer = false;
     bool m_seenMainLoop = false;
@@ -197,8 +199,6 @@ class Microbee128_StarnetClient_Emulator : public Microbee128_BN_Emulator
     int m_blockedDf4a = 0;
     int m_blockedPioCtrl = 0;
     uint16_t m_prevPc = 0;
-    uint16_t m_loadCustomerRet = 0;
-    bool m_watchingLoadCustomer = false;
 
     // Generic BDOS call trace during vtex init (open/read/etc).
     bool m_bdosPending = false;

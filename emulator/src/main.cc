@@ -147,7 +147,6 @@ static void ApplyCliOverrides(Options & options)
     options.m_withEI = ei;
 }
 
-extern "C"
 int main(int argc, char *argv[])
 {
   Init();

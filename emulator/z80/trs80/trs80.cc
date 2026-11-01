@@ -346,7 +346,7 @@ void TRS80Emulator::WriteIOPort(const WriteIOPortBlockInfo & info, uint16_t port
 }
 
 
-void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
+void TRS80Emulator::WriteFF(uint16_t, uint8_t val)
 {
   // detect changes in cassette motor
   bool cassOn = (val & 0x04) != 0;
@@ -420,7 +420,7 @@ void TRS80Emulator::WriteFF(register uint16_t, register uint8_t val)
   }
 }
 
-uint8_t TRS80Emulator::ReadFF(register uint16_t)
+uint8_t TRS80Emulator::ReadFF(uint16_t)
 {
   // if a read is done when the trigger is active, we are reading a cassette
   if (m_cassetteTrigger) {
