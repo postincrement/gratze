@@ -80,7 +80,6 @@ add_executable(gratze
   z80/super80/super80.cc
   z80/cpm80/cpm80.cc
   z80/cpmhost/newbdos.cc
-  z80/cpmhost/shadow_bdos.cc
   2650/2650emulator.cc
   2650/cpu_2650.cc
   2650/eti685/eti685.cc
@@ -113,7 +112,7 @@ target_include_directories(gratze PRIVATE
   ${GRATZE_GEN_INCLUDE}
 )
 
-target_compile_definitions(gratze PRIVATE EXECZ80 FAST_RDOP)
+target_compile_definitions(gratze PRIVATE EXECZ80)
 
 if(CMAKE_CXX_BYTE_ORDER STREQUAL "BIG_ENDIAN")
   target_compile_definitions(gratze PRIVATE MSB_FIRST)

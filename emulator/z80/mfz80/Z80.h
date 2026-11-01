@@ -135,14 +135,6 @@ word RunZ80(Z80 *R);
 void WrZ80(word Addr, byte Value);
 byte RdZ80(word Addr);
 
-/** OpZ80() **************************************************/
-/** Opcode fetch (and MFZ stack pops). Required when        **/
-/** FAST_RDOP is defined; otherwise OpZ80 aliases RdZ80.    **/
-/************************************ TO BE WRITTEN BY USER **/
-#ifdef FAST_RDOP
-byte OpZ80(register word Addr);
-#endif
-
 /** InZ80()/OutZ80() *****************************************/
 /** Z80 emulation calls these functions to read/write from  **/
 /** I/O ports. There can be 65536 I/O ports, but only first **/

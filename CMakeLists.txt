@@ -95,7 +95,9 @@ add_subdirectory(common)
 add_subdirectory(disk)
 add_subdirectory(starnet)
 add_subdirectory(emulator)
-add_subdirectory(emumatic)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/emumatic/CMakeLists.txt")
+  add_subdirectory(emumatic)
+endif()
 
 add_executable(grzbin grzbin/grzbin.cc)
 set_target_properties(grzbin PROPERTIES
